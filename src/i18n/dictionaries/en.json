@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "title": "Jesús Molano — Frontend Engineer",
+    "description": "Cinematic portfolio of Jesús Molano, frontend engineer. Vue, Nuxt, React and Next, under a neon sunset."
+  },
+  "nav": {
+    "languageLabel": "Language",
+    "switchLabel": "Español",
+    "switchLocale": "es",
+    "skipToContent": "Skip to content"
+  },
+  "hero": {
+    "name": "Jesús Molano",
+    "role": "Frontend Engineer",
+    "tagline": "Vue · Nuxt · React · Next",
+    "scrollHint": "Scroll to drive into the city",
+    "sceneLabel": "Neon sunset over a city skyline with palm trees"
+  },
+  "teaser": {
+    "eyebrow": "Next stop",
+    "heading": "The city is still loading",
+    "body": "Phase 2 turns each of my GitHub projects into a neon district you can fly into.",
+    "github": "See my code on GitHub",
+    "newTab": "(opens in a new tab)"
+  },
+  "notFound": {
+    "heading": "Wrong exit",
+    "back": "Back to the city"
+  }
+}

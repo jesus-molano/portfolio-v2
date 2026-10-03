@@ -1,0 +1,105 @@
+/* Design tokens are injected as --va-* custom properties by TokensStyle. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: auto;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--va-font-body);
+  font-size: var(--va-size-body);
+  line-height: 1.5;
+  color: var(--va-color-text);
+  /* Fallback sky when WebGL is unavailable or the canvas is still loading. */
+  background: linear-gradient(
+    180deg,
+    var(--va-color-night) 0%,
+    var(--va-color-dusk) 45%,
+    var(--va-color-haze) 70%,
+    var(--va-color-night) 100%
+  );
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--va-color-cyan);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--va-color-pink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 4px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: var(--va-z-ui);
+  padding: 0.5rem 0.9rem;
+  background: var(--va-color-ink);
+  color: var(--va-color-text);
+  border: 1px solid var(--va-color-cyan);
+  border-radius: 999px;
+  transform: translateY(-200%);
+  transition: transform 150ms ease;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* Hidden start state for the title reveal, so nothing flashes before
+   hydration; GSAP animates it to the visible state. Under reduced motion the
+   title is simply visible, and a <noscript> style in the layout restores it
+   when JS is disabled. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-letter],
+  [data-line] {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

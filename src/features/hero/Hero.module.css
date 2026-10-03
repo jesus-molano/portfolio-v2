@@ -1,0 +1,141 @@
+.hero {
+  position: relative;
+}
+
+.stage {
+  position: relative;
+  height: var(--va-hero-scroll);
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  z-index: var(--va-z-canvas);
+}
+
+.canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.title {
+  position: absolute;
+  inset: 0;
+  z-index: var(--va-z-title);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 1rem 17vh;
+  text-align: center;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 400;
+}
+
+.name {
+  display: block;
+  font-family: var(--va-font-display);
+  font-size: var(--va-size-hero-name);
+  line-height: 0.86;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  filter: drop-shadow(0 0 22px rgba(255, 45, 149, 0.55)) drop-shadow(0 6px 4px rgba(0, 0, 0, 0.7));
+}
+
+.letter {
+  display: inline-block;
+  /* Extend the painted box so accents (Ú) are not clipped by the tight line-height. */
+  padding: 0.14em 0;
+  margin: -0.14em 0;
+  background: linear-gradient(180deg, #ffffff 0%, #ffe6f3 38%, var(--va-color-pink) 62%, var(--va-color-magenta) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  will-change: transform, opacity, filter;
+}
+
+.role {
+  display: block;
+  font-family: var(--va-font-body);
+  font-size: var(--va-size-hero-role);
+  font-weight: 500;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--va-color-cyan);
+  text-shadow: 0 0 14px rgba(25, 230, 255, 0.65), 0 2px 2px rgba(0, 0, 0, 0.8);
+  padding-left: 0.42em; /* balances the trailing letter-spacing */
+}
+
+.tagline {
+  margin-top: 1.4rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  color: var(--va-color-text-muted);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1.6rem;
+  z-index: var(--va-z-ui);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+  pointer-events: none;
+}
+
+.hintLine {
+  display: block;
+  width: 1px;
+  height: 2.6rem;
+  background: linear-gradient(180deg, transparent, var(--va-color-cyan));
+  animation: hint-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes hint-pulse {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+    transform-origin: top;
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 767px) {
+  .title {
+    padding-bottom: 20vh;
+  }
+
+  .role {
+    letter-spacing: 0.3em;
+  }
+}

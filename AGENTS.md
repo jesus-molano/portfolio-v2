@@ -1,0 +1,68 @@
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+
+# Vice Afterglow — project guide
+
+Cinematic portfolio of Jesús Molano. Vice City afterglow look: pink and cyan
+neon sunset, palm trees, fog, bloom, huge typography. Phase 1 is the hero.
+
+## Commands
+
+- `pnpm dev` — Next dev server (Turbopack) on http://localhost:3000.
+- `pnpm lint` — ESLint CLI (`next lint` no longer exists in Next 16).
+- `pnpm typecheck` — `tsc --noEmit`.
+- `pnpm test` — Vitest unit tests (`src/**/*.test.ts`): locale negotiation,
+  proxy redirects and the deterministic city layout. Add a test for every new
+  pure function.
+- `pnpm build` — production build. `next/font/google` downloads fonts at build
+  time, so the build needs access to `fonts.googleapis.com` and `fonts.gstatic.com`.
+- `pnpm check` — lint, typecheck, tests and build in sequence.
+
+## Stack (pinned on purpose)
+
+- Next 16.3 App Router, React 19.3, TypeScript 6.0 (not 7: typescript-eslint
+  does not support it yet), ESLint 9 (eslint-plugin-react does not support 10).
+- three `~0.186` (postprocessing requires `< 0.187`), `@react-three/fiber` 9,
+  `@react-three/drei` 10, `@react-three/postprocessing` 3.
+- GSAP 3 + `@gsap/react` for timelines and ScrollTrigger; Lenis for smooth scroll.
+
+## Structure
+
+- `src/app/[lang]` — root layout and pages. Every route lives under the locale.
+- `src/proxy.ts` — redirects `/` to `/en` or `/es` from `Accept-Language`.
+- `src/i18n` — locale config and JSON dictionaries. English is the default,
+  Spanish is the second language. Add keys to both files.
+- `src/design/tokens.ts` — single source of truth for colors, fonts, motion and
+  layering. `TokensStyle` emits them as `--va-*` CSS variables; Three.js code
+  imports the hex values. Never hardcode a color elsewhere.
+- `src/features/hero` — the hero: stage, title, canvas, scroll bridge and the
+  3D scene (`scene/`), with GLSL in `shaders/`.
+- `src/features/teaser` — placeholder section after the hero.
+- `src/hooks` — SSR-safe media query hooks.
+
+## Conventions
+
+- CSS Modules + tokens. No Tailwind.
+- Three.js runs client-side only: `HeroCanvas` loads `HeroScene` with
+  `next/dynamic` and `ssr: false`, inside an error boundary. The page must stay
+  readable without WebGL: real text in the DOM, CSS sky as fallback.
+- Scroll progress flows through `heroProgress` (a mutable object), never
+  through React state. ScrollTrigger writes it, `useFrame` reads it.
+- Respect `prefers-reduced-motion`: no Lenis, no intro animation, static camera,
+  `frameloop="demand"`.
+- Quality tiers come from `useQualityTier` (viewport + pointer heuristics, no
+  network calls). The low tier drops the reflector and most post-processing.
+- Deterministic layouts use `createRandom(seed)` so screenshots are stable.
+
+## Content rules
+
+- No Rockstar assets, logos or the GTA typeface. Inspiration only.
+- Nothing from Heuristik or clinical projects. Skip `atlas-habits` on purpose.
+- The site never calls the Claude API. Generated data lives as JSON in the repo.
