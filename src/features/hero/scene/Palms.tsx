@@ -1,7 +1,7 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Color,
   type InstancedMesh,
@@ -14,36 +14,33 @@ import {
 } from "three";
 import { palette } from "@/design/tokens";
 import { palmFragmentShader, palmVertexShader } from "../shaders/palm";
+import { drive, STREAM, STREAM_LENGTH, wrapZ } from "./drive";
 import { createPalmGeometry } from "./palmGeometry";
 import { createRandom } from "./world";
 
 type Props = { animate: boolean; count?: number };
 
-type Placement = { position: Vector3; rotation: number; scale: number };
+type Placement = { x: number; z0: number; rotation: number; scale: number };
+
+const Y_AXIS = new Vector3(0, 1, 0);
 
 function placePalms(count: number): Placement[] {
   const random = createRandom(99);
   const placements: Placement[] = [];
-  const zStart = 60;
-  const zEnd = -140;
-  const step = (zStart - zEnd) / (count / 2);
+  const step = STREAM_LENGTH / (count / 2);
   for (let i = 0; i < count; i += 1) {
     const side = i % 2 === 0 ? -1 : 1;
     const row = Math.floor(i / 2);
-    const z = zStart - row * step - (side > 0 ? step * 0.45 : 0);
+    const z0 = STREAM.zBack - row * step - (side > 0 ? step * 0.45 : 0);
     // On the shoulders of the causeway, just outside the curbs.
     const x = side * (10.5 + random() * 4);
-    placements.push({
-      position: new Vector3(x, 0, z),
-      rotation: random() * Math.PI * 2,
-      scale: 0.85 + random() * 0.5,
-    });
+    placements.push({ x, z0, rotation: random() * Math.PI * 2, scale: 0.85 + random() * 0.5 });
   }
   return placements;
 }
 
-/** Instanced palm silhouettes lining the avenue, swaying in the wind. */
-export function Palms({ animate, count = 16 }: Props) {
+/** Instanced palm silhouettes streaming past the car, swaying in the wind. */
+export function Palms({ animate, count = 18 }: Props) {
   const mesh = useRef<InstancedMesh>(null);
   const material = useRef<ShaderMaterial>(null);
 
@@ -61,24 +58,30 @@ export function Palms({ animate, count = 16 }: Props) {
     [],
   );
 
-  useLayoutEffect(() => {
-    const instanced = mesh.current;
-    if (!instanced) return;
+  const place = (instanced: InstancedMesh, distance: number) => {
     const matrix = new Matrix4();
     const quaternion = new Quaternion();
+    const position = new Vector3();
     const scale = new Vector3();
     placements.forEach((p, i) => {
-      quaternion.setFromAxisAngle(new Vector3(0, 1, 0), p.rotation);
+      quaternion.setFromAxisAngle(Y_AXIS, p.rotation);
       scale.setScalar(p.scale);
-      matrix.compose(p.position, quaternion, scale);
+      position.set(p.x, 0, wrapZ(p.z0 + distance));
+      matrix.compose(position, quaternion, scale);
       instanced.setMatrixAt(i, matrix);
     });
     instanced.instanceMatrix.needsUpdate = true;
+  };
+
+  useEffect(() => {
+    if (mesh.current) place(mesh.current, drive.distance);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial placement only
   }, [placements]);
 
   useFrame((state) => {
-    if (!animate || !material.current) return;
+    if (!animate || !mesh.current || !material.current) return;
     material.current.uniforms.uTime.value = state.clock.elapsedTime;
+    place(mesh.current, drive.distance);
   });
 
   return (

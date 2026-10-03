@@ -17,12 +17,17 @@
     "sceneLabel": "Atardecer conduciendo por una autopista sobre el agua hacia un skyline de neón, con palmeras a ambos lados",
     "hud": {
       "title": "Vice Afterglow",
-      "subtitle": "Portfolio · en construcción"
+      "subtitle": "Portfolio · en construcción",
+      "camera": "CÁM"
     },
-    "beats": [
-      "35 km a la semana por carreteras como esta.",
-      "Rock, metal, punk y rap en la radio.",
-      "Gamer desde crío: GTA, The Witcher, F1."
+    "shots": ["Trasera", "Travelling", "Contrapicado", "Grúa"],
+    "speaker": "Jesús",
+    "lines": [
+      "Sí… aquí vamos otra vez.",
+      "Portfolio nuevo, el mismo de siempre. Soy Jesús, ingeniero frontend: Vue y Nuxt en casa, Next cuando el trabajo lo pide.",
+      "35 km a la semana con los cascos puestos. Rock, metal, punk, rap. Lo que acorte el último kilómetro.",
+      "Crecí con GTA. Sigo parando a mirar un atardecer en The Witcher. Y sí: la F1 va de milésimas.",
+      "De noche, CachyOS y Hyprland. Los dotfiles están en GitHub, con sus pecados. Ahora te enseño la ciudad."
     ]
   },
   "teaser": {

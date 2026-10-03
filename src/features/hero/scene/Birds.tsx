@@ -33,7 +33,7 @@ function createBirdGeometry(): BufferGeometry {
   return geometry;
 }
 
-const FLOCK_Z = -225;
+const FLOCK_Z = -275;
 const FLOCK_Y = 50;
 const SPAN = 150;
 const PERIOD = 70;
@@ -103,7 +103,7 @@ export function Birds({ animate, count = 11 }: Props) {
       ref={mesh}
       args={[geometry, undefined, formation.length]}
       frustumCulled={false}
-      position={[0, 0, world.sun.position.z - FLOCK_Z - 55]}
+      position={[0, 0, world.sun.position.z - FLOCK_Z + 20]}
     >
       <shaderMaterial
         ref={material}

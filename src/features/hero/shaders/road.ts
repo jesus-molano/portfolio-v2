@@ -17,6 +17,7 @@ export const roadVertexShader = /* glsl */ `
  * running down the middle, dashed center line and solid edge lines.
  */
 export const roadFragmentShader = /* glsl */ `
+  uniform float uDistance;
   uniform vec3 uAsphalt;
   uniform vec3 uLine;
   uniform vec3 uEdge;
@@ -35,7 +36,7 @@ export const roadFragmentShader = /* glsl */ `
 
   void main() {
     float across = vUv.x * 2.0 - 1.0;
-    float speckle = 0.8 + 0.4 * hash(floor(vWorld.xz * 2.5));
+    float speckle = 0.92 + 0.16 * hash(floor(vWorld.xz * 14.0));
     vec3 color = uAsphalt * speckle;
 
     // Sun reflection on the wet surface: a soft column toward the horizon.
@@ -46,7 +47,7 @@ export const roadFragmentShader = /* glsl */ `
     color += uGlow * 0.12 * toward;
 
     // Center dashes.
-    float dash = step(0.55, fract(vWorld.z / 9.0));
+    float dash = step(0.55, fract((vWorld.z + uDistance) / 9.0));
     float center = 1.0 - smoothstep(0.012, 0.022, abs(across));
     color = mix(color, uLine, dash * center * 0.95);
 

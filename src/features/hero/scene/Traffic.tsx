@@ -1,29 +1,33 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, Color, type InstancedMesh, Matrix4, Quaternion, Vector3 } from "three";
 import { streakFragmentShader, streakVertexShader } from "../shaders/streak";
-import { createRandom, world } from "./world";
+import { drive, STREAM, STREAM_LENGTH, wrapZ } from "./drive";
+import { createRandom } from "./world";
 
 type Props = { animate: boolean; perLane?: number };
 
-type Car = { lane: number; offset: number; speed: number; length: number };
+/** Relative speed is against the hero car (positive drifts toward +z). */
+type Car = { lane: number; z0: number; relativeSpeed: number; length: number };
 
 const STREAK_Y = 0.5;
-const LANES_AWAY = [2.2, 5.6];
-const LANES_TOWARD = [-2.2, -5.6];
+/** The hero car owns the right lane (x = 2.4); same-direction traffic uses the outer one. */
+const LANES_SAME = [5.8];
+const LANES_ONCOMING = [-2.4, -5.8];
+const X_AXIS = new Vector3(1, 0, 0);
 
-function makeCars(lanes: number[], perLane: number, seed: number, baseSpeed: number): Car[] {
+function makeCars(lanes: number[], perLane: number, seed: number, relative: [number, number]): Car[] {
   const random = createRandom(seed);
   const cars: Car[] = [];
   for (const lane of lanes) {
     for (let i = 0; i < perLane; i += 1) {
       cars.push({
-        lane: lane + (random() - 0.5) * 0.6,
-        offset: random(),
-        speed: baseSpeed * (0.8 + random() * 0.5),
-        length: 10 + random() * 10,
+        lane: lane + (random() - 0.5) * 0.5,
+        z0: STREAM.zFront + random() * STREAM_LENGTH,
+        relativeSpeed: relative[0] + random() * (relative[1] - relative[0]),
+        length: 9 + random() * 9,
       });
     }
   }
@@ -31,15 +35,16 @@ function makeCars(lanes: number[], perLane: number, seed: number, baseSpeed: num
 }
 
 /**
- * Long-exposure light trails on the causeway: red tail lights moving away on
- * the right, warm headlights coming toward the camera on the left.
+ * Long-exposure light trails relative to the hero car: tail lights of cars
+ * pulling ahead or dropping back in the outer lane, headlights of oncoming
+ * traffic on the left streaming past.
  */
 export function Traffic({ animate, perLane = 4 }: Props) {
   const tail = useRef<InstancedMesh>(null);
   const head = useRef<InstancedMesh>(null);
 
-  const away = useMemo(() => makeCars(LANES_AWAY, perLane, 11, 26), [perLane]);
-  const toward = useMemo(() => makeCars(LANES_TOWARD, perLane, 23, 34), [perLane]);
+  const same = useMemo(() => makeCars(LANES_SAME, perLane * 2, 11, [-9, 7]), [perLane]);
+  const oncoming = useMemo(() => makeCars(LANES_ONCOMING, perLane, 23, [42, 60]), [perLane]);
 
   const tailUniforms = useMemo(
     () => ({ uColor: { value: new Color("#ff3b4a") }, uIntensity: { value: 1.1 } }),
@@ -50,18 +55,16 @@ export function Traffic({ animate, perLane = 4 }: Props) {
     [],
   );
 
-  const span = world.road.zStart - world.road.zEnd;
-
-  const place = (mesh: InstancedMesh, cars: Car[], time: number, direction: 1 | -1) => {
+  const place = (mesh: InstancedMesh, cars: Car[], time: number, towardCamera: boolean) => {
     const matrix = new Matrix4();
     const quaternion = new Quaternion();
     const position = new Vector3();
     const scale = new Vector3();
-    // Plane +Y maps to the direction of travel; the bright head leads.
-    quaternion.setFromAxisAngle(new Vector3(1, 0, 0), direction === -1 ? -Math.PI / 2 : Math.PI / 2);
     cars.forEach((car, i) => {
-      const travelled = (car.offset * span + time * car.speed) % span;
-      const z = direction === -1 ? world.road.zStart - travelled : world.road.zEnd + travelled;
+      const z = wrapZ(car.z0 + time * car.relativeSpeed);
+      // The bright head leads the direction of relative motion.
+      const leadsForward = towardCamera || car.relativeSpeed > 0;
+      quaternion.setFromAxisAngle(X_AXIS, leadsForward ? Math.PI / 2 : -Math.PI / 2);
       position.set(car.lane, STREAK_Y, z);
       scale.set(1, car.length, 1);
       matrix.compose(position, quaternion, scale);
@@ -70,22 +73,21 @@ export function Traffic({ animate, perLane = 4 }: Props) {
     mesh.instanceMatrix.needsUpdate = true;
   };
 
-  useLayoutEffect(() => {
-    if (tail.current) place(tail.current, away, 0, -1);
-    if (head.current) place(head.current, toward, 0, 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial placement only
-  }, [away, toward]);
+  useEffect(() => {
+    if (tail.current) place(tail.current, same, 0, false);
+    if (head.current) place(head.current, oncoming, 0, true);
+  }, [same, oncoming]);
 
-  useFrame((state) => {
+  useFrame(() => {
     if (!animate) return;
-    const t = state.clock.elapsedTime;
-    if (tail.current) place(tail.current, away, t, -1);
-    if (head.current) place(head.current, toward, t, 1);
+    const time = drive.distance / drive.speed;
+    if (tail.current) place(tail.current, same, time, false);
+    if (head.current) place(head.current, oncoming, time, true);
   });
 
   return (
     <group>
-      <instancedMesh ref={tail} args={[undefined, undefined, away.length]} frustumCulled={false}>
+      <instancedMesh ref={tail} args={[undefined, undefined, same.length]} frustumCulled={false}>
         <planeGeometry args={[0.55, 1]} />
         <shaderMaterial
           uniforms={tailUniforms}
@@ -96,7 +98,7 @@ export function Traffic({ animate, perLane = 4 }: Props) {
           blending={AdditiveBlending}
         />
       </instancedMesh>
-      <instancedMesh ref={head} args={[undefined, undefined, toward.length]} frustumCulled={false}>
+      <instancedMesh ref={head} args={[undefined, undefined, oncoming.length]} frustumCulled={false}>
         <planeGeometry args={[0.55, 1]} />
         <shaderMaterial
           uniforms={headUniforms}

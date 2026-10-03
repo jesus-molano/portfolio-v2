@@ -1,13 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
-import { Color, UniformsLib, UniformsUtils } from "three";
+import { useFrame } from "@react-three/fiber";
+import { useMemo, useRef } from "react";
+import { Color, type ShaderMaterial, UniformsLib, UniformsUtils } from "three";
 import { palette } from "@/design/tokens";
 import { roadFragmentShader, roadVertexShader } from "../shaders/road";
+import { drive } from "./drive";
 import { world } from "./world";
 
-/** Wet causeway over the water, with curbs. The camera drives on it. */
-export function Road() {
+type Props = { animate: boolean };
+
+/** Wet causeway over the water, with curbs. Lane dashes stream with the drive. */
+export function Road({ animate }: Props) {
+  const material = useRef<ShaderMaterial>(null);
   const { width, zStart, zEnd, y } = world.road;
   const length = zStart - zEnd;
   const centerZ = (zStart + zEnd) / 2;
@@ -17,6 +22,7 @@ export function Road() {
       UniformsUtils.merge([
         UniformsLib.fog,
         {
+          uDistance: { value: 0 },
           uAsphalt: { value: new Color("#3a2a5c") },
           uLine: { value: new Color("#ffe9bd") },
           uEdge: { value: new Color("#fff4ea") },
@@ -27,11 +33,17 @@ export function Road() {
     [zEnd],
   );
 
+  useFrame(() => {
+    if (!animate || !material.current) return;
+    material.current.uniforms.uDistance.value = drive.distance;
+  });
+
   return (
     <group>
       <mesh rotation-x={-Math.PI / 2} position={[0, y, centerZ]}>
         <planeGeometry args={[width, length]} />
         <shaderMaterial
+          ref={material}
           uniforms={uniforms}
           vertexShader={roadVertexShader}
           fragmentShader={roadFragmentShader}

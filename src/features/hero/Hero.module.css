@@ -167,35 +167,85 @@
   text-shadow: 0 1px 2px rgba(40, 16, 80, 0.9);
 }
 
-/* Scroll beats: short personal lines that appear during the drive. */
-.beats {
+/* Hard-cut flash between shots. */
+.flash {
   position: absolute;
-  left: 1.25rem;
-  bottom: 12vh;
+  inset: 0;
   z-index: var(--va-z-ui);
-  display: grid;
-  max-width: 24rem;
+  background: #05020c;
+  opacity: 0;
   pointer-events: none;
 }
 
-.beat {
-  grid-area: 1 / 1;
+/* Camera readout, top right under the language switch. */
+.hudCamera {
+  position: absolute;
+  top: 4.2rem;
+  right: 1.25rem;
+  z-index: var(--va-z-ui);
   display: flex;
-  gap: 0.9rem;
-  align-items: baseline;
+  align-items: center;
+  gap: 0.6rem;
   font-family: var(--va-font-mono);
-  font-size: 0.78rem;
-  line-height: 1.5;
-  letter-spacing: 0.06em;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
   color: var(--va-color-cream);
-  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.9);
+  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.8);
+  pointer-events: none;
+}
+
+.hudRec {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #ff3b4a;
+  box-shadow: 0 0 10px #ff3b4a;
+  animation: rec-blink 1.4s steps(1) infinite;
+}
+
+.hudShot {
+  padding-left: 0.6rem;
+  border-left: 1px solid rgba(255, 246, 238, 0.4);
+  color: var(--va-color-amber);
+}
+
+@keyframes rec-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Dialogue subtitles: speaker in pink, line in cream, bottom centre. */
+.subtitles {
+  position: absolute;
+  left: 50%;
+  bottom: 13vh;
+  z-index: var(--va-z-ui);
+  display: grid;
+  width: min(44rem, calc(100% - 2rem));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.subtitle {
+  grid-area: 1 / 1;
+  font-family: var(--va-font-body);
+  font-size: clamp(0.95rem, 1.35vw, 1.2rem);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--va-color-cream);
+  text-shadow: 0 1px 2px rgba(20, 8, 40, 0.95), 0 0 18px rgba(20, 8, 40, 0.6);
   opacity: 0;
 }
 
-.beatIndex {
-  flex: none;
-  color: var(--va-color-magenta);
-  letter-spacing: 0.2em;
+.speaker {
+  color: var(--va-color-pink);
+  font-weight: 700;
 }
 
 .hint {
@@ -239,18 +289,23 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .beats {
+  .subtitles {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.5rem;
   }
 
-  .beat {
+  .subtitle {
     opacity: 1;
   }
 
-  .bar {
+  .bar,
+  .flash {
     display: none;
+  }
+
+  .hudRec {
+    animation: none;
   }
 }
 
@@ -276,13 +331,16 @@
     font-size: 0.85rem;
   }
 
-  .beats {
-    left: 1rem;
-    right: 1rem;
-    bottom: 10vh;
+  .subtitles {
+    bottom: 11vh;
   }
 
   .hud {
     left: 1rem;
+  }
+
+  .hudCamera {
+    top: 3.6rem;
+    right: 1rem;
   }
 }

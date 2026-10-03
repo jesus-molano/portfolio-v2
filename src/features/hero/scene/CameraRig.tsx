@@ -2,9 +2,9 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
-import { Vector3 } from "three";
+import { PerspectiveCamera, Vector3 } from "three";
 import { heroProgress } from "../scroll/heroProgress";
-import { easeInOutCubic, world } from "./world";
+import { evaluateCamera, type CameraPose } from "./shots";
 
 type Props = {
   /** Pointer parallax, desktop only. */
@@ -14,33 +14,48 @@ type Props = {
 };
 
 /**
- * Drives the camera down the causeway as the hero scrolls, with a faint
- * suspension bob. Reads the shared scroll progress; never touches React state.
+ * Places the camera on the current shot. Inside a shot the pose is damped;
+ * on a cut the camera snaps, so the edit reads as a hard cut.
  */
 export function CameraRig({ parallax, reducedMotion }: Props) {
-  const target = useRef(new Vector3());
+  const pose = useRef<CameraPose>({
+    position: new Vector3(),
+    look: new Vector3(),
+    fov: 50,
+    shot: -1,
+  });
   const look = useRef(new Vector3());
+  const lastShot = useRef(-1);
 
   useFrame((state, delta) => {
-    const p = easeInOutCubic(heroProgress.value);
-    const { start, end, lookStart, lookEnd } = world.camera;
+    const camera = state.camera as PerspectiveCamera;
+    const target = evaluateCamera(heroProgress.value, pose.current);
     const t = state.clock.elapsedTime;
-
-    target.current.lerpVectors(start, end, p);
-    look.current.lerpVectors(lookStart, lookEnd, p);
+    const cut = target.shot !== lastShot.current;
+    lastShot.current = target.shot;
 
     if (!reducedMotion) {
-      target.current.y += Math.sin(t * 1.3) * 0.05 + Math.sin(t * 2.9) * 0.02;
-      target.current.x += Math.sin(t * 0.7) * 0.08;
+      // Suspension: a faint bob and sway, stronger close to the asphalt.
+      const closeness = target.shot === 2 ? 1.6 : 1;
+      target.position.y += (Math.sin(t * 2.1) * 0.025 + Math.sin(t * 5.3) * 0.012) * closeness;
+      target.position.x += Math.sin(t * 0.9) * 0.04;
     }
     if (parallax) {
-      target.current.x += state.pointer.x * 2.0;
-      target.current.y += state.pointer.y * 0.8;
+      target.position.x += state.pointer.x * 0.5;
+      target.position.y += state.pointer.y * 0.25;
     }
 
-    const k = reducedMotion ? 1 : 1 - Math.exp(-delta * 3.5);
-    state.camera.position.lerp(target.current, k);
-    state.camera.lookAt(look.current);
+    const k = reducedMotion || cut ? 1 : 1 - Math.exp(-delta * 4.5);
+    camera.position.lerp(target.position, k);
+    look.current.lerp(target.look, k);
+    if (cut) look.current.copy(target.look);
+    camera.lookAt(look.current);
+
+    const fov = cut || reducedMotion ? target.fov : camera.fov + (target.fov - camera.fov) * k;
+    if (Math.abs(fov - camera.fov) > 0.01) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
   });
 
   return null;

@@ -6,9 +6,9 @@ import { palette } from "@/design/tokens";
 import { hazeFragmentShader, hazeVertexShader } from "../shaders/haze";
 
 const LAYERS = [
-  { z: -140, y: 12, width: 900, height: 46, color: palette.pink, opacity: 0.1 },
-  { z: -200, y: 18, width: 1000, height: 70, color: palette.amber, opacity: 0.12 },
-  { z: -250, y: 24, width: 1100, height: 90, color: palette.haze, opacity: 0.16 },
+  { z: -180, y: 12, width: 1000, height: 50, color: palette.pink, opacity: 0.1 },
+  { z: -250, y: 18, width: 1100, height: 76, color: palette.amber, opacity: 0.12 },
+  { z: -300, y: 24, width: 1200, height: 96, color: palette.haze, opacity: 0.16 },
 ] as const;
 
 /** Additive gradient planes that melt the horizon into pink light. */

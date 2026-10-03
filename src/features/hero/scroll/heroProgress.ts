@@ -8,5 +8,5 @@ export const heroProgress = {
   value: 0,
 };
 
-/** Progress used when motion is reduced: a static, well-composed frame. */
-export const STATIC_PROGRESS = 0.28;
+/** Progress used when motion is reduced: a still from the opening shot. */
+export const STATIC_PROGRESS = 0.12;

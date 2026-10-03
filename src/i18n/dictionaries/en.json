@@ -17,12 +17,17 @@
     "sceneLabel": "Sunset drive over a causeway toward a neon city skyline, palm trees on both sides",
     "hud": {
       "title": "Vice Afterglow",
-      "subtitle": "Portfolio · work in progress"
+      "subtitle": "Portfolio · work in progress",
+      "camera": "CAM"
     },
-    "beats": [
-      "35 km a week on roads like this one.",
-      "Rock, metal, punk and rap on the radio.",
-      "Gamer since I was a kid: GTA, The Witcher, F1."
+    "shots": ["Rear", "Tracking", "Low angle", "Crane"],
+    "speaker": "Jesús",
+    "lines": [
+      "Yeah… here we go again.",
+      "New portfolio, same guy. I'm Jesús, frontend engineer: Vue and Nuxt at home, Next when the job asks for it.",
+      "35 km a week with headphones on. Rock, metal, punk, rap. Whatever makes the last kilometre shorter.",
+      "Raised on GTA. Still pull over for a Witcher sunset. And yes, F1 is a sport about milliseconds.",
+      "Nights run on CachyOS and Hyprland. The dotfiles are on GitHub, sins included. Now let me show you the city."
     ]
   },
   "teaser": {

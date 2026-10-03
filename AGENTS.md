@@ -46,6 +46,14 @@ typography. No striped suns, no neon grids. Phase 1 is the hero.
   imports the hex values. Never hardcode a color elsewhere.
 - `src/features/hero` — the hero: stage, title, canvas, scroll bridge and the
   3D scene (`scene/`), with GLSL in `shaders/`.
+  - The car never moves. `scene/drive.ts` holds the shared distance that the
+    road, palms, traffic and wheels read; `DriveClock` advances it.
+  - Scroll cuts between the shots in `scene/shots.ts`; `CameraRig` evaluates
+    the pose, `HeroStage` mirrors the shot index in the HUD and subtitles.
+    DOM scroll animations use `at(progress)` in `HeroStage` so they line up
+    with the camera progress.
+  - The car (`Car.tsx`, `carGeometry.ts`) and the driver (`Driver.tsx`) are
+    procedural; no external models.
 - `src/features/teaser` — placeholder section after the hero.
 - `src/hooks` — SSR-safe media query hooks.
 

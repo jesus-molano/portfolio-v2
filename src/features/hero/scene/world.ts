@@ -2,20 +2,14 @@ import { Vector3 } from "three";
 
 /** Shared world layout so every scene part agrees on where things are. */
 export const world = {
-  sun: { position: new Vector3(0, 30, -280), size: 120 },
-  sky: { position: new Vector3(0, 160, -560), width: 1500, height: 760 },
-  skyline: { zNear: -150, zFar: -240, halfWidth: 240 },
-  ground: { size: 1000, center: new Vector3(0, 0, -200) },
-  /** The causeway the camera drives on. */
-  road: { width: 16, zStart: 80, zEnd: -235, y: 0.1 },
-  fog: { near: 40, far: 300 },
-  camera: {
-    start: new Vector3(0, 6.2, 70),
-    end: new Vector3(0, 2.4, -90),
-    lookStart: new Vector3(0, 16, -280),
-    lookEnd: new Vector3(0, 11, -280),
-    fov: 52,
-  },
+  sun: { position: new Vector3(0, 30, -330), size: 120 },
+  sky: { position: new Vector3(0, 160, -600), width: 1600, height: 800 },
+  skyline: { zNear: -190, zFar: -290, halfWidth: 260 },
+  ground: { size: 1100, center: new Vector3(0, 0, -200) },
+  /** The causeway: long enough to reach the skyline from the car. */
+  road: { width: 16, zStart: 90, zEnd: -280, y: 0.1 },
+  fog: { near: 50, far: 340 },
+  camera: { fov: 50 },
 } as const;
 
 /** Deterministic pseudo-random generator (mulberry32) for stable layouts. */
