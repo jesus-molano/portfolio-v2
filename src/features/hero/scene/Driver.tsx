@@ -7,7 +7,7 @@ import { type Group, Quaternion, Vector3 } from "three";
 type Props = { animate: boolean };
 
 const SKIN = "#d9a27a";
-const HAIR = "#241711";
+const HAIR = "#3a2416";
 const BEARD = "#2e1c14";
 const LEATHER = "#17111f";
 const LEATHER_EDGE = "#2a2033";
@@ -107,12 +107,19 @@ export function Driver({ animate }: Props) {
           <sphereGeometry args={[0.125, 24, 18]} />
           <meshStandardMaterial color={SKIN} roughness={0.75} />
         </mesh>
-        {/* Buzz cut: a tight cap over the top, tilted back so it reaches the nape
-            and leaves the forehead clear. Same centre as the skull. */}
-        <mesh rotation-x={0.42} scale={[1.015, 1.11, 1.035]}>
-          <sphereGeometry args={[0.125, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
-          <meshStandardMaterial color={HAIR} roughness={0.95} />
+        {/* Short hair, clearly hair: a cap over the top and back of the skull
+            down to the nape, with a straight hairline above the forehead. */}
+        <mesh rotation-x={0.18} scale={[1.035, 1.13, 1.05]}>
+          <sphereGeometry args={[0.125, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.62]} />
+          <meshStandardMaterial color={HAIR} roughness={0.9} />
         </mesh>
+        {/* Sideburns join the hair to the beard. */}
+        {[-1, 1].map((side) => (
+          <mesh key={side} position={[side * 0.118, -0.02, 0.0]} scale={[0.35, 1, 0.6]}>
+            <sphereGeometry args={[0.05, 10, 10]} />
+            <meshStandardMaterial color={BEARD} roughness={0.95} />
+          </mesh>
+        ))}
         {/* Short beard: the lower front band of the skull, from ear to ear. */}
         <mesh scale={[1.01, 1.1, 1.03]}>
           <sphereGeometry

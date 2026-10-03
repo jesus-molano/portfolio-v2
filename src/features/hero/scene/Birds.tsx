@@ -71,7 +71,7 @@ export function Birds({ animate, count = 11 }: Props) {
     const position = new Vector3();
     const scale = new Vector3();
     const progress = (time % PERIOD) / PERIOD;
-    const x = SPAN / 2 - progress * SPAN;
+    const x = world.sun.position.x * 0.5 + SPAN / 2 - progress * SPAN;
     formation.forEach((bird, i) => {
       position.set(
         x + bird.dx,

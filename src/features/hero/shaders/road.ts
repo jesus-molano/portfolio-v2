@@ -23,6 +23,7 @@ export const roadFragmentShader = /* glsl */ `
   uniform vec3 uEdge;
   uniform vec3 uGlow;
   uniform float uHorizonZ;
+  uniform float uSunX;
   uniform vec3 fogColor;
   uniform float fogNear;
   uniform float fogFar;
@@ -39,10 +40,13 @@ export const roadFragmentShader = /* glsl */ `
     float speckle = 0.92 + 0.16 * hash(floor(vWorld.xz * 14.0));
     vec3 color = uAsphalt * speckle;
 
-    // Sun reflection on the wet surface: a soft column toward the horizon.
+    // Sun reflection on the wet surface: a soft column that leans toward the
+    // sun as the road recedes.
     float toward = smoothstep(40.0, uHorizonZ, vWorld.z);
-    float column = exp(-across * across * 5.0);
-    color += uGlow * column * toward * 0.75;
+    float lean = clamp(uSunX * toward * 0.012, -0.9, 0.9);
+    float dx = across - lean;
+    float column = exp(-dx * dx * 5.0);
+    color += uGlow * column * toward * 0.5;
     // Broad wet sheen from the sky.
     color += uGlow * 0.12 * toward;
 

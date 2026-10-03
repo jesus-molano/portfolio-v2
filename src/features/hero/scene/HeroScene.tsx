@@ -12,6 +12,7 @@ import { Ground } from "./Ground";
 import { Haze } from "./Haze";
 import { Palms } from "./Palms";
 import { Road } from "./Road";
+import { Shore } from "./Shore";
 import { Sky } from "./Sky";
 import { Skyline } from "./Skyline";
 import { Sun } from "./Sun";
@@ -58,7 +59,7 @@ export function HeroScene({ tier, reducedMotion, active }: Props) {
       {/* Lit materials: the car and the water. Everything else is unlit. */}
       <ambientLight intensity={Math.PI * 0.55} color="#d9c4ff" />
       <hemisphereLight args={["#f0b4d8", "#2a1646", 1.6]} />
-      <directionalLight position={[0, 24, -120]} intensity={2.6} color="#ffc9a0" />
+      <directionalLight position={[-40, 14, -120]} intensity={2.6} color="#ffc9a0" />
       <directionalLight position={[6, 10, 30]} intensity={0.9} color="#e7b7ff" />
 
       <DriveClock animate={animate} />
@@ -70,6 +71,7 @@ export function HeroScene({ tier, reducedMotion, active }: Props) {
       <Skyline tier={tier} />
       <Palms animate={animate} count={high ? 18 : 10} />
       <Ground tier={tier} />
+      <Shore animate={animate} />
       <Road animate={animate} />
       <Traffic animate={animate} perLane={high ? 3 : 2} />
       <Car animate={animate} />
