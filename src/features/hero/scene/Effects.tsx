@@ -1,6 +1,12 @@
 "use client";
 
-import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocessing";
+import {
+  Bloom,
+  ChromaticAberration,
+  EffectComposer,
+  Noise,
+  Vignette,
+} from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 import type { QualityTier } from "../useQualityTier";
 
@@ -11,7 +17,7 @@ export function Effects({ tier }: Props) {
   if (tier === "low") {
     return (
       <EffectComposer multisampling={0} resolutionScale={0.6}>
-        <Bloom mipmapBlur luminanceThreshold={0.8} luminanceSmoothing={0.3} intensity={1.0} />
+        <Bloom mipmapBlur luminanceThreshold={0.92} luminanceSmoothing={0.3} intensity={0.5} />
       </EffectComposer>
     );
   }
@@ -20,13 +26,14 @@ export function Effects({ tier }: Props) {
     <EffectComposer multisampling={0}>
       <Bloom
         mipmapBlur
-        luminanceThreshold={0.65}
+        luminanceThreshold={0.9}
         luminanceSmoothing={0.25}
-        intensity={1.35}
+        intensity={0.55}
         radius={0.75}
       />
-      <Vignette eskil={false} offset={0.22} darkness={0.85} />
-      <Noise blendFunction={BlendFunction.SCREEN} opacity={0.012} />
+      <ChromaticAberration offset={[0.0007, 0.0004]} radialModulation modulationOffset={0.35} />
+      <Vignette eskil={false} offset={0.28} darkness={0.62} />
+      <Noise blendFunction={BlendFunction.SCREEN} opacity={0.028} />
     </EffectComposer>
   );
 }

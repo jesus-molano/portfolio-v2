@@ -24,14 +24,15 @@ type Placement = { position: Vector3; rotation: number; scale: number };
 function placePalms(count: number): Placement[] {
   const random = createRandom(99);
   const placements: Placement[] = [];
-  const zStart = 50;
-  const zEnd = -135;
+  const zStart = 60;
+  const zEnd = -140;
   const step = (zStart - zEnd) / (count / 2);
   for (let i = 0; i < count; i += 1) {
     const side = i % 2 === 0 ? -1 : 1;
     const row = Math.floor(i / 2);
     const z = zStart - row * step - (side > 0 ? step * 0.45 : 0);
-    const x = side * (10 + random() * 6);
+    // On the shoulders of the causeway, just outside the curbs.
+    const x = side * (10.5 + random() * 4);
     placements.push({
       position: new Vector3(x, 0, z),
       rotation: random() * Math.PI * 2,

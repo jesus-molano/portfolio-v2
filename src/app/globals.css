@@ -22,9 +22,9 @@ body {
   /* Fallback sky when WebGL is unavailable or the canvas is still loading. */
   background: linear-gradient(
     180deg,
-    var(--va-color-night) 0%,
-    var(--va-color-dusk) 45%,
-    var(--va-color-haze) 70%,
+    var(--va-color-dusk) 0%,
+    var(--va-color-haze) 45%,
+    var(--va-color-amber) 62%,
     var(--va-color-night) 100%
   );
   background-attachment: fixed;

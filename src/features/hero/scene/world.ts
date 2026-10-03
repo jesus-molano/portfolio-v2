@@ -2,16 +2,18 @@ import { Vector3 } from "three";
 
 /** Shared world layout so every scene part agrees on where things are. */
 export const world = {
-  sun: { position: new Vector3(0, 46, -280), size: 120 },
+  sun: { position: new Vector3(0, 30, -280), size: 120 },
   sky: { position: new Vector3(0, 160, -560), width: 1500, height: 760 },
   skyline: { zNear: -150, zFar: -240, halfWidth: 240 },
   ground: { size: 1000, center: new Vector3(0, 0, -200) },
-  fog: { near: 30, far: 250 },
+  /** The causeway the camera drives on. */
+  road: { width: 16, zStart: 80, zEnd: -235, y: 0.1 },
+  fog: { near: 40, far: 300 },
   camera: {
-    start: new Vector3(0, 7.5, 70),
-    end: new Vector3(0, 2.8, -80),
+    start: new Vector3(0, 6.2, 70),
+    end: new Vector3(0, 2.4, -90),
     lookStart: new Vector3(0, 16, -280),
-    lookEnd: new Vector3(0, 10, -280),
+    lookEnd: new Vector3(0, 11, -280),
     fov: 52,
   },
 } as const;

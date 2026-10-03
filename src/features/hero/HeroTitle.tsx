@@ -18,9 +18,9 @@ type Props = {
 };
 
 /**
- * Real heading text over the canvas. Letters reveal on load. The initial
- * hidden state comes from CSS (see globals.css), so there is no flash between
- * the server paint and hydration; the tween animates to the visible state.
+ * Real heading text over the canvas. Letters reveal on load, word by word so
+ * the name can wrap on narrow screens. The initial hidden state comes from
+ * CSS (see globals.css), so nothing flashes before hydration.
  */
 export function HeroTitle({ name, role, tagline, ref }: Props) {
   const reducedMotion = usePrefersReducedMotion();
@@ -32,11 +32,11 @@ export function HeroTitle({ name, role, tagline, ref }: Props) {
         return;
       }
 
-      const intro = gsap.timeline({ defaults: { ease: motion.ease } });
+      const intro = gsap.timeline({ defaults: { ease: motion.ease }, delay: 0.2 });
       intro
         .fromTo(
           "[data-letter]",
-          { yPercent: 70, opacity: 0, filter: "blur(14px)" },
+          { yPercent: 60, opacity: 0, filter: "blur(10px)" },
           {
             yPercent: 0,
             opacity: 1,
@@ -47,7 +47,7 @@ export function HeroTitle({ name, role, tagline, ref }: Props) {
         )
         .fromTo(
           "[data-line]",
-          { y: 18, opacity: 0 },
+          { y: 14, opacity: 0 },
           { y: 0, opacity: 1, duration: 1.1, stagger: 0.15 },
           "-=0.9",
         );
@@ -59,9 +59,13 @@ export function HeroTitle({ name, role, tagline, ref }: Props) {
     <div ref={ref} className={styles.title}>
       <h1 id="hero-title" className={styles.heading}>
         <span className={styles.name} aria-hidden="true">
-          {Array.from(name).map((letter, i) => (
-            <span key={`${letter}-${i}`} className={styles.letter} data-letter>
-              {letter === " " ? " " : letter}
+          {name.split(" ").map((word, wordIndex) => (
+            <span key={`${word}-${wordIndex}`} className={styles.word}>
+              {Array.from(word).map((letter, i) => (
+                <span key={`${letter}-${i}`} className={styles.letter} data-letter>
+                  {letter}
+                </span>
+              ))}
             </span>
           ))}
         </span>

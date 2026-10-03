@@ -14,6 +14,8 @@ export function Hero({ dict }: Props) {
         tagline={dict.tagline}
         scrollHint={dict.scrollHint}
         sceneLabel={dict.sceneLabel}
+        hud={dict.hud}
+        beats={dict.beats}
       />
     </section>
   );

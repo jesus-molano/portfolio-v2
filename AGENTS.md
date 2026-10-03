@@ -10,8 +10,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Vice Afterglow — project guide
 
-Cinematic portfolio of Jesús Molano. Vice City afterglow look: pink and cyan
-neon sunset, palm trees, fog, bloom, huge typography. Phase 1 is the hero.
+Cinematic portfolio of Jesús Molano. The look is GTA VI key art, not synthwave:
+pastel afterglow sky (lavender, pink, peach), deep-violet silhouettes instead of
+black, a wet causeway over pink water, palms, birds, film grain and huge
+typography. No striped suns, no neon grids. Phase 1 is the hero.
 
 ## Commands
 

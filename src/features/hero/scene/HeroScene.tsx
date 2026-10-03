@@ -3,14 +3,17 @@
 import { Canvas } from "@react-three/fiber";
 import { palette } from "@/design/tokens";
 import type { QualityTier } from "../useQualityTier";
+import { Birds } from "./Birds";
 import { CameraRig } from "./CameraRig";
 import { Effects } from "./Effects";
 import { Ground } from "./Ground";
 import { Haze } from "./Haze";
 import { Palms } from "./Palms";
+import { Road } from "./Road";
 import { Sky } from "./Sky";
 import { Skyline } from "./Skyline";
 import { Sun } from "./Sun";
+import { Traffic } from "./Traffic";
 import { world } from "./world";
 
 type Props = {
@@ -34,7 +37,7 @@ export function HeroScene({ tier, reducedMotion, active }: Props) {
     <Canvas
       key={tier}
       flat
-      dpr={high ? [1, 1.5] : [1, 1.5]}
+      dpr={[1, 1.5]}
       frameloop={animate && active ? "always" : "demand"}
       gl={{ antialias: false, powerPreference: "high-performance", alpha: false, stencil: false }}
       camera={{
@@ -45,18 +48,21 @@ export function HeroScene({ tier, reducedMotion, active }: Props) {
       }}
       aria-hidden
     >
-      <color attach="background" args={[palette.night]} />
+      <color attach="background" args={[palette.dusk]} />
       <fog attach="fog" args={[palette.haze, world.fog.near, world.fog.far]} />
-      {/* Only the reflective ground is lit; every other material is unlit. */}
+      {/* Only the reflective water is lit; every other material is unlit. */}
       <ambientLight intensity={Math.PI} />
 
       <CameraRig parallax={high && animate} reducedMotion={reducedMotion} />
       <Sky tier={tier} animate={animate} />
       <Sun animate={animate} />
+      <Birds animate={animate} count={high ? 11 : 7} />
       <Haze />
       <Skyline tier={tier} />
-      <Palms animate={animate} count={high ? 16 : 10} />
-      <Ground tier={tier} animate={animate} />
+      <Palms animate={animate} count={high ? 18 : 10} />
+      <Ground tier={tier} />
+      <Road />
+      <Traffic animate={animate} perLane={high ? 4 : 2} />
       <Effects tier={tier} />
     </Canvas>
   );

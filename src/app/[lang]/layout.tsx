@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import { JetBrains_Mono, Space_Grotesk, Unbounded } from "next/font/google";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import "lenis/dist/lenis.css";
@@ -10,8 +10,7 @@ import { SmoothScroll } from "@/features/hero/scroll/SmoothScroll";
 import { defaultLocale, hasLocale, locales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 
-const displayFont = Bebas_Neue({
-  weight: "400",
+const displayFont = Unbounded({
   subsets: ["latin"],
   variable: "--font-display",
   display: "swap",
@@ -20,6 +19,12 @@ const displayFont = Bebas_Neue({
 const bodyFont = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-body",
+  display: "swap",
+});
+
+const monoFont = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -65,7 +70,10 @@ export default async function RootLayout({
   const dict = await getDictionary(lang);
 
   return (
-    <html lang={lang} className={`${displayFont.variable} ${bodyFont.variable}`}>
+    <html
+      lang={lang}
+      className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}
+    >
       <head>
         <TokensStyle />
         <noscript>

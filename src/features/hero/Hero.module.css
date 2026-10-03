@@ -27,6 +27,59 @@
   height: 100%;
 }
 
+/* Cinematic letterbox bars; they slide away as the drive starts. */
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 9vh;
+  z-index: var(--va-z-ui);
+  background: #000;
+  pointer-events: none;
+}
+
+.barTop {
+  top: 0;
+}
+
+.barBottom {
+  bottom: 0;
+}
+
+/* HUD: small monospaced labels, like a game overlay. */
+.hud {
+  position: absolute;
+  top: 1.1rem;
+  left: 1.25rem;
+  z-index: var(--va-z-ui);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-family: var(--va-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--va-color-cream);
+  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.8);
+  pointer-events: none;
+}
+
+.hudTitle {
+  color: var(--va-color-cream);
+}
+
+.hudTitle::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.6rem;
+  border-radius: 50%;
+  background: var(--va-color-magenta);
+  box-shadow: 0 0 10px var(--va-color-magenta);
+  vertical-align: middle;
+}
+
 .title {
   position: absolute;
   inset: 0;
@@ -35,7 +88,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 1rem 17vh;
+  padding: 0 1rem 16vh;
   text-align: center;
   pointer-events: none;
   will-change: transform, opacity;
@@ -45,75 +98,130 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
-  font-weight: 400;
+  gap: 1.1rem;
 }
 
 .name {
   display: block;
+  max-width: 14ch;
   font-family: var(--va-font-display);
+  font-weight: 800;
   font-size: var(--va-size-hero-name);
-  line-height: 0.86;
-  letter-spacing: 0.015em;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
   text-transform: uppercase;
+  color: var(--va-color-cream);
+  text-shadow:
+    0 0 26px rgba(255, 120, 200, 0.5),
+    0 2px 0 rgba(255, 255, 255, 0.35),
+    0 12px 32px rgba(40, 16, 80, 0.65);
+}
+
+.word {
+  display: inline-block;
   white-space: nowrap;
-  filter: drop-shadow(0 0 22px rgba(255, 45, 149, 0.55)) drop-shadow(0 6px 4px rgba(0, 0, 0, 0.7));
+}
+
+.word + .word {
+  margin-left: 0.22em;
 }
 
 .letter {
   display: inline-block;
-  /* Extend the painted box so accents (Ú) are not clipped by the tight line-height. */
-  padding: 0.14em 0;
-  margin: -0.14em 0;
-  background: linear-gradient(180deg, #ffffff 0%, #ffe6f3 38%, var(--va-color-pink) 62%, var(--va-color-magenta) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
   will-change: transform, opacity, filter;
 }
 
 .role {
-  display: block;
-  font-family: var(--va-font-body);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-family: var(--va-font-mono);
   font-size: var(--va-size-hero-role);
   font-weight: 500;
-  letter-spacing: 0.42em;
+  letter-spacing: 0.4em;
   text-transform: uppercase;
-  color: var(--va-color-cyan);
-  text-shadow: 0 0 14px rgba(25, 230, 255, 0.65), 0 2px 2px rgba(0, 0, 0, 0.8);
-  padding-left: 0.42em; /* balances the trailing letter-spacing */
+  color: var(--va-color-amber);
+  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.9), 0 0 16px rgba(255, 180, 140, 0.35);
+  padding-left: 0.4em; /* balances the trailing letter-spacing */
+}
+
+.role::before,
+.role::after {
+  content: "";
+  width: 2.2rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--va-color-pink));
+  opacity: 0.9;
+}
+
+.role::after {
+  background: linear-gradient(90deg, var(--va-color-pink), transparent);
 }
 
 .tagline {
-  margin-top: 1.4rem;
-  font-size: 0.85rem;
-  letter-spacing: 0.18em;
-  color: var(--va-color-text-muted);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  margin-top: 1.5rem;
+  max-width: 34rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--va-color-cream);
+  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.9);
+}
+
+/* Scroll beats: short personal lines that appear during the drive. */
+.beats {
+  position: absolute;
+  left: 1.25rem;
+  bottom: 12vh;
+  z-index: var(--va-z-ui);
+  display: grid;
+  max-width: 24rem;
+  pointer-events: none;
+}
+
+.beat {
+  grid-area: 1 / 1;
+  display: flex;
+  gap: 0.9rem;
+  align-items: baseline;
+  font-family: var(--va-font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  color: var(--va-color-cream);
+  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.9);
+  opacity: 0;
+}
+
+.beatIndex {
+  flex: none;
+  color: var(--va-color-magenta);
+  letter-spacing: 0.2em;
 }
 
 .hint {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 1.6rem;
+  bottom: 8.5vh;
   z-index: var(--va-z-ui);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.7rem;
-  font-size: 0.68rem;
-  letter-spacing: 0.32em;
+  font-family: var(--va-font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--va-color-text-muted);
+  color: var(--va-color-cream);
+  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.9);
   pointer-events: none;
 }
 
 .hintLine {
   display: block;
   width: 1px;
-  height: 2.6rem;
-  background: linear-gradient(180deg, transparent, var(--va-color-cyan));
+  height: 2.4rem;
+  background: linear-gradient(180deg, transparent, var(--va-color-cream));
   animation: hint-pulse 2.4s ease-in-out infinite;
 }
 
@@ -130,12 +238,51 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .beats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .beat {
+    opacity: 1;
+  }
+
+  .bar {
+    display: none;
+  }
+}
+
 @media (max-width: 767px) {
   .title {
-    padding-bottom: 20vh;
+    padding-bottom: 22vh;
+  }
+
+  .name {
+    letter-spacing: -0.02em;
   }
 
   .role {
-    letter-spacing: 0.3em;
+    letter-spacing: 0.28em;
+  }
+
+  .role::before,
+  .role::after {
+    width: 1.2rem;
+  }
+
+  .tagline {
+    font-size: 0.85rem;
+  }
+
+  .beats {
+    left: 1rem;
+    right: 1rem;
+    bottom: 10vh;
+  }
+
+  .hud {
+    left: 1rem;
   }
 }

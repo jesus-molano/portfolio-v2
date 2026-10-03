@@ -3,7 +3,6 @@
 import { Stars } from "@react-three/drei";
 import { useMemo } from "react";
 import { Color, Vector2 } from "three";
-import { palette } from "@/design/tokens";
 import { skyFragmentShader, skyVertexShader } from "../shaders/sky";
 import type { QualityTier } from "../useQualityTier";
 import { world } from "./world";
@@ -21,10 +20,11 @@ export function Sky({ tier, animate }: Props) {
       0.5 + (world.sun.position.y - position.y) / height,
     );
     return {
-      uTop: { value: new Color(palette.night) },
-      uMiddle: { value: new Color(palette.dusk) },
-      uHorizon: { value: new Color(palette.haze) },
-      uGlow: { value: new Color(palette.magenta) },
+      // Afterglow ramp: peach at the horizon, pink, then lavender.
+      uTop: { value: new Color("#7257cc") },
+      uMiddle: { value: new Color("#e49bcd") },
+      uHorizon: { value: new Color("#ffcaa0") },
+      uGlow: { value: new Color("#ffe2b8") },
       uSunUv: { value: sunUv },
     };
   }, [position, width, height]);
@@ -45,9 +45,9 @@ export function Sky({ tier, animate }: Props) {
         <Stars
           radius={320}
           depth={60}
-          count={tier === "high" ? 2200 : 700}
-          factor={5}
-          saturation={0.15}
+          count={tier === "high" ? 500 : 200}
+          factor={4}
+          saturation={0}
           fade
           speed={animate ? 0.35 : 0}
         />

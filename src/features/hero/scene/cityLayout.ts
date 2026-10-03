@@ -35,12 +35,13 @@ export function buildCity(
   const windows: Window[] = [];
   const strips: Strip[] = [];
 
-  const warm = new Color(palette.amber);
-  const cyan = new Color(palette.cyan);
-  const pink = new Color(palette.magenta);
-  const white = new Color("#fff2e0");
-  const windowPalette = [warm, warm, white, cyan, pink];
-  const stripPalette = [pink, cyan, pink, new Color(palette.violet)];
+  // Dusk: a few early lights, warm, with the odd pink or cool one.
+  const warm = new Color("#ffe6b3");
+  const cyan = new Color("#bff4ff");
+  const pink = new Color(palette.pink);
+  const white = new Color("#fff8ea");
+  const windowPalette = [warm, warm, warm, white, pink, cyan];
+  const stripPalette = [pink, new Color(palette.magenta), new Color("#ffb6e0")];
 
   for (let i = 0; i < buildingCount; i += 1) {
     // Keep the avenue clear so the sun stays framed at the end of the road.
@@ -105,7 +106,7 @@ export function buildCity(
     const cols = Math.max(1, Math.floor(w / BAY_W));
     const rows = Math.max(1, Math.floor((baseH - 1.5) / FLOOR_H));
     const litFloors = new Set<number>();
-    for (let r = 0; r < rows; r += 1) if (random() < 0.3) litFloors.add(r);
+    for (let r = 0; r < rows; r += 1) if (random() < 0.22) litFloors.add(r);
 
     for (const face of faces) {
       const faceCols = face.yaw === 0 ? cols : Math.max(1, Math.floor(face.width / BAY_W));

@@ -12,9 +12,18 @@
   "hero": {
     "name": "Jesús Molano",
     "role": "Frontend Engineer",
-    "tagline": "Vue · Nuxt · React · Next",
+    "tagline": "Construyo interfaces con pulso. Vue, Nuxt, React, Next.",
     "scrollHint": "Haz scroll para entrar en la ciudad",
-    "sceneLabel": "Atardecer de neón sobre un skyline con palmeras"
+    "sceneLabel": "Atardecer conduciendo por una autopista sobre el agua hacia un skyline de neón, con palmeras a ambos lados",
+    "hud": {
+      "title": "Vice Afterglow",
+      "subtitle": "Portfolio · en construcción"
+    },
+    "beats": [
+      "35 km a la semana por carreteras como esta.",
+      "Rock, metal, punk y rap en la radio.",
+      "Gamer desde crío: GTA, The Witcher, F1."
+    ]
   },
   "teaser": {
     "eyebrow": "Siguiente parada",

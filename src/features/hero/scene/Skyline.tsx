@@ -38,9 +38,10 @@ export function Skyline({ tier }: Props) {
       UniformsUtils.merge([
         UniformsLib.fog,
         {
+          // Sunlit from above: deep violet at street level, lilac at the top.
           uBottom: { value: new Color(palette.ink) },
-          uTop: { value: new Color("#1c0f33") },
-          uHeight: { value: 60 },
+          uTop: { value: new Color("#8c62b8") },
+          uHeight: { value: 55 },
         },
       ]),
     [],
@@ -112,7 +113,7 @@ export function Skyline({ tier }: Props) {
         frustumCulled={false}
       >
         <boxGeometry args={[1, 1, 1]} />
-        <meshBasicMaterial color={[1.4, 1.4, 1.4]} toneMapped={false} />
+        <meshBasicMaterial color={[1.15, 1.15, 1.15]} toneMapped={false} />
       </instancedMesh>
       <instancedMesh
         ref={windowsRef}
@@ -120,7 +121,7 @@ export function Skyline({ tier }: Props) {
         frustumCulled={false}
       >
         <planeGeometry args={[windowSize.w, windowSize.h]} />
-        <meshBasicMaterial color={[1.3, 1.3, 1.3]} toneMapped={false} />
+        <meshBasicMaterial color={[1.05, 1.05, 1.05]} toneMapped={false} />
       </instancedMesh>
     </group>
   );

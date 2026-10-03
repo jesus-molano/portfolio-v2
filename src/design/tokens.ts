@@ -7,26 +7,28 @@
  */
 
 export const palette = {
-  /** Deep night background, top of the sky. */
-  night: "#0b0618",
-  /** Upper sky violet. */
-  dusk: "#2a0f4a",
-  /** Horizon purple used for fog. */
-  haze: "#4a1466",
-  /** Primary neon pink. */
+  /** Deep violet: page bottom, teaser, shadows. */
+  night: "#1a0d38",
+  /** Upper sky lavender. */
+  dusk: "#6a4bc4",
+  /** Pink afterglow haze, also the fog color. */
+  haze: "#e39bbd",
+  /** Primary hot pink accent. */
   magenta: "#ff2d95",
   /** Soft pink for highlights. */
-  pink: "#ff7ac3",
-  /** Primary neon cyan. */
+  pink: "#ff8fd0",
+  /** Cool accent, used sparingly. */
   cyan: "#19e6ff",
-  /** Electric violet accents. */
+  /** Violet accents. */
   violet: "#8a4dff",
-  /** Sun core orange. */
-  orange: "#ff7a3d",
-  /** Sun top amber. */
-  amber: "#ffd36a",
-  /** Silhouettes: buildings, palms. */
-  ink: "#06030d",
+  /** Low sun orange. */
+  orange: "#ff8a5c",
+  /** Peach: sunlit edges, lines. */
+  amber: "#ffd8a8",
+  /** Silhouettes: buildings, palms. Deep violet, never black. */
+  ink: "#2b1848",
+  /** Warm off-white for display type. */
+  cream: "#fff4f1",
   /** Body text. */
   text: "#f6f1ff",
   /** Secondary text. */
@@ -37,11 +39,12 @@ export type PaletteKey = keyof typeof palette;
 
 export const typography = {
   /** CSS variable names assigned by `next/font` in the root layout. */
-  display: "var(--font-display), Impact, 'Arial Narrow Bold', sans-serif",
+  display: "var(--font-display), 'Arial Black', Impact, sans-serif",
   body: "var(--font-body), system-ui, sans-serif",
+  mono: "var(--font-mono), ui-monospace, 'JetBrains Mono', monospace",
   /** Fluid sizes. */
-  heroName: "clamp(4.5rem, 17vw, 21rem)",
-  heroRole: "clamp(0.85rem, 1.6vw, 1.35rem)",
+  heroName: "clamp(2.7rem, 9.4vw, 10.5rem)",
+  heroRole: "clamp(0.72rem, 1.05vw, 0.95rem)",
   bodySize: "clamp(1rem, 1.1vw, 1.125rem)",
 } as const;
 
@@ -76,6 +79,7 @@ export function tokensToCssVariables(): string {
   }
   entries.push(`--va-font-display: ${typography.display};`);
   entries.push(`--va-font-body: ${typography.body};`);
+  entries.push(`--va-font-mono: ${typography.mono};`);
   entries.push(`--va-size-hero-name: ${typography.heroName};`);
   entries.push(`--va-size-hero-role: ${typography.heroRole};`);
   entries.push(`--va-size-body: ${typography.bodySize};`);
