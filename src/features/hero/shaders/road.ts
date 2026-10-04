@@ -51,7 +51,8 @@ export const roadFragmentShader = /* glsl */ `
     color += uGlow * 0.12 * toward;
 
     // Center dashes.
-    float dash = step(0.55, fract((vWorld.z + uDistance) / 9.0));
+    // The car drives toward -z, so the dashes must slide toward +z (past us).
+    float dash = step(0.55, fract((vWorld.z - uDistance) / 9.0));
     float center = 1.0 - smoothstep(0.012, 0.022, abs(across));
     color = mix(color, uLine, dash * center * 0.95);
 

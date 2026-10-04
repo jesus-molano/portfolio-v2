@@ -107,23 +107,16 @@ export function Driver({ animate }: Props) {
           <sphereGeometry args={[0.125, 24, 18]} />
           <meshStandardMaterial color={SKIN} roughness={0.75} />
         </mesh>
-        {/* Short hair, clearly hair: a cap over the top and back of the skull
-            down to the nape, with a straight hairline above the forehead. */}
-        <mesh rotation-x={0.18} scale={[1.035, 1.13, 1.05]}>
-          <sphereGeometry args={[0.125, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.62]} />
+        {/* Short hair: a cap over the top and the back of the skull, tilted
+            back so the forehead and temples stay clear. */}
+        <mesh rotation-x={0.3} scale={[1.03, 1.12, 1.04]}>
+          <sphereGeometry args={[0.125, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.46]} />
           <meshStandardMaterial color={HAIR} roughness={0.9} />
         </mesh>
-        {/* Sideburns join the hair to the beard. */}
-        {[-1, 1].map((side) => (
-          <mesh key={side} position={[side * 0.118, -0.02, 0.0]} scale={[0.35, 1, 0.6]}>
-            <sphereGeometry args={[0.05, 10, 10]} />
-            <meshStandardMaterial color={BEARD} roughness={0.95} />
-          </mesh>
-        ))}
-        {/* Short beard: the lower front band of the skull, from ear to ear. */}
+        {/* Short beard: a narrow band along the jaw and chin, front half only. */}
         <mesh scale={[1.01, 1.1, 1.03]}>
           <sphereGeometry
-            args={[0.125, 24, 12, Math.PI * 1.05, Math.PI * 0.9, Math.PI * 0.58, Math.PI * 0.34]}
+            args={[0.125, 24, 10, Math.PI * 1.12, Math.PI * 0.76, Math.PI * 0.7, Math.PI * 0.2]}
           />
           <meshStandardMaterial color={BEARD} roughness={0.95} />
         </mesh>

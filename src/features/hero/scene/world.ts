@@ -2,8 +2,8 @@ import { Vector3 } from "three";
 
 /** Shared world layout so every scene part agrees on where things are. */
 export const world = {
-  /** Low and off to the left: the road does not aim at it. Half of it sits below the horizon. */
-  sun: { position: new Vector3(-120, 16, -330), size: 130 },
+  /** Centred at the end of the avenue, low: a third of it below the horizon. */
+  sun: { position: new Vector3(0, 14, -330), size: 130 },
   sky: { position: new Vector3(0, 160, -600), width: 1600, height: 800 },
   skyline: { zNear: -190, zFar: -290, halfWidth: 260 },
   ground: { size: 1100, center: new Vector3(0, 0, -200) },

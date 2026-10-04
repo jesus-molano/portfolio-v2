@@ -8,7 +8,7 @@ export const drive = {
   /** Metres travelled since load. */
   distance: 0,
   /** Metres per second. */
-  speed: 20,
+  speed: 24,
 };
 
 /** Where the hero car sits in the world: right lane, never moves. */

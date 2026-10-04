@@ -59,7 +59,7 @@ export function HeroScene({ tier, reducedMotion, active }: Props) {
       {/* Lit materials: the car and the water. Everything else is unlit. */}
       <ambientLight intensity={Math.PI * 0.55} color="#d9c4ff" />
       <hemisphereLight args={["#f0b4d8", "#2a1646", 1.6]} />
-      <directionalLight position={[-40, 14, -120]} intensity={2.6} color="#ffc9a0" />
+      <directionalLight position={[0, 14, -120]} intensity={2.6} color="#ffc9a0" />
       <directionalLight position={[6, 10, 30]} intensity={0.9} color="#e7b7ff" />
 
       <DriveClock animate={animate} />

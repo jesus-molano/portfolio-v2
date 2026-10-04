@@ -55,8 +55,8 @@ export const motion = {
   ease: "power3.out",
   /** Lenis interpolation factor. */
   scrollLerp: 0.09,
-  /** Hero scroll length, in viewport heights. */
-  heroScrollVh: 400,
+  /** Hero scroll length, in viewport heights. Four shots, six lines: give them room. */
+  heroScrollVh: 800,
 } as const;
 
 export const layers = {

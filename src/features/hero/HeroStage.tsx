@@ -34,14 +34,14 @@ type Props = {
  * first two share the opening shot and start once the title has faded.
  */
 const LINE_WINDOWS: Array<[number, number]> = [
-  [0.13, 0.185],
-  [0.19, 0.245],
-  [0.27, 0.375],
-  [0.38, 0.485],
-  [0.52, 0.735],
-  [0.77, 0.985],
+  [0.11, 0.17],
+  [0.175, 0.245],
+  [0.265, 0.37],
+  [0.38, 0.49],
+  [0.515, 0.74],
+  [0.765, 0.99],
 ];
-const TITLE_OUT = 0.12;
+const TITLE_OUT = 0.1;
 
 /**
  * ScrollTrigger percentages refer to the stage height, while the scroll
@@ -135,11 +135,11 @@ export function HeroStage({
         const [start, end] = LINE_WINDOWS[index] ?? LINE_WINDOWS[LINE_WINDOWS.length - 1];
         gsap
           .timeline({
-            scrollTrigger: { trigger, start: at(start), end: at(end), scrub: true },
+            scrollTrigger: { trigger, start: at(start), end: at(end), scrub: 0.5 },
           })
-          .fromTo(element, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1 })
-          .to(element, { opacity: 1, duration: 4 })
-          .to(element, { opacity: 0, y: -8, duration: 0.8 });
+          .fromTo(element, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.6 })
+          .to(element, { opacity: 1, duration: 5 })
+          .to(element, { opacity: 0, y: -8, duration: 0.6 });
       });
     },
     { scope: stage, dependencies: [reducedMotion], revertOnUpdate: true },
