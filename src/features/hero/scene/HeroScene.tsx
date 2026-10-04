@@ -12,6 +12,7 @@ import { DevHandle } from "./DevHandle";
 import { DriveClock } from "./DriveClock";
 import { Effects } from "./Effects";
 import { Haze } from "./Haze";
+import { LoadReporter } from "./LoadReporter";
 import { Palms } from "./Palms";
 import { Props } from "./Props";
 import { Road } from "./Road";
@@ -21,6 +22,7 @@ import { Skyline } from "./Skyline";
 import { Sun } from "./Sun";
 import { Traffic } from "./Traffic";
 import { Water } from "./Water";
+import { Waterfront } from "./Waterfront";
 import { SHOTS } from "./shots";
 import { CAR_POSITION } from "./drive";
 import { world } from "./world";
@@ -66,6 +68,7 @@ export function HeroScene({ tier, reducedMotion, active }: Props) {
       <directionalLight position={[8, 10, 30]} intensity={0.8} color="#e7b7ff" />
 
       <DevHandle />
+      <LoadReporter />
       <DriveClock animate={animate} />
       <CameraRig parallax={high && animate} reducedMotion={reducedMotion} />
       <Sky tier={tier} animate={animate} />
@@ -73,6 +76,9 @@ export function HeroScene({ tier, reducedMotion, active }: Props) {
       <Birds animate={animate} count={high ? 11 : 7} />
       <Haze />
       <Skyline tier={tier} />
+      <SceneErrorBoundary name="Waterfront">
+        <Waterfront animate={animate} />
+      </SceneErrorBoundary>
       <Water animate={animate} />
       <Shore animate={animate} />
       <Road animate={animate} />

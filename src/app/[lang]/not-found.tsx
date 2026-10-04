@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { lang } from "next/root-params";
+import { ButtonLink } from "@/components/ui/ButtonLink";
 import { defaultLocale, hasLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import styles from "./not-found.module.css";
@@ -15,9 +15,9 @@ export default async function NotFound() {
       <p className={styles.code}>404</p>
       <h1 className={styles.heading}>{dict.notFound.heading}</h1>
       <p>
-        <Link href={`/${locale}`} className={styles.link}>
+        <ButtonLink href={`/${locale}`} size="md">
           {dict.notFound.back}
-        </Link>
+        </ButtonLink>
       </p>
     </main>
   );

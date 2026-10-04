@@ -19,10 +19,12 @@ export const BEACH = { inner: world.road.width / 2 + 0.6, width: 38, zEnd: -160 
 export const SHORELINE_X = BEACH.inner + BEACH.width * 0.86;
 /**
  * The city island: a narrow beach facing us, a seawall with a gap for the
- * road, then paved ground under the skyline (which starts at z = -190).
+ * road, then the waterfront (Waterfront.tsx) and paved ground under the
+ * skyline (which starts at z = -199).
  */
 export const CITY = { beachFrom: -158, beachTo: -176, groundTo: -340, width: 720 } as const;
-const ROAD_GAP = world.road.width / 2 + 1.5;
+/** Half width of the opening the road needs through the seawall and promenade. */
+export const ROAD_GAP = world.road.width / 2 + 1.5;
 
 function useSandUniforms() {
   return useMemo(
@@ -130,20 +132,24 @@ export function Shore({ animate }: Props) {
           position={[side * wallCenter, 0.3, CITY.beachTo - groundDepth / 2]}
         >
           <planeGeometry args={[wallLength, groundDepth]} />
-          <meshBasicMaterial color="#8d6fa8" />
+          <meshStandardMaterial color="#7d6198" roughness={1} />
         </mesh>
       ))}
 
-      {/* Seawall with a promenade rail, split by the road. */}
+      {/* Seawall with a light cap stone and a promenade rail, split by the road. */}
       {[-1, 1].map((side) => (
         <group key={side} position={[side * wallCenter, 0, CITY.beachTo - 1.5]}>
           <mesh position-y={0.2}>
             <boxGeometry args={[wallLength, 0.8, 3]} />
-            <meshBasicMaterial color="#6b4a8f" />
+            <meshStandardMaterial color="#7b5a9e" roughness={0.9} />
           </mesh>
-          <mesh position={[0, 0.85, 1.4]}>
+          <mesh position-y={0.66}>
+            <boxGeometry args={[wallLength, 0.12, 3.25]} />
+            <meshStandardMaterial color="#efd9e6" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 0.95, 1.45]}>
             <boxGeometry args={[wallLength, 0.08, 0.08]} />
-            <meshBasicMaterial color="#d8c4ea" />
+            <meshStandardMaterial color="#d8c4ea" roughness={0.6} />
           </mesh>
         </group>
       ))}

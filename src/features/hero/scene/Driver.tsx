@@ -3,47 +3,19 @@
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useMemo } from "react";
-import { type Bone, Color, Euler, Mesh, type MeshStandardMaterial, Quaternion } from "three";
-import { captureBindPose, poseDriver, type RestBone } from "./driverPose";
+import { type Bone, Euler, FrontSide, Mesh, type MeshStandardMaterial, Quaternion } from "three";
+import { BONES, captureBindPose, DRIVER_SCALE, DRIVER_SEAT, poseDriver, type RestBone } from "./driverPose";
 
 type Props = { animate: boolean };
 
 /**
- * Composed from Quaternius "Ultimate Modular Men" (CC0): Adventurer head with
- * the long hair removed and the beard trimmed, Suit short hair, Suit jacket
- * without the tie (recoloured to leather), Casual 2 jeans and trainers.
+ * Jesús, built with MakeHuman / MPFB from CC0 assets by
+ * tools/blender/build_driver_mpfb.py: his face shape, skin fade and beard,
+ * the striped tee and the black earring.
  */
-export const DRIVER_URL = "/models/quaternius-men/driver.glb";
+export const DRIVER_URL = "/models/makehuman-driver/driver.glb";
 
 useGLTF.preload(DRIVER_URL);
-
-/**
- * Character root relative to the car origin (driver side is -x, front is -z).
- * Hips land at ~0.52 m in the seat cushion (top at 0.55 m, raycast), which
- * keeps the eyes below the windshield top (1.35 m). The seats were slid
- * 0.2 m forward in the model; the back rests on the backrest.
- */
-export const DRIVER_SEAT = { x: -0.42, y: -0.29, z: 0.27 } as const;
-
-/**
- * The exported GLB carries no base colours (the master file keeps them in
- * nodes the exporter skips), so every material is set here. Without this,
- * skin, eyes and eyebrows all render white.
- */
-const MATERIAL_COLORS: Record<string, { color: string; roughness: number; metalness: number }> = {
-  // Matte leather: a glossy jacket mirrored the lilac sky.
-  Suit: { color: "#2a1d1b", roughness: 0.62, metalness: 0.05 },
-  Hair: { color: "#2a1a12", roughness: 0.9, metalness: 0 },
-  White: { color: "#e9e2ee", roughness: 0.85, metalness: 0 },
-  LightBlue: { color: "#4f5f8f", roughness: 0.85, metalness: 0 },
-  Skin: { color: "#c98f68", roughness: 0.75, metalness: 0 },
-  Eye: { color: "#140d0b", roughness: 0.3, metalness: 0 },
-  Eyebrows: { color: "#2a1a12", roughness: 0.9, metalness: 0 },
-  Red_Dark: { color: "#6e2433", roughness: 0.8, metalness: 0 },
-};
-
-/** Slightly smaller than the stock 1.86 m figure, so he sits below the windshield. */
-const DRIVER_SCALE = 0.92;
 
 /**
  * Bind pose of a loaded scene, stored on the scene itself. The GLTF cache
@@ -77,14 +49,19 @@ export function Driver({ animate }: Props) {
   useLayoutEffect(() => {
     scene.traverse((object) => {
       if (!(object instanceof Mesh)) return;
+      // The skinned bounds are the bind pose's; the posed arms leave them.
       object.frustumCulled = false;
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of materials as MeshStandardMaterial[]) {
-        const look = MATERIAL_COLORS[material.name];
-        if (!look) continue;
-        material.color = new Color(look.color);
-        material.roughness = look.roughness;
-        material.metalness = look.metalness;
+        // Hair and beard shells are alpha-tested layers: keep them out of the
+        // transparent sort and writing depth, so the layers stack cleanly.
+        if (material.name.startsWith("HairShell")) {
+          material.transparent = false;
+          material.depthWrite = true;
+          material.side = FrontSide;
+        }
+        // Brows and lashes blend over the skin without hiding each other.
+        if (material.name === "Brows" || material.name === "Lashes") material.depthWrite = false;
       }
     });
     poseDriver(scene, bones, rest);
@@ -92,12 +69,12 @@ export function Driver({ animate }: Props) {
 
   // poseDriver leaves the head at its bind pose; the glance starts from it.
   const headRest = useMemo(
-    () => rest.get("Head")?.quaternion.clone() ?? new Quaternion(),
+    () => rest.get(BONES.head)?.quaternion.clone() ?? new Quaternion(),
     [rest],
   );
 
   useFrame((state) => {
-    const head = bones.get("Head");
+    const head = bones.get(BONES.head);
     if (!head) return;
     if (!animate) {
       // Reduced motion can switch on mid-glance: look ahead again.
@@ -105,7 +82,8 @@ export function Driver({ animate }: Props) {
       return;
     }
     const t = state.clock.elapsedTime;
-    // Checks the mirror now and then; otherwise eyes on the road.
+    // Checks the mirror now and then; otherwise eyes on the road. The head
+    // bone's +Y runs up the neck, so turning about it turns the head.
     const glance = Math.max(0, Math.sin(t * 0.35)) ** 8;
     head.quaternion
       .copy(headRest)

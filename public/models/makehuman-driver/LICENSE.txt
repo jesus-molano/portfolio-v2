@@ -1,0 +1,16 @@
+The driver: built with MakeHuman / MPFB 2 (https://static.makehumancommunity.org/mpfb.html)
+from the MakeHuman system assets.
+
+License of the assets used:
+CC0 1.0 Universal (CC0 1.0) Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The MakeHuman base mesh, targets, rig, skin, eyes, eyebrows, eyelashes and
+the male_casualsuit06 clothes were explicitly released as CC0 in September
+2020 (see the license notes in each asset file). No community asset is used.
+
+Made for this site (tools/blender/build_driver_mpfb.py): face shape, smirk,
+hair with a skin fade, beard and moustache (geometry shells and baked
+textures), striped tee with a burgundy collar and a black earring. Rigged
+with MPFB's built-in game_engine rig (part of the CC0 assets above) and
+exported from Blender as glTF with WebP textures.

@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# blender tools: local driver values and build outputs
+tools/blender/*.params.json
+*.blend
+__pycache__/

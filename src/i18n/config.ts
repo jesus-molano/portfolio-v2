@@ -4,6 +4,9 @@ export type Locale = (typeof locales)[number];
 
 export const defaultLocale: Locale = "en";
 
+/** Each language named in itself, for the language switch. */
+export const localeNames: Record<Locale, string> = { en: "English", es: "Español" };
+
 export function hasLocale(value: string): value is Locale {
   return (locales as readonly string[]).includes(value);
 }

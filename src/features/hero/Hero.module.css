@@ -46,6 +46,19 @@
   bottom: 0;
 }
 
+/*
+ * Fade to night at the end of the drive: the scroll drives its opacity, so
+ * the hero melts into the city section, which starts on the same colour.
+ */
+.fade {
+  position: absolute;
+  inset: 0;
+  z-index: var(--va-z-fade);
+  background: var(--va-color-night);
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* HUD: small monospaced labels, like a game overlay. */
 .hud {
   position: absolute;
@@ -88,7 +101,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 1rem 16vh;
+  /* Clears the letterbox bar (9vh) and the scroll hint under the tagline. */
+  padding: 0 1rem calc(9vh + 6rem);
   text-align: center;
   pointer-events: none;
   will-change: transform, opacity;
@@ -227,10 +241,24 @@
   font-family: var(--va-font-body);
   font-size: clamp(0.95rem, 1.35vw, 1.2rem);
   font-weight: 500;
-  line-height: 1.45;
+  /* Room between the per-line backgrounds when a line wraps. */
+  line-height: 1.75;
   color: var(--va-color-cream);
-  text-shadow: 0 1px 2px rgba(20, 8, 40, 0.95), 0 0 18px rgba(20, 8, 40, 0.6);
   opacity: 0;
+}
+
+/*
+ * Caption style: every rendered line gets its own soft dark background that
+ * fits the text exactly (box-decoration-break clones padding and corners on
+ * each line), so it reads on any part of the scene: sun, sand or asphalt.
+ */
+.subtitleText {
+  padding: 0.2em 0.55em;
+  border-radius: 0.4em;
+  background: rgba(18, 10, 38, 0.62);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  text-shadow: 0 1px 2px rgba(20, 8, 40, 0.8);
 }
 
 .speaker {
@@ -242,12 +270,13 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 8.5vh;
+  /* Breathing room above the bottom letterbox bar (9vh tall). */
+  bottom: calc(9vh + 1.25rem);
   z-index: var(--va-z-ui);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.6rem;
   font-family: var(--va-font-mono);
   font-size: 0.64rem;
   letter-spacing: 0.3em;
@@ -260,7 +289,7 @@
 .hintLine {
   display: block;
   width: 1px;
-  height: 2.4rem;
+  height: 1.8rem;
   background: linear-gradient(180deg, transparent, var(--va-color-cream));
   animation: hint-pulse 2.4s ease-in-out infinite;
 }
@@ -289,7 +318,8 @@
     opacity: 1;
   }
 
-  .bar {
+  .bar,
+  .fade {
     display: none;
   }
 
@@ -301,7 +331,7 @@
 
 @media (max-width: 767px) {
   .title {
-    padding-bottom: 22vh;
+    padding-bottom: calc(9vh + 7.5rem);
   }
 
   .name {
@@ -327,6 +357,13 @@
 
   .hud {
     left: 1rem;
+  }
+}
+
+/* Phones: the music and language controls take the top right; keep the HUD short. */
+@media (max-width: 639px) {
+  .hudSubtitle {
+    display: none;
   }
 
   .hudCamera {

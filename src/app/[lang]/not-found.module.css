@@ -26,7 +26,3 @@
   text-transform: uppercase;
   color: var(--va-color-cyan);
 }
-
-.link {
-  letter-spacing: 0.08em;
-}

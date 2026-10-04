@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import styles from "./Hero.module.css";
 import { SceneErrorBoundary } from "./SceneErrorBoundary";
+import { markSceneReady } from "./sceneLoading";
 import { useQualityTier } from "./useQualityTier";
 
 const HeroScene = dynamic(() => import("./scene/HeroScene").then((m) => m.HeroScene), {
@@ -35,7 +36,8 @@ export function HeroCanvas({ label }: Props) {
 
   return (
     <div ref={wrapper} className={styles.canvas} role="img" aria-label={label}>
-      <SceneErrorBoundary>
+      {/* A failed scene (no WebGL) must not keep the loading screen up. */}
+      <SceneErrorBoundary onError={markSceneReady}>
         <HeroScene tier={tier} reducedMotion={reducedMotion} active={inView} />
       </SceneErrorBoundary>
     </div>

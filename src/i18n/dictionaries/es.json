@@ -5,18 +5,17 @@
   },
   "nav": {
     "languageLabel": "Idioma",
-    "switchLabel": "English",
-    "switchLocale": "en",
-    "skipToContent": "Saltar al contenido"
+    "skipToContent": "Saltar al contenido",
+    "music": "Música"
   },
   "hero": {
     "name": "Jesús Molano",
     "role": "Frontend Engineer",
-    "tagline": "Construyo interfaces con pulso. Vue, Nuxt, React, Next.",
+    "tagline": "Cualquier framework, cualquier carretera. El volante lo llevo yo.",
     "scrollHint": "Haz scroll para entrar en la ciudad",
     "sceneLabel": "Atardecer conduciendo por una autopista sobre el agua hacia un skyline de neón, con palmeras a ambos lados",
     "hud": {
-      "title": "Vice Afterglow",
+      "title": "Jesús Molano",
       "subtitle": "Portfolio · en construcción",
       "camera": "CÁM"
     },
@@ -24,12 +23,29 @@
     "speaker": "Jesús",
     "lines": [
       "Sí… aquí vamos otra vez.",
-      "¿Que quién es el del volante? Jesús. Ingeniero frontend. Vue y Nuxt de serie, Next cuando el trabajo lo pide.",
-      "¿Giro de guion? Fue militar. Ahora es un friki pica-código al que la IA se lo hace todo. Presuntamente.",
+      "¿Que quién es el del volante? Jesús. Ingeniero frontend. Vue y Nuxt, de memoria. ¿Lo demás? Como el señor Lobo: soluciona problemas.",
+      "¿Giro de guion? Fue militar y le tocaba obedecer. Ahora es un friki pica-código que por fin da las órdenes… a una IA.",
       "¿Peli favorita? El Padrino. ¿Serie? Los Soprano. ¿Las code reviews? Te hace una oferta que no podrás rechazar.",
       "¿La música? La misma playlist desde los 16. Él lo llama retrocompatibilidad.",
-      "¿Que adónde vamos? A la ciudad. Cada edificio es uno de sus proyectos. Algunos hasta están terminados."
+      "¿Que adónde vamos? A la ciudad, donde su currículum no vive en un PDF: está en neón, valla tras valla."
     ]
+  },
+  "loader": {
+    "loading": "Cargando",
+    "choose": "Elige cómo entrar en la ciudad",
+    "ready": "Cargado. Elige cómo entrar en la ciudad.",
+    "tipLabel": "Consejo",
+    "tips": [
+      "El coche nunca se mueve. Se mueve el mundo. Que nadie se lo diga al coche.",
+      "Leer la documentación restaura la salud al cien por cien.",
+      "Cada palmera es procedural. Los chistes, artesanales.",
+      "La ciudad aún está cargando. Como casi todos los proyectos personales.",
+      "Jesús despliega los viernes. Con valor.",
+      "Pon la música. Las palmeras se mueven mejor con funk."
+    ],
+    "withMusic": "Entrar en la ciudad · con música",
+    "withoutMusic": "Sin música",
+    "hint": "o pulsa cualquier tecla"
   },
   "teaser": {
     "eyebrow": "Siguiente parada",
@@ -38,11 +54,11 @@
     "github": "Ver mi código en GitHub",
     "newTab": "(se abre en una pestaña nueva)",
     "credits": {
-      "label": "Modelos 3D:",
+      "label": "Créditos:",
       "car": "«Convertible» de Poly by Google",
       "license": "CC BY 3.0",
       "modified": "modificado",
-      "others": "personajes y tráfico de Quaternius (CC0) · palmeras de Kenney (CC0)."
+      "others": "conductor hecho con MakeHuman (CC0) · tráfico de Quaternius (CC0) · música: «Funkeriffic» de FreePD (CC0)."
     }
   },
   "notFound": {

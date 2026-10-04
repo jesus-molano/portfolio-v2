@@ -51,8 +51,8 @@ export function Road({ animate }: Props) {
         UniformsLib.fog,
         {
           uDistance: { value: 0 },
-          uAsphalt: { value: new Color("#3a2a5c") },
-          uLine: { value: new Color("#ffd27a") },
+          uAsphalt: { value: new Color(palette.asphalt) },
+          uLine: { value: new Color(palette.sodium) },
           uEdge: { value: new Color("#fff4ea") },
           uGlow: { value: new Color("#ffb48c") },
           uHorizonZ: { value: zEnd + 20 },

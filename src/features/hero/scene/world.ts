@@ -6,7 +6,8 @@ export const world = {
   sun: { position: new Vector3(0, 14, -330), size: 130 },
   /** Sky dome radius; it follows the camera and stays inside the far plane. */
   sky: { radius: 1200 },
-  skyline: { zNear: -190, zFar: -290, halfWidth: 260 },
+  /** Towers start behind the waterfront hotel row (backs no deeper than z -193). */
+  skyline: { zNear: -201, zFar: -297, halfWidth: 260 },
   ground: { size: 1100, center: new Vector3(0, 0, -200) },
   /** The causeway: long enough to reach the skyline from the car. */
   road: { width: 16, zStart: 90, zEnd: -280, y: 0.1 },

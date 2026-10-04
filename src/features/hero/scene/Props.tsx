@@ -37,10 +37,24 @@ const TOWERS = [
   { x: -27, z0: -10, body: "#9fe3d2", trim: "#ff8fb8" },
   { x: 29, z0: -85, body: "#ffb3cf", trim: "#7fd8e8" },
   { x: -25, z0: -140, body: "#ffd99a", trim: "#b08cff" },
-  { x: 27, z0: 40, body: "#c7b3ff", trim: "#ffd27a" },
+  { x: 27, z0: 40, body: "#c7b3ff", trim: palette.sodium },
 ] as const;
 
-const PIER = { x0: SHORELINE_X - 4, length: 56, width: 3.6, deckY: 1.05, z0: -60 } as const;
+/**
+ * The deck starts 8 m inland of the mean shoreline (it wanders about 1.3 m),
+ * and a ramp brings it down to the sand, so the pier always starts on the
+ * beach instead of floating above it.
+ */
+const PIER = {
+  x0: SHORELINE_X - 8,
+  length: 60,
+  width: 3.6,
+  deckY: 1.05,
+  z0: -60,
+  rampRun: 6,
+} as const;
+/** Top of the beach plane (Shore.tsx) under the pier. */
+const SAND_Y = 0.07;
 
 function baseAt0(geometry: BoxGeometry | CylinderGeometry, height: number) {
   geometry.translate(0, height / 2, 0);
@@ -204,7 +218,7 @@ function LifeguardTower({ body, trim }: { body: string; trim: string }) {
       </mesh>
       <mesh position={[0, 3.2, 0.76]}>
         <boxGeometry args={[1.5, 0.6, 0.04]} />
-        <meshStandardMaterial color="#3a2a5c" roughness={0.3} metalness={0.4} />
+        <meshStandardMaterial color={palette.asphalt} roughness={0.3} metalness={0.4} />
       </mesh>
       <mesh position={[0, 2.55, 0.76]}>
         <boxGeometry args={[2.22, 0.16, 0.06]} />
@@ -234,7 +248,8 @@ function Pier({ animate }: { animate: boolean }) {
   const group = useRef<Group>(null);
   const posts = useMemo(() => {
     const list: Array<[number, number]> = [];
-    for (let x = 3; x < PIER.length; x += 5) {
+    // First pair right at the top of the ramp, so the deck never starts unsupported.
+    for (let x = 0.4; x < PIER.length; x += 5) {
       list.push([x, -PIER.width / 2 + 0.25]);
       list.push([x, PIER.width / 2 - 0.25]);
     }
@@ -253,11 +268,35 @@ function Pier({ animate }: { animate: boolean }) {
     if (animate) update(drive.distance);
   });
 
+  // Ramp from the sand (x = -rampRun) up to the deck (x = 0).
+  const rise = PIER.deckY - SAND_Y;
+  const rampLength = Math.hypot(PIER.rampRun, rise);
+  const rampSlope = Math.atan2(rise, PIER.rampRun);
+
   return (
     <group ref={group}>
       <mesh position={[PIER.length / 2, PIER.deckY, 0]}>
         <boxGeometry args={[PIER.length, 0.2, PIER.width]} />
         <meshStandardMaterial color="#7a5a8c" roughness={0.9} />
+      </mesh>
+      <mesh position={[-PIER.rampRun / 2, SAND_Y + rise / 2, 0]} rotation-z={rampSlope}>
+        <boxGeometry args={[rampLength, 0.2, PIER.width]} />
+        <meshStandardMaterial color="#7a5a8c" roughness={0.9} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh
+          key={`ramp-rail${side}`}
+          position={[-PIER.rampRun / 2, SAND_Y + rise / 2 + 0.55, (side * PIER.width) / 2]}
+          rotation-z={rampSlope}
+        >
+          <boxGeometry args={[rampLength, 0.06, 0.06]} />
+          <meshStandardMaterial color={palette.ink} />
+        </mesh>
+      ))}
+      {/* Landing slab at the foot of the ramp, half buried in the sand. */}
+      <mesh position={[-PIER.rampRun - 0.9, SAND_Y, 0]}>
+        <boxGeometry args={[1.8, 0.16, PIER.width + 0.8]} />
+        <meshStandardMaterial color="#c9a9b8" roughness={0.95} />
       </mesh>
       {[-1, 1].map((side) => (
         <mesh key={side} position={[PIER.length / 2, PIER.deckY + 0.55, (side * PIER.width) / 2]}>

@@ -7,7 +7,9 @@ import "../globals.css";
 import styles from "./layout.module.css";
 import { TokensStyle } from "@/design/TokensStyle";
 import { SmoothScroll } from "@/features/hero/scroll/SmoothScroll";
-import { defaultLocale, hasLocale, locales } from "@/i18n/config";
+import { MusicToggle } from "@/features/music/MusicToggle";
+import { SegmentedNav } from "@/components/ui/SegmentedNav";
+import { defaultLocale, hasLocale, localeNames, locales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 
 const displayFont = Unbounded({
@@ -28,8 +30,11 @@ const monoFont = JetBrains_Mono({
   display: "swap",
 });
 
-/** Without JS the title reveal never runs, so its hidden start state is undone. */
-const NO_JS_STYLE = "[data-letter],[data-line]{opacity:1}";
+/**
+ * Without JS the title reveal never runs, so its hidden start state is
+ * undone, and the loading screen (which only JS can dismiss) is hidden.
+ */
+const NO_JS_STYLE = "[data-letter],[data-line]{opacity:1}[data-loader]{display:none}";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -84,16 +89,20 @@ export default async function RootLayout({
         <a className="skip-link" href="#main">
           {dict.nav.skipToContent}
         </a>
-        <nav className={styles.langNav} aria-label={dict.nav.languageLabel}>
-          <a
-            className={styles.langLink}
-            href={`/${dict.nav.switchLocale}`}
-            hrefLang={dict.nav.switchLocale}
-            lang={dict.nav.switchLocale}
-          >
-            {dict.nav.switchLabel}
-          </a>
-        </nav>
+        <div className={styles.controls} data-page-controls>
+          <MusicToggle label={dict.nav.music} />
+          <SegmentedNav
+            label={dict.nav.languageLabel}
+            segments={locales.map((locale) => ({
+              key: locale,
+              label: locale,
+              name: localeNames[locale],
+              href: `/${locale}`,
+              current: locale === lang,
+              lang: locale,
+            }))}
+          />
+        </div>
         <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>

@@ -39,9 +39,11 @@ const LINE_WINDOWS: Array<[number, number]> = [
   [0.265, 0.37],
   [0.38, 0.49],
   [0.515, 0.74],
-  [0.765, 0.99],
+  [0.765, 0.93],
 ];
 const TITLE_OUT = 0.1;
+/** The last subtitle has gone; from here the whole stage fades to night. */
+const FADE_FROM = 0.93;
 
 /**
  * ScrollTrigger percentages refer to the stage height, while the scroll
@@ -134,6 +136,18 @@ export function HeroStage({
           .to(element, { opacity: 1, duration: 5 })
           .to(element, { opacity: 0, y: -8, duration: 0.6 });
       });
+
+      // Fade to night while the crane reveals the city; the next section
+      // starts on the same colour and fades its content in.
+      gsap.fromTo(
+        "[data-fade]",
+        { opacity: 0 },
+        {
+          opacity: 1,
+          ease: "power1.in",
+          scrollTrigger: { trigger, start: at(FADE_FROM), end: at(1), scrub: true },
+        },
+      );
     },
     { scope: stage, dependencies: [reducedMotion], revertOnUpdate: true },
   );
@@ -147,11 +161,11 @@ export function HeroStage({
         <div className={`${styles.bar} ${styles.barTop}`} data-bar="top" aria-hidden="true" />
         <div className={`${styles.bar} ${styles.barBottom}`} data-bar="bottom" aria-hidden="true" />
 
-        <p className={styles.hud}>
+        <p className={styles.hud} data-hud>
           <span className={styles.hudTitle}>{hud.title}</span>
-          <span>{hud.subtitle}</span>
+          <span className={styles.hudSubtitle}>{hud.subtitle}</span>
         </p>
-        <p className={styles.hudCamera} aria-live="off">
+        <p className={styles.hudCamera} data-hud aria-live="off">
           <span className={styles.hudRec} />
           {hud.camera} {String(shot + 1).padStart(2, "0")}/{String(SHOT_COUNT).padStart(2, "0")}
           <span className={styles.hudShot}>{shotLabel}</span>
@@ -162,7 +176,9 @@ export function HeroStage({
         <ul className={styles.subtitles} aria-label={speaker}>
           {lines.map((line, index) => (
             <li key={line} className={styles.subtitle} data-line-index={index}>
-              <span className={styles.speaker}>{speaker}:</span> {line}
+              <span className={styles.subtitleText}>
+                <span className={styles.speaker}>{speaker}:</span> {line}
+              </span>
             </li>
           ))}
         </ul>
@@ -171,6 +187,8 @@ export function HeroStage({
           <span className={styles.hintLine} />
           {scrollHint}
         </p>
+
+        <div className={styles.fade} data-fade aria-hidden="true" />
       </div>
     </div>
   );

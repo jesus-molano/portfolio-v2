@@ -6,6 +6,8 @@ type Props = {
   children: ReactNode;
   /** Names the part in the console warning. */
   name?: string;
+  /** Called once when the children fail, for example to release the loading screen. */
+  onError?: () => void;
 };
 
 /**
@@ -22,6 +24,7 @@ export class SceneErrorBoundary extends Component<Props, { failed: boolean }> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.warn(`${this.props.name ?? "Hero scene"} disabled:`, error.message, info.componentStack);
+    this.props.onError?.();
   }
 
   render() {

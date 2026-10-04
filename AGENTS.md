@@ -55,10 +55,25 @@ typography. No striped suns, no neon grids. Phase 1 is the hero.
     DOM scroll animations use `at(progress)` in `HeroStage` so they line up
     with the camera progress.
   - The car (`Car.tsx`) and the traffic (`Traffic.tsx`) load glTF models.
-    The driver (`Driver.tsx`) is a skinned Quaternius character posed with
-    two-bone IK at load time: back on the backrest, right hand on the wheel,
-    left arm on the door. Finger curl is negative on the right side and
-    positive on the left, because the rig is mirrored.
+    The driver (`Driver.tsx`) is Jesús, built with MakeHuman / MPFB from
+    CC0 assets by `tools/blender/build_driver_mpfb.py`; his hair with a
+    skin fade, beard and moustache, striped tee and black earring are made
+    in that script. It is posed with two-bone IK at load time
+    (`driverPose.ts`, unit tested) on the `game_engine` rig: back on the
+    backrest, right hand on the wheel, left arm on the door. Every bone has
+    +Y along the bone; no other local axis is assumed: the palm normal
+    comes from the knuckles (`palmNormal`) and each finger closes about one
+    world axis (`curlFinger`). Hands stay in line with the forearm: turn
+    the forearm for the palm, then flex the wrist; never aim the hand on
+    its own.
+  - Post-processing (`Effects.tsx`): bloom and a 35 mm film grain
+    (`FilmGrain.tsx`, `shaders/filmGrain.ts`, 24 grain frames a second) on
+    both tiers; vignette and chromatic aberration on the high tier only.
+  - Palms are procedural (`palmGeometry.ts`): pinnate fronds, ringed curved
+    trunks, rendered as violet silhouettes by `shaders/palm.ts`.
+  - The city waterfront (`Waterfront.tsx`, layout in `waterfrontLayout.ts`)
+    puts a promenade and a row of pastel art-deco hotels in front of the
+    towers; the skyline starts behind that row.
   - The sky is a dome centred on the camera with a direction-based gradient,
     so no shot sees an edge.
 - `src/features/teaser` — placeholder section after the hero. It shows the
@@ -67,7 +82,12 @@ typography. No striped suns, no neon grids. Phase 1 is the hero.
 - `tools/blender` — headless Blender scripts that build the GLB files in
   `public/models` from the original downloads
   (`blender -b -P <script> -- <input> <output>`; set `XDG_CONFIG_HOME` to a
-  temporary directory in the sandbox).
+  temporary directory in the sandbox). `build_driver_mpfb.py` needs the
+  MPFB 2 extension and the MakeHuman system assets installed in that
+  profile; it writes the GLB, its textures and check renders to an output
+  folder outside the repo. Its body and face values live in
+  `tools/blender/driver.params.json`, which Git ignores: keep personal
+  data out of the published script.
 
 ## 3D assets and licences
 
@@ -75,8 +95,14 @@ Each folder in `public/models` keeps its `LICENSE.txt`.
 
 - `poly-convertible` — "Convertible" by Poly by Google, CC BY 3.0. The
   licence requires the visible credit in the teaser; keep it.
-- `quaternius-cars`, `quaternius-men` — Quaternius, CC0.
-- `kenney-nature` — Kenney Nature Kit palms, CC0.
+- `quaternius-cars` — Quaternius, CC0.
+- `makehuman-driver` — built from the MakeHuman system assets, CC0. Never
+  use the community beards bundled with MPFB (`wdg_scruffy_beard`,
+  `grinsegold_beard_sigmund_wip`): they are AGPL. The reference photos of
+  Jesús never go into the repo.
+- Palms, buildings and props are procedural; they need no licence.
+- `public/music/funkeriffic.mp3` — "Funkeriffic" from FreePD, CC0. Played
+  by `src/features/music/player.ts`; fetched only on the first play.
 
 ## Scene coherence rules
 

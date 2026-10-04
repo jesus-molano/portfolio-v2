@@ -5,18 +5,17 @@
   },
   "nav": {
     "languageLabel": "Language",
-    "switchLabel": "Español",
-    "switchLocale": "es",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "music": "Music"
   },
   "hero": {
     "name": "Jesús Molano",
     "role": "Frontend Engineer",
-    "tagline": "I build interfaces with a pulse. Vue, Nuxt, React, Next.",
+    "tagline": "Any framework, any road. I'm the one at the wheel.",
     "scrollHint": "Scroll to drive into the city",
     "sceneLabel": "Sunset drive over a causeway toward a neon city skyline, palm trees on both sides",
     "hud": {
-      "title": "Vice Afterglow",
+      "title": "Jesús Molano",
       "subtitle": "Portfolio · work in progress",
       "camera": "CAM"
     },
@@ -24,12 +23,29 @@
     "speaker": "Jesús",
     "lines": [
       "Yeah… here we go again.",
-      "Who's the guy at the wheel? Jesús. Frontend engineer. Vue and Nuxt by heart, Next when the job asks for it.",
-      "Plot twist? He used to be a soldier. Now he's a code-slinging nerd who lets the AI do all the work. Allegedly.",
+      "Who's the guy at the wheel? Jesús. Frontend engineer. Vue and Nuxt by heart. Everything else? Like Mr. Wolf, he solves problems.",
+      "Plot twist? He used to be a soldier, taking orders. Now he's a code nerd who finally gets to give them… to an AI.",
       "Favourite film? The Godfather. Favourite series? The Sopranos. Code reviews? He makes you an offer you can't refuse.",
       "Music? The same playlist since he was sixteen. He calls it backwards compatibility.",
-      "Where are we headed? The city. Every building is one of his projects. Some of them are even finished."
+      "Where are we headed? The city, where his CV doesn't live in a PDF. It's up in neon, billboard after billboard."
     ]
+  },
+  "loader": {
+    "loading": "Loading",
+    "choose": "Choose how to enter the city",
+    "ready": "Loaded. Choose how to enter the city.",
+    "tipLabel": "Tip",
+    "tips": [
+      "The car never moves. The world does. Nobody tell the car.",
+      "Reading the docs restores full health.",
+      "Every palm tree here is procedural. The jokes are handmade.",
+      "The city is still loading. Like most side projects.",
+      "Jesús ships on Fridays. Bravely.",
+      "Turn the music on. The palms sway better with funk."
+    ],
+    "withMusic": "Enter the city · music on",
+    "withoutMusic": "Music off",
+    "hint": "or press any key"
   },
   "teaser": {
     "eyebrow": "Next stop",
@@ -38,11 +54,11 @@
     "github": "See my code on GitHub",
     "newTab": "(opens in a new tab)",
     "credits": {
-      "label": "3D assets:",
+      "label": "Credits:",
       "car": "“Convertible” by Poly by Google",
       "license": "CC BY 3.0",
       "modified": "modified",
-      "others": "characters and traffic by Quaternius (CC0) · palms by Kenney (CC0)."
+      "others": "driver built with MakeHuman (CC0) · traffic by Quaternius (CC0) · music: “Funkeriffic” from FreePD (CC0)."
     }
   },
   "notFound": {

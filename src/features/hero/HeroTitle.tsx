@@ -1,11 +1,12 @@
 "use client";
 
-import type { RefObject } from "react";
+import { type RefObject, useSyncExternalStore } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { motion } from "@/design/tokens";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import styles from "./Hero.module.css";
+import { getSceneLoading, subscribeSceneLoading } from "./sceneLoading";
 
 gsap.registerPlugin(useGSAP);
 
@@ -24,6 +25,12 @@ type Props = {
  */
 export function HeroTitle({ name, role, tagline, ref }: Props) {
   const reducedMotion = usePrefersReducedMotion();
+  // The intro waits for the visitor to leave the loading screen.
+  const entered = useSyncExternalStore(
+    subscribeSceneLoading,
+    () => getSceneLoading().entered,
+    () => false,
+  );
 
   useGSAP(
     () => {
@@ -31,6 +38,7 @@ export function HeroTitle({ name, role, tagline, ref }: Props) {
         gsap.set("[data-letter], [data-line]", { clearProps: "all" });
         return;
       }
+      if (!entered) return;
 
       const intro = gsap.timeline({ defaults: { ease: motion.ease }, delay: 0.2 });
       intro
@@ -52,7 +60,7 @@ export function HeroTitle({ name, role, tagline, ref }: Props) {
           "-=0.9",
         );
     },
-    { scope: ref, dependencies: [reducedMotion], revertOnUpdate: true },
+    { scope: ref, dependencies: [reducedMotion, entered], revertOnUpdate: true },
   );
 
   return (
