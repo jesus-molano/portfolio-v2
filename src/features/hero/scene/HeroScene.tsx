@@ -1,6 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
+import { Suspense } from "react";
 import { palette } from "@/design/tokens";
 import type { QualityTier } from "../useQualityTier";
 import { Birds } from "./Birds";
@@ -69,7 +70,9 @@ export function HeroScene({ tier, reducedMotion, active }: Props) {
       <Birds animate={animate} count={high ? 11 : 7} />
       <Haze />
       <Skyline tier={tier} />
-      <Palms animate={animate} count={high ? 18 : 10} />
+      <Suspense fallback={null}>
+        <Palms animate={animate} count={high ? 20 : 10} />
+      </Suspense>
       <Ground tier={tier} />
       <Shore animate={animate} />
       <Road animate={animate} />

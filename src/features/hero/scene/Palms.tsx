@@ -1,8 +1,10 @@
 "use client";
 
+import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import {
+  type BufferGeometry,
   Color,
   type InstancedMesh,
   Matrix4,
@@ -15,12 +17,12 @@ import {
 import { palette } from "@/design/tokens";
 import { palmFragmentShader, palmVertexShader } from "../shaders/palm";
 import { drive, STREAM, STREAM_LENGTH, wrapZ } from "./drive";
-import { createPalmGeometry } from "./palmGeometry";
+import { flattenPalm, PALM_MODELS } from "./palmModels";
 import { createRandom } from "./world";
 
 type Props = { animate: boolean; count?: number };
 
-type Placement = { x: number; z0: number; rotation: number; scale: number };
+type Placement = { x: number; z0: number; rotation: number; scale: number; variant: number };
 
 const Y_AXIS = new Vector3(0, 1, 0);
 
@@ -32,22 +34,52 @@ function placePalms(count: number): Placement[] {
     const side = i % 2 === 0 ? -1 : 1;
     const row = Math.floor(i / 2);
     const z0 = STREAM.zBack - row * step - (side > 0 ? step * 0.45 : 0);
-    // On the shoulders of the causeway, just outside the curbs.
-    const x = side * (10.5 + random() * 4);
-    placements.push({ x, z0, rotation: random() * Math.PI * 2, scale: 0.85 + random() * 0.5 });
+    // On the beach, just outside the guardrail.
+    const x = side * (11 + random() * 5);
+    placements.push({
+      x,
+      z0,
+      rotation: random() * Math.PI * 2,
+      scale: 0.8 + random() * 0.5,
+      variant: Math.floor(random() * PALM_MODELS.length),
+    });
   }
   return placements;
 }
 
-/** Instanced palm silhouettes streaming past the car, swaying in the wind. */
-export function Palms({ animate, count = 18 }: Props) {
-  const mesh = useRef<InstancedMesh>(null);
-  const material = useRef<ShaderMaterial>(null);
+PALM_MODELS.forEach((url) => useGLTF.preload(url));
 
-  const geometry = useMemo(() => createPalmGeometry(), []);
-  useEffect(() => () => geometry.dispose(), [geometry]);
+/** Kenney palms as tinted silhouettes, streaming past the car and swaying. */
+export function Palms({ animate, count = 18 }: Props) {
+  const gltfs = useGLTF([...PALM_MODELS]);
+  const geometries = useMemo(() => gltfs.map((g) => flattenPalm(g.scene)), [gltfs]);
+  useEffect(() => () => geometries.forEach((g) => g.dispose()), [geometries]);
 
   const placements = useMemo(() => placePalms(count), [count]);
+  const groups = useMemo(
+    () => PALM_MODELS.map((_, variant) => placements.filter((p) => p.variant === variant)),
+    [placements],
+  );
+
+  return (
+    <group>
+      {geometries.map((geometry, variant) => (
+        <PalmInstances
+          key={PALM_MODELS[variant]}
+          geometry={geometry}
+          placements={groups[variant]}
+          animate={animate}
+        />
+      ))}
+    </group>
+  );
+}
+
+type InstancesProps = { geometry: BufferGeometry; placements: Placement[]; animate: boolean };
+
+function PalmInstances({ geometry, placements, animate }: InstancesProps) {
+  const mesh = useRef<InstancedMesh>(null);
+  const material = useRef<ShaderMaterial>(null);
 
   const uniforms = useMemo(
     () =>
@@ -83,6 +115,8 @@ export function Palms({ animate, count = 18 }: Props) {
     material.current.uniforms.uTime.value = state.clock.elapsedTime;
     place(mesh.current, drive.distance);
   });
+
+  if (placements.length === 0) return null;
 
   return (
     <instancedMesh
