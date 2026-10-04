@@ -21,8 +21,8 @@ typography. No striped suns, no neon grids. Phase 1 is the hero.
 - `pnpm lint` — ESLint CLI (`next lint` no longer exists in Next 16).
 - `pnpm typecheck` — `tsc --noEmit`.
 - `pnpm test` — Vitest unit tests (`src/**/*.test.ts`): locale negotiation,
-  proxy redirects and the deterministic city layout. Add a test for every new
-  pure function.
+  proxy redirects, the deterministic city layout and the shader `pow()` rule.
+  Add a test for every new pure function.
 - `pnpm build` — production build. `next/font/google` downloads fonts at build
   time, so the build needs access to `fonts.googleapis.com` and `fonts.gstatic.com`.
 - `pnpm check` — lint, typecheck, tests and build in sequence.
@@ -43,7 +43,9 @@ typography. No striped suns, no neon grids. Phase 1 is the hero.
   Spanish is the second language. Add keys to both files.
 - `src/design/tokens.ts` — single source of truth for colors, fonts, motion and
   layering. `TokensStyle` emits them as `--va-*` CSS variables; Three.js code
-  imports the hex values. Never hardcode a color elsewhere.
+  imports the hex values. DOM styles never hardcode a color. In the 3D scene,
+  a material colour used by one file only (car paints, signage, sand, water)
+  may stay in that file; a colour shared by two scene parts goes in the tokens.
 - `src/features/hero` — the hero: stage, title, canvas, scroll bridge and the
   3D scene (`scene/`), with GLSL in `shaders/`.
   - The car never moves. `scene/drive.ts` holds the shared distance that the
@@ -52,10 +54,51 @@ typography. No striped suns, no neon grids. Phase 1 is the hero.
     the pose, `HeroStage` mirrors the shot index in the HUD and subtitles.
     DOM scroll animations use `at(progress)` in `HeroStage` so they line up
     with the camera progress.
-  - The car (`Car.tsx`, `carGeometry.ts`) and the driver (`Driver.tsx`) are
-    procedural; no external models.
-- `src/features/teaser` — placeholder section after the hero.
+  - The car (`Car.tsx`) and the traffic (`Traffic.tsx`) load glTF models.
+    The driver (`Driver.tsx`) is a skinned Quaternius character posed with
+    two-bone IK at load time: back on the backrest, right hand on the wheel,
+    left arm on the door. Finger curl is negative on the right side and
+    positive on the left, because the rig is mirrored.
+  - The sky is a dome centred on the camera with a direction-based gradient,
+    so no shot sees an edge.
+- `src/features/teaser` — placeholder section after the hero. It shows the
+  asset credits.
 - `src/hooks` — SSR-safe media query hooks.
+- `tools/blender` — headless Blender scripts that build the GLB files in
+  `public/models` from the original downloads
+  (`blender -b -P <script> -- <input> <output>`; set `XDG_CONFIG_HOME` to a
+  temporary directory in the sandbox).
+
+## 3D assets and licences
+
+Each folder in `public/models` keeps its `LICENSE.txt`.
+
+- `poly-convertible` — "Convertible" by Poly by Google, CC BY 3.0. The
+  licence requires the visible credit in the teaser; keep it.
+- `quaternius-cars`, `quaternius-men` — Quaternius, CC0.
+- `kenney-nature` — Kenney Nature Kit palms, CC0.
+
+## Scene coherence rules
+
+- The world streams toward +z (`drive.distance`); nothing moves the car.
+  Streamed props use `wrapZ` and `streamFade`; shaders use
+  `worldZ - uDistance`.
+- Same-direction traffic is never faster than the hero and keeps one speed per
+  lane, so cars never pass through each other. No camera sits in a lane with
+  traffic.
+- Shader safety: never call `pow()` with a base that can be negative, and
+  guard every `normalize()` of a vector that can be zero. One NaN pixel turns
+  the whole frame black through the bloom mipmap blur.
+  `shaders/shaders.test.ts` checks the `pow()` rule.
+
+## Development hooks (dev builds only)
+
+- `window.__vaScene` (`DevHandle.tsx`): scene, camera, raycaster, renderer and
+  R3F `addAfterEffect`. Read frame pixels inside an `addAfterEffect` callback;
+  outside it the drawing buffer is already cleared.
+- `window.__vaCam = { position, look, fov }` (`CameraRig.tsx`) freezes the
+  camera for framing work. Delete it right after use: while it exists the
+  camera ignores the scroll.
 
 ## Conventions
 
@@ -68,7 +111,7 @@ typography. No striped suns, no neon grids. Phase 1 is the hero.
 - Respect `prefers-reduced-motion`: no Lenis, no intro animation, static camera,
   `frameloop="demand"`.
 - Quality tiers come from `useQualityTier` (viewport + pointer heuristics, no
-  network calls). The low tier drops the reflector and most post-processing.
+  network calls). The low tier drops the pier and most post-processing.
 - Deterministic layouts use `createRandom(seed)` so screenshots are stable.
 
 ## Content rules

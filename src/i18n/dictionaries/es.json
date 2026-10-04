@@ -26,9 +26,9 @@
       "Sí… aquí vamos otra vez.",
       "¿Que quién es el del volante? Jesús. Ingeniero frontend. Vue y Nuxt de serie, Next cuando el trabajo lo pide.",
       "¿Giro de guion? Fue militar. Ahora es un friki pica-código al que la IA se lo hace todo. Presuntamente.",
-      "¿Y cuando no está programando? Corre hasta que se acaba la playlist. Música alta, carreteras largas.",
-      "Cine y videojuegos, de los que citas años después. Y sigue parando a mirar un buen atardecer. Este, por ejemplo.",
-      "Linux en casa, dotfiles en público, con sus pecados. Basta de hablar: te enseño la ciudad."
+      "¿Peli favorita? El Padrino. ¿Serie? Los Soprano. ¿Las code reviews? Te hace una oferta que no podrás rechazar.",
+      "¿La música? La misma playlist desde los 16. Él lo llama retrocompatibilidad.",
+      "¿Que adónde vamos? A la ciudad. Cada edificio es uno de sus proyectos. Algunos hasta están terminados."
     ]
   },
   "teaser": {
@@ -36,7 +36,14 @@
     "heading": "La ciudad todavía está cargando",
     "body": "La fase 2 convierte cada proyecto de mi GitHub en un distrito de neón al que podrás volar.",
     "github": "Ver mi código en GitHub",
-    "newTab": "(se abre en una pestaña nueva)"
+    "newTab": "(se abre en una pestaña nueva)",
+    "credits": {
+      "label": "Modelos 3D:",
+      "car": "«Convertible» de Poly by Google",
+      "license": "CC BY 3.0",
+      "modified": "modificado",
+      "others": "personajes y tráfico de Quaternius (CC0) · palmeras de Kenney (CC0)."
+    }
   },
   "notFound": {
     "heading": "Salida equivocada",

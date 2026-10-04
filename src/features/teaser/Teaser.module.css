@@ -55,3 +55,29 @@
   border-color: var(--va-color-cyan);
   box-shadow: 0 0 32px rgba(25, 230, 255, 0.35), inset 0 0 14px rgba(25, 230, 255, 0.2);
 }
+
+/* Asset attribution (CC BY 3.0 requires a visible credit). */
+.credits {
+  margin-top: 3rem;
+  max-width: 40rem;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--va-color-text-muted);
+}
+
+.credits a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.credits a:hover,
+.credits a:focus-visible {
+  color: var(--va-color-text);
+}
+
+.credits a:focus-visible {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 2px;
+  border-radius: 2px;
+}

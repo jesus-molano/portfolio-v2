@@ -2,7 +2,7 @@
 
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
   type BufferGeometry,
   Color,
@@ -15,12 +15,9 @@ import {
   Vector3,
 } from "three";
 import { palette } from "@/design/tokens";
-import {
-  contactShadowFragmentShader,
-  contactShadowVertexShader,
-} from "../shaders/contactShadow";
+import { softDiscFragmentShader, softDiscInstancedVertexShader } from "../shaders/softDisc";
 import { palmFragmentShader, palmVertexShader } from "../shaders/palm";
-import { drive, STREAM, STREAM_LENGTH, wrapZ } from "./drive";
+import { drive, STREAM, STREAM_LENGTH, streamFade, wrapZ } from "./drive";
 import { flattenPalm, PALM_MODELS } from "./palmModels";
 import { createRandom } from "./world";
 
@@ -38,6 +35,7 @@ type Placement = {
 
 const Y_AXIS = new Vector3(0, 1, 0);
 const Z_AXIS = new Vector3(0, 0, 1);
+const X_AXIS = new Vector3(1, 0, 0);
 /** Trunk base sinks into the sand; the beach plane sits at 0.07. */
 const SINK_Y = -0.25;
 const SHADOW_Y = 0.09;
@@ -51,8 +49,8 @@ function placePalms(count: number): Placement[] {
     const side = i % 2 === 0 ? -1 : 1;
     const row = Math.floor(i / 2);
     const z0 = STREAM.zBack - row * step - (side > 0 ? step * 0.45 : 0);
-    // On the beach, just outside the guardrail.
-    const x = side * (11 + random() * 5);
+    // On the beach, clear of the street lights; never right next to the lens.
+    const x = side * (13.5 + random() * 7);
     placements.push({
       x,
       z0,
@@ -121,16 +119,17 @@ function PalmInstances({ geometry, placements, animate }: InstancesProps) {
     const scale = new Vector3();
     placements.forEach((p, i) => {
       const z = wrapZ(p.z0 + distance);
+      const fade = Math.max(0.001, streamFade(z));
       quaternion.setFromAxisAngle(Y_AXIS, p.rotation);
       tilt.setFromAxisAngle(Z_AXIS, p.lean);
       quaternion.multiply(tilt);
-      scale.setScalar(p.scale);
+      scale.setScalar(p.scale * fade);
       position.set(p.x, SINK_Y, z);
       matrix.compose(position, quaternion, scale);
       instanced.setMatrixAt(i, matrix);
       if (discs) {
-        quaternion.setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
-        scale.set(SHADOW_RADIUS * p.scale, SHADOW_RADIUS * p.scale * 0.8, 1);
+        quaternion.setFromAxisAngle(X_AXIS, -Math.PI / 2);
+        scale.set(SHADOW_RADIUS * p.scale * fade, SHADOW_RADIUS * p.scale * 0.8 * fade, 1);
         position.set(p.x, SHADOW_Y, z);
         matrix.compose(position, quaternion, scale);
         discs.setMatrixAt(i, matrix);
@@ -140,7 +139,7 @@ function PalmInstances({ geometry, placements, animate }: InstancesProps) {
     if (discs) discs.instanceMatrix.needsUpdate = true;
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (mesh.current) place(mesh.current, shadows.current, drive.distance);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial placement only
   }, [placements]);
@@ -173,14 +172,18 @@ function PalmInstances({ geometry, placements, animate }: InstancesProps) {
         ref={shadows}
         args={[undefined, undefined, placements.length]}
         frustumCulled={false}
+        renderOrder={2}
       >
         <planeGeometry args={[1, 1]} />
         <shaderMaterial
           uniforms={shadowUniforms}
-          vertexShader={contactShadowVertexShader}
-          fragmentShader={contactShadowFragmentShader}
+          vertexShader={softDiscInstancedVertexShader}
+          fragmentShader={softDiscFragmentShader}
           transparent
           depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
       </instancedMesh>
     </group>

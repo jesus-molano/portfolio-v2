@@ -29,6 +29,19 @@ export function CameraRig({ parallax, reducedMotion }: Props) {
 
   useFrame((state, delta) => {
     const camera = state.camera as PerspectiveCamera;
+    if (process.env.NODE_ENV !== "production") {
+      // Dev-only free camera for framing work: window.__vaCam = { position, look, fov }.
+      const debug = (window as unknown as { __vaCam?: { position: number[]; look: number[]; fov?: number } }).__vaCam;
+      if (debug) {
+        camera.position.set(debug.position[0], debug.position[1], debug.position[2]);
+        camera.lookAt(debug.look[0], debug.look[1], debug.look[2]);
+        if (debug.fov && debug.fov !== camera.fov) {
+          camera.fov = debug.fov;
+          camera.updateProjectionMatrix();
+        }
+        return;
+      }
+    }
     const target = evaluateCamera(heroProgress.value, pose.current);
     const t = state.clock.elapsedTime;
     const cut = target.shot !== lastShot.current;

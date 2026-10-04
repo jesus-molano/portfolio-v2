@@ -1,114 +1,104 @@
 "use client";
 
+import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
-import { AdditiveBlending, Color, type InstancedMesh, Matrix4, Quaternion, Vector3 } from "three";
-import { streakFragmentShader, streakVertexShader } from "../shaders/streak";
-import { drive, STREAM, STREAM_LENGTH, wrapZ } from "./drive";
-import { createRandom } from "./world";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { Color, type Group, Mesh, type MeshStandardMaterial, type Object3D } from "three";
+import { drive, streamFade, wrapZ } from "./drive";
+import { makeTraffic } from "./trafficLayout";
 
 type Props = { animate: boolean; perLane?: number };
 
-/** Relative speed is against the hero car (positive drifts toward +z). */
-type Car = { lane: number; z0: number; relativeSpeed: number; length: number };
+/** Quaternius "Cars Pack" (CC0). Models face +z, are real scale (~4 m). */
+const CAR_MODELS = [
+  "/models/quaternius-cars/SportsCar.glb",
+  "/models/quaternius-cars/SportsCar2.glb",
+  "/models/quaternius-cars/NormalCar1.glb",
+  "/models/quaternius-cars/Taxi.glb",
+  "/models/quaternius-cars/SUV.glb",
+] as const;
+CAR_MODELS.forEach((url) => useGLTF.preload(url));
 
-const STREAK_Y = 0.5;
-/** The hero car owns the right lane (x = 2.4); same-direction traffic uses the outer one. */
-const LANES_SAME = [5.8];
-const LANES_ONCOMING = [-2.4, -5.8];
-const X_AXIS = new Vector3(1, 0, 0);
+/** Real cars in the outer lanes: same-direction traffic and oncoming cars. */
+export function Traffic({ animate, perLane = 3 }: Props) {
+  const gltfs = useGLTF([...CAR_MODELS]);
+  const cars = useMemo(() => makeTraffic(perLane, CAR_MODELS.length), [perLane]);
+  const groups = useRef<Array<Group | null>>([]);
 
-function makeCars(lanes: number[], perLane: number, seed: number, relative: [number, number]): Car[] {
-  const random = createRandom(seed);
-  const cars: Car[] = [];
-  for (const lane of lanes) {
-    for (let i = 0; i < perLane; i += 1) {
-      cars.push({
-        lane: lane + (random() - 0.5) * 0.5,
-        z0: STREAM.zFront + random() * STREAM_LENGTH,
-        relativeSpeed: relative[0] + random() * (relative[1] - relative[0]),
-        length: 9 + random() * 9,
-      });
-    }
-  }
-  return cars;
-}
-
-/**
- * Long-exposure light trails relative to the hero car: tail lights of cars
- * pulling ahead or dropping back in the outer lane, headlights of oncoming
- * traffic on the left streaming past.
- */
-export function Traffic({ animate, perLane = 4 }: Props) {
-  const tail = useRef<InstancedMesh>(null);
-  const head = useRef<InstancedMesh>(null);
-
-  const same = useMemo(() => makeCars(LANES_SAME, perLane * 2, 11, [-9, 7]), [perLane]);
-  const oncoming = useMemo(() => makeCars(LANES_ONCOMING, perLane, 23, [42, 60]), [perLane]);
-
-  const tailUniforms = useMemo(
-    () => ({ uColor: { value: new Color("#ff3b4a") }, uIntensity: { value: 1.1 } }),
-    [],
+  // One painted clone per car; the light materials glow.
+  const clones = useMemo(
+    () =>
+      cars.map((car) => {
+        const clone = gltfs[car.model].scene.clone(true);
+        clone.traverse((object: Object3D) => {
+          if (!(object instanceof Mesh)) return;
+          const materials = (Array.isArray(object.material) ? object.material : [object.material]).map(
+            (m: MeshStandardMaterial) => m.clone(),
+          );
+          for (const material of materials) {
+            const name = material.name.toLowerCase();
+            if (name.includes("headlight")) {
+              material.emissive = new Color("#ffe9c4");
+              material.emissiveIntensity = 1.6;
+            } else if (name.includes("taillight")) {
+              material.emissive = new Color("#ff3344");
+              material.emissiveIntensity = 1.4;
+            } else if (/orange|blue|yellow|white|red|green|purple|paint|main|body/.test(name)) {
+              // Two-tone bodies keep their darker panel as a darker shade of the paint.
+              material.color = new Color(car.paint).multiplyScalar(name.startsWith("dark") ? 0.7 : 1);
+            }
+            material.roughness = 0.45;
+          }
+          object.material = Array.isArray(object.material) ? materials : materials[0];
+        });
+        return clone;
+      }),
+    [cars, gltfs],
   );
-  const headUniforms = useMemo(
-    () => ({ uColor: { value: new Color("#fff3d6") }, uIntensity: { value: 0.9 } }),
-    [],
+  useEffect(
+    () => () =>
+      clones.forEach((clone) =>
+        clone.traverse((object) => {
+          if (object instanceof Mesh) {
+            const list = Array.isArray(object.material) ? object.material : [object.material];
+            list.forEach((m) => m.dispose());
+          }
+        }),
+      ),
+    [clones],
   );
 
-  const place = (mesh: InstancedMesh, cars: Car[], time: number, towardCamera: boolean) => {
-    const matrix = new Matrix4();
-    const quaternion = new Quaternion();
-    const position = new Vector3();
-    const scale = new Vector3();
+  const update = (distance: number) => {
+    const time = distance / drive.speed;
     cars.forEach((car, i) => {
-      const z = wrapZ(car.z0 + time * car.relativeSpeed);
-      // The bright head leads the direction of relative motion.
-      const leadsForward = towardCamera || car.relativeSpeed > 0;
-      quaternion.setFromAxisAngle(X_AXIS, leadsForward ? Math.PI / 2 : -Math.PI / 2);
-      position.set(car.lane, STREAK_Y, z);
-      scale.set(1, car.length, 1);
-      matrix.compose(position, quaternion, scale);
-      mesh.setMatrixAt(i, matrix);
+      const group = groups.current[i];
+      if (!group) return;
+      const z = wrapZ(car.z0 + time * car.relative);
+      group.position.set(car.x, 0, z);
+      group.scale.setScalar(Math.max(0.001, streamFade(z)));
     });
-    mesh.instanceMatrix.needsUpdate = true;
   };
 
-  useEffect(() => {
-    if (tail.current) place(tail.current, same, 0, false);
-    if (head.current) place(head.current, oncoming, 0, true);
-  }, [same, oncoming]);
-
+  // Layout effect: placed before the first frame, also in demand mode.
+  useLayoutEffect(() => update(drive.distance));
   useFrame(() => {
-    if (!animate) return;
-    const time = drive.distance / drive.speed;
-    if (tail.current) place(tail.current, same, time, false);
-    if (head.current) place(head.current, oncoming, time, true);
+    if (animate) update(drive.distance);
   });
 
   return (
     <group>
-      <instancedMesh ref={tail} args={[undefined, undefined, same.length]} frustumCulled={false}>
-        <planeGeometry args={[0.55, 1]} />
-        <shaderMaterial
-          uniforms={tailUniforms}
-          vertexShader={streakVertexShader}
-          fragmentShader={streakFragmentShader}
-          transparent
-          depthWrite={false}
-          blending={AdditiveBlending}
-        />
-      </instancedMesh>
-      <instancedMesh ref={head} args={[undefined, undefined, oncoming.length]} frustumCulled={false}>
-        <planeGeometry args={[0.55, 1]} />
-        <shaderMaterial
-          uniforms={headUniforms}
-          vertexShader={streakVertexShader}
-          fragmentShader={streakFragmentShader}
-          transparent
-          depthWrite={false}
-          blending={AdditiveBlending}
-        />
-      </instancedMesh>
+      {cars.map((car, i) => (
+        <group
+          key={`${car.x}-${car.z0}`}
+          ref={(el) => {
+            groups.current[i] = el;
+          }}
+          // Models face +z: same-direction cars turn around to face -z.
+          rotation-y={car.oncoming ? 0 : Math.PI}
+        >
+          <primitive object={clones[i]} />
+        </group>
+      ))}
     </group>
   );
 }

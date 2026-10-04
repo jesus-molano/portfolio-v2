@@ -1,0 +1,12 @@
+"Convertible" by Poly by Google
+Source: https://poly.pizza/m/dggOiBLYyuR
+License: Creative Commons Attribution 3.0 (CC BY 3.0)
+https://creativecommons.org/licenses/by/3.0/
+
+Modified for this site with Blender (tools/blender/process_convertible.py):
+converted from OBJ to glTF (GLB), wheels split into separate nodes, front
+seat backrests lowered and both front seats moved 0.2 m forward. At runtime
+the materials are replaced with opaque paint (the source declares glass).
+
+The site shows the credit, with links to the source and the licence and a
+note that the model is modified, alongside the other asset attributions.

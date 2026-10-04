@@ -55,9 +55,9 @@ function at(progress: number): string {
 
 /**
  * The tall scrolling stage: a sticky viewport with the canvas, the title, the
- * letterbox bars, the HUD, the cut flash and the subtitles. Owns every
- * ScrollTrigger tied to the stage element, because child layout effects run
- * before the parent ref is set.
+ * letterbox bars, the HUD and the subtitles. Shots change with clean hard
+ * cuts (no black frame). Owns every ScrollTrigger tied to the stage element,
+ * because child layout effects run before the parent ref is set.
  */
 export function HeroStage({
   name,
@@ -72,7 +72,6 @@ export function HeroStage({
 }: Props) {
   const stage = useRef<HTMLDivElement>(null);
   const title = useRef<HTMLDivElement>(null);
-  const flash = useRef<HTMLDivElement>(null);
   const reducedMotion = usePrefersReducedMotion();
   const [shot, setShot] = useState(0);
 
@@ -97,12 +96,6 @@ export function HeroStage({
           if (next !== currentShot) {
             currentShot = next;
             setShot(next);
-            // Hard cut: one dark frame, like a cinematic edit.
-            gsap.fromTo(
-              flash.current,
-              { opacity: 1 },
-              { opacity: 0, duration: 0.26, ease: "power2.out", overwrite: true },
-            );
           }
         },
       });
@@ -151,7 +144,6 @@ export function HeroStage({
     <div ref={stage} className={styles.stage}>
       <div className={styles.sticky}>
         <HeroCanvas label={sceneLabel} />
-        <div ref={flash} className={styles.flash} aria-hidden="true" />
         <div className={`${styles.bar} ${styles.barTop}`} data-bar="top" aria-hidden="true" />
         <div className={`${styles.bar} ${styles.barBottom}`} data-bar="bottom" aria-hidden="true" />
 

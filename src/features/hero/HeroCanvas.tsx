@@ -1,9 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import styles from "./Hero.module.css";
+import { SceneErrorBoundary } from "./SceneErrorBoundary";
 import { useQualityTier } from "./useQualityTier";
 
 const HeroScene = dynamic(() => import("./scene/HeroScene").then((m) => m.HeroScene), {
@@ -39,20 +40,4 @@ export function HeroCanvas({ label }: Props) {
       </SceneErrorBoundary>
     </div>
   );
-}
-
-class SceneErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.warn("Hero scene disabled:", error.message, info.componentStack);
-  }
-
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
 }

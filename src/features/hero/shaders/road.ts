@@ -31,13 +31,20 @@ export const roadFragmentShader = /* glsl */ `
   varying vec3 vWorld;
   varying float vFogDepth;
 
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-  }
-
   void main() {
     float across = vUv.x * 2.0 - 1.0;
-    float speckle = 0.92 + 0.16 * hash(floor(vWorld.xz * 14.0));
+    // Ground-fixed pattern: it streams with the drive like the lane dashes.
+    // Smooth, large patches of older and newer asphalt; no per-cell noise.
+    float zg = vWorld.z - uDistance;
+    float patches = sin(zg * 0.045 + sin(vWorld.x * 0.21) * 1.5) * sin(zg * 0.017 + 1.7);
+    float speckle = 1.0 + patches * 0.05;
+    // Faint darker tyre tracks along each of the four 4 m lanes.
+    float lanePos = fract((vWorld.x + 8.0) / 4.0);
+    // Squares, not pow(): pow() of a negative base is NaN in GLSL.
+    float trackA = (lanePos - 0.3) * 14.0;
+    float trackB = (lanePos - 0.7) * 14.0;
+    float tracks = exp(-trackA * trackA) + exp(-trackB * trackB);
+    speckle -= tracks * 0.06;
     vec3 color = uAsphalt * speckle;
 
     // Sun reflection on the wet surface: a soft column that leans toward the
@@ -50,14 +57,18 @@ export const roadFragmentShader = /* glsl */ `
     // Broad wet sheen from the sky.
     color += uGlow * 0.12 * toward;
 
-    // Center dashes.
-    // The car drives toward -z, so the dashes must slide toward +z (past us).
-    float dash = step(0.55, fract((vWorld.z - uDistance) / 9.0));
-    float center = 1.0 - smoothstep(0.012, 0.022, abs(across));
-    color = mix(color, uLine, dash * center * 0.95);
-
-    // Edge lines.
-    float edge = 1.0 - smoothstep(0.012, 0.024, abs(abs(across) - 0.9));
+    // Four lanes, US style. x in metres across the 16 m road. The car drives
+    // toward -z, so the dashes slide toward +z (past us).
+    float x = across * 8.0;
+    float dash = step(0.6, fract((vWorld.z - uDistance) / 12.0));
+    // Double solid yellow in the centre.
+    float centre = 1.0 - smoothstep(0.06, 0.1, abs(abs(x) - 0.18));
+    color = mix(color, uLine, centre * 0.95);
+    // Dashed white dividers between the two lanes of each direction.
+    float divider = (1.0 - smoothstep(0.06, 0.1, abs(abs(x) - 4.0))) * dash;
+    color = mix(color, uEdge, divider * 0.85);
+    // Solid white edge lines.
+    float edge = 1.0 - smoothstep(0.07, 0.11, abs(abs(x) - 7.6));
     color = mix(color, uEdge, edge * 0.85);
 
     float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);

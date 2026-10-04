@@ -1,128 +1,98 @@
 "use client";
 
+import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
-import { type Group } from "three";
+import { useLayoutEffect, useMemo, useRef } from "react";
+import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D } from "three";
 import { palette } from "@/design/tokens";
-import { CAR, createCarBodyGeometry } from "./carGeometry";
+import { softDiscFragmentShader, softDiscVertexShader } from "../shaders/softDisc";
 import { CAR_POSITION, drive } from "./drive";
 import { Driver } from "./Driver";
 
 type Props = { animate: boolean };
 
-const BODY_COLOR = "#4a2a86";
-const TRIM_COLOR = "#1a0f33";
-const WHEEL_COLOR = "#120a22";
-const HUB_COLOR = "#8d6fb8";
+/** "Convertible" by Poly by Google, CC BY 3.0 (see public/models/poly-convertible). */
+export const CAR_URL = "/models/poly-convertible/convertible.glb";
+/** The model is ~10 units long; a real roadster is ~4.5 m. */
+const CAR_SCALE = 0.45;
+/** Wheel radius in world units (model radius 0.856). */
+const WHEEL_RADIUS = 0.856 * CAR_SCALE;
+const WHEEL_NAMES = ["wheel_front_l", "wheel_front_r", "wheel_rear_l", "wheel_rear_r"];
+
+useGLTF.preload(CAR_URL);
 
 /**
- * The hero car: a stylised wedge convertible, headlights on, cruising in the
- * right lane. It never moves; the world streams past. Wheels spin with the
- * drive distance and the body breathes with the suspension.
+ * The hero car. It never moves: the world streams past. Wheels spin with the
+ * drive distance; the body (and the driver with it) rides the suspension.
  */
 export function Car({ animate }: Props) {
-  const body = useRef<Group>(null);
-  const wheels = useRef<Group[]>([]);
-  const geometry = useMemo(() => createCarBodyGeometry(), []);
-  useEffect(() => () => geometry.dispose(), [geometry]);
+  const { scene } = useGLTF(CAR_URL);
+  const ride = useRef<Group>(null);
+  const parts = useRef<{ wheels: Object3D[]; body?: Object3D }>({ wheels: [] });
+  const shadowUniforms = useMemo(
+    () => ({ uColor: { value: new Color(palette.night) }, uOpacity: { value: 0.7 } }),
+    [],
+  );
+
+  // Layout effect: the paint swap lands before the first frame renders.
+  useLayoutEffect(() => {
+    parts.current = {
+      wheels: WHEEL_NAMES.map((name) => scene.getObjectByName(name)).filter(
+        (o): o is Object3D => Boolean(o),
+      ),
+      body: scene.getObjectByName("body"),
+    };
+    scene.traverse((object) => {
+      if (!(object instanceof Mesh)) return;
+      // The source OBJ declares the material as glass (Tf 1), which glTF turns
+      // into full transmission and renders the car black. Use plain paint.
+      const source = object.material as MeshStandardMaterial;
+      object.material = new MeshStandardMaterial({
+        map: source.map,
+        color: new Color(1.15, 1.1, 1.2),
+        roughness: 0.4,
+        metalness: 0.2,
+      });
+      source.dispose();
+    });
+  }, [scene]);
 
   useFrame((state) => {
     if (!animate) return;
     const t = state.clock.elapsedTime;
-    const spin = drive.distance / CAR.wheelRadius;
-    for (const wheel of wheels.current) wheel.rotation.x = -spin;
-    if (body.current) {
-      body.current.position.y = Math.sin(t * 2.3) * 0.012 + Math.sin(t * 6.1) * 0.006;
-      body.current.rotation.z = Math.sin(t * 0.8) * 0.006;
-      body.current.rotation.x = Math.sin(t * 1.7) * 0.004;
+    // The model faces +z; it is rotated 180 degrees, so a positive spin rolls forward (-z).
+    const spin = drive.distance / WHEEL_RADIUS;
+    const { wheels, body } = parts.current;
+    // Per-frame mutation of scene objects is the R3F pattern; nothing here feeds React state.
+    // eslint-disable-next-line react-hooks/immutability
+    for (const wheel of wheels) wheel.rotation.x = spin;
+    if (ride.current) {
+      ride.current.position.y = Math.sin(t * 2.3) * 0.01 + Math.sin(t * 6.1) * 0.004;
+      ride.current.rotation.z = Math.sin(t * 0.8) * 0.004;
+      ride.current.rotation.x = Math.sin(t * 1.7) * 0.003;
+      if (body) body.position.y = ride.current.position.y / CAR_SCALE;
     }
   });
 
   return (
     <group position={[CAR_POSITION.x, CAR_POSITION.y, CAR_POSITION.z]}>
-      <group ref={body}>
-        <mesh geometry={geometry} castShadow={false}>
-          <meshStandardMaterial color={BODY_COLOR} roughness={0.42} metalness={0.3} />
-        </mesh>
-
-        {/* Cockpit well and seats. */}
-        <mesh position={[0, 0.84, 0.12]}>
-          <boxGeometry args={[1.45, 0.2, 0.9]} />
-          <meshStandardMaterial color={TRIM_COLOR} roughness={0.9} />
-        </mesh>
-        {[-0.4, 0.4].map((x) => (
-          <mesh key={x} position={[x, 1.02, 0.42]}>
-            <boxGeometry args={[0.46, 0.34, 0.16]} />
-            <meshStandardMaterial color="#2a1848" roughness={0.9} />
-          </mesh>
-        ))}
-
-        {/* Windshield. */}
-        <mesh position={[0, 1.14, -0.5]} rotation-x={-0.55}>
-          <planeGeometry args={[1.56, 0.5]} />
-          <meshStandardMaterial
-            color="#cdb6ff"
-            transparent
-            opacity={0.42}
-            roughness={0.1}
-            metalness={0.4}
-            side={2}
-          />
-        </mesh>
-
-        {/* Tail light bar and head lights. */}
-        <mesh position={[0, 0.82, 2.33]}>
-          <boxGeometry args={[1.62, 0.1, 0.05]} />
-          <meshBasicMaterial color={[2.2, 0.25, 0.35]} toneMapped={false} />
-        </mesh>
-        {[-0.62, 0.62].map((x) => (
-          <mesh key={x} position={[x, 0.52, -2.33]}>
-            <boxGeometry args={[0.36, 0.12, 0.05]} />
-            <meshBasicMaterial color={[2.0, 1.9, 1.6]} toneMapped={false} />
-          </mesh>
-        ))}
-
+      <primitive object={scene} scale={CAR_SCALE} rotation-y={Math.PI} />
+      <group ref={ride}>
         <Driver animate={animate} />
-
-        {/* Side mirrors. */}
-        {[-1.0, 1.0].map((x) => (
-          <mesh key={x} position={[x, 1.0, -0.3]}>
-            <boxGeometry args={[0.18, 0.1, 0.14]} />
-            <meshStandardMaterial color={BODY_COLOR} roughness={0.5} metalness={0.3} />
-          </mesh>
-        ))}
       </group>
-
-      {/* Wheels: tyre, rim and five spokes so the spin is visible. */}
-      {CAR.wheels.map(([x, z], i) => (
-        <group
-          key={`${x}-${z}`}
-          position={[x, CAR.wheelRadius, z]}
-          ref={(el) => {
-            if (el) wheels.current[i] = el;
-          }}
-        >
-          <mesh rotation-z={Math.PI / 2}>
-            <cylinderGeometry args={[CAR.wheelRadius, CAR.wheelRadius, CAR.wheelWidth, 20]} />
-            <meshStandardMaterial color={WHEEL_COLOR} roughness={0.95} />
-          </mesh>
-          <mesh rotation-z={Math.PI / 2}>
-            <cylinderGeometry args={[0.07, 0.07, CAR.wheelWidth + 0.04, 10]} />
-            <meshStandardMaterial color={HUB_COLOR} roughness={0.5} metalness={0.6} />
-          </mesh>
-          {Array.from({ length: 5 }, (_, s) => (
-            <mesh key={s} rotation-x={(s / 5) * Math.PI * 2}>
-              <boxGeometry args={[CAR.wheelWidth + 0.03, 0.46, 0.05]} />
-              <meshStandardMaterial color={HUB_COLOR} roughness={0.5} metalness={0.6} />
-            </mesh>
-          ))}
-        </group>
-      ))}
-
-      {/* Contact shadow. */}
-      <mesh rotation-x={-Math.PI / 2} position-y={0.12}>
-        <planeGeometry args={[3.2, 5.6]} />
-        <meshBasicMaterial color={palette.night} transparent opacity={0.45} depthWrite={false} />
+      {/* Soft contact shadow (radial, no hard rectangle). */}
+      <mesh rotation-x={-Math.PI / 2} position-y={0.12} renderOrder={2}>
+        <planeGeometry args={[3.0, 6.0]} />
+        <shaderMaterial
+          uniforms={shadowUniforms}
+          vertexShader={softDiscVertexShader}
+          fragmentShader={softDiscFragmentShader}
+          transparent
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
       </mesh>
     </group>
   );

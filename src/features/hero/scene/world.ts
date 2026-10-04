@@ -4,7 +4,8 @@ import { Vector3 } from "three";
 export const world = {
   /** Centred at the end of the avenue, low: a third of it below the horizon. */
   sun: { position: new Vector3(0, 14, -330), size: 130 },
-  sky: { position: new Vector3(0, 160, -600), width: 1600, height: 800 },
+  /** Sky dome radius; it follows the camera and stays inside the far plane. */
+  sky: { radius: 1200 },
   skyline: { zNear: -190, zFar: -290, halfWidth: 260 },
   ground: { size: 1100, center: new Vector3(0, 0, -200) },
   /** The causeway: long enough to reach the skyline from the car. */

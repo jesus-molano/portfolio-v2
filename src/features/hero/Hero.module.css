@@ -167,16 +167,6 @@
   text-shadow: 0 1px 2px rgba(40, 16, 80, 0.9);
 }
 
-/* Hard-cut flash between shots. */
-.flash {
-  position: absolute;
-  inset: 0;
-  z-index: var(--va-z-ui);
-  background: #05020c;
-  opacity: 0;
-  pointer-events: none;
-}
-
 /* Camera readout, top right under the language switch. */
 .hudCamera {
   position: absolute;
@@ -299,12 +289,12 @@
     opacity: 1;
   }
 
-  .bar,
-  .flash {
+  .bar {
     display: none;
   }
 
-  .hudRec {
+  .hudRec,
+  .hintLine {
     animation: none;
   }
 }

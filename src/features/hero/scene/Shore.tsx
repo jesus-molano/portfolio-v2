@@ -1,35 +1,28 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useLayoutEffect, useMemo, useRef } from "react";
-import {
-  Color,
-  type InstancedMesh,
-  Matrix4,
-  Quaternion,
-  type ShaderMaterial,
-  UniformsLib,
-  UniformsUtils,
-  Vector3,
-} from "three";
-import { palette } from "@/design/tokens";
+import { useMemo, useRef } from "react";
+import { Color, type ShaderMaterial, UniformsLib, UniformsUtils } from "three";
 import { sandFragmentShader, sandVertexShader } from "../shaders/sand";
+import { drive } from "./drive";
 import { world } from "./world";
 
 type Props = { animate: boolean };
 
-const SAND = "#e9c6a6";
-const WET_SAND = "#c99fa0";
-const FOAM = "#fff1e6";
-const WOOD = "#3b2452";
-const WOOD_DARK = "#2a1a3c";
+const SAND = "#ecc8a8";
+const WET_SAND = "#cf9ea4";
+const FOAM = "#fff3ea";
 
-/** Side beaches run from the curb out to the water. */
-const BEACH_WIDTH = 38;
-/** The city stands on a shore band with a promenade in front of it. */
-const CITY_SHORE = { zFrom: -160, zTo: -200, width: 620 };
-/** A wooden pier on the right, reaching into the water. */
-const PIER = { x0: 12, length: 52, width: 4.2, z: -48, deckY: 1.1 };
+/** Side beaches run from the curb out to the water, and end where the city starts. */
+export const BEACH = { inner: world.road.width / 2 + 0.6, width: 38, zEnd: -160 } as const;
+/** Approximate shoreline x on the side beaches (matches the sand shader). */
+export const SHORELINE_X = BEACH.inner + BEACH.width * 0.86;
+/**
+ * The city island: a narrow beach facing us, a seawall with a gap for the
+ * road, then paved ground under the skyline (which starts at z = -190).
+ */
+export const CITY = { beachFrom: -158, beachTo: -176, groundTo: -340, width: 720 } as const;
+const ROAD_GAP = world.road.width / 2 + 1.5;
 
 function useSandUniforms() {
   return useMemo(
@@ -38,6 +31,7 @@ function useSandUniforms() {
         UniformsLib.fog,
         {
           uTime: { value: 0 },
+          uDistance: { value: 0 },
           uSand: { value: new Color(SAND) },
           uWetSand: { value: new Color(WET_SAND) },
           uFoam: { value: new Color(FOAM) },
@@ -48,53 +42,33 @@ function useSandUniforms() {
 }
 
 /**
- * Land under everything that used to float: beaches on both shoulders of the
- * causeway, a shore and promenade under the skyline, and a pier with a hut.
+ * Land under everything: beaches on both sides of the road, and the city
+ * island with its own beach, seawall and paved ground. Beaches render after
+ * the opaque water (renderOrder 1); contact shadows after them (renderOrder 2).
  */
 export function Shore({ animate }: Props) {
   const left = useRef<ShaderMaterial>(null);
   const right = useRef<ShaderMaterial>(null);
-  const city = useRef<ShaderMaterial>(null);
-  const posts = useRef<InstancedMesh>(null);
-
   const leftUniforms = useSandUniforms();
   const rightUniforms = useSandUniforms();
   const cityUniforms = useSandUniforms();
 
-  const { width: roadWidth, zStart, zEnd } = world.road;
-  const roadLength = zStart - zEnd;
-  const roadCenterZ = (zStart + zEnd) / 2;
-  const beachInner = roadWidth / 2 + 0.6;
-
-  const pierPosts = useMemo(() => {
-    const list: Array<[number, number]> = [];
-    for (let x = PIER.x0 + 3; x < PIER.x0 + PIER.length; x += 6) {
-      list.push([x, PIER.z - PIER.width / 2 + 0.3]);
-      list.push([x, PIER.z + PIER.width / 2 - 0.3]);
-    }
-    return list;
-  }, []);
-
-  useLayoutEffect(() => {
-    const mesh = posts.current;
-    if (!mesh) return;
-    const matrix = new Matrix4();
-    const quaternion = new Quaternion();
-    const scale = new Vector3(1, 1, 1);
-    pierPosts.forEach(([x, z], i) => {
-      matrix.compose(new Vector3(x, PIER.deckY / 2 - 0.2, z), quaternion, scale);
-      mesh.setMatrixAt(i, matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-  }, [pierPosts]);
+  const beachLength = world.road.zStart - BEACH.zEnd;
+  const beachCenterZ = (world.road.zStart + BEACH.zEnd) / 2;
 
   useFrame((state) => {
     if (!animate) return;
     const t = state.clock.elapsedTime;
-    for (const ref of [left, right, city]) {
-      if (ref.current) ref.current.uniforms.uTime.value = t;
+    for (const ref of [left, right]) {
+      if (!ref.current) continue;
+      ref.current.uniforms.uTime.value = t;
+      ref.current.uniforms.uDistance.value = drive.distance;
     }
   });
+
+  const wallLength = CITY.width / 2 - ROAD_GAP;
+  const wallCenter = ROAD_GAP + wallLength / 2;
+  const groundDepth = CITY.beachTo - CITY.groundTo;
 
   return (
     <group>
@@ -102,9 +76,10 @@ export function Shore({ animate }: Props) {
       <mesh
         rotation-x={-Math.PI / 2}
         rotation-z={Math.PI}
-        position={[-(beachInner + BEACH_WIDTH / 2), 0.07, roadCenterZ]}
+        position={[-(BEACH.inner + BEACH.width / 2), 0.07, beachCenterZ]}
+        renderOrder={1}
       >
-        <planeGeometry args={[BEACH_WIDTH, roadLength]} />
+        <planeGeometry args={[BEACH.width, beachLength]} />
         <shaderMaterial
           ref={left}
           uniforms={leftUniforms}
@@ -114,8 +89,12 @@ export function Shore({ animate }: Props) {
           fog
         />
       </mesh>
-      <mesh rotation-x={-Math.PI / 2} position={[beachInner + BEACH_WIDTH / 2, 0.07, roadCenterZ]}>
-        <planeGeometry args={[BEACH_WIDTH, roadLength]} />
+      <mesh
+        rotation-x={-Math.PI / 2}
+        position={[BEACH.inner + BEACH.width / 2, 0.07, beachCenterZ]}
+        renderOrder={1}
+      >
+        <planeGeometry args={[BEACH.width, beachLength]} />
         <shaderMaterial
           ref={right}
           uniforms={rightUniforms}
@@ -126,15 +105,15 @@ export function Shore({ animate }: Props) {
         />
       </mesh>
 
-      {/* City shore: sand facing the water, promenade and seawall under the skyline. */}
+      {/* City beach, facing the water (u = 1 is the waterline, toward us). */}
       <mesh
         rotation-x={-Math.PI / 2}
         rotation-z={-Math.PI / 2}
-        position={[0, 0.07, (CITY_SHORE.zFrom + CITY_SHORE.zTo) / 2]}
+        position={[0, 0.065, (CITY.beachFrom + CITY.beachTo) / 2]}
+        renderOrder={1}
       >
-        <planeGeometry args={[CITY_SHORE.zFrom - CITY_SHORE.zTo, CITY_SHORE.width]} />
+        <planeGeometry args={[CITY.beachFrom - CITY.beachTo, CITY.width]} />
         <shaderMaterial
-          ref={city}
           uniforms={cityUniforms}
           vertexShader={sandVertexShader}
           fragmentShader={sandFragmentShader}
@@ -142,47 +121,32 @@ export function Shore({ animate }: Props) {
           fog
         />
       </mesh>
-      <mesh position={[0, 0.5, CITY_SHORE.zTo + 4]}>
-        <boxGeometry args={[CITY_SHORE.width, 1.0, 8]} />
-        <meshBasicMaterial color="#4b2f70" />
-      </mesh>
-      <mesh position={[0, 1.15, CITY_SHORE.zTo + 7.6]}>
-        <boxGeometry args={[CITY_SHORE.width, 0.3, 0.3]} />
-        <meshBasicMaterial color="#8c62b8" />
-      </mesh>
 
-      {/* Pier with posts and a hut at the end. */}
-      <mesh position={[PIER.x0 + PIER.length / 2, PIER.deckY, PIER.z]}>
-        <boxGeometry args={[PIER.length, 0.22, PIER.width]} />
-        <meshBasicMaterial color={WOOD} />
-      </mesh>
+      {/* Paved city ground under the skyline, split so the avenue stays visible. */}
       {[-1, 1].map((side) => (
         <mesh
-          key={side}
-          position={[PIER.x0 + PIER.length / 2, PIER.deckY + 0.5, PIER.z + (side * PIER.width) / 2]}
+          key={`ground${side}`}
+          rotation-x={-Math.PI / 2}
+          position={[side * wallCenter, 0.3, CITY.beachTo - groundDepth / 2]}
         >
-          <boxGeometry args={[PIER.length, 0.08, 0.08]} />
-          <meshBasicMaterial color={WOOD_DARK} />
+          <planeGeometry args={[wallLength, groundDepth]} />
+          <meshBasicMaterial color="#8d6fa8" />
         </mesh>
       ))}
-      <instancedMesh ref={posts} args={[undefined, undefined, pierPosts.length]} frustumCulled={false}>
-        <cylinderGeometry args={[0.16, 0.2, PIER.deckY + 0.4, 6]} />
-        <meshBasicMaterial color={WOOD_DARK} />
-      </instancedMesh>
-      <group position={[PIER.x0 + PIER.length - 3, PIER.deckY + 0.11, PIER.z]}>
-        <mesh position-y={1.3}>
-          <boxGeometry args={[4.2, 2.6, 3.4]} />
-          <meshBasicMaterial color={palette.ink} />
-        </mesh>
-        <mesh position-y={2.9} rotation-y={Math.PI / 4}>
-          <coneGeometry args={[3.4, 1.4, 4]} />
-          <meshBasicMaterial color={WOOD_DARK} />
-        </mesh>
-        <mesh position={[0, 1.4, -1.72]}>
-          <planeGeometry args={[1.2, 0.9]} />
-          <meshBasicMaterial color={[1.6, 1.3, 0.9]} toneMapped={false} />
-        </mesh>
-      </group>
+
+      {/* Seawall with a promenade rail, split by the road. */}
+      {[-1, 1].map((side) => (
+        <group key={side} position={[side * wallCenter, 0, CITY.beachTo - 1.5]}>
+          <mesh position-y={0.2}>
+            <boxGeometry args={[wallLength, 0.8, 3]} />
+            <meshBasicMaterial color="#6b4a8f" />
+          </mesh>
+          <mesh position={[0, 0.85, 1.4]}>
+            <boxGeometry args={[wallLength, 0.08, 0.08]} />
+            <meshBasicMaterial color="#d8c4ea" />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 }

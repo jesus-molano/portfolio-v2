@@ -26,9 +26,9 @@
       "Yeah… here we go again.",
       "Who's the guy at the wheel? Jesús. Frontend engineer. Vue and Nuxt by heart, Next when the job asks for it.",
       "Plot twist? He used to be a soldier. Now he's a code-slinging nerd who lets the AI do all the work. Allegedly.",
-      "And when he's not shipping? He runs until the playlist ends. Loud music, long roads.",
-      "Films and games, the kind you still quote years later. And he still pulls over for a good sunset. This one, for instance.",
-      "Linux at home, dotfiles in public, sins included. Enough talking. Let me show you the city."
+      "Favourite film? The Godfather. Favourite series? The Sopranos. Code reviews? He makes you an offer you can't refuse.",
+      "Music? The same playlist since he was sixteen. He calls it backwards compatibility.",
+      "Where are we headed? The city. Every building is one of his projects. Some of them are even finished."
     ]
   },
   "teaser": {
@@ -36,7 +36,14 @@
     "heading": "The city is still loading",
     "body": "Phase 2 turns each of my GitHub projects into a neon district you can fly into.",
     "github": "See my code on GitHub",
-    "newTab": "(opens in a new tab)"
+    "newTab": "(opens in a new tab)",
+    "credits": {
+      "label": "3D assets:",
+      "car": "“Convertible” by Poly by Google",
+      "license": "CC BY 3.0",
+      "modified": "modified",
+      "others": "characters and traffic by Quaternius (CC0) · palms by Kenney (CC0)."
+    }
   },
   "notFound": {
     "heading": "Wrong exit",

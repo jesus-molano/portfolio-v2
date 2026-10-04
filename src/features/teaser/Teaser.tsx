@@ -21,6 +21,15 @@ export function Teaser({ dict }: Props) {
         {dict.github}
         <span className="sr-only"> {dict.newTab}</span>
       </a>
+      {/* CC BY 3.0 asks for the source, the licence and a note of changes. */}
+      <p className={styles.credits}>
+        {dict.credits.label}{" "}
+        <a href="https://poly.pizza/m/dggOiBLYyuR">{dict.credits.car}</a>,{" "}
+        <a href="https://creativecommons.org/licenses/by/3.0/" rel="license">
+          {dict.credits.license}
+        </a>
+        , {dict.credits.modified} · {dict.credits.others}
+      </p>
     </section>
   );
 }

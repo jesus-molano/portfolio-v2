@@ -3,7 +3,13 @@ import { CAR_POSITION } from "./drive";
 
 /**
  * The hero is a four-shot sequence cut on scroll, like a mission intro.
- * Offsets are relative to the car. `look` is where the camera aims.
+ * Offsets are relative to the car (front is -z, driver side is -x).
+ * `look` is where the camera aims.
+ *
+ * Framing rules that keep the edit clean:
+ * - no camera sits in a lane with traffic (traffic uses the outer lanes);
+ * - no camera is closer than ~8 m to the palm rows, so no dark trunk
+ *   strobes across the lens.
  */
 export type Shot = {
   id: "rear" | "tracking" | "low" | "crane";
@@ -13,23 +19,28 @@ export type Shot = {
 
 export const SHOTS: Shot[] = [
   {
+    // Chase cam, high three-quarter from behind on the driver side, so no
+    // seat stands between the lens and the driver.
     id: "rear",
-    from: { position: new Vector3(2.6, 1.7, 9.5), look: new Vector3(-0.4, 0.9, -12), fov: 50 },
-    to: { position: new Vector3(1.9, 2.2, 7.6), look: new Vector3(-0.3, 1.0, -16), fov: 48 },
+    from: { position: new Vector3(-1.9, 2.2, 10.2), look: new Vector3(0.7, 0.9, -14), fov: 48 },
+    to: { position: new Vector3(-1.3, 2.6, 8.4), look: new Vector3(0.5, 1.0, -18), fov: 46 },
   },
   {
+    // Side tracking on the driver side, from the empty inner lane.
     id: "tracking",
-    from: { position: new Vector3(-6.4, 1.0, 2.6), look: new Vector3(0, 0.9, -0.4), fov: 46 },
-    to: { position: new Vector3(-5.6, 1.4, -1.6), look: new Vector3(0, 0.9, -1.4), fov: 44 },
+    from: { position: new Vector3(-5.2, 1.25, 2.6), look: new Vector3(0, 0.95, -0.2), fov: 50 },
+    to: { position: new Vector3(-4.7, 1.55, -1.8), look: new Vector3(0, 1.0, -1.4), fov: 48 },
   },
   {
+    // Low angle by the rear wheel, along the flank toward the driver and the sky.
     id: "low",
-    from: { position: new Vector3(2.2, 0.34, 2.9), look: new Vector3(0.2, 1.5, -5), fov: 68 },
-    to: { position: new Vector3(1.7, 0.55, 2.3), look: new Vector3(-0.3, 2.4, -8), fov: 64 },
+    from: { position: new Vector3(-1.9, 0.42, 3.1), look: new Vector3(0.1, 1.5, -5), fov: 64 },
+    to: { position: new Vector3(-1.6, 0.6, 2.4), look: new Vector3(0.4, 2.3, -8), fov: 60 },
   },
   {
+    // Crane: rises over the car and reveals the island and the city.
     id: "crane",
-    from: { position: new Vector3(-2.6, 2.2, 6.8), look: new Vector3(0, 1.0, -10), fov: 50 },
+    from: { position: new Vector3(-2.6, 2.4, 7.2), look: new Vector3(0, 1.0, -10), fov: 50 },
     to: { position: new Vector3(-1.0, 24, 34), look: new Vector3(0, 3, -70), fov: 44 },
   },
 ];

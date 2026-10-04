@@ -1,42 +1,52 @@
 "use client";
 
 import { Stars } from "@react-three/drei";
-import { useMemo } from "react";
-import { Color, Vector2 } from "three";
+import { useFrame } from "@react-three/fiber";
+import { useMemo, useRef } from "react";
+import { BackSide, Color, type Mesh } from "three";
 import { skyFragmentShader, skyVertexShader } from "../shaders/sky";
 import type { QualityTier } from "../useQualityTier";
 import { world } from "./world";
 
 type Props = { tier: QualityTier; animate: boolean };
 
-/** Gradient backdrop with a warm glow around the sun, plus a star field. */
+/**
+ * Sky dome centred on the camera, with a direction-based afterglow gradient
+ * and a warm glow around the sun, plus a star field. A dome instead of a flat
+ * backdrop: side shots never see an edge.
+ */
 export function Sky({ tier, animate }: Props) {
-  const { position, width, height } = world.sky;
+  const dome = useRef<Mesh>(null);
 
-  const uniforms = useMemo(() => {
-    // Sun position projected onto the sky plane, in plane UV space.
-    const sunUv = new Vector2(
-      0.5 + (world.sun.position.x - position.x) / width,
-      0.5 + (world.sun.position.y - position.y) / height,
-    );
-    return {
+  const uniforms = useMemo(
+    () => ({
       // Afterglow ramp: peach at the horizon, pink, then lavender.
       uTop: { value: new Color("#7257cc") },
       uMiddle: { value: new Color("#e49bcd") },
       uHorizon: { value: new Color("#ffcaa0") },
+      // Away from the sun the same ramp turns cooler.
+      uAwayMiddle: { value: new Color("#b58ad6") },
+      uAwayHorizon: { value: new Color("#dca3cf") },
       uGlow: { value: new Color("#ffe2b8") },
-      uSunUv: { value: sunUv },
-    };
-  }, [position, width, height]);
+      uSunPosition: { value: world.sun.position.clone() },
+    }),
+    [],
+  );
+
+  // CameraRig is mounted first, so the camera already holds this frame's pose.
+  useFrame(({ camera }) => {
+    dome.current?.position.copy(camera.position);
+  });
 
   return (
     <group>
-      <mesh position={position} renderOrder={-2}>
-        <planeGeometry args={[width, height]} />
+      <mesh ref={dome} renderOrder={-2} frustumCulled={false}>
+        <sphereGeometry args={[world.sky.radius, 48, 24]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={skyVertexShader}
           fragmentShader={skyFragmentShader}
+          side={BackSide}
           depthWrite={false}
           fog={false}
         />
