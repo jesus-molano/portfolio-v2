@@ -17,7 +17,9 @@ const CAR_MODELS = [
   "/models/quaternius-cars/Taxi.glb",
   "/models/quaternius-cars/SUV.glb",
 ] as const;
-CAR_MODELS.forEach((url) => useGLTF.preload(url));
+// Preload with the same array the component loads: the loader cache is keyed
+// by the whole input, so per-URL preloads fetched and parsed every car twice.
+useGLTF.preload([...CAR_MODELS]);
 
 /** Real cars in the outer lanes: same-direction traffic and oncoming cars. */
 export function Traffic({ animate, perLane = 3 }: Props) {
