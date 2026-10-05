@@ -1,0 +1,441 @@
+/*
+ * Station logos (StationLogo.tsx). Every colour is a token: the `radio`
+ * group (--va-radio-*) and the palette (--va-color-*); every face is a
+ * `radioFonts` token (--va-font-radio-*).
+ */
+
+.logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.logo text {
+  /* The badge is a picture: no text selection or I-beam inside it. */
+  user-select: none;
+}
+
+/* K-CALIMA 87.9: a seventies call-sign over the calima haze at sunset. */
+.calimaSky0 {
+  stop-color: var(--va-color-dusk);
+}
+
+.calimaSky1 {
+  stop-color: var(--va-color-pink);
+}
+
+.calimaSky2 {
+  stop-color: var(--va-radio-calima);
+}
+
+.calimaSky3 {
+  stop-color: var(--va-color-amber);
+}
+
+.calimaSun0 {
+  stop-color: var(--va-color-amber);
+  stop-opacity: 0.85;
+}
+
+.calimaSun1 {
+  stop-color: var(--va-color-amber);
+  stop-opacity: 0;
+}
+
+.calimaHaze,
+.calimaHazeFar {
+  fill: none;
+  stroke: var(--va-color-cream);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.calimaHazeFar {
+  opacity: 0.32;
+}
+
+.calimaCall,
+.calimaShadow {
+  font-family: var(--va-font-radio-seventies);
+  font-size: 15.5px;
+  letter-spacing: 0.4px;
+}
+
+.calimaCall {
+  fill: var(--va-color-cream);
+}
+
+.calimaShadow {
+  fill: var(--va-color-ink);
+}
+
+.calimaPill {
+  fill: var(--va-color-ink);
+}
+
+.calimaFreq {
+  font-family: var(--va-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  fill: var(--va-color-amber);
+}
+
+/* CROCKETT 91.4: chrome italic, pink and teal speed stripes, Miami night. */
+.crockettNight0 {
+  stop-color: var(--va-radio-crockett-night);
+}
+
+.crockettNight1 {
+  stop-color: color-mix(in srgb, var(--va-color-dusk) 55%, var(--va-radio-crockett-night));
+}
+
+/* Chrome: bright sky above a hard horizon, a warm reflection below. */
+.chrome0 {
+  stop-color: var(--va-color-cream);
+}
+
+.chrome1 {
+  stop-color: var(--va-radio-crockett-chrome);
+}
+
+.chrome2 {
+  stop-color: var(--va-radio-crockett-horizon);
+}
+
+.chrome3 {
+  stop-color: var(--va-color-pink);
+}
+
+.chrome4 {
+  stop-color: var(--va-color-cream);
+}
+
+.crockettChrome,
+.crockettShadow {
+  font-family: var(--va-font-radio-chrome);
+  font-size: 19px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+}
+
+.crockettChrome {
+  stroke: var(--va-radio-crockett-night);
+  stroke-width: 0.9;
+  paint-order: stroke;
+}
+
+.crockettShadow {
+  fill: var(--va-color-magenta);
+}
+
+.stripePink {
+  fill: var(--va-color-magenta);
+}
+
+.stripeHot {
+  fill: var(--va-color-pink);
+}
+
+.stripeTeal {
+  fill: var(--va-radio-crockett);
+}
+
+.stripeTealPale {
+  fill: color-mix(in srgb, var(--va-radio-crockett) 55%, var(--va-color-cream));
+}
+
+.crockettSpark {
+  fill: var(--va-color-cream);
+}
+
+.crockettFreq {
+  font-family: var(--va-font-radio-chrome);
+  font-size: 9px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  fill: var(--va-radio-crockett);
+}
+
+/* MR. WOLF 94.7: black tux, white serif, a bow tie. */
+.wolfTux {
+  fill: var(--va-radio-wolf-tux);
+}
+
+.wolfRing {
+  fill: none;
+  stroke: var(--va-radio-wolf);
+  stroke-width: 0.7;
+  opacity: 0.5;
+}
+
+.wolfRule {
+  stroke: var(--va-radio-wolf);
+  stroke-width: 0.7;
+}
+
+.wolfName {
+  font-family: var(--va-font-radio-tux);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  fill: var(--va-radio-wolf);
+}
+
+.wolfSatin {
+  fill: var(--va-radio-wolf-satin);
+}
+
+.wolfLapel {
+  fill: none;
+  stroke: color-mix(in srgb, var(--va-radio-wolf) 35%, transparent);
+  stroke-width: 0.8;
+}
+
+.wolfShirt {
+  fill: var(--va-radio-wolf);
+}
+
+.wolfStud {
+  fill: var(--va-radio-wolf-tux);
+}
+
+/* LEAVE THE GUN 99.2: deli paper, red script, green trim, a cannoli. */
+.gunPaper {
+  fill: var(--va-radio-gun-paper);
+}
+
+.gunRingGreen,
+.gunRingRed {
+  fill: none;
+  stroke-width: 2.4;
+}
+
+.gunRingGreen {
+  stroke: var(--va-radio-gun);
+}
+
+.gunRingRed {
+  stroke: var(--va-radio-gun-red);
+  stroke-width: 1.2;
+}
+
+.gunScript,
+.gunScriptBig {
+  font-family: var(--va-font-radio-deli);
+  fill: var(--va-radio-gun-red);
+}
+
+.gunScript {
+  font-size: 17px;
+}
+
+.gunScriptBig {
+  font-size: 25px;
+}
+
+.gunShell {
+  fill: var(--va-radio-gun-shell);
+}
+
+.gunRidge {
+  fill: none;
+  stroke: color-mix(in srgb, var(--va-radio-gun-shell) 45%, var(--va-radio-gun-crust));
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+.gunCream {
+  fill: var(--va-radio-gun-paper);
+  stroke: color-mix(in srgb, var(--va-radio-gun-shell) 45%, var(--va-radio-gun-crust));
+  stroke-width: 1;
+}
+
+.gunPistachio {
+  fill: var(--va-radio-gun);
+}
+
+
+/* LOVE DADDY 102.5: brick wall, yellow block letters, a boombox. */
+.daddyBrick {
+  fill: var(--va-radio-daddy-brick);
+}
+
+.daddyMortar {
+  fill: none;
+  stroke: var(--va-radio-daddy-mortar);
+  stroke-width: 1.1;
+}
+
+.daddyLetters,
+.daddyBlock {
+  font-family: var(--va-font-radio-hiphop);
+  font-size: 17px;
+  letter-spacing: 0.4px;
+}
+
+.daddyLetters {
+  fill: var(--va-radio-daddy);
+  stroke: var(--va-radio-daddy-box);
+  stroke-width: 1.2;
+  paint-order: stroke;
+}
+
+/* The block shadow under the letters. */
+.daddyBlock {
+  fill: var(--va-radio-daddy-box);
+  stroke: var(--va-radio-daddy-box);
+  stroke-width: 1.2;
+}
+
+.daddyHandle {
+  fill: none;
+  stroke: var(--va-radio-daddy-box);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.daddyBox {
+  fill: var(--va-radio-daddy-box);
+}
+
+.daddySpeaker {
+  fill: color-mix(in srgb, var(--va-radio-daddy-box) 70%, var(--va-radio-daddy-brick));
+  stroke: var(--va-radio-daddy);
+  stroke-width: 2;
+}
+
+.daddyCone {
+  fill: var(--va-radio-daddy);
+}
+
+.daddyDeck {
+  fill: color-mix(in srgb, var(--va-radio-daddy-box) 55%, var(--va-color-cream));
+}
+
+.daddyReel {
+  fill: var(--va-radio-daddy-box);
+}
+
+.daddyFreq {
+  font-family: var(--va-font-mono);
+  font-size: 5.6px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  fill: var(--va-radio-daddy);
+}
+
+/* BABYLON 105.1: a mirror ball, pink deco neon, gold rules. */
+.babylonNight {
+  fill: var(--va-radio-babylon-night);
+}
+
+.babylonHaze0 {
+  stop-color: var(--va-radio-babylon);
+  stop-opacity: 0.4;
+}
+
+.babylonHaze1 {
+  stop-color: var(--va-radio-babylon);
+  stop-opacity: 0;
+}
+
+.babylonRays {
+  fill: none;
+  stroke: var(--va-radio-babylon-gold);
+  stroke-width: 0.7;
+  opacity: 0.5;
+}
+
+.babylonCord {
+  stroke: var(--va-radio-babylon-gold);
+  stroke-width: 0.8;
+}
+
+.ball0 {
+  stop-color: var(--va-color-cream);
+}
+
+.ball1 {
+  stop-color: var(--va-color-lilac);
+}
+
+.ball2 {
+  stop-color: var(--va-radio-babylon-night);
+}
+
+.ballFacets {
+  fill: none;
+  stroke: var(--va-radio-babylon-night);
+  stroke-width: 0.6;
+  opacity: 0.55;
+}
+
+.ballGlints {
+  fill: var(--va-color-cream);
+}
+
+.ballGlints rect:nth-child(2) {
+  fill: var(--va-color-pink);
+}
+
+.ballGlints rect:nth-child(3) {
+  fill: var(--va-color-cyan);
+  opacity: 0.8;
+}
+
+.babylonSpark {
+  fill: var(--va-radio-babylon-gold);
+}
+
+.babylonRule {
+  fill: none;
+  stroke: var(--va-radio-babylon-gold);
+  stroke-width: 1;
+}
+
+.babylonDiamond {
+  fill: var(--va-radio-babylon-gold);
+}
+
+.babylonTube,
+.babylonGlow {
+  font-family: var(--va-font-radio-deco);
+  font-size: 15px;
+  letter-spacing: 0.6px;
+}
+
+/* The tube: pale hot core, the pink glow under it. */
+.babylonTube {
+  fill: color-mix(in srgb, var(--va-radio-babylon) 35%, var(--va-color-cream));
+}
+
+.babylonGlow {
+  fill: var(--va-radio-babylon);
+  stroke: var(--va-radio-babylon);
+  stroke-width: 2.5;
+}
+
+/* Radio off: a plain power symbol. */
+.offGround {
+  fill: var(--va-color-ink);
+}
+
+.offRing {
+  fill: none;
+  stroke: var(--va-radio-off);
+  stroke-width: 0.7;
+  opacity: 0.4;
+}
+
+/* --logo-lit: set by the wheel on the selected badge. */
+.offSymbol {
+  fill: none;
+  stroke: var(--logo-lit, var(--va-radio-off));
+  stroke-width: 5;
+  stroke-linecap: round;
+}

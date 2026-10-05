@@ -1,0 +1,456 @@
+/*
+ * The Afterglow (Projects.tsx). The cinema is a container as wide as its
+ * plate, so every part placed on the plate scales with it (cqw). On wide
+ * screens the poster cases hang on the plate and their captions form the
+ * bill under it; on portrait screens the cases leave the plate and hang in
+ * a list beside their captions.
+ */
+
+.projects {
+  position: relative;
+  z-index: var(--va-z-title);
+  padding-bottom: clamp(3rem, 7vw, 6rem);
+  background: var(--va-color-night);
+  overflow: clip;
+}
+
+.cinema {
+  position: relative;
+  container-type: inline-size;
+  /* Never taller than the screen: wider screens letterbox it on night (its edges fade to night). */
+  width: min(100%, 177.78svh);
+  margin-inline: auto;
+}
+
+.plate {
+  display: block;
+  aspect-ratio: 16 / 9;
+}
+
+.plate img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.strips {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Jesús' line, in the hero's subtitle style, standing on the terrazzo. */
+.line {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--line-y) * 1cqw);
+  translate: -50% -50%;
+  padding: 0.4em 1em;
+  border-radius: 4px;
+  background: var(--va-finale-card);
+  color: var(--va-color-cream);
+  font: 500 clamp(0.82rem, 1.3cqw, 1.2rem) / 1.35 var(--va-font-body);
+  white-space: nowrap;
+}
+
+.speaker {
+  color: var(--va-color-pink);
+  font-weight: 700;
+}
+
+/* The bill: the four captions, two under each pair of cases, the entrance between them. */
+.bill {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 0.7fr) repeat(2, minmax(0, 1fr));
+  column-gap: 2.2cqw;
+  margin: 0;
+  padding: 1.6cqw 6cqw 0;
+  list-style: none;
+}
+
+.feature:nth-child(3) {
+  grid-column: 4;
+}
+
+.link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  /* A jump to #project-<slug> lands on the caption: keep its case on the facade in view above it. */
+  scroll-margin-top: 24cqw;
+}
+
+.link:hover {
+  color: inherit;
+}
+
+
+.link:focus-visible {
+  outline: none;
+}
+
+.link:focus-visible .label {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 6px;
+  border-radius: 2px;
+}
+
+/* --- the case, on the plate ------------------------------------------------ */
+
+.case {
+  position: absolute;
+  left: calc(var(--x) * 1cqw);
+  top: calc(var(--y) * 1cqw);
+  width: calc(var(--w) * 1cqw);
+  height: calc(var(--h) * 1cqw);
+}
+
+/* Its light on the wet terrazzo, brighter when it burns. */
+.pool {
+  position: absolute;
+  left: calc((var(--pool-x) - var(--x)) * 1cqw);
+  top: calc((var(--pool-y) - var(--y)) * 1cqw);
+  width: calc(var(--pool-w) * 1cqw);
+  height: calc(var(--pool-h) * 1cqw);
+  background: radial-gradient(closest-side, var(--va-finale-pool), var(--va-finale-pool-edge));
+  opacity: 0;
+  mix-blend-mode: screen;
+  transition: opacity 260ms ease;
+}
+
+/* Chrome frame, black backing, then the poster behind glass. */
+.frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 5% / 3.7%;
+  background: linear-gradient(
+    90deg,
+    var(--va-finale-chrome-deep),
+    var(--va-finale-chrome-light) 35%,
+    var(--va-finale-chrome-mid) 60%,
+    var(--va-finale-chrome-dark)
+  );
+  transition:
+    box-shadow 260ms ease,
+    outline-color 160ms ease;
+}
+
+.frame::before {
+  content: "";
+  position: absolute;
+  inset: 4% 6%;
+  border-radius: 2%;
+  background: var(--va-finale-case-back);
+}
+
+.glass {
+  position: absolute;
+  left: calc(var(--poster-x) * 1%);
+  top: calc(var(--poster-y) * 1%);
+  width: calc(var(--poster-w) * 1%);
+  height: calc(var(--poster-h) * 1%);
+  overflow: hidden;
+  transition:
+    transform 260ms ease,
+    filter 260ms ease;
+}
+
+.poster,
+.hot {
+  position: absolute;
+  inset: 0;
+}
+
+.poster img,
+.hot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The poster's lit state (its prop in action), shown when the case burns. */
+.hot {
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(104deg, var(--va-finale-glass-sheen) 0 31%, transparent 31.5% 38%, var(--va-finale-glass-sheen) 38.5% 42%, transparent 42.5%);
+}
+
+/*
+ * 34 bulbs round the frame: steady at rest, a three-step chase when the
+ * case burns. A bulb lights once every 360 ms, under three flashes a
+ * second (WCAG 2.3.1).
+ */
+.bulb {
+  position: absolute;
+  left: calc(var(--bx) * 1%);
+  top: calc(var(--by) * 1%);
+  width: 12%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--va-finale-bulb) 0 15%,
+    var(--va-finale-bulb-halo) 27%,
+    var(--va-finale-bulb-halo-edge) 68%
+  );
+  opacity: 0.72;
+}
+
+@keyframes chase {
+  0% {
+    opacity: 1;
+    scale: 1.25;
+  }
+  33.333% {
+    opacity: 0.42;
+    scale: 1;
+  }
+}
+
+/*
+ * A case burns while the keyboard focuses it, or while a mouse hovers it
+ * (only where a pointer can hover: a tap on a phone opens the link and must
+ * not leave the case stuck lit). The two blocks below say the same thing.
+ */
+.link:focus-visible .bulb {
+  opacity: 0.42;
+  animation: chase 360ms step-end infinite;
+  animation-delay: calc((var(--phase) - 3) * 120ms);
+}
+
+.link:focus-visible .frame {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 0.7cqw;
+  box-shadow:
+    0 0 0 0.22cqw var(--va-color-magenta),
+    0 0 1.6cqw 0.3cqw var(--va-finale-hot-glow),
+    0 0 5cqw 1cqw var(--va-finale-hot-halo);
+}
+
+.link:focus-visible .glass {
+  transform: translateY(-4px);
+  filter: brightness(1.15);
+}
+
+.link:focus-visible .hot,
+.link:focus-visible .pool {
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  .link:hover .bulb {
+    opacity: 0.42;
+    animation: chase 360ms step-end infinite;
+    animation-delay: calc((var(--phase) - 3) * 120ms);
+  }
+
+  .link:hover .frame {
+    box-shadow:
+      0 0 0 0.22cqw var(--va-color-magenta),
+      0 0 1.6cqw 0.3cqw var(--va-finale-hot-glow),
+      0 0 5cqw 1cqw var(--va-finale-hot-halo);
+  }
+
+  .link:hover .glass {
+    transform: translateY(-4px);
+    filter: brightness(1.15);
+  }
+
+  .link:hover .hot,
+  .link:hover .pool {
+    opacity: 1;
+  }
+
+  .link:hover .cta {
+    color: var(--va-color-cream);
+  }
+
+  .link:hover .arrow {
+    translate: 2px -2px;
+  }
+}
+
+/* --- the caption ------------------------------------------------------------ */
+
+.label {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+}
+
+.genre {
+  font: 600 0.62rem / 1.2 var(--va-font-mono);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--va-color-sodium);
+}
+
+.repo {
+  font: 700 clamp(0.92rem, 1.25cqw, 1.2rem) / 1.15 var(--va-font-mono);
+  color: var(--va-color-cream);
+  overflow-wrap: anywhere;
+}
+
+.about {
+  font-size: clamp(0.76rem, 0.95cqw, 0.9rem);
+  line-height: 1.5;
+  color: var(--va-color-text-muted);
+}
+
+.cta {
+  margin-top: 0.15rem;
+  font: 600 0.7rem / 1.2 var(--va-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--va-color-pink);
+}
+
+.arrow {
+  display: inline-block;
+  transition: translate 200ms ease;
+}
+
+.link:focus-visible .cta {
+  color: var(--va-color-cream);
+}
+
+.link:focus-visible .arrow {
+  translate: 2px -2px;
+}
+
+/* --- portrait screens: the cases hang in a list on the vitrolite ------------- */
+
+@media (max-aspect-ratio: 5/6), (max-width: 640px) {
+  .cinema {
+    width: 100%;
+    background: linear-gradient(var(--va-finale-vitrolite), var(--va-finale-vitrolite-deep) 85%, var(--va-color-night));
+  }
+
+  .plate {
+    aspect-ratio: 390 / 440;
+  }
+
+  .line {
+    position: relative;
+    left: auto;
+    top: auto;
+    translate: none;
+    width: fit-content;
+    max-width: calc(100% - 2rem);
+    margin: 0.5rem auto 0;
+    font-size: clamp(0.9rem, 3.6vw, 1.1rem);
+    white-space: normal;
+    text-align: center;
+  }
+
+  .bill {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    max-width: 44rem;
+    margin-inline: auto;
+    padding: 2rem 1.25rem 0;
+  }
+
+  .feature:nth-child(3) {
+    grid-column: auto;
+  }
+
+  .link {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 1.25rem;
+    scroll-margin-top: 1.5rem;
+  }
+
+  .case {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1.75 / 2.36;
+  }
+
+  .pool {
+    display: none;
+  }
+
+  /* Fixed glow sizes: the case is large here. */
+  .link:focus-visible .frame {
+    outline-offset: 8px;
+    box-shadow:
+      0 0 0 3px var(--va-color-magenta),
+      0 0 18px 4px var(--va-finale-hot-glow),
+      0 0 48px 10px var(--va-finale-hot-halo);
+  }
+
+  @media (hover: hover) {
+    .link:hover .frame {
+      box-shadow:
+        0 0 0 3px var(--va-color-magenta),
+        0 0 18px 4px var(--va-finale-hot-glow),
+        0 0 48px 10px var(--va-finale-hot-halo);
+    }
+  }
+
+  .repo {
+    font-size: 1.05rem;
+  }
+
+  .about {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-aspect-ratio: 5/6) and (min-width: 600px) {
+  .bill {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 2rem;
+  }
+
+  .link {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .case {
+    width: min(100%, 15rem);
+    margin-inline: auto;
+  }
+}
+
+/* No hover on touch: the lit poster is never shown, so it is never fetched (lazy images inside display: none). */
+@media (hover: none) {
+  .hot {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link:hover .bulb,
+  .link:focus-visible .bulb {
+    animation: none;
+    opacity: 1;
+  }
+
+  .frame,
+  .glass,
+  .hot,
+  .pool,
+  .arrow {
+    transition: none;
+  }
+
+  .link:hover .glass,
+  .link:focus-visible .glass {
+    transform: none;
+  }
+}

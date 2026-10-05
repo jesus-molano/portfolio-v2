@@ -1,0 +1,151 @@
+/*
+ * The cinema's changeable letters and bulb strips, placed on a plate in cqw
+ * of the nearest container as wide as the plate (finaleLayout.ts). Wide
+ * plates use --w-*, tall plates (portrait screens) --t-*.
+ */
+
+.marquee {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* One row of letters on its rail: one em tall, the baseline at 0.8 em. */
+.row {
+  position: absolute;
+  left: calc(var(--w-x) * 1cqw);
+  top: calc(var(--w-y) * 1cqw);
+  width: calc(var(--w-w) * 1cqw);
+  height: 1em;
+  display: flex;
+  justify-content: center;
+  gap: 0.08em;
+  font-family: var(--va-font-marquee);
+  font-size: calc(var(--w-fs) * 1cqw);
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--va-finale-letter-ink);
+  user-select: none;
+}
+
+/* A letter on its own clear tile, hung a hair crooked. */
+.tile {
+  position: relative;
+  display: block;
+  flex: none;
+  width: calc(var(--adv) * 1em);
+  text-align: center;
+  transform: translateY(calc(var(--drop) * 1em)) rotate(var(--tilt));
+  transform-origin: 50% 0.1em;
+}
+
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0.03em -0.035em 0.13em;
+  background: var(--va-finale-tile-face);
+  box-shadow: inset 0 0 0 max(1px, 0.012em) var(--va-finale-tile-edge);
+}
+
+.tile[data-blank]::before {
+  display: none;
+}
+
+/* Letter kits carry no accents: a strip of black tape does the job. */
+.tile[data-tape]::after {
+  content: "";
+  position: absolute;
+  left: 42%;
+  top: 0.005em;
+  width: 0.2em;
+  height: 0.055em;
+  background: var(--va-finale-letter-ink);
+  transform: rotate(-24deg);
+}
+
+/* A letter just hung drops into the rail with a small swing, one slot after another. */
+.tile[data-fresh] {
+  animation: hang 460ms cubic-bezier(0.3, 1.45, 0.55, 1) both;
+  animation-delay: calc(var(--slot) * 40ms);
+}
+
+@keyframes hang {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5em) rotate(calc(var(--tilt) * 7 + 6deg));
+  }
+  45% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(calc(var(--drop) * 1em)) rotate(var(--tilt));
+  }
+}
+
+/* The strips of bulbs along the marquee's edges: one in four lit, chasing slowly. */
+.strip {
+  position: absolute;
+  left: calc(var(--w-x) * 1cqw);
+  top: calc(var(--w-y) * 1cqw);
+  width: calc(var(--w-w) * 1cqw);
+  height: 0;
+  --r: var(--w-r);
+}
+
+.stripBulb {
+  position: absolute;
+  left: calc(var(--at) * 1%);
+  top: 0;
+  width: calc(var(--r) * 6.4cqw);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--va-finale-bulb) 0 15%,
+    var(--va-finale-bulb-halo) 27%,
+    var(--va-finale-bulb-halo-edge) 68%
+  );
+  opacity: 0.62;
+  animation: strip-chase 1.6s step-end infinite;
+  animation-delay: calc((var(--phase) - 4) * 0.4s);
+}
+
+@keyframes strip-chase {
+  0% {
+    opacity: 1;
+    scale: 1.15;
+  }
+  25% {
+    opacity: 0.62;
+    scale: 1;
+  }
+}
+
+@media (max-aspect-ratio: 5/6), (max-width: 640px) {
+  .row {
+    left: calc(var(--t-x) * 1cqw);
+    top: calc(var(--t-y) * 1cqw);
+    width: calc(var(--t-w) * 1cqw);
+    font-size: calc(var(--t-fs) * 1cqw);
+  }
+
+  .strip {
+    left: calc(var(--t-x) * 1cqw);
+    top: calc(var(--t-y) * 1cqw);
+    width: calc(var(--t-w) * 1cqw);
+    --r: var(--t-r);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile[data-fresh] {
+    animation: none;
+  }
+
+  .stripBulb {
+    animation: none;
+    opacity: 0.8;
+  }
+}

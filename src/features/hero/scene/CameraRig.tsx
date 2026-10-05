@@ -3,8 +3,9 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { PerspectiveCamera, Vector3 } from "three";
-import { heroProgress } from "../scroll/heroProgress";
-import { evaluateCamera, type CameraPose } from "./shots";
+import { heroFeedback, heroProgress } from "../scroll/heroProgress";
+import { lens } from "./lens";
+import { type CameraPose, DRIVER_HEAD, evaluateCamera, SHOTS } from "./shots";
 
 type Props = {
   /** Pointer parallax, desktop only. */
@@ -13,9 +14,14 @@ type Props = {
   reducedMotion: boolean;
 };
 
+/** Seconds the lens takes to settle on a new shot's bokeh after a cut. */
+const LENS_EASE = 0.35;
+
 /**
- * Places the camera on the current shot. Inside a shot the pose is damped;
- * on a cut the camera snaps, so the edit reads as a hard cut.
+ * Places the camera on the current shot, framed for the screen's aspect.
+ * Inside a shot the pose is damped; on a cut the camera snaps, so the edit
+ * reads as a hard cut. Every frame it also points the lens at the driver's
+ * head and eases the shot's depth of field in (scene/lens.ts).
  */
 export function CameraRig({ parallax, reducedMotion }: Props) {
   const pose = useRef<CameraPose>({
@@ -29,6 +35,9 @@ export function CameraRig({ parallax, reducedMotion }: Props) {
 
   useFrame((state, delta) => {
     const camera = state.camera as PerspectiveCamera;
+    const focus = () => {
+      lens.focusDistance = camera.position.distanceTo(DRIVER_HEAD);
+    };
     if (process.env.NODE_ENV !== "production") {
       // Dev-only free camera for framing work: window.__vaCam = { position, look, fov }.
       const debug = (window as unknown as { __vaCam?: { position: number[]; look: number[]; fov?: number } }).__vaCam;
@@ -39,23 +48,31 @@ export function CameraRig({ parallax, reducedMotion }: Props) {
           camera.fov = debug.fov;
           camera.updateProjectionMatrix();
         }
+        focus();
         return;
       }
     }
-    const target = evaluateCamera(heroProgress.value, pose.current);
+    const aspect = state.size.width / Math.max(1, state.size.height);
+    const target = evaluateCamera(heroProgress.value, pose.current, aspect);
+    // The visitor's push widens the lens a little (scroll/throttle.ts).
+    if (!reducedMotion) target.fov += heroFeedback.fovKick;
+    const shot = SHOTS[target.shot];
     const t = state.clock.elapsedTime;
     const cut = target.shot !== lastShot.current;
     lastShot.current = target.shot;
 
+    // Hand-held and parallax motion scale with the distance to the subject,
+    // so a close-up does not shake more than a wide shot.
+    const reach = Math.min(1, Math.max(0.15, target.position.distanceTo(DRIVER_HEAD) / 10));
     if (!reducedMotion) {
       // Suspension: a faint bob and sway, stronger close to the asphalt.
-      const closeness = target.shot === 2 ? 1.6 : 1;
-      target.position.y += (Math.sin(t * 2.1) * 0.025 + Math.sin(t * 5.3) * 0.012) * closeness;
-      target.position.x += Math.sin(t * 0.9) * 0.04;
+      const closeness = shot.id === "low" ? 1.6 : 1;
+      target.position.y += (Math.sin(t * 2.1) * 0.025 + Math.sin(t * 5.3) * 0.012) * closeness * Math.max(reach, 0.5);
+      target.position.x += Math.sin(t * 0.9) * 0.04 * reach;
     }
     if (parallax) {
-      target.position.x += state.pointer.x * 0.5;
-      target.position.y += state.pointer.y * 0.25;
+      target.position.x += state.pointer.x * 0.5 * reach;
+      target.position.y += state.pointer.y * 0.25 * reach;
     }
 
     const k = reducedMotion || cut ? 1 : 1 - Math.exp(-delta * 4.5);
@@ -69,6 +86,12 @@ export function CameraRig({ parallax, reducedMotion }: Props) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
+
+    // Lens: focus on his head; the shot's bokeh eases in across the cut.
+    focus();
+    const ease = reducedMotion ? 1 : 1 - Math.exp(-delta / LENS_EASE);
+    lens.bokehScale += (shot.lens.bokehScale - lens.bokehScale) * ease;
+    lens.focusRange += (shot.lens.focusRange - lens.focusRange) * ease;
   });
 
   return null;

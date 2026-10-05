@@ -1,0 +1,9 @@
+aviator.glb: the driver's sunglasses, an original model made for this site.
+
+Modelled from scratch in code by tools/blender/build_sunglasses.py (Blender
+as a Python module) and fitted to the driver's head in
+public/models/makehuman-driver/driver.glb. A generic aviator style: no
+brand, no logo, no third-party mesh or texture.
+
+It uses no third-party asset, so no third-party licence or credit applies;
+it is covered by the same terms as the rest of this site's source.

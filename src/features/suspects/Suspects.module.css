@@ -1,0 +1,707 @@
+/*
+ * THE USUAL SUSPECTS: a police line-up wall with a centimetre height chart.
+ *
+ * One length, --cm, is a centimetre of the chart: the chart, the cats
+ * (placed in centimetres by lineup.ts and the renders' manifest) and the
+ * halo all multiply it, so every cat keeps its real size next to the others.
+ *
+ * Wide screens: one wall, the floor line low on it, four slots at 36, 52,
+ * 68 and 84% of the width, the personal-effects slip on the left, the
+ * plates and their descriptions on the floor, the caption under them.
+ * Phones and portrait screens: two strips of two at one shared scale, then
+ * the slip, then the caption.
+ */
+
+.suspects {
+  /*
+   * 8.9 px at 1440 x 900; a short window shrinks it so the wall, the floor
+   * and the caption still fit, but never below 4.5 px (cats of about 13
+   * rem): under that the section grows instead.
+   */
+  --cm: min(0.62vw, 1.25svh, max((100svh - 18rem) / 56, 4.5px));
+  --chart-major: color-mix(in srgb, var(--va-color-lilac) 34%, transparent);
+  --chart-minor: color-mix(in srgb, var(--va-color-lilac) 14%, transparent);
+  --floor-line: color-mix(in srgb, var(--va-color-cream) 30%, transparent);
+  /* 4.9:1 on the wall: the scale is read, not just seen. */
+  --label: color-mix(in srgb, var(--va-color-cream) 56%, transparent);
+  position: relative;
+  z-index: var(--va-z-title);
+  isolation: isolate;
+  display: grid;
+  /* Slot centres at 36, 52, 68 and 84%: four 16% columns from 28%. */
+  grid-template-columns: 28% repeat(4, minmax(0, 1fr)) 8%;
+  /* The wall (slug, slip, cats), the floor (plates), the caption. */
+  grid-template-rows: minmax(calc(var(--cm) * 53 + 6rem), 1fr) auto auto;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow: clip;
+  background: var(--va-lineup-floor);
+  color: var(--va-color-cream);
+}
+
+/* Focus arrives here from the hero's Skip; the section is not a control. */
+.suspects:focus {
+  outline: none;
+}
+
+/* Film finish: a still grain and a vignette, as in the hero. */
+.suspects::before,
+.suspects::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.suspects::before {
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.4 -.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+}
+
+.suspects::after {
+  background: radial-gradient(
+    ellipse 80% 78% at 50% 46%,
+    transparent 58%,
+    color-mix(in srgb, var(--va-color-night) 62%, transparent) 100%
+  );
+}
+
+/* ---------------------------------------------------------------- the wall */
+
+/* Night at the top edge, where the hero fades out, easing into the wall's violet. */
+.wall {
+  grid-area: 1 / 1 / 2 / -1;
+  position: relative;
+  border-bottom: 1px solid var(--floor-line);
+  background: linear-gradient(
+    180deg,
+    var(--va-color-night) 0%,
+    var(--va-lineup-wall-high) 24%,
+    var(--va-lineup-wall-low) 100%
+  );
+}
+
+/* The chart: a line every 10 cm, a fainter one every 5 cm, from the floor to 50 cm. */
+.wall::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: calc(var(--cm) * 50 + 1px);
+  background:
+    repeating-linear-gradient(to top, var(--chart-major) 0 1px, transparent 1px calc(var(--cm) * 10)),
+    repeating-linear-gradient(to top, var(--chart-minor) 0 1px, transparent 1px calc(var(--cm) * 5));
+}
+
+/* The booking light spilling over the floor in front of the wall. */
+.wall::after {
+  content: "";
+  position: absolute;
+  inset: 100% 0 auto;
+  height: calc(var(--cm) * 16);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--va-lineup-wall-low) 70%, transparent),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* Labels at both edges, just above their line. */
+.mark {
+  position: absolute;
+  inset: auto 0 calc(var(--mark) * var(--cm) + 0.3rem);
+  display: flex;
+  justify-content: space-between;
+  padding-inline: max(1.4vw, 0.75rem);
+  font-family: var(--va-font-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  color: var(--label);
+}
+
+/* ---------------------------------------------------------------- the slug */
+
+/* The hero's HUD voice: mono caps, a magenta record dot. */
+.slug {
+  grid-area: 1 / 1 / 2 / -1;
+  align-self: start;
+  justify-self: start;
+  z-index: 2;
+  padding: max(5.5svh, 2.25rem) 1.25rem 0 max(4vw, 1.25rem);
+  font-family: var(--va-font-mono);
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.3em;
+  color: var(--va-color-cream);
+}
+
+.title::before {
+  content: "";
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--va-color-magenta);
+  box-shadow: 0 0 10px var(--va-color-magenta);
+}
+
+.slugLine {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.45rem;
+  padding-left: 1.2rem;
+  font-size: 0.6875rem;
+  line-height: 1.75;
+  letter-spacing: 0.22em;
+}
+
+.place {
+  color: var(--va-color-cream);
+}
+
+.associates {
+  color: var(--va-color-text-muted);
+}
+
+/* ---------------------------------------------------------------- the line-up */
+
+.lineup {
+  grid-area: 1 / 2 / 3 / 6;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One slot: the spot on the wall, then the plate and the description on the floor. */
+.suspect {
+  grid-row: 1 / 3;
+  display: grid;
+  grid-template-rows: subgrid;
+  min-width: 0;
+}
+
+/*
+ * No stacking context here: every slot's wall (a phone strip's) paints
+ * under every slot's pool of light, so a pool can spill into the next slot.
+ */
+.spot {
+  position: relative;
+}
+
+/* Each cat's own pool of cool booking light on the wall; Odin's is warm. */
+.spot::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: -1;
+  width: calc(var(--cm) * 40);
+  height: calc(var(--cm) * 58);
+  translate: -50% 0;
+  background: radial-gradient(
+    ellipse 50% 50% at 50% 62%,
+    color-mix(in srgb, var(--va-color-text) 13%, transparent) 0%,
+    color-mix(in srgb, var(--va-color-lilac) 16%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+.suspect[data-halo] .spot::before {
+  background: radial-gradient(
+    ellipse 50% 50% at 50% 58%,
+    color-mix(in srgb, var(--va-color-amber) 24%, transparent) 0%,
+    color-mix(in srgb, var(--va-color-orange) 10%, transparent) 50%,
+    transparent 100%
+  );
+}
+
+/* A phone strip's own piece of wall and chart (off on wide screens). */
+.spot::after {
+  content: none;
+}
+
+.stripMarks {
+  display: none;
+}
+
+/* The slot's number, big and thin, high on the wall. */
+.numeral {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--cm) * 42);
+  translate: -50% 0;
+  font-family: var(--va-font-display);
+  font-size: calc(var(--cm) * 11);
+  font-weight: 200;
+  line-height: 0.74;
+  color: color-mix(in srgb, var(--va-color-cream) 22%, transparent);
+}
+
+.suspect[data-halo] .numeral {
+  color: color-mix(in srgb, var(--va-color-amber) 34%, transparent);
+}
+
+/* The cat: its floor contact on the floor line, centred on the slot. */
+.cat {
+  position: absolute;
+  left: calc(50% + var(--cat-left) * var(--cm));
+  bottom: calc(var(--cat-bottom) * var(--cm));
+  width: calc(var(--cat-w) * var(--cm));
+  max-width: none;
+  height: auto;
+}
+
+/* Odin's soft glow: the only warm light on the wall. */
+.suspect[data-halo] .cat {
+  filter: drop-shadow(0 0 calc(var(--cm) * 1.6) color-mix(in srgb, var(--va-color-amber) 30%, transparent));
+}
+
+/* A plain golden ring over his head (no character, no logo). */
+.halo {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--halo-bottom) * var(--cm));
+  width: calc(var(--halo-w) * var(--cm));
+  height: max(calc(var(--halo-h) * var(--cm)), 6px);
+  translate: -50% 0;
+  rotate: -5deg;
+  border: max(2px, calc(var(--cm) * 0.38)) solid var(--va-color-sodium);
+  border-radius: 50%;
+  box-shadow:
+    0 0 calc(var(--cm) * 1.4) color-mix(in srgb, var(--va-color-amber) 85%, transparent),
+    0 0 calc(var(--cm) * 4) color-mix(in srgb, var(--va-color-sodium) 35%, transparent),
+    inset 0 0 calc(var(--cm) * 0.5) color-mix(in srgb, var(--va-color-amber) 70%, transparent);
+}
+
+/* Its bright upper rim. */
+.halo::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  border-top: 1px solid color-mix(in srgb, var(--va-color-cream) 80%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .halo {
+    animation: halo-bob 4s ease-in-out infinite;
+  }
+}
+
+@keyframes halo-bob {
+  50% {
+    translate: -50% -3px;
+  }
+}
+
+/* ---------------------------------------------------------------- the floor */
+
+.tag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding-inline: 0.5rem;
+  text-align: center;
+}
+
+/* A letter-board plate standing on the floor in front of the paws. */
+.plate {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  margin-top: calc(var(--cm) * -1.6);
+  padding: 0.55rem 1.05rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--va-color-cream) 16%, transparent);
+  border-radius: 0.3rem;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 3px,
+      color-mix(in srgb, var(--va-color-cream) 4%, transparent) 3px 4px
+    ),
+    var(--va-lineup-plate);
+  box-shadow: 0 0.6rem 1.4rem var(--va-color-glass);
+}
+
+.suspect[data-halo] .plate {
+  border-color: color-mix(in srgb, var(--va-color-amber) 34%, transparent);
+}
+
+.number {
+  font-family: var(--va-font-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  color: color-mix(in srgb, var(--va-color-cream) 62%, transparent);
+}
+
+.name {
+  margin-right: -0.14em;
+  font-family: var(--va-font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--va-color-cream);
+}
+
+.alias {
+  font-family: var(--va-font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-pink);
+}
+
+.description {
+  max-width: 15rem;
+  margin-top: 0.75rem;
+  font-family: var(--va-font-body);
+  font-size: clamp(0.8125rem, 0.6rem + 0.25vw, 0.9375rem);
+  line-height: 1.45;
+  text-wrap: pretty;
+  color: color-mix(in srgb, var(--va-color-cream) 86%, transparent);
+}
+
+/* ---------------------------------------------------------------- the slip */
+
+/* Personal effects: typed on warm paper, taped to the wall at a slant. */
+.slip {
+  grid-area: 1 / 1 / 2 / 2;
+  align-self: end;
+  justify-self: start;
+  position: relative;
+  z-index: 2;
+  width: clamp(14.5rem, 19vw, 18.5rem);
+  /*
+   * Low on the wall, 8 cm over the floor, but always clear of the slug
+   * above it (its padding, its three lines, then the tape): in a short
+   * window the wall grows rather than the slip covering the title.
+   */
+  margin: calc(max(5.5svh, 2.25rem) + 6.5rem) 0 calc(var(--cm) * 8) clamp(1.75rem, 4.6vw - 1rem, 4rem);
+  padding: 1.15rem 1.1rem 1.05rem;
+  rotate: -3deg;
+  background: linear-gradient(180deg, var(--va-lineup-paper), var(--va-lineup-paper-shade));
+  box-shadow: 0.4rem 0.9rem 1.6rem var(--va-color-glass);
+  font-family: var(--va-font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--va-color-ink);
+}
+
+.slip::before {
+  content: "";
+  position: absolute;
+  top: -0.65rem;
+  left: 50%;
+  width: 3.75rem;
+  height: 1.3rem;
+  translate: -50% 0;
+  rotate: 3deg;
+  background: color-mix(in srgb, var(--va-lineup-tape) 72%, transparent);
+  box-shadow: 0 1px 2px var(--va-color-glass);
+}
+
+.slipTitle {
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px dashed color-mix(in srgb, var(--va-color-ink) 45%, transparent);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.slipTitle > span {
+  display: block;
+}
+
+.slipOwner {
+  margin-top: 0.15rem;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+}
+
+.effects {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.effects li {
+  display: grid;
+  grid-template-columns: 1.85rem minmax(0, 1fr);
+  text-wrap: pretty;
+}
+
+.effectNumber {
+  font-weight: 700;
+  color: var(--va-lineup-stamp);
+}
+
+/* ---------------------------------------------------------------- the caption */
+
+/* The hero's subtitle card: the speaker in pink, the line in cream. */
+.caption {
+  grid-area: 3 / 1 / 4 / -1;
+  justify-self: center;
+  z-index: 2;
+  max-width: 44rem;
+  padding: 1.25rem 1rem max(2.25rem, 5svh);
+  font-family: var(--va-font-body);
+  font-size: clamp(0.95rem, 1.35vw, 1.2rem);
+  font-weight: 500;
+  line-height: 1.75;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--va-color-cream);
+}
+
+.captionText {
+  padding: 0.2em 0.55em;
+  border-radius: 0.4em;
+  background: var(--va-color-osd);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
+}
+
+.speaker {
+  font-weight: 700;
+  color: var(--va-color-pink);
+}
+
+/* A narrower wall: the slip hangs over the chart's left edge, so its labels give way. */
+@media (max-width: 75rem) {
+  .mark > span:first-child {
+    visibility: hidden;
+  }
+}
+
+/* A short window: the slip slides down toward the floor before the wall has to grow. */
+@media (max-height: 42rem) {
+  .slip {
+    margin-bottom: calc(var(--cm) * 3);
+  }
+}
+
+/*
+ * A landscape phone or a very short window: one screen cannot hold the wall
+ * without shrinking the cats to thumbnails, so the chart keeps a readable
+ * scale, the four slots take the whole width and the slip moves under the
+ * line-up, before the caption.
+ */
+@media (min-aspect-ratio: 1/1) and (min-width: 40.0625rem) and (max-height: 32rem) {
+  .suspects {
+    --cm: min(0.62vw, 0.6875rem);
+    grid-template-columns: 6% repeat(4, minmax(0, 1fr)) 6%;
+    grid-template-rows: calc(var(--cm) * 53 + 6rem) auto auto auto;
+  }
+
+  .mark > span:first-child {
+    visibility: visible;
+  }
+
+  /* A phone's 12 px floor for the small type. */
+  .slugLine,
+  .number,
+  .alias {
+    font-size: 0.75rem;
+  }
+
+  .slip {
+    grid-area: 3 / 1 / 4 / -1;
+    justify-self: center;
+    align-self: start;
+    width: min(100% - 3rem, 24rem);
+    margin: 2.75rem 0 0;
+    rotate: -1.5deg;
+  }
+
+  .caption {
+    grid-area: 4 / 1 / 5 / -1;
+  }
+}
+
+/* ---------------------------------------------------------------- phones and portrait screens */
+
+/*
+ * Two strips of two at one scale (7.2 px per cm on a 390 px phone), each
+ * showing 0-40 cm with its labels at the left edge and its own floor line.
+ * Dante sits next to Odin, so the comparison stays honest.
+ */
+@media (max-aspect-ratio: 1/1), (max-width: 40rem) {
+  .suspects {
+    --cm: min(1.84vw, 0.9svh, 0.6875rem);
+    --strip-labels: 1.9rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    justify-items: center;
+    background: linear-gradient(180deg, var(--va-color-night) 0, var(--va-lineup-floor) 14rem);
+  }
+
+  .wall {
+    display: none;
+  }
+
+  /* Clear of the page controls fixed at the top right. */
+  .slug {
+    grid-area: auto;
+    justify-self: stretch;
+    padding: max(6svh, 5rem) 1.25rem 1.75rem;
+  }
+
+  /* Tighter tracking, so the Spanish lines hold on a 360 px phone. */
+  .slugLine {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+  }
+
+  .lineup {
+    grid-area: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    row-gap: 2.5rem;
+    width: 100%;
+    max-width: 46rem;
+    padding-inline: var(--strip-labels) 0.5rem;
+  }
+
+  .suspect {
+    grid-row: span 2;
+  }
+
+  .spot {
+    height: calc(var(--cm) * 42);
+  }
+
+  .spot::before {
+    height: 100%;
+  }
+
+  /* The strip's wall and chart; the left slot's reaches out under the labels. */
+  .spot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    border-bottom: 1px solid var(--floor-line);
+    background:
+      repeating-linear-gradient(to top, var(--chart-major) 0 1px, transparent 1px calc(var(--cm) * 10)) bottom / 100%
+        calc(var(--cm) * 40 + 1px) no-repeat,
+      repeating-linear-gradient(to top, var(--chart-minor) 0 1px, transparent 1px calc(var(--cm) * 5)) bottom / 100%
+        calc(var(--cm) * 40 + 1px) no-repeat,
+      linear-gradient(180deg, transparent 0%, var(--va-lineup-wall-high) 30%, var(--va-lineup-wall-low) 100%);
+  }
+
+  .suspect:nth-child(odd) .spot::after {
+    left: calc(var(--strip-labels) * -1);
+  }
+
+  .suspect:nth-child(even) .spot::after {
+    right: -0.5rem;
+  }
+
+  .suspect:nth-child(odd) .stripMarks {
+    position: absolute;
+    inset: 0 auto 0 calc(var(--strip-labels) * -1);
+    display: block;
+    width: var(--strip-labels);
+  }
+
+  .stripMarks span {
+    position: absolute;
+    left: 0.4rem;
+    bottom: calc(var(--mark) * var(--cm) + 0.25rem);
+    font-family: var(--va-font-mono);
+    font-size: 0.75rem;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    color: var(--label);
+  }
+
+  .numeral {
+    display: none;
+  }
+
+  /* A cat too wide for its strip moves inward (lineup.ts, phoneNudge). */
+  .cat {
+    left: calc(50% + (var(--cat-left) + var(--phone-nudge)) * var(--cm));
+  }
+
+  .halo,
+  .spot::before {
+    left: calc(50% + var(--phone-nudge) * var(--cm));
+  }
+
+  .tag {
+    padding-inline: 0.25rem;
+  }
+
+  .plate {
+    padding: 0.5rem 0.8rem 0.55rem;
+  }
+
+  .number,
+  .alias {
+    font-size: 0.75rem;
+  }
+
+  .alias {
+    letter-spacing: 0.12em;
+  }
+
+  .name {
+    font-size: 1.05rem;
+  }
+
+  .description {
+    font-size: 0.8125rem;
+  }
+
+  .slip {
+    grid-area: auto;
+    justify-self: center;
+    align-self: start;
+    width: min(100% - 3rem, 24rem);
+    margin: 3rem 0 0;
+    rotate: -1.5deg;
+    font-size: 0.8125rem;
+  }
+
+  .caption {
+    grid-area: auto;
+    padding: 2.25rem 1rem max(3rem, 6svh);
+    font-size: 1rem;
+  }
+}

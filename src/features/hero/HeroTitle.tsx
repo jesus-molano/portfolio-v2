@@ -7,6 +7,7 @@ import { motion } from "@/design/tokens";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import styles from "./Hero.module.css";
 import { getSceneLoading, subscribeSceneLoading } from "./sceneLoading";
+import { markTitleIntroDone, registerTitleIntro } from "./titleIntro";
 
 gsap.registerPlugin(useGSAP);
 
@@ -18,10 +19,15 @@ type Props = {
   ref: RefObject<HTMLDivElement | null>;
 };
 
+/** The first scroll plays the rest of the reveal this much faster. */
+const HURRY = 4;
+
 /**
  * Real heading text over the canvas. Letters reveal on load, word by word so
  * the name can wrap on narrow screens. The initial hidden state comes from
- * CSS (see globals.css), so nothing flashes before hydration.
+ * CSS (see globals.css), so nothing flashes before hydration. The reveal is
+ * shared with the story (titleIntro.ts): the title holds the drive until
+ * the name has formed, and the first scroll fast-forwards it.
  */
 export function HeroTitle({ name, role, tagline, ref }: Props) {
   const reducedMotion = usePrefersReducedMotion();
@@ -36,11 +42,15 @@ export function HeroTitle({ name, role, tagline, ref }: Props) {
     () => {
       if (reducedMotion) {
         gsap.set("[data-letter], [data-line]", { clearProps: "all" });
-        return;
+        return registerTitleIntro({ progress: () => 1, hurry: () => {}, complete: () => {} }, true);
       }
       if (!entered) return;
 
-      const intro = gsap.timeline({ defaults: { ease: motion.ease }, delay: 0.2 });
+      const intro = gsap.timeline({
+        defaults: { ease: motion.ease },
+        delay: 0.2,
+        onComplete: markTitleIntroDone,
+      });
       intro
         .fromTo(
           "[data-letter]",
@@ -59,6 +69,16 @@ export function HeroTitle({ name, role, tagline, ref }: Props) {
           { y: 0, opacity: 1, duration: 1.1, stagger: 0.15 },
           "-=0.9",
         );
+      return registerTitleIntro({
+        progress: () => intro.progress(),
+        hurry: () => {
+          if (intro.timeScale() < HURRY) intro.timeScale(HURRY);
+        },
+        complete: () => {
+          intro.progress(1);
+          markTitleIntroDone();
+        },
+      });
     },
     { scope: ref, dependencies: [reducedMotion, entered], revertOnUpdate: true },
   );

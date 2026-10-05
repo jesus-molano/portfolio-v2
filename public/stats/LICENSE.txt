@@ -1,0 +1,17 @@
+STATS map and portrait (Vice Afterglow)
+
+map.svg, map-square.svg
+  Drawn by tools/art/stats/map.mjs for this site. The coast, relief and
+  depth of Tenerife and Gran Canaria come from tools/art/stats/canaries.json,
+  extracted by tools/art/stats/extract.mjs from the Terrain Tiles on AWS
+  Open Data (https://registry.opendata.aws/terrain-tiles/), zoom 8, which at
+  these islands are built only from:
+    - SRTM (NASA / USGS), public domain
+    - GMTED2010 (USGS), public domain
+    - ETOPO1 (NOAA), public domain
+  Courtesy of the U.S. Geological Survey, NASA and NOAA. Roads are schematic
+  curves through the real towns, not traced from any map. Place names on
+  the page are parodies written for this site.
+
+portrait.svg
+  An original drawing made for this site (no photo, no borrowed artwork).

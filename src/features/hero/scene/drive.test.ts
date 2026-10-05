@@ -1,5 +1,17 @@
+import { BoxGeometry, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
-import { STREAM, STREAM_LENGTH, streamFade, wrapZ } from "./drive";
+import { tyreBottomY } from "./carModel";
+import {
+  CAR_POSITION,
+  placeStreamed,
+  ROADSIDE,
+  ROADSIDE_LENGTH,
+  STREAM,
+  STREAM_LENGTH,
+  streamFade,
+  wrapZ,
+} from "./drive";
+import { world } from "./world";
 
 describe("wrapZ", () => {
   it("keeps a value inside the stream window unchanged", () => {
@@ -38,5 +50,56 @@ describe("streamFade", () => {
       expect(value).toBeGreaterThanOrEqual(previous);
       previous = value;
     }
+  });
+});
+
+describe("CAR_POSITION", () => {
+  it("puts the hero car's tyres on the road surface, not into it", () => {
+    expect(tyreBottomY(CAR_POSITION.y)).toBeCloseTo(world.road.y, 4);
+  });
+});
+
+describe("stream windows", () => {
+  it("wrap inside the window they are given", () => {
+    expect(wrapZ(ROADSIDE.zBack + 3, ROADSIDE)).toBeCloseTo(ROADSIDE.zFront + 3);
+    expect(wrapZ(ROADSIDE.zFront - 3, ROADSIDE)).toBeCloseTo(ROADSIDE.zBack - 3);
+    expect(wrapZ(12 + ROADSIDE_LENGTH * 7, ROADSIDE)).toBeCloseTo(12);
+  });
+
+  it("fade over a chosen distance from the window's own far edge", () => {
+    expect(streamFade(ROADSIDE.zFront, ROADSIDE, 45)).toBe(0);
+    expect(streamFade(ROADSIDE.zFront + 45, ROADSIDE, 45)).toBe(1);
+    expect(streamFade(ROADSIDE.zFront + 22.5, ROADSIDE, 45)).toBeCloseTo(0.5);
+  });
+});
+
+describe("placeStreamed", () => {
+  const read = (mesh: InstancedMesh, index: number) => {
+    const matrix = new Matrix4();
+    mesh.getMatrixAt(index, matrix);
+    const position = new Vector3();
+    const scale = new Vector3();
+    matrix.decompose(position, new Quaternion(), scale);
+    return { position, scale };
+  };
+
+  it("keeps full size at the far edge without the grow-in, and writes the twins after the stream", () => {
+    const mesh = new InstancedMesh(new BoxGeometry(), new MeshBasicMaterial(), 2);
+    const list = [{ x: 3, z0: ROADSIDE.zFront }];
+    const fixed = [{ x: -3, z0: -170 }];
+    placeStreamed(mesh, list, 0, { window: ROADSIDE, grow: false, fixed });
+    const streamed = read(mesh, 0);
+    expect(streamed.position.z).toBeCloseTo(ROADSIDE.zFront);
+    expect(streamed.scale.x).toBeCloseTo(1);
+    const twin = read(mesh, 1);
+    expect(twin.position.x).toBeCloseTo(-3);
+    expect(twin.position.z).toBeCloseTo(-170);
+    expect(twin.scale.x).toBeCloseTo(1);
+  });
+
+  it("grows in from the far edge by default", () => {
+    const mesh = new InstancedMesh(new BoxGeometry(), new MeshBasicMaterial(), 1);
+    placeStreamed(mesh, [{ x: 0, z0: STREAM.zFront }], 0);
+    expect(read(mesh, 0).scale.x).toBeLessThan(0.01);
   });
 });

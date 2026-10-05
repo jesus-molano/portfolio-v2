@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { isOnScreen, ON_SCREEN_THRESHOLDS } from "@/lib/onScreen";
 import styles from "./Hero.module.css";
 import { SceneErrorBoundary } from "./SceneErrorBoundary";
 import { markSceneReady } from "./sceneLoading";
@@ -12,15 +13,22 @@ const HeroScene = dynamic(() => import("./scene/HeroScene").then((m) => m.HeroSc
   ssr: false,
 });
 
-type Props = { label: string };
+type Props = {
+  label: string;
+  /** Copy of the rooftop billboards, one line per board. */
+  billboards: string[];
+};
 
 /**
  * Mounts the 3D scene on the client only. The wrapper carries the accessible
  * description; the canvas itself is decorative. If WebGL fails, the CSS sky
  * from the body background stays visible. The render loop pauses while the
- * hero is scrolled out of view.
+ * hero is scrolled out of view, including where Skip leaves it, its edge
+ * touching the viewport's (lib/onScreen.ts). A held right click or a
+ * long-press on it opens the radio wheel (`data-radio-surface`, see
+ * RadioWheel).
  */
-export function HeroCanvas({ label }: Props) {
+export function HeroCanvas({ label, billboards }: Props) {
   const tier = useQualityTier();
   const reducedMotion = usePrefersReducedMotion();
   const wrapper = useRef<HTMLDivElement>(null);
@@ -29,16 +37,19 @@ export function HeroCanvas({ label }: Props) {
   useEffect(() => {
     const element = wrapper.current;
     if (!element || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting));
+    // One target: the newest entry is its state now.
+    const observer = new IntersectionObserver((entries) => setInView(isOnScreen(entries[entries.length - 1])), {
+      threshold: ON_SCREEN_THRESHOLDS,
+    });
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
 
   return (
-    <div ref={wrapper} className={styles.canvas} role="img" aria-label={label}>
+    <div ref={wrapper} className={styles.canvas} role="img" aria-label={label} data-radio-surface>
       {/* A failed scene (no WebGL) must not keep the loading screen up. */}
       <SceneErrorBoundary onError={markSceneReady}>
-        <HeroScene tier={tier} reducedMotion={reducedMotion} active={inView} />
+        <HeroScene tier={tier} reducedMotion={reducedMotion} active={inView} billboards={billboards} />
       </SceneErrorBoundary>
     </div>
   );

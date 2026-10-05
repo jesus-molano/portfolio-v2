@@ -13,48 +13,30 @@ import {
 } from "three";
 import { palette } from "@/design/tokens";
 import { softDiscFragmentShader, softDiscInstancedVertexShader } from "../shaders/softDisc";
+import { drive, placeStreamed, ROADSIDE, streamFade, type StreamPlacement, wrapZ } from "./drive";
 import {
-  drive,
-  placeStreamed,
-  STREAM,
-  STREAM_LENGTH,
-  streamFade,
-  type StreamPlacement,
-  wrapZ,
-} from "./drive";
-import { RAIL_X } from "./Road";
-import { SHORELINE_X } from "./Shore";
+  gapZ,
+  LAMP,
+  lampPlacements,
+  PIER,
+  pierPlacement,
+  RISE,
+  TOWER_REACH,
+  TOWER_X,
+  TOWERS,
+} from "./roadside";
 
 type Props = { animate: boolean; tier: "high" | "low" };
 
-const LAMP_SPACING = 44;
-const LAMP_X = RAIL_X + 0.7;
-const POLE_HEIGHT = 8.2;
-const ARM_LENGTH = 2.8;
-
-/** Pastel lifeguard towers, Miami Beach style. */
-const TOWERS = [
-  { x: -27, z0: -10, body: "#9fe3d2", trim: "#ff8fb8" },
-  { x: 29, z0: -85, body: "#ffb3cf", trim: "#7fd8e8" },
-  { x: -25, z0: -140, body: "#ffd99a", trim: "#b08cff" },
-  { x: 27, z0: 40, body: "#c7b3ff", trim: palette.sodium },
-] as const;
-
-/**
- * The deck starts 8 m inland of the mean shoreline (it wanders about 1.3 m),
- * and a ramp brings it down to the sand, so the pier always starts on the
- * beach instead of floating above it.
- */
-const PIER = {
-  x0: SHORELINE_X - 8,
-  length: 60,
-  width: 3.6,
-  deckY: 1.05,
-  z0: -60,
-  rampRun: 6,
-} as const;
-/** Top of the beach plane (Shore.tsx) under the pier. */
+/** Top of the beach plane (Shore.tsx). */
 const SAND_Y = 0.07;
+
+const { x: LAMP_X, poleHeight: POLE_HEIGHT, arm: ARM_LENGTH } = LAMP;
+
+/** The warm pool of light under a lamp's head, on the outer lane. */
+function poolUnder(lamp: StreamPlacement): StreamPlacement {
+  return { x: lamp.x - Math.sign(lamp.x) * (ARM_LENGTH - 0.3), y: 0.115, z0: lamp.z0 };
+}
 
 function baseAt0(geometry: BoxGeometry | CylinderGeometry, height: number) {
   geometry.translate(0, height / 2, 0);
@@ -63,8 +45,11 @@ function baseAt0(geometry: BoxGeometry | CylinderGeometry, height: number) {
 
 /**
  * Everything on the roadside that gives the drive its rhythm: street lights
- * with warm pools of light, lifeguard towers on the sand and a wooden pier.
- * All of it streams with the car and grows in from the haze.
+ * with warm pools of light, lifeguard towers on the sand and a wooden pier
+ * (layout in roadside.ts). All of it streams with the car in the ROADSIDE
+ * window. The lamps come in at the landfall on top of a static twin, so
+ * none grows; the towers and the pier rise out of the sand and the sea
+ * over the first RISE metres, like a ship over the horizon.
  */
 export function Props({ animate, tier }: Props) {
   return (
@@ -82,20 +67,22 @@ function StreetLights({ animate }: { animate: boolean }) {
   const heads = useRef<InstancedMesh>(null);
   const pools = useRef<InstancedMesh>(null);
 
-  const placements = useMemo(() => {
-    const list: Array<StreamPlacement & { side: number }> = [];
-    for (let z = STREAM.zFront, i = 0; z < STREAM.zFront + STREAM_LENGTH; z += LAMP_SPACING / 2, i += 1) {
-      const side = i % 2 === 0 ? -1 : 1;
-      // Arm points to the road: rotate the right-hand poles by 180 degrees.
-      list.push({ x: side * LAMP_X, z0: z, rotY: side > 0 ? Math.PI : 0, side });
-    }
-    return list;
-  }, []);
-  const poolPlacements = useMemo(
+  const placements = useMemo(
     () =>
-      placements.map((p) => ({ x: p.x - p.side * (ARM_LENGTH - 0.3), y: 0.115, z0: p.z0 })),
-    [placements],
+      lampPlacements().map((lamp) => ({
+        ...lamp,
+        // Arm points to the road: rotate the right-hand poles by 180 degrees.
+        rotY: lamp.side > 0 ? Math.PI : 0,
+      })),
+    [],
   );
+  // One static twin per side where the lamps come in.
+  const twins = useMemo<StreamPlacement[]>(
+    () => [-1, 1].map((side) => ({ x: side * LAMP_X, z0: ROADSIDE.zFront, rotY: side > 0 ? Math.PI : 0 })),
+    [],
+  );
+  const poolPlacements = useMemo(() => placements.map(poolUnder), [placements]);
+  const poolTwins = useMemo(() => twins.map(poolUnder), [twins]);
 
   const geometries = useMemo(() => {
     const pole = baseAt0(new CylinderGeometry(0.07, 0.11, POLE_HEIGHT, 8), POLE_HEIGHT);
@@ -115,11 +102,15 @@ function StreetLights({ animate }: { animate: boolean }) {
   );
 
   const update = (distance: number) => {
-    if (poles.current) placeStreamed(poles.current, placements, distance);
-    if (arms.current) placeStreamed(arms.current, placements, distance);
-    if (heads.current) placeStreamed(heads.current, placements, distance);
-    if (pools.current) placeStreamed(pools.current, poolPlacements, distance);
+    const lamps = { window: ROADSIDE, grow: false, fixed: twins };
+    if (poles.current) placeStreamed(poles.current, placements, distance, lamps);
+    if (arms.current) placeStreamed(arms.current, placements, distance, lamps);
+    if (heads.current) placeStreamed(heads.current, placements, distance, lamps);
+    if (pools.current) {
+      placeStreamed(pools.current, poolPlacements, distance, { window: ROADSIDE, grow: false, fixed: poolTwins });
+    }
   };
+  const count = placements.length + twins.length;
 
   useLayoutEffect(() => update(drive.distance));
   useFrame(() => {
@@ -128,18 +119,18 @@ function StreetLights({ animate }: { animate: boolean }) {
 
   return (
     <group>
-      <instancedMesh ref={poles} args={[geometries.pole, undefined, placements.length]} frustumCulled={false}>
+      <instancedMesh ref={poles} args={[geometries.pole, undefined, count]} frustumCulled={false}>
         <meshStandardMaterial color="#3b2a5a" roughness={0.5} metalness={0.5} />
       </instancedMesh>
-      <instancedMesh ref={arms} args={[geometries.arm, undefined, placements.length]} frustumCulled={false}>
+      <instancedMesh ref={arms} args={[geometries.arm, undefined, count]} frustumCulled={false}>
         <meshStandardMaterial color="#3b2a5a" roughness={0.5} metalness={0.5} />
       </instancedMesh>
-      <instancedMesh ref={heads} args={[geometries.head, undefined, placements.length]} frustumCulled={false}>
+      <instancedMesh ref={heads} args={[geometries.head, undefined, count]} frustumCulled={false}>
         <meshBasicMaterial color={[2.2, 1.7, 1.15]} toneMapped={false} />
       </instancedMesh>
       <instancedMesh
         ref={pools}
-        args={[geometries.pool, undefined, poolPlacements.length]}
+        args={[geometries.pool, undefined, count]}
         frustumCulled={false}
         renderOrder={3}
       >
@@ -156,16 +147,22 @@ function StreetLights({ animate }: { animate: boolean }) {
   );
 }
 
+/** How far a prop at z has risen out of the ground: 0 at the far edge of the window. */
+function risen(z: number): number {
+  return streamFade(z, ROADSIDE, RISE);
+}
+
 function LifeguardTowers({ animate }: { animate: boolean }) {
   const refs = useRef<Array<Group | null>>([]);
+  const towers = useMemo(() => TOWERS.map((tower) => ({ ...tower, z0: gapZ(tower.gap, tower.side) })), []);
 
   const update = (distance: number) => {
-    TOWERS.forEach((tower, i) => {
+    towers.forEach((tower, i) => {
       const group = refs.current[i];
       if (!group) return;
-      const z = wrapZ(tower.z0 + distance);
-      group.position.set(tower.x, 0.05, z);
-      group.scale.setScalar(Math.max(0.001, streamFade(z)));
+      const z = wrapZ(tower.z0 + distance, ROADSIDE);
+      // Sunk under the sand (which hides it) until it rises at the far end.
+      group.position.set(tower.side * TOWER_X, 0.05 - TOWER_REACH.height * (1 - risen(z)), z);
     });
   };
 
@@ -176,14 +173,14 @@ function LifeguardTowers({ animate }: { animate: boolean }) {
 
   return (
     <group>
-      {TOWERS.map((tower, i) => (
+      {towers.map((tower, i) => (
         <group
-          key={tower.z0}
+          key={tower.gap}
           ref={(el) => {
             refs.current[i] = el;
           }}
           // The window faces the sea; the ramp comes down on the road side.
-          rotation-y={tower.x > 0 ? Math.PI / 2 : -Math.PI / 2}
+          rotation-y={tower.side > 0 ? Math.PI / 2 : -Math.PI / 2}
         >
           <LifeguardTower body={tower.body} trim={tower.trim} />
         </group>
@@ -244,8 +241,12 @@ function LifeguardTower({ body, trim }: { body: string; trim: string }) {
   );
 }
 
+/** The pier sinks this far under the sea and the sand before it rises. */
+const PIER_SINK = 5.5;
+
 function Pier({ animate }: { animate: boolean }) {
   const group = useRef<Group>(null);
+  const placement = useMemo(() => pierPlacement(), []);
   const posts = useMemo(() => {
     const list: Array<[number, number]> = [];
     // First pair right at the top of the ramp, so the deck never starts unsupported.
@@ -258,9 +259,8 @@ function Pier({ animate }: { animate: boolean }) {
 
   const update = (distance: number) => {
     if (!group.current) return;
-    const z = wrapZ(PIER.z0 + distance);
-    group.current.position.set(PIER.x0, 0, z);
-    group.current.scale.setScalar(Math.max(0.001, streamFade(z)));
+    const z = wrapZ(placement.z0 + distance, ROADSIDE);
+    group.current.position.set(placement.x0, -PIER_SINK * (1 - risen(z)), z);
   };
 
   useLayoutEffect(() => update(drive.distance));
@@ -294,8 +294,8 @@ function Pier({ animate }: { animate: boolean }) {
         </mesh>
       ))}
       {/* Landing slab at the foot of the ramp, half buried in the sand. */}
-      <mesh position={[-PIER.rampRun - 0.9, SAND_Y, 0]}>
-        <boxGeometry args={[1.8, 0.16, PIER.width + 0.8]} />
+      <mesh position={[-PIER.rampRun - PIER.slab / 2, SAND_Y, 0]}>
+        <boxGeometry args={[PIER.slab, 0.16, PIER.width + 0.8]} />
         <meshStandardMaterial color="#c9a9b8" roughness={0.95} />
       </mesh>
       {[-1, 1].map((side) => (

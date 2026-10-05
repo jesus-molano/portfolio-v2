@@ -12,9 +12,21 @@ export type SceneLoading = {
   ready: boolean;
   /** The visitor dismissed the loading screen. */
   entered: boolean;
+  /** performance.now() when she entered; -Infinity before. */
+  enteredAt: number;
+  /** How she entered: a key press or a pointer (click or tap). */
+  enteredVia: EnteredVia | null;
 };
 
-const INITIAL: SceneLoading = { progress: 0, ready: false, entered: false };
+export type EnteredVia = "key" | "pointer";
+
+const INITIAL: SceneLoading = {
+  progress: 0,
+  ready: false,
+  entered: false,
+  enteredAt: Number.NEGATIVE_INFINITY,
+  enteredVia: null,
+};
 
 let state: SceneLoading = INITIAL;
 const listeners = new Set<() => void>();
@@ -49,8 +61,13 @@ export function markSceneReady() {
   if (!state.ready) update({ ready: true, progress: 100 });
 }
 
-export function markEntered() {
-  if (!state.entered) update({ entered: true });
+/**
+ * The visitor left the loading screen, by key or by pointer. The hero uses
+ * the time to ignore the key press that entered and the way in to pick the
+ * first hint (scroll, swipe or Space).
+ */
+export function markEntered(via: EnteredVia = "pointer", now: number = performance.now()) {
+  if (!state.entered) update({ entered: true, enteredAt: now, enteredVia: via });
 }
 
 /** Tests only. */

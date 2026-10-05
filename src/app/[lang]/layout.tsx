@@ -1,5 +1,16 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Space_Grotesk, Unbounded } from "next/font/google";
+import {
+  Bebas_Neue,
+  Bowlby_One,
+  JetBrains_Mono,
+  Kanit,
+  Limelight,
+  Playfair_Display,
+  Shrikhand,
+  Space_Grotesk,
+  Unbounded,
+  Yellowtail,
+} from "next/font/google";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import "lenis/dist/lenis.css";
@@ -7,7 +18,8 @@ import "../globals.css";
 import styles from "./layout.module.css";
 import { TokensStyle } from "@/design/TokensStyle";
 import { SmoothScroll } from "@/features/hero/scroll/SmoothScroll";
-import { MusicToggle } from "@/features/music/MusicToggle";
+import { RadioButton } from "@/features/music/RadioButton";
+import { RadioWheel } from "@/features/music/RadioWheel";
 import { SegmentedNav } from "@/components/ui/SegmentedNav";
 import { defaultLocale, hasLocale, localeNames, locales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
@@ -29,6 +41,90 @@ const monoFont = JetBrains_Mono({
   variable: "--font-mono",
   display: "swap",
 });
+
+/*
+ * Radio station logos (radioFonts in the tokens). Not preloaded: the
+ * browser fetches each face when the wheel first draws it, so the faces of
+ * stations not on air yet are never fetched.
+ */
+const radioSeventiesFont = Shrikhand({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-radio-seventies",
+  display: "swap",
+  preload: false,
+});
+
+const radioChromeFont = Kanit({
+  weight: "900",
+  style: "italic",
+  subsets: ["latin"],
+  variable: "--font-radio-chrome",
+  display: "swap",
+  preload: false,
+});
+
+const radioTuxFont = Playfair_Display({
+  weight: "700",
+  subsets: ["latin"],
+  variable: "--font-radio-tux",
+  display: "swap",
+  preload: false,
+});
+
+const radioDeliFont = Yellowtail({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-radio-deli",
+  display: "swap",
+  preload: false,
+});
+
+const radioHiphopFont = Bowlby_One({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-radio-hiphop",
+  display: "swap",
+  preload: false,
+});
+
+const radioDecoFont = Limelight({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-radio-deco",
+  display: "swap",
+  preload: false,
+});
+
+/*
+ * The finale's changeable marquee letters and ticket stubs. Not preloaded,
+ * so it never competes with the hero's faces; the cinema's letters are in
+ * the first HTML, so the browser still fetches it early in the first load
+ * (about 9 KB). `block`: the letters are decoration (the headings carry
+ * the words), and a fallback face of other widths would hang off the board.
+ */
+const marqueeFont = Bebas_Neue({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-marquee",
+  display: "block",
+  preload: false,
+});
+
+const fontVariables = [
+  displayFont,
+  bodyFont,
+  monoFont,
+  radioSeventiesFont,
+  radioChromeFont,
+  radioTuxFont,
+  radioDeliFont,
+  radioHiphopFont,
+  radioDecoFont,
+  marqueeFont,
+]
+  .map((font) => font.variable)
+  .join(" ");
 
 /**
  * Without JS the title reveal never runs, so its hidden start state is
@@ -75,10 +171,7 @@ export default async function RootLayout({
   const dict = await getDictionary(lang);
 
   return (
-    <html
-      lang={lang}
-      className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}
-    >
+    <html lang={lang} className={fontVariables}>
       <head>
         <TokensStyle />
         <noscript>
@@ -89,21 +182,26 @@ export default async function RootLayout({
         <a className="skip-link" href="#main">
           {dict.nav.skipToContent}
         </a>
-        <div className={styles.controls} data-page-controls>
-          <MusicToggle label={dict.nav.music} />
-          <SegmentedNav
-            label={dict.nav.languageLabel}
-            segments={locales.map((locale) => ({
-              key: locale,
-              label: locale,
-              name: localeNames[locale],
-              href: `/${locale}`,
-              current: locale === lang,
-              lang: locale,
-            }))}
-          />
-        </div>
-        <SmoothScroll>{children}</SmoothScroll>
+        {/* Inside SmoothScroll so the radio wheel can hold the scroll while it is open. */}
+        <SmoothScroll>
+          <div className={styles.controls} data-page-controls>
+            <RadioButton dict={dict.radio} />
+            <SegmentedNav
+              label={dict.nav.languageLabel}
+              segments={locales.map((locale) => ({
+                key: locale,
+                label: locale,
+                name: localeNames[locale],
+                href: `/${locale}`,
+                current: locale === lang,
+                lang: locale,
+              }))}
+            />
+          </div>
+          {/* Outside the page controls: they are inert while the wheel is open. */}
+          <RadioWheel dict={dict.radio} />
+          {children}
+        </SmoothScroll>
       </body>
     </html>
   );

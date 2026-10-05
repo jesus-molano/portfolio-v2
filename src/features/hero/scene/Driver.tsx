@@ -2,16 +2,21 @@
 
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useLayoutEffect, useMemo } from "react";
-import { type Bone, Euler, FrontSide, Mesh, type MeshStandardMaterial, Quaternion } from "three";
+import { Suspense, useLayoutEffect, useMemo } from "react";
+import { type Bone, Color, Euler, FrontSide, Mesh, type MeshStandardMaterial, Quaternion } from "three";
+import { SceneErrorBoundary } from "../SceneErrorBoundary";
+import type { QualityTier } from "../useQualityTier";
 import { BONES, captureBindPose, DRIVER_SCALE, DRIVER_SEAT, poseDriver, type RestBone } from "./driverPose";
+import { Sunglasses } from "./Sunglasses";
 
-type Props = { animate: boolean };
+type Props = { animate: boolean; tier: QualityTier };
 
 /**
  * Jesús, built with MakeHuman / MPFB from CC0 assets by
- * tools/blender/build_driver_mpfb.py: his face shape, skin fade and beard,
- * the striped tee and the black earring.
+ * tools/blender/build_driver_mpfb.py (his face shape, the striped tee and the
+ * earring) and re-groomed by tools/blender/refine_driver_hair.py (the skin
+ * fade, the beard and the moustache). His aviators are a separate model
+ * (Sunglasses.tsx) on the head bone.
  */
 export const DRIVER_URL = "/models/makehuman-driver/driver.glb";
 
@@ -28,8 +33,40 @@ const REST_POSE_KEY = "vaBindPose";
 const q1 = new Quaternion();
 const euler = new Euler();
 
+/**
+ * The earring: a dark gunmetal hoop with an anodised blue edge. The blue is
+ * the metal's own reflectance toward grazing angles, so it gathers along
+ * the hoop's silhouette and the face of the hoop stays gunmetal.
+ */
+const EARRING = { color: "#3d4047", edge: "#2f6cff", edgeAmount: 0.75, metalness: 1, roughness: 0.3 } as const;
+
+function styleEarring(material: MeshStandardMaterial) {
+  material.color.set(EARRING.color);
+  material.metalness = EARRING.metalness;
+  material.roughness = EARRING.roughness;
+  const uniforms = {
+    uEdgeColor: { value: new Color(EARRING.edge) },
+    uEdgeAmount: { value: EARRING.edgeAmount },
+  };
+  material.userData.uniforms = uniforms;
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, uniforms);
+    shader.fragmentShader = shader.fragmentShader
+      .replace("void main() {", "uniform vec3 uEdgeColor;\nuniform float uEdgeAmount;\nvoid main() {")
+      .replace(
+        "#include <lights_physical_fragment>",
+        `// Anodised edge: the reflectance turns blue toward grazing angles.
+        float earringFacing = saturate(dot(normal, normalize(vViewPosition)));
+        float earringEdge = 1.0 - earringFacing;
+        diffuseColor.rgb = mix(diffuseColor.rgb, uEdgeColor, uEdgeAmount * earringEdge * earringEdge * earringEdge);
+        #include <lights_physical_fragment>`,
+      );
+  };
+  material.needsUpdate = true;
+}
+
 /** The guy at the wheel: seated, right hand on the wheel, left arm on the door. */
-export function Driver({ animate }: Props) {
+export function Driver({ animate, tier }: Props) {
   const { scene } = useGLTF(DRIVER_URL);
 
   const { bones, rest } = useMemo(() => {
@@ -62,6 +99,7 @@ export function Driver({ animate }: Props) {
         }
         // Brows and lashes blend over the skin without hiding each other.
         if (material.name === "Brows" || material.name === "Lashes") material.depthWrite = false;
+        if (material.name === "Earring") styleEarring(material);
       }
     });
     poseDriver(scene, bones, rest);
@@ -91,11 +129,19 @@ export function Driver({ animate }: Props) {
   });
 
   return (
-    <primitive
-      object={scene}
-      position={[DRIVER_SEAT.x, DRIVER_SEAT.y, DRIVER_SEAT.z]}
-      rotation-y={Math.PI}
-      scale={DRIVER_SCALE}
-    />
+    <>
+      <primitive
+        object={scene}
+        position={[DRIVER_SEAT.x, DRIVER_SEAT.y, DRIVER_SEAT.z]}
+        rotation-y={Math.PI}
+        scale={DRIVER_SCALE}
+      />
+      {/* Its own boundary: without the glasses' GLB he simply wears none. */}
+      <SceneErrorBoundary name="Sunglasses">
+        <Suspense fallback={null}>
+          <Sunglasses head={bones.get(BONES.head)} tier={tier} />
+        </Suspense>
+      </SceneErrorBoundary>
+    </>
   );
 }

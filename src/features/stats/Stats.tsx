@@ -1,0 +1,419 @@
+import type { CSSProperties } from "react";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { StatsIcon } from "./icons";
+import styles from "./Stats.module.css";
+import {
+  CAREER_CITY_ON_PAGE,
+  FRAMES,
+  HQ,
+  MISSIONS,
+  PLACES,
+  PLAYER,
+  SIDE_BLIPS,
+  blipPoint,
+  toPercent,
+  type CaptionSide,
+  type LonLat,
+  type MapPoint,
+} from "./statsLayout";
+
+type StatsDict = Dictionary["stats"];
+type Props = { dict: StatsDict };
+
+const SIDE_CLASS: Record<CaptionSide, string> = {
+  left: styles.left,
+  right: styles.right,
+  top: styles.top,
+  bottom: styles.bottom,
+  topLeft: styles.topLeft,
+  topRight: styles.topRight,
+  bottomLeft: styles.bottomLeft,
+  bottomRight: styles.bottomRight,
+};
+
+/** CSS custom properties that place a point on both crops of the map (percentages). */
+function placeAt(at: LonLat, inset = false): CSSProperties {
+  const wide = toPercent(FRAMES.wide, blipPoint(FRAMES.wide, at, inset));
+  const square = toPercent(FRAMES.square, blipPoint(FRAMES.square, at, inset));
+  return { "--x": wide.left, "--y": wide.top, "--xs": square.left, "--ys": square.top } as CSSProperties;
+}
+
+function placeMapPoint(wide: MapPoint, square: MapPoint): CSSProperties {
+  const w = toPercent(FRAMES.wide, wide);
+  const s = toPercent(FRAMES.square, square);
+  return { "--x": w.left, "--y": w.top, "--xs": s.left, "--ys": s.top } as CSSProperties;
+}
+
+/** The Gran Canaria box, as percentages of each crop. */
+function insetBox(): CSSProperties {
+  const box = (id: "wide" | "square") => {
+    const { inset, width, height } = FRAMES[id];
+    return [(inset.x / width) * 100, (inset.y / height) * 100, (inset.width / width) * 100, (inset.height / height) * 100];
+  };
+  const [x, y, w, h] = box("wide");
+  const [xs, ys, ws, hs] = box("square");
+  return { "--x": x, "--y": y, "--w": w, "--h": h, "--xs": xs, "--ys": ys, "--ws": ws, "--hs": hs } as CSSProperties;
+}
+
+function years(from: number, to: number | null): string {
+  return to === null ? String(from) : `${from}–${to}`;
+}
+
+/**
+ * STATS: the pause menu after the career city. Two screens of one menu,
+ * MAP and STATS. The map is Tenerife at night under parody names, with the
+ * career as main missions and the favourites as side activities; the sheet
+ * is the character: portrait, skills and records. A server component with
+ * no client code: every word is DOM text, the map art is an <img>.
+ */
+export function Stats({ dict }: Props) {
+  const { map, missions } = dict;
+  const placeName = (id: string) => map.places[id as keyof typeof map.places];
+  const youAt = { ...placeAt(PLAYER.at), "--heading": `${PLAYER.heading}deg` } as CSSProperties;
+
+  return (
+    <section id="stats" className={styles.stats} aria-labelledby="stats-title" data-loops>
+      {/* ── Screen 1: MAP ───────────────────────────────────────────── */}
+      <div className={styles.screen}>
+        <MenuBar dict={dict} active={0} titleId="stats-title" />
+        {/* After the heading, where heading navigation lands. */}
+        <p className="sr-only">{dict.description}</p>
+        <div className={styles.mapLayout}>
+          <figure className={styles.map} aria-labelledby="stats-map-title">
+            <h3 id="stats-map-title" className={styles.mapTitle}>
+              {map.title}
+            </h3>
+            <div className={styles.mapBox}>
+              <div className={styles.frame}>
+                <picture>
+                  {/* Static SVG art: next/image has nothing to optimise, and <picture> picks the crop. */}
+                  <source media="(max-width: 999.98px)" srcSet="/stats/map-square.svg" width={1100} height={1100} />
+                  <img className={styles.art} src="/stats/map.svg" alt="" width={1600} height={1100} loading="lazy" decoding="async" />
+                </picture>
+
+                {/* Decoration: the parody names, the compass, the scale and the mission numbers. */}
+                <div className={styles.decor} aria-hidden="true">
+                  {PLACES.map((place) =>
+                    place.label ? (
+                      <span
+                        key={place.id}
+                        className={`${styles.label} ${styles[`label_${place.kind}`]} ${place.minor ? styles.minor : ""}`}
+                        style={placeAt(place.label, place.inset)}
+                      >
+                        {placeName(place.id)}
+                      </span>
+                    ) : null,
+                  )}
+                  <span className={styles.north} style={placeMapPoint(FRAMES.wide.compass, FRAMES.square.compass)}>
+                    {map.north}
+                  </span>
+                  <span className={styles.scale} style={placeMapPoint(FRAMES.wide.scaleBar, FRAMES.square.scaleBar)}>
+                    {map.scale}
+                  </span>
+                  {MISSIONS.map((mission) =>
+                    mission.at === "home" ? null : (
+                      <span key={mission.id} className={styles.mission} style={placeAt(mission.at, mission.inset)}>
+                        <span className={styles.missionNumber}>{mission.number}</span>
+                        <span className={styles.tick}>✓</span>
+                      </span>
+                    ),
+                  )}
+                  {/* On a phone the map shows keys; the legend below carries the words. */}
+                  {SIDE_BLIPS.map((blip) => (
+                    <span key={blip.id} className={`${styles.pin} ${styles.pinSide}`} style={placeAt(blip.at)}>
+                      {blip.key}
+                    </span>
+                  ))}
+                  <span className={`${styles.pin} ${styles.pinYou}`} style={youAt}>
+                    <StatsIcon id="you" className={styles.youArrow} />
+                  </span>
+                  <span className={`${styles.pin} ${styles.pinHq}`} style={placeAt(HQ.at)}>
+                    <StatsIcon id="hq" />
+                  </span>
+                </div>
+              </div>
+
+              {/* The places: captions on the map from 1000 px, a keyed legend below it on narrower screens. */}
+              <ol className={styles.places}>
+                {SIDE_BLIPS.map((blip) => {
+                  const content = (
+                    <>
+                      <span className={styles.marker} aria-hidden="true">
+                        <StatsIcon id={blip.icon} />
+                      </span>
+                      <span className={styles.key} aria-hidden="true">
+                        {blip.key}
+                      </span>
+                      <span className={styles.caption}>
+                        {blip.id === "booth" ? (
+                          <>
+                            <span className={styles.text}>{map.booth.caption}</span>{" "}
+                            <span className={styles.action}>
+                              <span className={styles.text}>
+                                {map.booth.action} <span aria-hidden="true">▼</span>
+                              </span>
+                            </span>
+                          </>
+                        ) : (
+                          <span className={styles.text}>{map.blips[blip.id]}</span>
+                        )}
+                        <span className={styles.where}> · {placeName(blip.place)}</span>
+                      </span>
+                    </>
+                  );
+                  return (
+                    <li
+                      key={blip.id}
+                      className={`${styles.place} ${SIDE_CLASS[blip.side]} ${blip.id === "booth" ? styles.booth : ""}`}
+                      style={placeAt(blip.at)}
+                    >
+                      {blip.id === "booth" ? (
+                        <a className={styles.boothLink} href="#projects" aria-label={map.booth.name}>
+                          {content}
+                        </a>
+                      ) : (
+                        content
+                      )}
+                    </li>
+                  );
+                })}
+                <li className={`${styles.place} ${SIDE_CLASS[PLAYER.side]} ${styles.you}`} style={youAt}>
+                  <span className={styles.marker} aria-hidden="true">
+                    <StatsIcon id="you" className={styles.youArrow} />
+                  </span>
+                  <span className={styles.caption}>
+                    <span className={styles.text}>{map.you}</span>
+                  </span>
+                </li>
+                <li className={`${styles.place} ${SIDE_CLASS[HQ.side]} ${styles.hq}`} style={placeAt(HQ.at)}>
+                  <span className={styles.marker} aria-hidden="true">
+                    <StatsIcon id="hq" />
+                  </span>
+                  <span className={styles.caption}>
+                    <span className={styles.text}>{map.hq}</span>
+                  </span>
+                  {/* The jobs done from home base: their badges, beside it. */}
+                  <span className={styles.homeStack} aria-hidden="true">
+                    {MISSIONS.filter((mission) => mission.at === "home").map((mission) => (
+                      <span key={mission.id} className={`${styles.mission} ${mission.live ? styles.missionLive : ""}`}>
+                        <span className={styles.missionNumber}>{mission.number}</span>
+                        {mission.live ? (
+                          <span className={styles.liveTag} lang="en">
+                            {missions.live}
+                          </span>
+                        ) : (
+                          <span className={styles.tick}>✓</span>
+                        )}
+                      </span>
+                    ))}
+                  </span>
+                </li>
+                <li className={styles.inset} style={insetBox()}>
+                  <span className={styles.insetHead}>
+                    <span className={styles.insetName}>{map.inset.name}</span>
+                    <span className={styles.insetCity}>{map.inset.city}</span>
+                  </span>
+                  <span className={styles.insetCaption}>{map.inset.caption}</span>
+                </li>
+              </ol>
+            </div>
+            <figcaption className="sr-only">{map.label}</figcaption>
+            <p className={styles.source}>{map.source}</p>
+          </figure>
+
+          <div className={styles.aside}>
+            <div className={styles.panel}>
+              <h3 id="stats-missions" className={styles.panelTitle}>
+                {missions.title} <span className={styles.count}>· {missions.count}</span>
+              </h3>
+              <div className={styles.progress} aria-hidden="true">
+                {MISSIONS.map((mission) => (
+                  <i key={mission.id} className={mission.live ? styles.progressLive : styles.progressDone} />
+                ))}
+              </div>
+              <ol className={styles.missions}>
+                {MISSIONS.map((mission) => {
+                  const item = missions.items[mission.id];
+                  // A link to its stop in the career city once that is on the page; a plain row until then.
+                  const Row = CAREER_CITY_ON_PAGE ? "a" : "div";
+                  return (
+                    <li key={mission.id}>
+                      <Row
+                        className={`${styles.missionRow} ${mission.live ? styles.missionRowLive : ""}`}
+                        href={CAREER_CITY_ON_PAGE ? `#${mission.anchor}` : undefined}
+                      >
+                        <span className={styles.missionBadge} aria-hidden="true">
+                          {mission.number}
+                        </span>
+                        <span className={styles.missionText}>
+                          <span className={styles.years} aria-hidden={mission.live ? true : undefined}>
+                            {years(mission.years[0], mission.years[1])}
+                          </span>
+                          <span className={styles.missionName}>{item.name}</span>
+                          <span className={styles.role}>{item.role}</span>
+                        </span>
+                        <span className={styles.status}>
+                          {mission.live ? (
+                            <span className={styles.statusLive} aria-hidden="true">
+                              <i />
+                              <span lang="en">{missions.live}</span>
+                            </span>
+                          ) : (
+                            <span className={styles.statusDone} aria-hidden="true">
+                              ✓
+                            </span>
+                          )}
+                          <span className="sr-only">, {mission.live ? missions.liveText : missions.done}</span>
+                        </span>
+                      </Row>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+
+            <div className={styles.panel}>
+              <h3 id="stats-saves" className={styles.panelTitle}>
+                {dict.saves.title}
+              </h3>
+              <ol className={styles.saves}>
+                {dict.saves.slots.map((slot, i) => (
+                  <li key={i} className={slot.note ? undefined : styles.empty}>
+                    <span className={styles.slot} aria-hidden="true">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className={styles.slotPlace}>{slot.place}</span>
+                    {slot.note ? <span className={styles.slotNote}>{slot.note}</span> : null}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Screen 2: STATS ─────────────────────────────────────────── */}
+      <div className={`${styles.screen} ${styles.sheetScreen}`} id="stats-sheet">
+        <MenuBar dict={dict} active={1} />
+        <div className={styles.sheet}>
+          <figure className={styles.card}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG drawing */}
+            <img className={styles.portrait} src="/stats/portrait.svg" alt={dict.player.alt} width={360} height={480} loading="lazy" decoding="async" />
+            <span className={styles.player2} aria-hidden="true">
+              {dict.player.player2}
+            </span>
+            <figcaption className={styles.plate}>
+              <span className={styles.plateName}>{dict.player.name}</span>
+              <span className={styles.plateSub}>{dict.player.sub}</span>
+            </figcaption>
+          </figure>
+
+          <div className={`${styles.panel} ${styles.skills}`}>
+            <h3 id="stats-skills" className={styles.panelTitle}>
+              {dict.bars.title}
+            </h3>
+            <dl className={styles.bars}>
+              {dict.bars.items.map((bar) => (
+                <div
+                  key={bar.id}
+                  className={`${styles.bar} ${bar.value > 100 ? styles.over : ""} ${bar.value === 0 ? styles.zero : ""}`}
+                  style={{ "--v": bar.value } as CSSProperties}
+                >
+                  <dt className={styles.barLabel}>{bar.label}</dt>
+                  <dd className={styles.barValue}>{bar.value}%</dd>
+                  <dd className={styles.track} aria-hidden="true">
+                    <span className={styles.fill} />
+                    {bar.value > 100 ? (
+                      <>
+                        <i className={styles.crumb} />
+                        <i className={styles.crumb} />
+                        <i className={styles.crumb} />
+                      </>
+                    ) : null}
+                  </dd>
+                  <dd className={styles.barCaption}>{bar.caption}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div className={`${styles.panel} ${styles.records}`}>
+            <h3 id="stats-records" className={styles.panelTitle}>
+              {dict.records.title}
+            </h3>
+            <ul className={styles.recordList}>
+              {dict.records.items.map((record) => (
+                <li key={record.id} className={styles[`record_${record.id}`]}>
+                  <span className={styles.recordValue}>
+                    {record.id === "cats" ? (
+                      <>
+                        {record.value.slice(0, -1)}
+                        <span className={styles.haloed}>
+                          {record.value.slice(-1)}
+                          <svg className={styles.halo} viewBox="0 0 40 12" aria-hidden="true" focusable="false">
+                            <ellipse cx="20" cy="6" rx="16" ry="3.6" fill="none" stroke="currentColor" strokeWidth="2.4" />
+                          </svg>
+                        </span>
+                      </>
+                    ) : (
+                      record.value
+                    )}
+                  </span>
+                  <span className={styles.recordCaption}>{record.caption}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <p className={styles.hint} aria-hidden="true">
+          <span className={styles.hintArrow}>▼</span> {dict.hint}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function MenuBar({ dict, active, titleId }: { dict: StatsDict; active: 0 | 1; titleId?: string }) {
+  const targets = ["#stats", "#stats-sheet"];
+  return (
+    <header className={styles.menu}>
+      <div className={styles.who}>
+        <span className={styles.pause} aria-hidden="true">
+          <i />
+          <i />
+        </span>
+        <div>
+          {titleId ? (
+            <h2 id={titleId} className={styles.title}>
+              {dict.title}
+            </h2>
+          ) : (
+            <p className={styles.title} aria-hidden="true">
+              {dict.title}
+            </p>
+          )}
+          <p className={styles.sub} aria-hidden={titleId ? undefined : true}>
+            {dict.sub}
+          </p>
+        </div>
+      </div>
+      {/* One menu per screen: each landmark needs its own name. */}
+      <nav className={styles.tabs} aria-label={`${dict.tabsLabel}: ${dict.tabs[active]}`}>
+        {dict.tabs.map((tab, i) =>
+          i === active ? (
+            <span key={tab} className={`${styles.tab} ${styles.tabOn}`} aria-current="true">
+              {tab}
+            </span>
+          ) : (
+            <a key={tab} className={styles.tab} href={targets[i]}>
+              {tab}
+            </a>
+          ),
+        )}
+      </nav>
+      <p className={styles.clock} aria-hidden="true">
+        {dict.clock}
+      </p>
+    </header>
+  );
+}

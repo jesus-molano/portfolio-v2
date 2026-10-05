@@ -1,10 +1,254 @@
-funkeriffic.mp3
+Radio: the tracks of the radio stations (src/features/music/stations.ts).
+Every track is instrumental and licensed for this use: Creative Commons
+Attribution 4.0 (Kevin MacLeod), CC0 (HoliznaCC0, Bryan Teoh) or the
+Pixabay Content License. No copyrighted songs.
 
-"Funkeriffic", from FreePD (Free Public Domain Music).
-Source: https://archive.org/details/freepd (file misc/Funkeriffic.mp3,
-5045938 bytes, 3:30), downloaded on 2026-10-04 and kept unmodified.
-License: CC0 1.0 Universal (public domain dedication), as stated by the
-FreePD catalogue mirror at https://github.com/0lhi/FreePD.
+Changes made to every file (CC BY 4.0 asks to indicate them): trimmed
+(long fade-ins, ring-outs and silence removed; a few cut short with a fade
+out, as noted), loudness-normalised to -16 LUFS integrated and -1.5 dBTP
+true peak, re-encoded as MP3 at 128 kbps, 44.1 kHz stereo, and stripped of
+tags, all by tools/audio/encode-track.sh. The site shows these credits,
+with links to the sources and the licences, in its credits section.
+
+Licences:
+- CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+- CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+- Pixabay Content License: https://pixabay.com/service/terms/
+  (no attribution required; the site credits the tracks anyway)
+
+
+K-CALIMA 87.9 (classic and garage rock)
+=======================================
+
+classic.mp3
+"Classic" by HoliznaCC0, from the album Rock Montage.
+Source: https://freemusicarchive.org/music/holiznacc0/rock-montage/classic/
+Fetched from https://github.com/jeffrey-stellar/stellar-grooves at commit
+ec2167ad670c12872191b87a12846e70d7901551
+(demo/audio/HoliznaCC0/Rock Montage/Classic.mp3).
+License: CC0 1.0 Universal (public domain dedication).
 https://creativecommons.org/publicdomain/zero/1.0/
+Final chord faded out at 2:29.
 
-CC0 asks for no attribution; the site credits the track anyway.
+plastic-sunrise.mp3
+"Background Rock Music - Plastic Sunrise" by cinematic-soul.
+Source: https://pixabay.com/music/rock-background-rock-music-plastic-sunrise-587089/
+Pixabay ID: 587089
+License: Pixabay Content License, https://pixabay.com/service/terms/
+
+gearhead.mp3
+"Gearhead" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.filmmusic.io/song/3799-gearhead
+(ISRC USUAN1100221)
+Fetched from https://github.com/jeffrey-stellar/stellar-grooves at commit
+ec2167ad670c12872191b87a12846e70d7901551
+(demo/audio/Kevin MacLeod/Royalty Free Rock/Gearhead.mp3).
+Final ring-out faded out at 2:15.
+
+
+CROCKETT 91.4 (80s synth)
+=========================
+
+newer-wave.mp3
+"Newer Wave" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2000024
+(ISRC USUAN2000024)
+Fetched from https://github.com/noobsandnerdsgroup/audio at commit
+24a545705ba6277d03c2c2d736048a72ff12d681 (Newer Wave.mp3).
+
+miami-nights.mp3
+"Miami Nights - Extended Theme" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700078
+(ISRC USUAN1700078)
+Fetched from https://github.com/noobsandnerdsgroup/audio at commit
+24a545705ba6277d03c2c2d736048a72ff12d681 (Miami Nights - Extended Theme.mp3).
+Starts at 0:29, after the quiet intro; faded out at 2:56, before the
+long outro.
+
+nostalgia.mp3
+"Nostalgia" by alex-morgan.
+Source: https://pixabay.com/music/nostalgia-nostalgia-591320/
+Pixabay ID: 591320
+License: Pixabay Content License, https://pixabay.com/service/terms/
+
+neon-laser-horizon.mp3
+"Neon Laser Horizon" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2000023
+(ISRC USUAN2000023)
+Fetched from https://github.com/noobsandnerdsgroup/audio at commit
+24a545705ba6277d03c2c2d736048a72ff12d681 (Neon Laser Horizon.mp3).
+Outro pad faded out at 2:43.
+
+retro-synths.mp3
+"Retro Synths" by HoliznaCC0, from the album Power Pop.
+Source: https://freemusicarchive.org/music/holiznacc0/power-pop/retro-synths/
+Fetched from https://github.com/SoundSafari/CC0-1.0-Music at commit
+655388f987eacf6d08d73080fcc3e727f267bfde
+(freemusicarchive.org/HoliznaCC0 - Retro Synths.mp3).
+License: CC0 1.0 Universal (public domain dedication).
+https://creativecommons.org/publicdomain/zero/1.0/
+Starts at 0:16, after the quiet intro; faded out at 3:22, before the long
+fade.
+
+
+MR. WOLF 94.7 (hard rock)
+=========================
+
+rock.mp3
+"Rock" by paulyudin.
+Source: https://pixabay.com/music/hard-rock-rock-490391/
+Pixabay ID: 490391
+License: Pixabay Content License, https://pixabay.com/service/terms/
+
+big-rock.mp3
+"Big Rock" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100305
+(ISRC USUAN1100305)
+Fetched from https://github.com/cristianexer/WST at commit
+f1afb0b9fe8762d3fb2ce6ad05e9af63134c41e3
+(apps/web/public/audio/music/big-rock.mp3).
+Faded out at 3:45.
+
+hotrock.mp3
+"Hotrock" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100201
+(ISRC USUAN1100201)
+Fetched from https://github.com/jeffrey-stellar/stellar-grooves at commit
+ec2167ad670c12872191b87a12846e70d7901551
+(demo/audio/Kevin MacLeod/Royalty Free Rock/Hotrock.mp3).
+
+ready-aim-fire.mp3
+"Ready Aim Fire" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1500002
+(ISRC USUAN1500002)
+Fetched from https://github.com/jeffrey-stellar/stellar-grooves at commit
+ec2167ad670c12872191b87a12846e70d7901551
+(demo/audio/Kevin MacLeod/Royalty Free Rock/Ready Aim Fire.mp3).
+Final ring-out faded out at 3:33.
+
+
+LEAVE THE GUN 99.2 (funk)
+=========================
+
+joyful-rhythm-walk.mp3
+"Joyful Rhythm Walk Funk" by lightbeatsmusic.
+Source: https://pixabay.com/music/funk-joyful-rhythm-walk-funk-513936/
+Pixabay ID: 513936
+License: Pixabay Content License, https://pixabay.com/service/terms/
+
+funk.mp3
+"Funk" by prettyjohn1.
+Source: https://pixabay.com/music/funk-funk-503900/
+Pixabay ID: 503900
+License: Pixabay Content License, https://pixabay.com/service/terms/
+Final ring-out faded out at 2:07.
+
+retrofuture-nasty.mp3
+"RetroFuture Nasty" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1200042
+(ISRC USUAN1200042)
+Fetched from https://github.com/jeffrey-stellar/stellar-grooves at commit
+ec2167ad670c12872191b87a12846e70d7901551
+(demo/audio/Kevin MacLeod/Royalty Free Rock/RetroFuture Nasty.mp3).
+
+
+LOVE DADDY 102.5 (90s hip-hop beats)
+====================================
+
+old-school-groove.mp3
+"Boom Bap Old School Groove" by alex-morgan.
+Source: https://pixabay.com/music/electronic-boom-bap-old-school-groove-573879/
+Pixabay ID: 573879
+License: Pixabay Content License, https://pixabay.com/service/terms/
+
+griphop.mp3
+"Griphop" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100413
+(ISRC USUAN1100413; also https://incompetech.filmmusic.io/song/3830-griphop)
+Fetched from https://github.com/Three-s-A-Crowd-Games/foodtruck-sim at commit
+b7186700adc0209b2daad58a42117f1c7bc5efdb
+(audio/music/unclassified/Griphop.mp3).
+Trailing silence after the last hit removed.
+
+boom-bap.mp3
+"Boom Bap" by soundsurfer.
+Source: https://pixabay.com/music/old-school-hip-hop-boom-bap-592994/
+Pixabay ID: 592994
+License: Pixabay Content License, https://pixabay.com/service/terms/
+
+basic-implosion.mp3
+"Basic Implosion" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600032
+(ISRC USUAN1600032; also https://filmmusic.io/song/3420-basic-implosion)
+Fetched from https://github.com/skulltrick/MusicManager at commit
+c4199b144379526bffb12aea5e5a87ee08009d3e
+(examples/MusicPlayerExample/assets/Basic-Implosion.ogg), transcoded once
+from Ogg Vorbis.
+Ring-out after the last hit faded out at 3:06 (1 s fade).
+
+
+BABYLON 105.1 (disco and boogie)
+================================
+
+disco-music.mp3
+"Disco - Disco Music" by paulyudin.
+Source: https://pixabay.com/music/disco-disco-disco-music-595944/
+Pixabay ID: 595944
+License: Pixabay Content License, https://pixabay.com/service/terms/
+
+disco-con-tutti.mp3
+"Disco con Tutti" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+Source: https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1200091
+(ISRC USUAN1200091)
+Fetched from https://github.com/cmj1203/rhythm-game at commit
+d5ac806c73666f28cc69c2052ddeabb8e715b5b8
+(public/songs/disco-con-tutti/song.mp3).
+Radio edit: ends at 3:39, at the end of an eight-bar phrase, with a 3 s
+fade-out.
+
+disco.mp3
+"Disco" by atlasaudio.
+Source: https://pixabay.com/music/disco-disco-518074/
+Pixabay ID: 518074
+License: Pixabay Content License, https://pixabay.com/service/terms/
+Radio edit: starts at 0:08, four bars before the bass comes in, and fades
+out at 1:43, four bars into the outro.
+
+gotta-keep-on-movin.mp3
+"Gotta Keep On Movin'" by Bryan Teoh, released on FreePD (freepd.com).
+Source: https://bryan-teoh.squarespace.com/sleepfacingwest/2020/9/16/gl038-gotta-keep-on-movin
+Fetched from https://github.com/0lhi/FreePD (a mirror of freepd.com) at
+commit cf011c7016595833b550a88ff127f089188b25f8
+(Miscellaneous/Gotta Keep On Movin.mp3).
+License: CC0 1.0 Universal (public domain dedication; the file says "This
+piece was composed and dedicated to the Public Domain in 2020").
+https://creativecommons.org/publicdomain/zero/1.0/
+Starts at 0:08.5, four bars into the filtered build, with a 0.3 s fade-in.
+
+nu-disco.mp3
+"Nu Disco" by aurec.
+Source: https://pixabay.com/music/disco-nu-disco-590512/
+Pixabay ID: 590512
+License: Pixabay Content License, https://pixabay.com/service/terms/

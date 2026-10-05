@@ -5,61 +5,549 @@
   },
   "nav": {
     "languageLabel": "Language",
-    "skipToContent": "Skip to content",
-    "music": "Music"
+    "skipToContent": "Skip to content"
+  },
+  "radio": {
+    "label": "Radio",
+    "off": "Radio off",
+    "offState": "Radio: off",
+    "gesture": "Hold right-click or Q for the radio",
+    "gestureTouch": "Long-press the scene for the radio",
+    "hintAim": "Aim at a station, let go to tune",
+    "hintAimKey": "Aim with the mouse or the arrows, let go of Q to tune",
+    "hintBrowse": "Arrows to browse · Enter to tune · Esc to close",
+    "hintTouch": "Tap a station to tune",
+    "onAir": "On air",
+    "tune": "Tune in",
+    "nowPlaying": "Now playing",
+    "close": "Close the radio",
+    "taglines": {
+      "k-calima": "Super sounds of the sunset",
+      "crockett": "No socks, all synth",
+      "mr-wolf": "I solve problems. Loudly.",
+      "leave-the-gun": "Take the groove",
+      "love-daddy": "Wake up! Wake up!",
+      "babylon": "The world is yours. So is the floor."
+    }
   },
   "hero": {
     "name": "Jesús Molano",
     "role": "Frontend Engineer",
     "tagline": "Any framework, any road. I'm the one at the wheel.",
-    "scrollHint": "Scroll to drive into the city",
-    "sceneLabel": "Sunset drive over a causeway toward a neon city skyline, palm trees on both sides",
+    "intro": {
+      "hint": "Scroll to take the wheel",
+      "hintTouch": "Swipe up to take the wheel",
+      "hintKey": "Press Space to take the wheel",
+      "ack": "You have the wheel",
+      "model": "You drive. The film waits for you.",
+      "next": "Scroll",
+      "nextTouch": "Swipe up",
+      "nextKey": "Space",
+      "keepGoing": "Scroll to keep driving",
+      "keepGoingTouch": "Swipe up to keep driving",
+      "keepGoingKey": "Press Space to keep driving",
+      "hold": "Whoa. Let the man finish.",
+      "end": "Keep scrolling",
+      "still": "The script is below",
+      "help": "This intro is a short film that plays as you scroll or swipe, and stops when you stop. Each line stays until it has been read. Space plays the next line, Shift and Space goes back, W or the down arrow drives on and S or the up arrow backs up, and Escape skips the intro. The full script follows as text.",
+      "helpStill": "This intro is a still from a short film. Its full script follows as text."
+    },
+    "osd": {
+      "drive": "You drive",
+      "waiting": "Waiting",
+      "floored": "Flat out",
+      "reverse": "Reverse",
+      "unit": "km/h"
+    },
+    "skip": "Skip",
+    "skipLabel": "Skip the intro",
+    "skipHurry": "In a hurry?",
+    "sceneLabel": "Sunset drive over a causeway toward a neon city skyline and an art-deco tower at the end of the avenue, palm trees on both sides",
     "hud": {
       "title": "Jesús Molano",
       "subtitle": "Portfolio · work in progress",
       "camera": "CAM"
     },
-    "shots": ["Rear", "Tracking", "Low angle", "Crane"],
+    "shots": [
+      "Rear",
+      "Close-up",
+      "Tracking",
+      "Low angle",
+      "Crane"
+    ],
     "speaker": "Jesús",
+    "billboards": [
+      "JESÚS MOLANO",
+      "FRONTEND ENGINEER",
+      "VUE · NUXT",
+      "REACT · NEXT"
+    ],
     "lines": [
-      "Yeah… here we go again.",
-      "Who's the guy at the wheel? Jesús. Frontend engineer. Vue and Nuxt by heart. Everything else? Like Mr. Wolf, he solves problems.",
-      "Plot twist? He used to be a soldier, taking orders. Now he's a code nerd who finally gets to give them… to an AI.",
-      "Favourite film? The Godfather. Favourite series? The Sopranos. Code reviews? He makes you an offer you can't refuse.",
-      "Music? The same playlist since he was sixteen. He calls it backwards compatibility.",
-      "Where are we headed? The city, where his CV doesn't live in a PDF. It's up in neon, billboard after billboard."
+      [
+        "I'm from Tenerife, where even the sun works overtime."
+      ],
+      [
+        "I'm a frontend engineer, and I solve problems for a living,"
+      ],
+      [
+        "especially the ones that turn up on a Friday afternoon."
+      ],
+      [
+        "Before code, I did four years in the army as a combat engineer,",
+        "on Gran Canaria, which takes some nerve if you're from Tenerife."
+      ],
+      [
+        "I learned to take orders there, and now I give them to AI."
+      ],
+      [
+        "Come and meet the crew."
+      ]
     ]
   },
-  "loader": {
-    "loading": "Loading",
-    "choose": "Choose how to enter the city",
-    "ready": "Loaded. Choose how to enter the city.",
-    "tipLabel": "Tip",
-    "tips": [
-      "The car never moves. The world does. Nobody tell the car.",
-      "Reading the docs restores full health.",
-      "Every palm tree here is procedural. The jokes are handmade.",
-      "The city is still loading. Like most side projects.",
-      "Jesús ships on Fridays. Bravely.",
-      "Turn the music on. The palms sway better with funk."
+  "suspects": {
+    "title": "The usual suspects",
+    "place": "Line-up · Tenerife",
+    "associates": "Known associates of J. Molano",
+    "description": "A police line-up of Jesús's four cats in front of a height chart, each behind a numbered plate. Dante, the kitten, is the smallest. Odin, who has passed away, sits fourth with a golden halo over his head.",
+    "numberPrefix": "Nº",
+    "cats": [
+      {
+        "id": "kira",
+        "name": "Kira",
+        "alias": "“The Queen”",
+        "description": "A long-haired torbie in white gloves, so she never leaves a print."
+      },
+      {
+        "id": "tom",
+        "name": "Tom",
+        "alias": "“Fats”",
+        "description": "A white heavyweight with a tabby cap pulled low and a tail to match."
+      },
+      {
+        "id": "dante",
+        "name": "Dante",
+        "alias": "aka “Satan”",
+        "description": "A cream lynx point with ice-blue eyes and tufted ears, already on file."
+      },
+      {
+        "id": "odin",
+        "name": "Odin",
+        "alias": "“Shorty”",
+        "description": "Ginger tabby. Short tail. Day pass from upstairs, halo included."
+      }
     ],
-    "withMusic": "Enter the city · music on",
-    "withoutMusic": "Music off",
+    "effects": {
+      "title": "Personal effects",
+      "owner": "J. Molano",
+      "items": [
+        "One pair of gold aviators.",
+        "One dark hoop earring.",
+        "One striped tee.",
+        "A souvenir from a galaxy far, far away.",
+        "One “Sweet Child O’ Mine” record, played to death."
+      ]
+    },
+    "speaker": "Jesús",
+    "line": "Round up the usual suspects."
+  },
+  "loader": {
+    "loading": "Loading the city",
+    "ready": "Loaded. Choose how to enter the city.",
+    "slowLabel": "Slow connection",
+    "slow": "Your connection is taking the scenic route. Enter now and the city will catch up, or wait for the full picture.",
+    "labels": {
+      "tip": "Tip",
+      "trivia": "Trivia"
+    },
+    "nextTip": "Next tip",
+    "tips": [
+      {
+        "kind": "tip",
+        "when": ["motion"],
+        "text": "This film is not suitable for passengers: nothing moves until you scroll or swipe, because you're the one driving."
+      },
+      {
+        "kind": "tip",
+        "when": ["pointer"],
+        "text": "Hold right-click over the scene, or hold Q, and the radio wheel opens. Let go over a station to tune in."
+      },
+      {
+        "kind": "tip",
+        "when": ["touch"],
+        "text": "Press and hold the picture, or tap the radio button, and the radio wheel opens. Then tap a station to tune in."
+      },
+      {
+        "kind": "tip",
+        "when": ["pointer", "motion"],
+        "text": "Space brings up the next line, W or the down arrow drives on, S or the up arrow backs up, and Esc skips to the end."
+      },
+      {
+        "kind": "tip",
+        "when": ["touch", "motion"],
+        "text": "Swipe up to drive on and down to back up. A tap on the picture brings up the next line, and Skip cuts to the end."
+      },
+      {
+        "kind": "tip",
+        "when": ["motion"],
+        "text": "He follows F1, so every subtitle has a pit-lane limiter: the car waits until you've read it, however hard you push."
+      },
+      {
+        "kind": "tip",
+        "when": [],
+        "text": "BABYLON's disco comes as standard, but the dial also has CROCKETT's eighties synth and K-CALIMA's classic rock."
+      },
+      {
+        "kind": "tip",
+        "when": [],
+        "text": "MR. WOLF solves problems with hard rock, LEAVE THE GUN brings the funk, and LOVE DADDY spins nineties hip-hop beats."
+      },
+      {
+        "kind": "trivia",
+        "when": [],
+        "text": "The car never actually moves. The whole city drives past it, and so far nobody has had the heart to tell the car."
+      },
+      {
+        "kind": "trivia",
+        "when": [],
+        "text": "After the drive, his four cats face a line-up over scratched wardrobes and chewed cables, though only one did it."
+      },
+      {
+        "kind": "trivia",
+        "when": [],
+        "text": "Later on, a stats screen measures his appetite. The bar runs out long before he does."
+      },
+      {
+        "kind": "trivia",
+        "when": [],
+        "text": "Between The Godfather, Pulp Fiction and The Sopranos, he has watched enough crime to know a good getaway car."
+      },
+      {
+        "kind": "trivia",
+        "when": [],
+        "text": "At night the city lights a sign for every employer he has had, which is more neon than any CV has ever deserved."
+      },
+      {
+        "kind": "trivia",
+        "when": [],
+        "text": "Metal Gear taught him that a cardboard box is a fine place to hide. A loading screen isn't, so this one won't last long."
+      }
+    ],
+    "withMusic": "Enter with music",
+    "withoutMusic": "Without music",
     "hint": "or press any key"
   },
-  "teaser": {
-    "eyebrow": "Next stop",
-    "heading": "The city is still loading",
-    "body": "Phase 2 turns each of my GitHub projects into a neon district you can fly into.",
-    "github": "See my code on GitHub",
-    "newTab": "(opens in a new tab)",
-    "credits": {
-      "label": "Credits:",
-      "car": "“Convertible” by Poly by Google",
-      "license": "CC BY 3.0",
-      "modified": "modified",
-      "others": "driver built with MakeHuman (CC0) · traffic by Quaternius (CC0) · music: “Funkeriffic” from FreePD (CC0)."
+  "stats": {
+    "title": "PAUSED",
+    "sub": "OFF THE CLOCK · J. MOLANO",
+    "description": "This is a pause screen. Its map is Tenerife, more or less, with the towns renamed: it traces his career as five main missions, four completed and one still running, and hides his favourite games, films and series, and his Formula 1, as places on the island. The second screen is his character sheet, with his skills, records and saved games.",
+    "tabs": [
+      "MAP",
+      "STATS"
+    ],
+    "tabsLabel": "Pause menu",
+    "clock": "SUN 23:47",
+    "map": {
+      "title": "TENERIFE, MORE OR LESS",
+      "label": "Map of Tenerife at night, with its towns renamed and Gran Canaria in a box in the corner.",
+      "places": {
+        "santaCruz": "SANTA CHICHARRO",
+        "laLaguna": "LA LLOVIZNA",
+        "puerto": "PUERTO DE LA CHANCLA",
+        "icod": "ICOD DE LOS VINILOS",
+        "garachico": "GARAGRANDE",
+        "masca": "MASCACHICLES",
+        "gigantes": "LOS ENANOS",
+        "americas": "PLAYA DE LAS TOALLAS",
+        "cristianos": "LOS GUIRISTIANOS",
+        "medano": "EL VENDAVAL",
+        "guimar": "GÜÍZA",
+        "teresitas": "LAS SAHARITAS",
+        "esperanza": "LA PACIENCIA",
+        "anaga": "LA JUNGLA",
+        "teide": "ABUELO TEIDE · 3715",
+        "canadas": "LAS CAÑAS",
+        "sea": "EL CHARCO"
+      },
+      "inset": {
+        "name": "GRAN CANARIA",
+        "city": "LAS PALMERITAS",
+        "caption": "Enemy territory: four years behind the lines."
+      },
+      "you": "Hey, you. You're finally awake.",
+      "hq": "HQ in a volcano, obviously.",
+      "legend": "On the map",
+      "blips": {
+        "pit": "Pit lane. Box 33.",
+        "box": "A cardboard box that just moved.",
+        "pizza": "Pizza to go, and hold the olives.",
+        "arena": "Strength and honour in the arena.",
+        "carWash": "A car wash that only takes cash.",
+        "law": "A law office at the back of a nail salon.",
+        "betting": "A betting shop where the caps stay on."
+      },
+      "booth": {
+        "caption": "A phone booth that won't stop ringing.",
+        "action": "Answer to continue",
+        "name": "A phone booth that won't stop ringing: answer it to go on to the side projects."
+      },
+      "scale": "10 km",
+      "north": "N",
+      "source": "Relief and coast: SRTM, GMTED2010 and ETOPO1 (public domain)."
+    },
+    "missions": {
+      "title": "MAIN MISSIONS",
+      "count": "4/5",
+      "done": "completed",
+      "live": "LIVE",
+      "liveText": "live, since 2026",
+      "items": {
+        "army": {
+          "name": "Batallón de Zapadores XVI",
+          "role": "Combat engineer"
+        },
+        "pwc": {
+          "name": "PwC España",
+          "role": "Frontend Developer"
+        },
+        "cloud-district": {
+          "name": "Cloud District",
+          "role": "Frontend Developer"
+        },
+        "logixs": {
+          "name": "Logixs",
+          "role": "Full Stack Developer"
+        },
+        "heuristik": {
+          "name": "Heuristik",
+          "role": "Frontend Engineer"
+        }
+      }
+    },
+    "player": {
+      "name": "JESÚS MOLANO",
+      "sub": "OFF DUTY · TENERIFE",
+      "player2": "PLAYER 2",
+      "alt": "Jesús drawn as a game character: gold aviators, a dark hoop earring, a beard and a striped tee, with Dante, a cream lynx-point kitten with blue eyes, on his shoulder as player 2."
+    },
+    "bars": {
+      "title": "SKILLS",
+      "items": [
+        {
+          "id": "racecraft",
+          "label": "RACECRAFT",
+          "value": 97,
+          "caption": "Unbeatable on Sundays, from the sofa."
+        },
+        {
+          "id": "lungs",
+          "label": "LUNG CAPACITY",
+          "value": 86,
+          "caption": "I sing rock at full volume at every red light."
+        },
+        {
+          "id": "stealth",
+          "label": "STEALTH",
+          "value": 12,
+          "caption": "The cats find me in any box."
+        },
+        {
+          "id": "twists",
+          "label": "PLOT TWISTS SEEN COMING",
+          "value": 0,
+          "caption": "Not one, so I watch them all again."
+        },
+        {
+          "id": "stamina",
+          "label": "STAMINA",
+          "value": 38,
+          "caption": "I skip rope at home and run outside, steady but never heroic."
+        },
+        {
+          "id": "appetite",
+          "label": "APPETITE",
+          "value": 118,
+          "caption": "I run so I can eat, and the maths still doesn't add up."
+        }
+      ]
+    },
+    "records": {
+      "title": "RECORDS",
+      "items": [
+        {
+          "id": "cats",
+          "value": "3 + 1",
+          "caption": "cats: three at home, one keeping watch from above"
+        },
+        {
+          "id": "episode",
+          "value": "02:47",
+          "caption": "when last night's “just one more episode” finally ended"
+        },
+        {
+          "id": "grandsPrix",
+          "value": "≈7,000 km",
+          "caption": "of Grands Prix a season, every one of them from the sofa"
+        }
+      ]
+    },
+    "saves": {
+      "title": "SAVED GAMES",
+      "slots": [
+        {
+          "place": "The pork store",
+          "note": "gabagool, sliced thin"
+        },
+        {
+          "place": "The basement office",
+          "note": "work stays at work"
+        },
+        {
+          "place": "The family firm",
+          "note": "succession pending"
+        },
+        {
+          "place": "— empty —",
+          "note": ""
+        }
+      ]
+    },
+    "hint": "RESUME"
+  },
+  "common": {
+    "newTab": "(opens in a new tab)"
+  },
+  "projects": {
+    "title": "Side projects",
+    "marquee": {
+      "rows": [
+        "TONIGHT · FOUR SIDE JOBS",
+        "AFTER HOURS · NO PAYDAY"
+      ],
+      "showing": "NOW SHOWING:"
+    },
+    "speaker": "Jesús",
+    "line": "I made these side projects on my own time, on nobody's dime.",
+    "github": "GitHub",
+    "onGithub": "on GitHub",
+    "posters": {
+      "dotfiles": {
+        "title": "DOTFILES",
+        "genre": "Heist",
+        "tagline": [
+          "DRY RUN FIRST.",
+          "ALWAYS A WAY OUT."
+        ],
+        "sub": "One combination per machine.",
+        "oneLiner": "My whole machine as code: CachyOS and Hyprland, one composition per machine, simulated before it lands, rolled back if it fails."
+      },
+      "tessera-studio": {
+        "title": "TESSERA STUDIO",
+        "genre": "Art heist",
+        "tagline": [
+          "LOOK ALL YOU WANT.",
+          "TOUCH NOTHING."
+        ],
+        "sub": "Zero dependencies, because it works alone.",
+        "oneLiner": "A local, read-only browser for Tessera catalogues, with their reusable components, inventory and reuse decisions, written in Python with zero dependencies and a strict CSP."
+      },
+      "project-atlas": {
+        "title": "PROJECT ATLAS",
+        "genre": "Procedural",
+        "tagline": [
+          "NOBODY MOVES",
+          "UNTIL THE BOARD IS DONE."
+        ],
+        "sub": "An evidence sidecar for coding agents.",
+        "oneLiner": "An evidence sidecar for coding agents: it maps a frontend project (components, design evidence, decisions, risks) before the agent changes code."
+      },
+      "expenses-log-app": {
+        "title": "EXPENSES LOG",
+        "genre": "Neo-noir",
+        "tagline": [
+          "Pay on time",
+          "and nobody gets hurt."
+        ],
+        "sub": "A reminder before every charge, even offline.",
+        "oneLiner": "A mobile-first PWA for recurring expenses, built with Next 16: smart lists, one tap to mark a bill paid, Web Push reminders before each charge, offline use and Supabase sync."
+      }
     }
+  },
+  "credits": {
+    "title": "Credits",
+    "marquee": {
+      "rows": [
+        "NOW SHOWING",
+        "JESÚS MOLANO"
+      ],
+      "snipe": "HELD OVER"
+    },
+    "speaker": "Jesús",
+    "opening": "Roll credits. I'll keep the engine running.",
+    "byline": "A film by Jesús Molano",
+    "written": "Written, directed and built by",
+    "career": {
+      "title": "THE CAREER",
+      "present": "to the present",
+      "roles": {
+        "heuristik": "Frontend Engineer",
+        "logixs": "Full Stack Developer",
+        "cloud-district": "Frontend Developer",
+        "pwc": "Frontend Developer",
+        "army": "Combat engineer"
+      },
+      "army": "Spanish Army (Ejército de Tierra) · Batallón de Zapadores XVI"
+    },
+    "sideProjects": "SIDE PROJECTS",
+    "equipment": "EQUIPMENT",
+    "cast": {
+      "title": "CAST",
+      "driver": "The driver",
+      "suspects": "The usual suspects"
+    },
+    "assets": {
+      "title": "THE CAR AND THE CITY",
+      "car": "“Convertible”",
+      "modified": "modified",
+      "traffic": "Traffic",
+      "body": "The driver’s body",
+      "made": "Aviators, palms, towers, cinema",
+      "madeHere": "made in code for this site"
+    },
+    "music": {
+      "title": "MUSIC · ON THE RADIO",
+      "edited": "tracks trimmed and levelled",
+      "by": "by",
+      "quotes": [
+        "“",
+        "”"
+      ],
+      "licences": {
+        "CC BY 4.0": "Licensed under Creative Commons: By Attribution 4.0 License",
+        "CC0 1.0": "CC0 (public domain)",
+        "Pixabay": "Pixabay Content License"
+      }
+    },
+    "type": {
+      "title": "TYPE",
+      "site": "Titles, text, captions",
+      "radio": "Radio, marquee, tickets",
+      "posters": "Posters",
+      "licences": "Licences",
+      "apache": "Yellowtail and Special Elite: Apache License 2.0"
+    },
+    "builtWith": "BUILT WITH",
+    "notice": "No logos, liveries or typefaces of any game, film or team were used.",
+    "gag": "The cats slept through the entire production.",
+    "thanks": "THANKS FOR DRIVING BY",
+    "contact": {
+      "title": "Contact",
+      "admit": "ADMIT ONE",
+      "code": "the code",
+      "record": "the record"
+    },
+    "end": "THE END",
+    "last": "Same time tomorrow?",
+    "top": "Back to the top"
   },
   "notFound": {
     "heading": "Wrong exit",

@@ -7,17 +7,22 @@ type Props = { dict: Dictionary["hero"] };
 /** Semantic wrapper for the cinematic hero. */
 export function Hero({ dict }: Props) {
   return (
-    <section className={styles.hero} aria-labelledby="hero-title">
+    <section className={styles.hero} aria-labelledby="hero-title" aria-describedby="hero-help">
       <HeroStage
         name={dict.name}
         role={dict.role}
         tagline={dict.tagline}
-        scrollHint={dict.scrollHint}
+        intro={dict.intro}
+        osd={dict.osd}
+        skip={dict.skip}
+        skipLabel={dict.skipLabel}
+        skipHurry={dict.skipHurry}
         sceneLabel={dict.sceneLabel}
         hud={dict.hud}
         shots={dict.shots}
         speaker={dict.speaker}
         lines={dict.lines}
+        billboards={dict.billboards}
       />
     </section>
   );

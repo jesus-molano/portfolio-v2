@@ -4,8 +4,8 @@
 }
 
 /*
- * The scene shows through once loaded; the HUD and the page controls do
- * not, so nothing behind the menu looks clickable. They fade in on entry.
+ * The scene shows through once she enters; the HUD and the page controls
+ * do not show until then, so nothing behind the screen looks clickable.
  */
 :global([data-hud]),
 :global([data-page-controls]) {
@@ -23,231 +23,839 @@
 }
 
 /*
- * Everything centred on a near-black violet ground, so contrast is high and
- * measurable (cream ~17:1, cyan ~12:1, pink ~9:1). The only colour field is a
- * soft sunset glow rising from below the screen.
+ * Until she chooses, the page under the screen is not drawn. A web font
+ * that lands after the first paint reflows the hero's title under the
+ * screen, and Chrome counts that as layout shift (0.02 to 0.03 on a slow
+ * phone) although nobody can see it; hidden boxes do not count. Keyed to
+ * the screen being in the DOM, so it holds from the first paint, before
+ * hydration sets data-loading. Without JavaScript the screen is hidden
+ * (NO_JS_STYLE) and this does not apply, so the page stays readable.
+ */
+@media (scripting: enabled) {
+  :global(body:has([data-loader]:not([data-phase="leaving"])) #main),
+  :global(body:has([data-loader]:not([data-phase="leaving"])) [data-page-controls]) {
+    visibility: hidden;
+  }
+}
+
+/*
+ * The cold open. One fixed root; every box below is placed against the
+ * viewport and the safe areas, never against a neighbour, and has a fixed
+ * size. No phase changes display, padding, alignment or which nodes exist:
+ * phases switch opacity, visibility, transform and inert only, so nothing
+ * ever moves (CLS 0, tools/loader/check.mjs).
+ *
+ * Desktop: lockup top left, tip card bottom left, action slot bottom
+ * right, progress line on the bottom edge. Phones, portrait screens and
+ * windows too narrow for card and slot side by side (under 820 px): the
+ * card and the slot stack full width at the bottom. Short landscape
+ * screens: the name on one line, card and slot side by side.
  */
 .loader {
+  --gutter: clamp(20px, 3.2vw, 48px);
+  --inset-top: calc(var(--gutter) + env(safe-area-inset-top, 0px));
+  --inset-right: calc(var(--gutter) + env(safe-area-inset-right, 0px));
+  --inset-bottom: calc(var(--gutter) + env(safe-area-inset-bottom, 0px));
+  --inset-left: calc(var(--gutter) + env(safe-area-inset-left, 0px));
+  /* Card and slot sit this far above the bottom inset, clear of the line. */
+  --lift: 8px;
+  --name-size: clamp(48px, 6.2vw, 120px);
+  /* In vw, not %: the tip size below is computed from it. */
+  --card-width: clamp(380px, 30vw, 440px);
+  /* The card's side padding and border. */
+  --card-pad: 38px;
+  --card-lines: 3;
+  /*
+   * The tip size: --tip-max, smaller on a narrow card, so a line always
+   * holds --tip-ems ems and the longest tip (120 characters) keeps a
+   * margin inside its reserved lines.
+   */
+  --tip-max: 17px;
+  --tip-ems: 22;
+  --tip-size: min(var(--tip-max), calc((var(--card-width) - var(--card-pad)) / var(--tip-ems)));
+  --slot-width: 360px;
+  --slot-height: 150px;
+  --scrim: var(--va-color-night);
+
   position: fixed;
   inset: 0;
   z-index: var(--va-z-loader);
-  display: grid;
-  place-items: center;
-  padding:
-    max(1.25rem, env(safe-area-inset-top))
-    max(1.25rem, env(safe-area-inset-right))
-    max(1.25rem, env(safe-area-inset-bottom))
-    max(1.25rem, env(safe-area-inset-left));
-  overflow: hidden auto;
-  background: #120a26;
+  overflow: hidden;
   color: var(--va-color-cream);
-  text-align: center;
+  font-family: var(--va-font-body);
   outline: none;
-  transition: opacity 700ms ease, visibility 700ms ease;
 }
 
 .loader[data-phase="leaving"] {
+  pointer-events: none;
+}
+
+/* ---------- The painting ---------- */
+
+/*
+ * No pointer events: a right-click or a long-press on the painting (the
+ * radio tips suggest both, for the scene) opens no "save image" menu.
+ */
+.art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* Dusk over the night: the afterglow the film opens on, without a picture. */
+  background:
+    radial-gradient(140% 70% at 62% 108%, color-mix(in srgb, var(--va-color-magenta) 34%, transparent) 0%, transparent 62%),
+    radial-gradient(90% 50% at 62% 100%, color-mix(in srgb, var(--va-color-amber) 22%, transparent) 0%, transparent 60%),
+    linear-gradient(to bottom, var(--va-color-night) 0%, color-mix(in srgb, var(--va-color-night) 70%, var(--va-color-magenta)) 100%);
+  transition: opacity 700ms ease;
+}
+
+.loader[data-phase="leaving"] .art {
+  opacity: 0;
+}
+
+/* Night behind the lockup and under the card and the slot. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      120% 70% at 0% 0%,
+      color-mix(in srgb, var(--scrim) 76%, transparent) 0%,
+      color-mix(in srgb, var(--scrim) 58%, transparent) 40%,
+      transparent 72%
+    ),
+    linear-gradient(
+      to top,
+      color-mix(in srgb, var(--scrim) 84%, transparent) 0%,
+      color-mix(in srgb, var(--scrim) 52%, transparent) 18%,
+      transparent 40%
+    );
+}
+
+/* Film grain, stepped 24 times a second like the hero's. */
+.grain {
+  position: absolute;
+  inset: -50%;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  pointer-events: none;
+  animation: grain calc(8s / 24) steps(1, end) infinite;
+  will-change: transform;
+}
+
+/* ---------- The lockup: his name as the game logo ---------- */
+
+.lockup,
+.card,
+.slot,
+.line {
+  transition: opacity 250ms ease;
+}
+
+.loader[data-phase="leaving"] :is(.lockup, .card, .slot, .line) {
+  opacity: 0;
+}
+
+.lockup {
+  position: absolute;
+  top: var(--inset-top);
+  left: var(--inset-left);
+  max-width: calc(100% - var(--inset-left) - var(--inset-right));
+}
+
+.name {
+  margin: 0;
+  font-family: var(--va-font-display);
+  font-size: var(--name-size);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  /* A hard ink drop keeps the sunset fill legible over the palms. */
+  filter: drop-shadow(0 0.06em 0 var(--va-color-ink))
+    drop-shadow(0 0.16em 0.32em color-mix(in srgb, var(--va-color-night) 55%, transparent));
+}
+
+.word {
+  display: block;
+  width: max-content;
+  /* Room for the accent on the Ú: a clipped background paints only inside the box. */
+  padding-top: 0.2em;
+  margin-top: -0.2em;
+  background: linear-gradient(
+    180deg,
+    var(--va-color-cream) 12%,
+    var(--va-color-amber) 52%,
+    var(--va-color-pink) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  margin: 1.1em 0 0;
+  font-family: var(--va-font-mono);
+  font-size: clamp(11px, 0.9vw, 13px);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--va-color-cream);
+  /* A tight night halo keeps 4.5:1 where the kicker crosses a sunlit facade. */
+  text-shadow:
+    0 0 2px var(--va-color-night),
+    0 1px 3px var(--va-color-night),
+    0 0 14px color-mix(in srgb, var(--va-color-night) 85%, transparent);
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--va-color-magenta);
+  box-shadow: 0 0 10px var(--va-color-magenta);
+}
+
+/* ---------- The tip card ---------- */
+
+/* No backdrop-filter: the art under it moves, so a blur would redraw every frame. */
+.card {
+  position: absolute;
+  left: var(--inset-left);
+  bottom: calc(var(--inset-bottom) + var(--lift));
+  width: var(--card-width);
+  padding: 12px 18px 18px;
+  border: 1px solid color-mix(in srgb, var(--va-color-text) 14%, transparent);
+  border-radius: 12px;
+  background: var(--va-color-osd-dense);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--va-color-night) 40%, transparent);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 32px;
+  margin-bottom: 8px;
+}
+
+/* Every label sits in one cell, so a longer one never pushes anything. */
+.labels {
+  display: grid;
+  margin: 0;
+  font-family: var(--va-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--va-color-pink);
+}
+
+.label {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 200ms ease,
+    visibility 0s linear 200ms;
+}
+
+.label[data-on] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 250ms ease 200ms,
+    visibility 0s linear 200ms;
+}
+
+.label[data-slow-label] {
+  color: var(--va-color-sodium);
+}
+
+/* Fixed width, anchored to the Next button, text from its left edge: the numbers change, the box does not. */
+.counter {
+  flex: none;
+  width: 7.2em;
+  margin-left: auto;
+  font-family: var(--va-font-mono);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--va-color-text-muted);
+}
+
+/* Before the client knows her device and motion setting, CSS picks the total. */
+.total::after {
+  content: attr(data-pointer);
+}
+
+.next {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--va-color-line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--va-color-cream);
+  cursor: pointer;
+  transition:
+    opacity 250ms ease,
+    visibility 0s,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+/* A 44 x 44 target around the 32 px circle. */
+.next::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+.next svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.next:hover {
+  border-color: var(--va-color-cyan);
+  color: var(--va-color-cyan);
+}
+
+.next:focus-visible {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 2px;
+}
+
+.counter,
+.timer {
+  transition:
+    opacity 250ms ease,
+    visibility 0s;
+}
+
+/* Slow: no tip to count, skip or time; they fade out with the tip. */
+.loader[data-slow] :is(.counter, .next, .timer) {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 200ms ease,
+    visibility 0s linear 200ms;
+}
+
+/* Every tip lives in this one cell; the cell reserves the lines the longest needs. */
+.body {
+  display: grid;
+  /* One row exactly as tall as the reserved lines: a tip that needs more overflows visibly (and the check says so). */
+  grid-template-rows: minmax(0, 1fr);
+  font-size: var(--tip-size);
+  line-height: 1.45;
+  block-size: calc(var(--card-lines) * 1lh);
+}
+
+.text {
+  grid-area: 1 / 1;
+  align-self: start;
+  margin: 0;
+  text-wrap: pretty;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 200ms ease,
+    visibility 0s linear 200ms;
+}
+
+.text[data-on],
+.text[data-first="motion"],
+.text[data-first="all"] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 250ms ease 200ms,
+    visibility 0s linear 200ms;
+}
+
+/* Slow: the note takes the card; the tip it covers comes back once loaded. */
+.loader[data-slow] .text[data-on]:not([data-slow-text]) {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 200ms ease,
+    visibility 0s linear 200ms;
+}
+
+/* The time the tip has left. */
+.timer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: color-mix(in srgb, var(--va-color-text) 8%, transparent);
+}
+
+.timer i {
+  display: block;
+  height: 100%;
+  background: var(--va-color-pink);
+  opacity: 0.7;
+  transform-origin: left;
+}
+
+.timer i[data-running] {
+  animation: drain 1s linear both;
+}
+
+.timer i[data-held] {
+  animation-play-state: paused;
+}
+
+/* ---------- The action slot: loading, then the two ways in, in one cell ---------- */
+
+.slot {
+  position: absolute;
+  right: var(--inset-right);
+  bottom: calc(var(--inset-bottom) + var(--lift));
+  display: grid;
+  width: var(--slot-width);
+  height: var(--slot-height);
+}
+
+.status,
+.choices {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.status {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  transition:
+    opacity 200ms ease,
+    visibility 0s linear 200ms;
+}
+
+.loader:is([data-phase="ready"], [data-phase="leaving"], [data-slow]) .status {
   opacity: 0;
   visibility: hidden;
 }
 
-/*
- * Loaded: a game "continue" screen. The solid ground (::before) fades out and
- * leaves a veil that is darkest at the bottom, so the first shot of the drive
- * shows behind the menu. The menu and the tip sit in the bottom third, where
- * the veil is at least 80% #120a26: cream text stays above 10:1 even over the
- * sun.
- */
-.loader::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: #120a26;
-  transition: opacity 900ms ease;
-}
-
-.loader[data-phase="ready"],
-.loader[data-phase="leaving"] {
-  place-items: end center;
-  background: linear-gradient(
-    to top,
-    rgba(18, 10, 38, 0.95) 0%,
-    rgba(18, 10, 38, 0.82) 38%,
-    rgba(18, 10, 38, 0.38) 68%,
-    rgba(18, 10, 38, 0.18) 100%
-  );
-}
-
-.loader[data-phase="ready"]::before,
-.loader[data-phase="leaving"]::before {
-  opacity: 0;
-}
-
-.loader[data-phase="ready"] .glow {
-  opacity: 0;
-  transition: opacity 900ms ease;
-}
-
-.loader[data-phase="ready"] .stack {
-  gap: clamp(1.25rem, 3.5vh, 2rem);
-  padding-bottom: clamp(0.5rem, 5vh, 3rem);
-}
-
-.glow {
-  position: absolute;
-  left: 50%;
-  bottom: -60vmax;
-  width: 120vmax;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, rgba(255, 143, 208, 0.36) 0%, rgba(255, 138, 92, 0.16) 32%, rgba(138, 77, 255, 0.1) 52%, transparent 70%);
-  pointer-events: none;
-  animation: glow-breathe 8s ease-in-out infinite;
-}
-
-.grain {
-  position: absolute;
-  inset: -50%;
-  opacity: 0.06;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  pointer-events: none;
-  animation: grain 0.8s steps(4) infinite;
-}
-
-.stack {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: clamp(1.5rem, 4vh, 2.5rem);
-  width: min(46rem, 100%);
-  /* Never wider than the screen, whatever the labels say. */
-  min-width: 0;
-}
-
-.stack > * {
-  max-width: 100%;
-}
-
-.title {
-  margin: 0;
-  font-family: var(--va-font-display);
-  /* "CARGANDO" is ~7.1em wide: at most 5.5rem it fits the 46rem column. */
-  font-size: clamp(2.6rem, 8vw, 5.5rem);
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  text-transform: uppercase;
-  color: var(--va-color-cream);
-  /* The dots hang outside, so the word itself is what gets centred. */
-  position: relative;
-}
-
-.dots {
-  position: absolute;
-  left: 100%;
-  bottom: 0;
-}
-
-/* The ellipsis types itself: one dot, two, three. */
-.dots span {
-  animation: dot 1.4s steps(1) infinite;
-}
-
-.dots span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.dots span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-/* The bar is centred like the title; the percentage hangs off its right end. */
-.progress {
-  position: relative;
-  display: grid;
+.statusLabel {
+  display: flex;
   align-items: center;
-  width: min(32rem, calc(100% - 9ch));
+  gap: 0.8em;
+  padding-bottom: 6px;
+  font-family: var(--va-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.3em;
+  white-space: nowrap;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 85%, transparent);
 }
 
-.track {
-  height: 8px;
-  border-radius: 4px;
-  background: rgba(255, 244, 241, 0.16);
+/* Four characters ("  7%" to "100%") in a box that never changes size. */
+.percent {
+  flex: none;
+  width: 80px;
+  font-family: var(--va-font-mono);
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+  text-shadow: 0 1px 3px color-mix(in srgb, var(--va-color-night) 85%, transparent);
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.choices > * {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 200ms ease,
+    visibility 0s linear 200ms;
+}
+
+.loader:is([data-phase="ready"], [data-phase="leaving"], [data-slow]) .choices > * {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 250ms ease,
+    visibility 0s,
+    border-color var(--va-control-transition),
+    color var(--va-control-transition),
+    background-color var(--va-control-transition);
+}
+
+.loader:is([data-phase="ready"], [data-slow]) .choices > :nth-child(2) {
+  transition-delay: 60ms;
+}
+
+.loader:is([data-phase="ready"], [data-slow]) .choices > :nth-child(3) {
+  transition-delay: 120ms;
+}
+
+.choices .music {
+  flex: none;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 7px;
+  height: 64px;
+  min-height: 0;
+  padding: 0 24px;
+  line-height: 1;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--va-color-magenta) 28%, transparent);
+}
+
+.musicLabel {
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+}
+
+/* The station that will play: one line, cut with an ellipsis if it must. */
+.station {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+}
+
+.station svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.stationName {
+  min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.choices .silent {
+  flex: none;
+  height: 48px;
+  margin-top: 10px;
+  background: var(--va-color-osd-dense);
+  backdrop-filter: none;
+  font-size: 13px;
+  color: var(--va-color-cream);
+}
+
+.hint {
+  flex: none;
+  height: 16px;
+  margin: 10px 0 0;
+  font-family: var(--va-font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--va-color-cream) 82%, transparent);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 90%, transparent);
+}
+
+.loader[data-phase="ready"] .hint {
+  animation: blink 1.6s ease-in-out 400ms infinite;
+}
+
+/* ---------- The progress line ---------- */
+
+.line {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: color-mix(in srgb, var(--va-color-cream) 12%, transparent);
 }
 
 .fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--va-color-amber), var(--va-color-pink));
+  position: absolute;
+  inset: 0;
   transform-origin: left;
+  background: linear-gradient(90deg, var(--va-color-amber), var(--va-color-pink) 60%, var(--va-color-magenta));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--va-color-magenta) 70%, transparent);
   transition: transform 400ms ease;
 }
 
-.percent {
+.fill::after {
+  content: "";
   position: absolute;
-  left: calc(100% + 1rem);
-  min-width: 4ch;
-  font-family: var(--va-font-mono);
-  font-size: 1rem;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
+  inset: 0;
+  background: var(--va-color-cream);
+  opacity: 0;
 }
 
-/*
- * A game menu: one column, the main way in first and full width, the quiet
- * one under it at its own width.
- */
-.choices {
-  display: grid;
-  gap: 1.1rem;
-  /* Wide enough for the main label on one line from tablets up. */
-  width: min(31rem, 100%);
-  animation: rise 450ms ease both;
+/* Loaded: the line fills, flares for a moment and goes. */
+.loader:is([data-phase="ready"], [data-phase="leaving"]) .line {
+  animation: line-out 600ms ease 300ms both;
 }
 
-/* One way in: its button and, under it, what else does the same. */
-.option {
-  display: grid;
-  gap: 0.7rem;
-  min-width: 0;
+.loader:is([data-phase="ready"], [data-phase="leaving"]) .fill::after {
+  animation: flare 300ms ease both;
 }
 
-.option:last-child {
-  justify-items: center;
+/* ---------- Phones and portrait screens ---------- */
+
+@media (orientation: portrait), (max-width: 819px) and (min-height: 521px) {
+  .loader {
+    --gutter: 16px;
+    --name-size: min(13.4vw, 96px);
+    --card-width: min(560px, 100vw - 32px);
+    --card-pad: 34px;
+    --card-lines: 4;
+    --tip-max: 15px;
+    --tip-ems: 21;
+    --slot-height: 150px;
+    --slot-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .scrim {
+    background:
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--scrim) 62%, transparent) 0%,
+        transparent 24%
+      ),
+      linear-gradient(
+        to top,
+        color-mix(in srgb, var(--scrim) 90%, transparent) 0%,
+        color-mix(in srgb, var(--scrim) 64%, transparent) 30%,
+        transparent 50%
+      );
+  }
+
+  .lockup {
+    top: calc(22px + env(safe-area-inset-top, 0px));
+  }
+
+  .kicker {
+    font-size: 10.5px;
+    letter-spacing: 0.28em;
+  }
+
+  .card,
+  .slot {
+    right: var(--inset-right);
+    left: var(--inset-left);
+    width: auto;
+    max-width: 560px;
+    margin-inline: auto;
+  }
+
+  .card {
+    width: var(--card-width);
+  }
+
+  .card {
+    bottom: calc(var(--slot-bottom) + var(--slot-height) + 12px);
+    padding: 10px 16px 16px;
+  }
+
+  .slot {
+    bottom: var(--slot-bottom);
+  }
 }
 
-/* "Press any key" blinks, as on every continue screen. */
-.hint {
-  margin: 0;
-  text-align: center;
-  animation: blink 1.6s ease-in-out infinite;
-  font-family: var(--va-font-mono);
-  font-size: 0.875rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(255, 244, 241, 0.82);
+/* A phone has no keyboard to press: no hint, and the slot only holds the buttons. */
+@media (pointer: coarse) {
+  .choices > .hint {
+    height: 0;
+    margin-top: 0;
+    overflow: hidden;
+  }
+
+  .loader[data-loader] .choices > .hint {
+    visibility: hidden;
+  }
+
+  .total::after {
+    content: attr(data-touch);
+  }
 }
 
-.tip {
-  display: grid;
-  gap: 0.5rem;
-  min-height: 4.8em;
-  max-width: 34rem;
-  font-size: clamp(1rem, 1.8vw, 1.15rem);
-  line-height: 1.5;
+@media (pointer: coarse) and (orientation: portrait), (pointer: coarse) and (max-width: 819px) and (min-height: 521px) {
+  .loader {
+    --slot-height: 122px;
+  }
 }
 
-.tipLabel {
-  font-family: var(--va-font-mono);
-  font-size: 0.8125rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--va-color-cyan);
+/* ---------- Short landscape: phones on their side, small laptop windows ---------- */
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .loader {
+    --gutter: 16px;
+    --name-size: clamp(28px, 9vh, 44px);
+    --slot-width: clamp(260px, 42vw, 360px);
+    /* What the slot and the gutters leave, with room for a desktop scrollbar. */
+    --card-width: min(440px, 100vw - var(--slot-width) - 64px);
+    --card-lines: 4;
+    --tip-max: 15px;
+    --tip-ems: 21;
+  }
+
+  .word {
+    display: inline;
+  }
+
+  .kicker {
+    display: none;
+  }
 }
 
-.tipText {
-  animation: rise 450ms ease both;
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  /* The server's first card for everyone with reduced motion. */
+  .text[data-first="motion"] {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .text[data-first="still"] {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .total::after {
+    content: attr(data-pointer-still);
+  }
+
+  /* Still grain; a time bar would only jump to empty. */
+  .grain,
+  .hint,
+  .loader[data-phase="ready"] .hint {
+    animation: none;
+  }
+
+  .timer {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+  .total::after {
+    content: attr(data-touch-still);
+  }
+}
+
+/* ---------- Forced colours ---------- */
+
+@media (forced-colors: active) {
+  .name {
+    filter: none;
+  }
+
+  .word {
+    background: none;
+    color: CanvasText;
+    -webkit-text-fill-color: CanvasText;
+  }
+
+  .card {
+    border-color: CanvasText;
+  }
+
+  .dot {
+    background: CanvasText;
+    box-shadow: none;
+  }
+
+  .line {
+    background: Canvas;
+  }
+
+  .fill,
+  .timer i {
+    background: Highlight;
+    box-shadow: none;
+    forced-color-adjust: none;
+  }
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes grain {
+  0% {
+    transform: translate(0, 0);
+  }
+  12.5% {
+    transform: translate(-3%, 2%);
+  }
+  25% {
+    transform: translate(2%, -3%);
+  }
+  37.5% {
+    transform: translate(-1%, -2%);
+  }
+  50% {
+    transform: translate(3%, 1%);
+  }
+  62.5% {
+    transform: translate(-2%, 3%);
+  }
+  75% {
+    transform: translate(1%, -1%);
+  }
+  87.5% {
+    transform: translate(-3%, -3%);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 
 @keyframes blink {
@@ -256,71 +864,14 @@
   }
 }
 
-@keyframes dot {
-  0% {
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes glow-breathe {
-  0%,
-  100% {
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    transform: translateX(-50%) scale(1.04);
-  }
-}
-
-@keyframes grain {
-  0% {
-    transform: translate(0, 0);
-  }
-  25% {
-    transform: translate(-3%, 2%);
-  }
-  50% {
-    transform: translate(2%, -3%);
-  }
-  75% {
-    transform: translate(-2%, -1%);
-  }
-  100% {
-    transform: translate(0, 0);
-  }
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
+@keyframes flare {
   to {
-    opacity: 1;
-    transform: none;
+    opacity: 0.85;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .loader,
-  .fill {
-    transition: none;
-  }
-
-  .glow,
-  .grain,
-  .dots span,
-  .tipText,
-  .choices,
-  .hint {
-    animation: none;
-  }
-
-  .loader::before,
-  .loader[data-phase="ready"] .glow {
-    transition: none;
+@keyframes line-out {
+  to {
+    opacity: 0;
   }
 }

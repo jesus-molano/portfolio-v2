@@ -1,0 +1,1545 @@
+/*
+ * STATS: a pause menu in two screens (MAP, then STATS). Colours come from
+ * the tokens only; translucency is mixed from them. Layout numbers that the
+ * caption test relies on (paddings, the aside's width, marker size, caption
+ * offsets and fonts) are mirrored in statsLayout.ts: change both together.
+ *
+ * Breakpoints: below 1000 px the square map with keyed pins and a legend
+ * (one column on phones, below 700 px); from 1000 px the wide map with its
+ * captions; from 1280 px the map and the panels side by side.
+ */
+
+.stats {
+  --panel: color-mix(in srgb, var(--va-color-night) 84%, transparent);
+  --panel-line: color-mix(in srgb, var(--va-color-cream) 14%, transparent);
+  --shadow: color-mix(in srgb, var(--va-color-letterbox) 50%, transparent);
+  --pad: 48px;
+  position: relative;
+  z-index: var(--va-z-title);
+  /* The appetite bar breaks out of its panel; the page never scrolls sideways. */
+  overflow-x: clip;
+  color: var(--va-color-text);
+  /* What the cinema starts with below (its tall plate starts darker). */
+  --below: var(--va-color-night);
+  /*
+   * The glows rise out of the dark: the first 10rem fade from the line-up's
+   * floor above, the last 10rem into the cinema's top below, so neither
+   * edge shows a line.
+   */
+  background:
+    linear-gradient(
+      var(--va-lineup-floor),
+      color-mix(in srgb, var(--va-color-night) 0%, transparent) 10rem,
+      color-mix(in srgb, var(--va-color-night) 0%, transparent) calc(100% - 10rem),
+      var(--below)
+    ),
+    radial-gradient(70% 40% at 12% 0%, color-mix(in srgb, var(--va-color-violet) 20%, transparent), transparent 70%),
+    radial-gradient(55% 35% at 100% 48%, color-mix(in srgb, var(--va-color-magenta) 11%, transparent), transparent 70%),
+    radial-gradient(70% 40% at 25% 100%, color-mix(in srgb, var(--va-color-dusk) 18%, transparent), transparent 70%),
+    var(--va-color-night);
+}
+
+/* Film grain over the menu, like the hero's. */
+.stats::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-height: 100svh;
+  max-width: 1680px;
+  margin: 0 auto;
+  /* Clear of the fixed page controls (music, language) at the top right. */
+  padding: 80px var(--pad) 48px;
+}
+
+/* ── Menu bar ─────────────────────────────────────────────────────── */
+
+.menu {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pause {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.pause i {
+  width: 8px;
+  height: 30px;
+  border-radius: 2px;
+  background: var(--va-color-pink);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--va-color-magenta) 70%, transparent);
+}
+
+.title {
+  font: 800 28px/1 var(--va-font-display);
+  letter-spacing: 0.04em;
+  color: var(--va-color-cream);
+  text-shadow: 0 2px 18px color-mix(in srgb, var(--va-color-magenta) 30%, transparent);
+}
+
+.sub {
+  margin-top: 7px;
+  font: 500 11px/1 var(--va-font-mono);
+  letter-spacing: 0.22em;
+  color: var(--va-color-text-muted);
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 18px;
+  border: 1px solid var(--va-color-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--va-color-night) 60%, transparent);
+  font: 500 11px/1 var(--va-font-mono);
+  letter-spacing: 0.22em;
+  color: var(--va-color-text-muted);
+  text-decoration: none;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease;
+}
+
+/* Touch screens (tablets too): a 44 px target. */
+@media (pointer: coarse) {
+  .tab {
+    height: 44px;
+  }
+}
+
+a.tab:hover {
+  color: var(--va-color-cream);
+  border-color: var(--va-color-cream);
+}
+
+.tabOn {
+  border-color: var(--va-color-cream);
+  background: var(--va-color-cream);
+  color: var(--va-color-night);
+  font-weight: 700;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--va-color-magenta) 22%, transparent),
+    0 6px 18px color-mix(in srgb, var(--va-color-magenta) 25%, transparent);
+}
+
+.clock {
+  justify-self: end;
+  font: 500 12px/1 var(--va-font-mono);
+  letter-spacing: 0.24em;
+  color: var(--va-color-text-muted);
+}
+
+/* ── Screen 1: the map and its panels ─────────────────────────────── */
+
+.mapLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 28vw, 420px);
+  align-items: start;
+  gap: 32px;
+}
+
+.map {
+  width: 100%;
+  min-width: 0;
+  /* Short screens: the whole map fits under the menu bar (statsLayout.ts mapWidthAt). */
+  max-width: max(740px, calc((100svh - 190px) * 16 / 11));
+  margin: 0 auto;
+}
+
+.mapTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font: 500 11px/1 var(--va-font-mono);
+  letter-spacing: 0.26em;
+  color: var(--va-color-text-muted);
+}
+
+.mapTitle::before {
+  content: "";
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--va-color-magenta);
+  box-shadow: 0 0 8px var(--va-color-magenta);
+}
+
+.mapBox {
+  position: relative;
+  container-type: inline-size;
+}
+
+.frame {
+  position: relative;
+  aspect-ratio: 16 / 11;
+  border-radius: 18px;
+  box-shadow: 0 24px 70px var(--shadow);
+}
+
+.frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--panel-line);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.decor,
+.places {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.places {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Everything placed on the map reads its point from the crop on screen. */
+.decor > *,
+.place,
+.inset {
+  --px: var(--x);
+  --py: var(--y);
+}
+
+/* Parody place names: street-sign caps, quiet, never in the way. */
+.label {
+  position: absolute;
+  left: calc(var(--px) * 1%);
+  top: calc(var(--py) * 1%);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font: 600 clamp(9px, 1.15cqi, 10.5px) / 1.2 var(--va-font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--va-color-cream) 66%, transparent);
+  text-shadow:
+    0 0 6px var(--va-color-night),
+    0 0 2px var(--va-color-night);
+}
+
+.label_summit {
+  color: var(--va-color-cream);
+}
+
+.label_region,
+.label_sea {
+  font-family: var(--va-font-body);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(10px, 1.3cqi, 12px);
+  letter-spacing: 0.3em;
+  color: color-mix(in srgb, var(--va-color-lilac) 80%, var(--va-color-cream));
+}
+
+/* The smaller towns' names need a map at least 820 px wide (statsLayout.ts MINOR_LABELS_FROM). */
+@container (max-width: 819.98px) {
+  .minor {
+    display: none;
+  }
+}
+
+.north,
+.scale {
+  position: absolute;
+  left: calc(var(--px) * 1%);
+  top: calc(var(--py) * 1%);
+  font: 600 12px/1 var(--va-font-mono);
+  letter-spacing: 0.16em;
+  color: var(--va-color-text-muted);
+}
+
+.north {
+  transform: translate(-50%, calc(-100% - 22px));
+  color: var(--va-color-cream);
+}
+
+.scale {
+  transform: translate(0, 8px);
+}
+
+/* Main missions on the map: sodium rings with their numbers. */
+.mission {
+  position: absolute;
+  left: calc(var(--px) * 1%);
+  top: calc(var(--py) * 1%);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 2px solid var(--va-color-sodium);
+  border-radius: 50%;
+  background: var(--va-color-night);
+  color: var(--va-color-sodium);
+  font: 700 12px/1 var(--va-font-display);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--va-color-night) 55%, transparent),
+    0 0 12px color-mix(in srgb, var(--va-color-sodium) 45%, transparent);
+}
+
+/* Home base's missions, in a row beside the HQ marker (statsLayout.ts HOME_STACK). */
+.homeStack {
+  position: absolute;
+  top: -12px;
+  left: 17px;
+  display: flex;
+  /* Room for each badge's tick, which sticks out 8 px to its right. */
+  gap: 10px;
+}
+
+.homeStack .mission {
+  position: relative;
+  left: auto;
+  top: auto;
+  margin: 0;
+}
+
+.homeStack .missionLive {
+  margin-right: 40px;
+}
+
+.tick {
+  position: absolute;
+  top: -7px;
+  right: -8px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--va-color-sodium);
+  color: var(--va-color-night);
+  font: 700 9px/14px var(--va-font-body);
+  text-align: center;
+}
+
+.missionLive {
+  border-color: var(--va-color-on-air);
+  background: var(--va-color-on-air);
+  color: var(--va-color-cream);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--va-color-night) 55%, transparent),
+    0 0 18px color-mix(in srgb, var(--va-color-on-air) 75%, transparent);
+}
+
+.liveTag {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 6px);
+  transform: translateY(-50%);
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: var(--va-color-on-air);
+  color: var(--va-color-cream);
+  font: 700 10px/1 var(--va-font-mono);
+  letter-spacing: 0.14em;
+}
+
+/* Phone pins: hidden on the wide map, where the places carry their own markers. */
+.pin {
+  display: none;
+}
+
+/* The places, as captions beside their markers. */
+.place {
+  position: absolute;
+  left: calc(var(--px) * 1%);
+  top: calc(var(--py) * 1%);
+  width: 0;
+  height: 0;
+}
+
+.marker {
+  position: absolute;
+  top: -13px;
+  left: -13px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--va-color-pink);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--va-color-night) 92%, transparent);
+  color: var(--va-color-cream);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--va-color-night) 55%, transparent),
+    0 3px 8px var(--shadow),
+    0 0 12px color-mix(in srgb, var(--va-color-pink) 45%, transparent);
+}
+
+.marker svg {
+  width: 15px;
+  height: 15px;
+}
+
+/*
+ * Captions read like subtitles: each line on its own dark band, hugging the
+ * words. A band is the text's content area (about 1.26 em) plus 1 px above
+ * and below, and the line is 1.4 em: the bands meet without the next one
+ * covering this line's descenders ("Hey, you" read "Heu, uou" at 1.25).
+ */
+.caption {
+  position: absolute;
+  width: max-content;
+  max-width: 11em;
+  padding: 3px 7px;
+  font: 500 clamp(12px, 1.6cqi, 13.5px) / 1.4 var(--va-font-body);
+  color: var(--va-color-cream);
+  text-wrap: balance;
+}
+
+.booth .caption {
+  max-width: 16em;
+}
+
+.text {
+  padding: 1px 6px;
+  margin: 0 -6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--va-color-night) 82%, transparent);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.left .caption,
+.topLeft .caption,
+.bottomLeft .caption {
+  text-align: right;
+}
+
+.top .caption,
+.bottom .caption {
+  text-align: center;
+}
+
+.right .caption {
+  top: 0;
+  left: 17px;
+  transform: translateY(-50%);
+}
+
+.left .caption {
+  top: 0;
+  right: 17px;
+  transform: translateY(-50%);
+}
+
+.top .caption {
+  bottom: 17px;
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.bottom .caption {
+  top: 17px;
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.topRight .caption {
+  bottom: 11px;
+  left: 11px;
+}
+
+.topLeft .caption {
+  right: 11px;
+  bottom: 11px;
+}
+
+.bottomRight .caption {
+  top: 11px;
+  left: 11px;
+}
+
+.bottomLeft .caption {
+  top: 11px;
+  right: 11px;
+}
+
+.key {
+  display: none;
+}
+
+/* The town is on the map as a label; screen readers get it here. */
+.where {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.you .marker {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--va-color-cream);
+}
+
+.youArrow {
+  transform: rotate(var(--heading, 0deg));
+  filter: drop-shadow(0 0 5px var(--va-color-magenta));
+}
+
+.you .marker svg {
+  width: 22px;
+  height: 22px;
+}
+
+.you .caption {
+  font-style: italic;
+}
+
+.hq .marker {
+  border-color: var(--va-color-cream);
+  background: var(--va-color-cream);
+  color: var(--va-color-night);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--va-color-night) 55%, transparent),
+    0 0 14px color-mix(in srgb, var(--va-color-cream) 45%, transparent);
+}
+
+/* The booth: the way on to the projects, and the only link on the map. */
+.boothLink {
+  position: absolute;
+  inset: 0;
+  color: inherit;
+  text-decoration: none;
+  pointer-events: auto;
+}
+
+.boothLink:focus-visible {
+  outline: none;
+}
+
+.boothLink:focus-visible .marker,
+.boothLink:focus-visible .caption {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 3px;
+}
+
+.booth .marker {
+  border-color: var(--va-color-cream);
+  background: var(--va-color-magenta);
+  pointer-events: auto;
+}
+
+.booth .caption {
+  pointer-events: auto;
+}
+
+.booth .text {
+  background: color-mix(in srgb, var(--va-color-magenta) 22%, var(--va-color-night));
+}
+
+.boothLink:hover .text {
+  background: color-mix(in srgb, var(--va-color-magenta) 40%, var(--va-color-night));
+}
+
+.action {
+  display: block;
+  margin-top: 3px;
+  font-weight: 700;
+  color: var(--va-color-pink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .booth .marker {
+    animation: ring 4s ease-in-out infinite;
+  }
+
+  .booth .marker::after {
+    content: "";
+    position: absolute;
+    inset: -7px;
+    border: 2px solid var(--va-color-pink);
+    border-radius: 50%;
+    opacity: 0;
+    animation: ringPulse 4s ease-out infinite;
+  }
+}
+
+/* A 2 Hz wiggle for 0.6 s, every 4 s. */
+@keyframes ring {
+  0%,
+  15%,
+  100% {
+    transform: rotate(0deg);
+  }
+  3.75% {
+    transform: rotate(-14deg);
+  }
+  7.5% {
+    transform: rotate(14deg);
+  }
+  11.25% {
+    transform: rotate(-8deg);
+  }
+}
+
+@keyframes ringPulse {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.8);
+  }
+  30%,
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* Gran Canaria's box: its name on top, his line at the bottom. */
+.inset {
+  position: absolute;
+  left: calc(var(--px) * 1%);
+  top: calc(var(--py) * 1%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: calc(var(--w) * 1%);
+  height: calc(var(--h) * 1%);
+  padding: 12px 14px;
+}
+
+.insetHead {
+  display: grid;
+  gap: 4px;
+}
+
+.insetName {
+  font: 600 clamp(9px, 1.15cqi, 10.5px) / 1.2 var(--va-font-display);
+  letter-spacing: 0.24em;
+  color: color-mix(in srgb, var(--va-color-cream) 80%, transparent);
+}
+
+.insetCity {
+  font: 600 clamp(9px, 1.15cqi, 10.5px) / 1.2 var(--va-font-display);
+  letter-spacing: 0.12em;
+  color: var(--va-color-sodium);
+}
+
+.insetCaption {
+  font: 500 clamp(12px, 1.5cqi, 13px) / 1.3 var(--va-font-body);
+  font-style: italic;
+  color: var(--va-color-cream);
+}
+
+.source {
+  margin-top: 10px;
+  font: 400 12px/1.4 var(--va-font-mono);
+  /* Small text: the muted token keeps it above 4.5:1 on the glows. */
+  color: var(--va-color-text-muted);
+}
+
+/* ── Panels ───────────────────────────────────────────────────────── */
+
+.aside {
+  display: grid;
+  gap: 24px;
+}
+
+.panel {
+  position: relative;
+  padding: 20px 22px;
+  border: 1px solid var(--panel-line);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: 0 20px 60px var(--shadow);
+}
+
+.panelTitle {
+  margin-bottom: 14px;
+  font: 500 11px/1 var(--va-font-mono);
+  letter-spacing: 0.26em;
+  color: var(--va-color-text-muted);
+}
+
+.count {
+  font-weight: 700;
+  color: var(--va-color-sodium);
+}
+
+.progress {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.progress i {
+  flex: 1;
+  height: 5px;
+  border-radius: 2px;
+}
+
+.progressDone {
+  background: var(--va-color-sodium);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--va-color-sodium) 60%, transparent);
+}
+
+.progressLive {
+  background: var(--va-color-on-air);
+  box-shadow: 0 0 8px var(--va-color-on-air);
+}
+
+.missions,
+.saves,
+.recordList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.missions {
+  display: grid;
+  gap: 2px;
+}
+
+.missionRow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+/* Only a row that links (CAREER_CITY_ON_PAGE) answers the pointer. */
+a.missionRow:hover,
+a.missionRow:focus-visible {
+  border-color: var(--panel-line);
+  background: color-mix(in srgb, var(--va-color-cream) 6%, transparent);
+  color: inherit;
+}
+
+.missionRow:focus-visible {
+  outline-offset: 0;
+}
+
+.missionBadge {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--va-color-sodium);
+  border-radius: 50%;
+  font: 700 12px/1 var(--va-font-display);
+  color: var(--va-color-sodium);
+}
+
+.missionRowLive .missionBadge {
+  border-color: var(--va-color-on-air);
+  background: var(--va-color-on-air);
+  color: var(--va-color-cream);
+}
+
+.missionText {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.years {
+  font: 500 11px/1.2 var(--va-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--va-color-text-muted);
+}
+
+.missionName {
+  font: 700 15px/1.2 var(--va-font-body);
+  color: var(--va-color-cream);
+}
+
+.role {
+  font: 400 13px/1.25 var(--va-font-body);
+  color: var(--va-color-text-muted);
+}
+
+.statusDone {
+  font: 700 16px/1 var(--va-font-body);
+  color: var(--va-color-sodium);
+}
+
+.statusLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 11px/1 var(--va-font-mono);
+  letter-spacing: 0.16em;
+  color: var(--va-color-cream);
+}
+
+.statusLive i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--va-color-on-air);
+  box-shadow: 0 0 10px var(--va-color-on-air);
+}
+
+.saves {
+  display: grid;
+  gap: 8px;
+}
+
+.saves li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  padding: 9px 12px;
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--va-color-cream) 4%, transparent);
+}
+
+.slot {
+  grid-row: span 2;
+  font: 700 12px/1 var(--va-font-mono);
+  color: var(--va-color-sodium);
+}
+
+.slotPlace {
+  font: 600 14px/1.25 var(--va-font-body);
+  color: var(--va-color-cream);
+}
+
+.slotNote {
+  font: 400 13px/1.25 var(--va-font-body);
+  color: var(--va-color-text-muted);
+}
+
+.saves .empty {
+  border-style: dashed;
+  background: none;
+}
+
+.empty .slotPlace {
+  font-weight: 400;
+  color: var(--va-color-text-muted);
+}
+
+/* ── Screen 2: the character sheet ────────────────────────────────── */
+
+.sheet {
+  display: grid;
+  grid-template-columns: minmax(250px, 330px) minmax(0, 1fr) minmax(250px, 320px);
+  align-items: start;
+  gap: 28px;
+  /* Centred in the screen, with the hint at the bottom. */
+  margin-block: auto;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  aspect-ratio: 330 / 520;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--panel-line);
+  border-radius: 18px;
+  background:
+    radial-gradient(90% 60% at 50% 30%, color-mix(in srgb, var(--va-color-dusk) 50%, var(--va-color-night)), transparent 75%),
+    var(--va-color-night);
+  box-shadow: 0 20px 60px var(--shadow);
+}
+
+.portrait {
+  position: absolute;
+  inset: 0 0 74px;
+  width: 100%;
+  height: calc(100% - 74px);
+  object-fit: cover;
+  object-position: 50% 100%;
+}
+
+.player2 {
+  position: absolute;
+  top: calc((100% - 74px) * 0.42);
+  left: 12px;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--va-color-cyan) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--va-color-night) 78%, transparent);
+  font: 600 10px/1 var(--va-font-mono);
+  letter-spacing: 0.24em;
+  color: var(--va-color-cyan);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--va-color-cyan) 25%, transparent);
+}
+
+.plate {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  height: 74px;
+  padding: 0 20px;
+  border-top: 1px solid var(--panel-line);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--va-color-night) 70%, transparent),
+    color-mix(in srgb, var(--va-color-night) 96%, transparent)
+  );
+}
+
+.plateName {
+  font: 800 20px/1 var(--va-font-display);
+  color: var(--va-color-cream);
+}
+
+.plateSub {
+  font: 500 11px/1 var(--va-font-mono);
+  /* "FUERA DE SERVICIO · TENERIFE" on one line in the 300 px card. */
+  letter-spacing: 0.16em;
+  color: var(--va-color-text-muted);
+}
+
+.skills {
+  padding: 22px 26px 24px;
+}
+
+.bars {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+}
+
+.bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 12px;
+  row-gap: 8px;
+}
+
+.bar dd {
+  margin: 0;
+}
+
+.barLabel {
+  font: 600 13px/1.3 var(--va-font-display);
+  letter-spacing: 0.08em;
+  color: var(--va-color-cream);
+}
+
+.barValue {
+  font: 500 13px/1 var(--va-font-mono);
+  color: var(--va-color-text-muted);
+}
+
+.zero .barValue {
+  color: var(--va-color-pink);
+}
+
+.over .barValue {
+  font-weight: 700;
+  color: var(--va-color-sodium);
+}
+
+.track {
+  position: relative;
+  grid-column: 1 / -1;
+  height: 16px;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(10% - 1px),
+      color-mix(in srgb, var(--va-color-cream) 15%, transparent) calc(10% - 1px) 10%
+    ),
+    color-mix(in srgb, var(--va-color-cream) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--va-color-cream) 17%, transparent);
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--v) * 1%);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--va-color-cream) 38%, transparent), transparent 55%),
+    linear-gradient(90deg, var(--va-color-violet), var(--va-color-magenta) 70%, var(--va-color-pink));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--va-color-magenta) 45%, transparent);
+}
+
+/* Appetite: past 100 %, out of the track and the panel, with a bite out of the end. */
+.over .fill {
+  border-radius: 3px 0 0 3px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--va-color-cream) 42%, transparent), transparent 55%),
+    linear-gradient(90deg, var(--va-color-orange), var(--va-color-sodium) 70%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--va-color-sodium) 55%, transparent);
+  --bite:
+    radial-gradient(circle 5px at calc(100% + 2px) 1px, transparent 96%, var(--va-color-letterbox) 100%),
+    radial-gradient(circle 5.5px at calc(100% - 1px) 50%, transparent 96%, var(--va-color-letterbox) 100%),
+    radial-gradient(circle 5px at calc(100% + 2px) calc(100% - 1px), transparent 96%, var(--va-color-letterbox) 100%);
+  -webkit-mask: var(--bite);
+  -webkit-mask-composite: source-in;
+  mask: var(--bite);
+  mask-composite: intersect;
+}
+
+.crumb {
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--va-color-sodium);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--va-color-sodium) 70%, transparent);
+}
+
+.crumb:nth-of-type(1) {
+  left: calc(var(--v) * 1% + 8px);
+  transform: translateY(-130%) rotate(20deg);
+}
+
+.crumb:nth-of-type(2) {
+  left: calc(var(--v) * 1% + 17px);
+  width: 4px;
+  height: 4px;
+  transform: translateY(30%) rotate(-30deg);
+}
+
+.crumb:nth-of-type(3) {
+  left: calc(var(--v) * 1% + 29px);
+  width: 3px;
+  height: 3px;
+  opacity: 0.85;
+  transform: translateY(-60%);
+}
+
+.barCaption {
+  grid-column: 1 / -1;
+  font: 400 14px/1.35 var(--va-font-body);
+  color: var(--va-color-text-muted);
+}
+
+.records {
+  padding: 22px 24px 8px;
+}
+
+.recordList li {
+  display: grid;
+  gap: 8px;
+  padding: 16px 0 18px;
+  border-bottom: 1px solid var(--panel-line);
+}
+
+.recordList li:last-child {
+  border-bottom: 0;
+}
+
+.recordValue {
+  font: 800 40px/1 var(--va-font-display);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  color: var(--va-color-cream);
+}
+
+.record_episode .recordValue {
+  color: var(--va-color-pink);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--va-color-magenta) 45%, transparent);
+}
+
+.record_grandsPrix .recordValue {
+  font-size: 32px;
+  color: var(--va-color-sodium);
+}
+
+.recordCaption {
+  font: 400 14px/1.35 var(--va-font-body);
+  color: var(--va-color-text-muted);
+}
+
+.haloed {
+  position: relative;
+  display: inline-block;
+}
+
+.halo {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 40px;
+  color: var(--va-color-sodium);
+  transform: translateX(-50%) rotate(-6deg);
+  filter: drop-shadow(0 0 4px var(--va-color-sodium));
+}
+
+.hint {
+  align-self: flex-end;
+  font: 600 12px/1 var(--va-font-mono);
+  letter-spacing: 0.26em;
+  color: var(--va-color-text-muted);
+}
+
+.hintArrow {
+  color: var(--va-color-pink);
+}
+
+/* ── Narrower screens ─────────────────────────────────────────────── */
+
+@media (max-width: 1279.98px) {
+  .sheet {
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  }
+
+  /*
+   * The skills panel reaches the page's edge here, with no gap beside it
+   * to break out into: every track is shorter, so 118 % and the crumbs end
+   * inside the panel instead of off the screen.
+   */
+  .track {
+    width: calc((100% - 2.5rem) / 1.18);
+  }
+
+  .records {
+    grid-column: 1 / -1;
+  }
+
+  .recordList {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  .recordList li {
+    align-content: start;
+    border-bottom: 0;
+  }
+
+  .recordValue {
+    font-size: clamp(28px, 3.6vw, 40px);
+  }
+
+  .record_grandsPrix .recordValue {
+    font-size: clamp(24px, 3vw, 32px);
+  }
+}
+
+@media (max-width: 1279.98px) {
+  .stats {
+    --pad: 32px;
+  }
+
+  .mapLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aside {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* Below 1000 px: the square map with keyed pins, the words in a legend under it. */
+@media (max-width: 999.98px) {
+  /*
+   * The title on its own row, the tabs and the clock under it: three
+   * columns leave the subtitle too little room ("J." / "MOLANO" at 768).
+   */
+  .menu {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 18px;
+  }
+
+  .who {
+    grid-column: 1 / -1;
+  }
+
+  .tabs {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .clock {
+    grid-row: 2;
+    grid-column: 2;
+  }
+
+  .map {
+    max-width: none;
+  }
+
+  .frame {
+    aspect-ratio: 1;
+  }
+
+  .decor > *,
+  .place,
+  .inset {
+    --px: var(--xs);
+    --py: var(--ys);
+  }
+
+  .label {
+    display: none;
+  }
+
+  .north {
+    transform: translate(16px, -50%);
+  }
+
+  .mission {
+    width: 22px;
+    height: 22px;
+    margin: -11px 0 0 -11px;
+  }
+
+  .liveTag {
+    font-size: 12px;
+  }
+
+  .pin {
+    position: absolute;
+    left: calc(var(--px) * 1%);
+    top: calc(var(--py) * 1%);
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin: -11px 0 0 -11px;
+    border: 2px solid var(--va-color-pink);
+    border-radius: 50%;
+    background: var(--va-color-night);
+    color: var(--va-color-cream);
+    font: 700 12px/1 var(--va-font-display);
+  }
+
+  .pin svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .pinYou {
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .pinYou svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .pinHq {
+    border-color: var(--va-color-cream);
+    background: var(--va-color-cream);
+    color: var(--va-color-night);
+  }
+
+  /* The legend. */
+  .places {
+    position: static;
+    display: grid;
+    gap: 2px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--panel-line);
+    border-radius: 14px;
+    background: var(--panel);
+    pointer-events: auto;
+  }
+
+  .place,
+  .inset {
+    position: static;
+    top: auto;
+    left: auto;
+    width: auto;
+    height: auto;
+  }
+
+  .place {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+  }
+
+  .place .marker {
+    display: none;
+  }
+
+  .you .marker,
+  .hq .marker {
+    position: static;
+    display: grid;
+    width: 26px;
+    height: 26px;
+  }
+
+  .key {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--va-color-pink);
+    border-radius: 50%;
+    font: 700 12px/1 var(--va-font-display);
+    color: var(--va-color-cream);
+  }
+
+  .caption,
+  .place .caption {
+    position: static;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    transform: none;
+    background: none;
+    font-size: 14px;
+  }
+
+  .where {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    font: 600 12px/1 var(--va-font-mono);
+    letter-spacing: 0.08em;
+    color: var(--va-color-text-muted);
+  }
+
+  .text,
+  .booth .text {
+    padding: 0;
+    margin: 0;
+    background: none;
+  }
+
+  .left .caption,
+  .topLeft .caption,
+  .bottomLeft .caption,
+  .top .caption,
+  .bottom .caption {
+    text-align: left;
+  }
+
+  /*
+   * The whole legend row is the booth's link. Not display: contents: a
+   * link without a box drops out of the tab order and, in some browsers,
+   * out of the accessibility tree.
+   */
+  .boothLink {
+    position: static;
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    border-radius: 10px;
+  }
+
+  .boothLink:focus-visible {
+    outline: 2px solid var(--va-color-cyan);
+    outline-offset: 2px;
+  }
+
+  .boothLink:focus-visible .caption {
+    outline: none;
+  }
+
+  .booth .key {
+    border-color: var(--va-color-cream);
+    background: var(--va-color-magenta);
+  }
+
+  /* Gran Canaria's line joins the legend, after a little box like the map's. */
+  .inset {
+    position: relative;
+    flex-flow: row wrap;
+    justify-content: flex-start;
+    align-items: baseline;
+    column-gap: 6px;
+    min-height: 44px;
+    padding: 12px 0 12px 38px;
+  }
+
+  /* A little map box with Las Palmas lit in its corner. */
+  .inset::before {
+    content: "";
+    position: absolute;
+    top: 13px;
+    left: 2px;
+    width: 22px;
+    height: 18px;
+    border: 1.5px solid color-mix(in srgb, var(--va-color-cream) 60%, transparent);
+    border-radius: 4px;
+    background: radial-gradient(circle 3px at 70% 35%, var(--va-color-sodium) 90%, transparent 100%);
+  }
+
+  .insetCaption {
+    font-size: 14px;
+  }
+
+  .insetHead {
+    display: contents;
+  }
+
+  .insetCity {
+    display: none;
+  }
+
+  .insetName {
+    order: 2;
+    font: 600 12px/1.3 var(--va-font-mono);
+    letter-spacing: 0.08em;
+    color: var(--va-color-text-muted);
+  }
+
+  .insetName::before {
+    content: "· ";
+  }
+
+  .homeStack {
+    position: static;
+    grid-column: 2;
+    margin-top: 2px;
+  }
+
+  .hq {
+    grid-template-rows: auto auto;
+  }
+}
+
+/* Tablets: the legend in two columns. */
+@media (min-width: 700px) and (max-width: 999.98px) {
+  .places {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 24px;
+  }
+}
+
+/* Phones. */
+@media (max-width: 699.98px) {
+  .stats {
+    --pad: 16px;
+  }
+
+  .screen {
+    gap: 20px;
+    padding-top: 72px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .sub,
+  .mapTitle,
+  .panelTitle,
+  .years,
+  .plateSub,
+  .statusLive {
+    font-size: 12px;
+  }
+
+  .tab {
+    height: 44px;
+    padding: 0 16px;
+    font-size: 12px;
+  }
+
+  .aside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sheet {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card {
+    aspect-ratio: 3 / 4;
+  }
+
+  .portrait {
+    object-position: 50% 60%;
+  }
+
+  .skills {
+    padding: 18px 18px 20px;
+  }
+
+  .records {
+    padding: 18px 18px 6px;
+  }
+
+  .recordList {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .recordList li {
+    border-bottom: 1px solid var(--panel-line);
+  }
+
+  .recordValue {
+    font-size: 34px;
+  }
+
+  .record_grandsPrix .recordValue {
+    font-size: 28px;
+  }
+}
+
+/* The cinema's portrait layout (Marquee.tsx TALL_MEDIA) starts on its vitrolite. */
+@media (max-aspect-ratio: 5/6), (max-width: 640px) {
+  .stats {
+    --below: var(--va-finale-vitrolite);
+  }
+}

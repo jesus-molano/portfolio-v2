@@ -1,0 +1,566 @@
+/*
+ * The end credits (EndCredits.tsx). Wide screens: the dawn frame is sticky
+ * and covers the screen, the cinema kept in the part the roll leaves free;
+ * the roll scrolls over the right side on its scrim, so the page's own
+ * scroll rolls the credits (1:1, and back). Portrait screens: the frame,
+ * then the roll as a column.
+ */
+
+.credits {
+  --roll-w: clamp(23rem, 37vw, 34rem);
+  position: relative;
+  z-index: var(--va-z-title);
+  background: var(--va-color-night);
+}
+
+/*
+ * The section's top edge rises out of the cinema's night: on screens wider
+ * than 16:9 the plate is cropped, its own faded sky with it, and the dawn
+ * sky met the night above in a hard line. It scrolls away with the edge;
+ * the roll paints over it.
+ */
+.credits::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: 6rem;
+  background: linear-gradient(var(--va-color-night), color-mix(in srgb, var(--va-color-night) 0%, transparent));
+  pointer-events: none;
+}
+
+/* --- the frame --------------------------------------------------------------- */
+
+.frame {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+  container-type: size;
+}
+
+/*
+ * The plate covers the frame. Its cinema (centred at 33% of the plate) is
+ * centred in the part the roll leaves free, as far as the plate's edges
+ * allow.
+ */
+.stage {
+  --plate-w: max(100cqw, 177.78cqh);
+  position: absolute;
+  /* On screens wider than 16:9 the plate is taller than the frame: crop more sky than street, so the car stays in. */
+  top: calc((100cqh - 0.5625 * var(--plate-w)) * 0.6);
+  left: clamp(100cqw - var(--plate-w), (100cqw - var(--roll-w)) / 2 - 0.33 * var(--plate-w), 0px);
+  width: var(--plate-w);
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+}
+
+.plate,
+.plate img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The marquee's letters are the brightest thing on the street at dawn. */
+.marquee {
+  filter: drop-shadow(0 0 0.4cqw var(--va-finale-bulb-halo));
+}
+
+/* "HELD OVER": a magenta snipe pasted across the board's corner, clipped by it. */
+.snipeBoard {
+  position: absolute;
+  left: calc(var(--w-bx) * 1cqw);
+  top: calc(var(--w-by) * 1cqw);
+  width: calc(var(--w-bw) * 1cqw);
+  height: calc(var(--w-bh) * 1cqw);
+  overflow: hidden;
+  font-size: calc(var(--w-bw) * 0.026cqw);
+}
+
+.snipe {
+  position: absolute;
+  right: -3em;
+  top: 1.25em;
+  width: 13em;
+  padding: 0.18em 0 0.08em;
+  border-block: 0.06em solid var(--va-color-cream);
+  background: var(--va-color-magenta);
+  box-shadow: 0 0 0 0.16em var(--va-color-magenta);
+  color: var(--va-color-cream);
+  font-family: var(--va-font-marquee);
+  font-size: 1em;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  transform: rotate(32deg);
+}
+
+/* --- the roll ---------------------------------------------------------------- */
+
+.roll {
+  --roll-pad: clamp(1.5rem, 3vw, 2.75rem);
+  position: relative;
+  z-index: 1;
+  width: var(--roll-w);
+  margin: -100svh 0 0 auto;
+  padding: 0 var(--roll-pad);
+  text-align: center;
+}
+
+/* The scrim under the roll: it fades in from the left and from the section's top. */
+.roll::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 -9rem;
+  z-index: -1;
+  background: linear-gradient(90deg, var(--va-finale-scrim-clear), var(--va-finale-scrim) 13rem);
+  mask-image: linear-gradient(var(--va-finale-mask-clear), var(--va-finale-mask) 45svh);
+  pointer-events: none;
+}
+
+/*
+ * The roll fades out under the page controls at the top of the screen, and
+ * in at the bottom. Each fade rests at the roll's own edge, in the empty
+ * room above the first line (58svh) and below the last (22svh), so it never
+ * dims the title as it arrives or the last link at the end. Their left
+ * edge is soft, like the scrim's.
+ */
+.fadeTop,
+.fadeBottom {
+  position: sticky;
+  z-index: 1;
+  display: block;
+  height: 6rem;
+  margin-inline: calc(-1 * var(--roll-pad));
+  mask-image: linear-gradient(90deg, var(--va-finale-mask-clear), var(--va-finale-mask) 4rem);
+  pointer-events: none;
+}
+
+/*
+ * From night, not the scrim: at rest it sits on the section's top edge,
+ * where the roll's scrim is still clear and the cinema above ends in
+ * night, so a scrim-dark fade drew a hard-edged box there.
+ */
+.fadeTop {
+  top: 0;
+  margin-bottom: -6rem;
+  background: linear-gradient(var(--va-color-night), color-mix(in srgb, var(--va-color-night) 0%, transparent));
+}
+
+/* The fades take no room (negative margins); these margins collapse with theirs. */
+.roll > .eyebrow {
+  margin-top: 58svh;
+}
+
+.roll > .top {
+  margin-bottom: 22svh;
+}
+
+.fadeBottom {
+  bottom: 0;
+  margin-top: -6rem;
+  background: linear-gradient(var(--va-finale-scrim-clear), var(--va-finale-scrim));
+}
+
+.eyebrow,
+.head {
+  font: 700 0.7rem / 1.4 var(--va-font-mono);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--va-color-sodium);
+}
+
+.head {
+  margin-bottom: 0.9rem;
+}
+
+/* A line spoken by Jesús, in the hero's subtitle style. */
+.card {
+  display: inline-block;
+  margin-top: 1.4rem;
+  padding: 0.45em 1em;
+  border-radius: 4px;
+  background: var(--va-finale-card);
+  color: var(--va-color-cream);
+  font: 500 1rem / 1.4 var(--va-font-body);
+}
+
+.speaker {
+  color: var(--va-color-pink);
+  font-weight: 700;
+}
+
+.film {
+  margin-top: 3.5rem;
+  font: 800 clamp(1.5rem, 2.4vw, 2rem) / 1.1 var(--va-font-display);
+  letter-spacing: 0.06em;
+  color: var(--va-color-cream);
+}
+
+.byline {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: var(--va-color-text);
+}
+
+.block {
+  margin-top: 3.2rem;
+}
+
+/* Role on the left, name on the right of a centre gutter, like film credits. */
+.pairs {
+  margin: 1.4rem 0 0;
+}
+
+.block .pairs {
+  margin-top: 0;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 1.1rem;
+  margin-top: 0.75rem;
+  text-align: left;
+}
+
+.pair dt {
+  text-align: right;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--va-color-pink);
+}
+
+.pair dd {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+}
+
+.name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--va-color-cream);
+}
+
+.note {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--va-color-text-muted);
+}
+
+.years {
+  white-space: nowrap;
+}
+
+/* The broadcast word for the job on air: no red here, that tally is the tower's. */
+.live {
+  font: 700 0.72rem / 1 var(--va-font-mono);
+  letter-spacing: 0.18em;
+  padding: 0.1em 0.4em;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  color: var(--va-color-cream);
+}
+
+.list {
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--va-color-text);
+}
+
+.repo {
+  white-space: nowrap;
+}
+
+.aside {
+  margin-top: 1.4rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--va-color-text-muted);
+}
+
+.block .aside {
+  margin: 0 0 0.4rem;
+}
+
+.station {
+  font: 700 0.7rem / 1.8 var(--va-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.tracks {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--va-color-text-muted);
+}
+
+.roll a:not(.ticket):not(.topLink) {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 0.2em;
+}
+
+.roll a:not(.ticket):not(.topLink):hover {
+  color: var(--va-color-cream);
+  text-decoration-color: currentColor;
+}
+
+.roll a:focus-visible {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* --- the contact tickets ---------------------------------------------------- */
+
+.contact {
+  margin-top: 4.5rem;
+}
+
+.tickets {
+  display: grid;
+  justify-items: center;
+  gap: 1.1rem;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ticket {
+  --tk: var(--va-finale-ticket-code);
+  --notch: 10px;
+  display: flex;
+  width: min(100%, 20rem);
+  min-height: 6rem;
+  color: var(--va-finale-ticket-ink);
+  text-align: left;
+  text-decoration: none;
+  filter: drop-shadow(0 8px 18px var(--va-finale-scrim));
+  transition: filter 200ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ticket[data-kind="record"] {
+  --tk: var(--va-finale-ticket-record);
+}
+
+.ticket:hover {
+  color: var(--va-finale-ticket-ink);
+}
+
+.stub,
+.ticketMain {
+  position: relative;
+  background: var(--tk);
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* The stub: notched on its outer corners, perforated along its edge. */
+.stub {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 4.6rem;
+  border-right: 2px dotted var(--va-finale-ticket-perforation);
+  mask:
+    radial-gradient(circle var(--notch) at 0 0, var(--va-finale-mask-clear) 98%, var(--va-finale-mask)) top left / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at 0 100%, var(--va-finale-mask-clear) 98%, var(--va-finale-mask)) bottom left / 100% 51% no-repeat;
+  transform-origin: 100% 100%;
+}
+
+.admit,
+.serial {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.admit {
+  font: 400 1.05rem / 1 var(--va-font-marquee);
+  letter-spacing: 0.08em;
+}
+
+.serial {
+  font: 700 0.5rem / 1 var(--va-font-mono);
+  opacity: 0.7;
+}
+
+.ticketMain {
+  flex: 1;
+  display: grid;
+  align-content: center;
+  gap: 0.15rem;
+  padding: 0.7rem 1.1rem;
+  mask:
+    radial-gradient(circle var(--notch) at 100% 0, var(--va-finale-mask-clear) 98%, var(--va-finale-mask)) top right / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at 100% 100%, var(--va-finale-mask-clear) 98%, var(--va-finale-mask)) bottom right / 100% 51% no-repeat;
+}
+
+.ticketNote,
+.ticketUrl {
+  font: 600 0.6rem / 1.2 var(--va-font-mono);
+  letter-spacing: 0.12em;
+  opacity: 0.78;
+}
+
+.ticketNote {
+  text-transform: uppercase;
+}
+
+.ticketName {
+  font: 400 2.5rem / 1 var(--va-font-marquee);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ticketArrow {
+  margin-left: 0.35rem;
+  font: 700 1.4rem / 1 var(--va-font-body);
+  color: var(--va-color-magenta);
+}
+
+/* Hover or focus tears the stub off along the perforation, and the ticket glows. */
+.ticket:hover,
+.ticket:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 16px color-mix(in srgb, var(--tk) 70%, transparent))
+    drop-shadow(0 8px 18px var(--va-finale-scrim));
+}
+
+.ticket:hover .stub,
+.ticket:focus-visible .stub {
+  transform: translate(-10px, 5px) rotate(-8deg);
+}
+
+.ticket:focus-visible .ticketMain {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 4px;
+}
+
+/* --- the end ----------------------------------------------------------------- */
+
+.end {
+  margin-top: 4.5rem;
+  font: 400 clamp(2.4rem, 4vw, 3.2rem) / 1 var(--va-font-radio-deco);
+  color: var(--va-color-cream);
+}
+
+.copyright {
+  margin-top: 0.8rem;
+  font: 400 0.7rem / 1.5 var(--va-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--va-color-text-muted);
+}
+
+.last {
+  margin-top: 2.6rem;
+}
+
+.top {
+  margin-top: 2.4rem;
+}
+
+.topLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0 1rem;
+  font: 600 0.72rem / 1 var(--va-font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--va-color-text-muted);
+}
+
+.topLink:hover {
+  color: var(--va-color-cream);
+}
+
+/* --- portrait screens: the frame, then the roll ------------------------------ */
+
+@media (max-aspect-ratio: 5/6), (max-width: 640px) {
+  .frame {
+    position: relative;
+    height: auto;
+    container-type: normal;
+  }
+
+  .stage {
+    position: relative;
+    left: auto;
+    width: 100%;
+    aspect-ratio: 405 / 460;
+  }
+
+  .snipeBoard {
+    left: calc(var(--t-bx) * 1cqw);
+    top: calc(var(--t-by) * 1cqw);
+    width: calc(var(--t-bw) * 1cqw);
+    height: calc(var(--t-bh) * 1cqw);
+    font-size: calc(var(--t-bw) * 0.026cqw);
+  }
+
+  .roll {
+    width: auto;
+    max-width: 34rem;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 4rem;
+  }
+
+  .roll::before,
+  .fadeTop,
+  .fadeBottom {
+    display: none;
+  }
+
+  .roll > .eyebrow,
+  .roll > .top {
+    margin-block: 0;
+  }
+
+  .roll > .top {
+    margin-top: 2.4rem;
+  }
+
+  .film {
+    margin-top: 2.5rem;
+  }
+
+  /* A track list is too long for half a phone's width: the station goes above it. */
+  .stationPair {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0.3rem;
+    margin-top: 1.2rem;
+    text-align: center;
+  }
+
+  .stationPair dt {
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stub,
+  .ticketMain,
+  .ticket {
+    transition: none;
+  }
+
+  .ticket:hover .stub,
+  .ticket:focus-visible .stub {
+    transform: none;
+  }
+}

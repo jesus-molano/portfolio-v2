@@ -1,0 +1,433 @@
+/*
+ * The radio wheel (RadioWheel.tsx): a dark glass ring of wedges, radio off
+ * at the bottom and one badge per station on air, the station under the
+ * pointer in the middle. The scene behind dims and loses its colour.
+ * Colours are tokens; the station accents come in as --accent (the
+ * selected station) and --station / --wedge (each badge and wedge).
+ */
+
+/* The hero scene takes long presses and right clicks: no callout, no text selection. */
+:global([data-radio-surface]) {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--va-z-radio);
+  background: radial-gradient(
+    circle at 50% 48%,
+    color-mix(in srgb, var(--va-color-night) 30%, transparent) 0%,
+    color-mix(in srgb, var(--va-color-night) 62%, transparent) 55%,
+    color-mix(in srgb, var(--va-color-night) 82%, transparent) 100%
+  );
+  -webkit-backdrop-filter: grayscale(0.8) brightness(0.7) blur(2px);
+  backdrop-filter: grayscale(0.8) brightness(0.7) blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  touch-action: none;
+  overscroll-behavior: contain;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition:
+    opacity 150ms ease,
+    visibility 0s linear 150ms;
+}
+
+.overlay[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 180ms ease,
+    visibility 0s;
+}
+
+/* Aiming with a held button or key: the needle is the cursor. */
+.overlay[data-mode="aim"],
+.overlay[data-mode="aim"] * {
+  cursor: none;
+}
+
+.dialog {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.75rem, 2.5vh, 1.5rem);
+  padding:
+    max(1rem, env(safe-area-inset-top))
+    max(0.75rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom))
+    max(0.75rem, env(safe-area-inset-left));
+  outline: none;
+}
+
+/*
+ * The wheel: --size drives every measure inside it, so it scales from a
+ * 360 px phone to a desktop (wheelSize in wheelGeometry.ts mirrors it).
+ * Badge size and orbit come from WHEEL_LAYOUT as --badge-k and --orbit-k:
+ * a 67 px badge on a 360 px phone, never under 44 px (tested).
+ */
+.wheel {
+  --size: min(600px, calc(100vw - 1.5rem), calc(100dvh - 9rem));
+  --badge: calc(var(--size) * var(--badge-k, 0.2));
+  --radius: calc(var(--size) * var(--orbit-k, 0.372));
+  position: relative;
+  flex: none;
+  width: var(--size);
+  height: var(--size);
+  container-type: inline-size;
+  transform: scale(0.9) rotate(-10deg);
+  opacity: 0;
+  transition:
+    transform 150ms ease-in,
+    opacity 150ms ease-in;
+}
+
+.overlay[data-open="true"] .wheel {
+  transform: none;
+  opacity: 1;
+  transition:
+    transform 190ms cubic-bezier(0.2, 0.9, 0.25, 1.15),
+    opacity 160ms ease-out;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 18px 40px color-mix(in srgb, var(--va-color-night) 80%, transparent));
+}
+
+.ringTrack {
+  fill: color-mix(in srgb, var(--va-color-night) 55%, transparent);
+  stroke: color-mix(in srgb, var(--va-color-cream) 14%, transparent);
+  stroke-width: 0.5;
+}
+
+.wedge {
+  fill: color-mix(in srgb, var(--va-color-ink) 88%, transparent);
+  stroke: color-mix(in srgb, var(--va-color-cream) 8%, transparent);
+  stroke-width: 0.4;
+  cursor: pointer;
+}
+
+/* The selected wedge: a glow in its station's colour (RadioWheel.tsx sets the gradient), edged in it. */
+.wedge[data-selected="true"] {
+  stroke: color-mix(in srgb, var(--wedge) 75%, transparent);
+  stroke-width: 0.6;
+}
+
+/* The station on air: a lit arc along its rim, breathing while it plays. */
+.rim {
+  fill: none;
+  stroke: var(--wedge);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 2.5px var(--wedge));
+  pointer-events: none;
+  animation: rim-breathe 2.4s ease-in-out infinite;
+}
+
+/* Tuned but silent (blocked or failed): the rim stays dim and still. */
+.rim[data-playing="false"] {
+  stroke-dasharray: 2 2.5;
+  opacity: 0.55;
+  animation: none;
+}
+
+@keyframes rim-breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* The centre disc, lit from below by the selected station's colour. */
+.ringInner {
+  fill: color-mix(in srgb, var(--va-color-night) 92%, transparent);
+  stroke: color-mix(in srgb, var(--accent) 70%, transparent);
+  stroke-width: 0.8;
+  transition: stroke 120ms ease;
+}
+
+/* A notch on the rim of the centre disc points at the selected wedge. */
+.needle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--needle, 180deg));
+  transition: transform 90ms ease-out;
+  pointer-events: none;
+}
+
+.needle::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--size) * -0.03);
+  top: calc(var(--size) * -0.25 + 1px);
+  border-inline: calc(var(--size) * 0.03) solid transparent;
+  border-bottom: calc(var(--size) * 0.032) solid var(--accent);
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+.stations {
+  position: absolute;
+  inset: 0;
+}
+
+.station {
+  --scale: 1;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--badge);
+  height: var(--badge);
+  margin: calc(var(--badge) / -2) 0 0 calc(var(--badge) / -2);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--va-color-night);
+  color: inherit;
+  cursor: pointer;
+  transform: rotate(var(--angle)) translateY(calc(var(--radius) * -1)) rotate(calc(var(--angle) * -1))
+    scale(var(--scale));
+  filter: saturate(0.82) brightness(0.84);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--va-color-cream) 16%, transparent),
+    0 8px 18px color-mix(in srgb, var(--va-color-night) 70%, transparent);
+  transition:
+    transform 140ms ease,
+    filter 140ms ease,
+    box-shadow 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.station[data-current="true"] {
+  filter: saturate(0.9) brightness(0.92);
+  box-shadow:
+    0 0 0 2px var(--station),
+    0 8px 18px color-mix(in srgb, var(--va-color-night) 70%, transparent);
+}
+
+.station[data-selected="true"] {
+  --scale: 1.17;
+  /* Lights the power symbol of radio off (StationLogo.module.css). */
+  --logo-lit: var(--va-color-cream);
+  z-index: 1;
+  filter: none;
+  box-shadow:
+    0 0 0 3px var(--station),
+    0 0 0 6px color-mix(in srgb, var(--station) 25%, transparent),
+    0 0 32px color-mix(in srgb, var(--station) 65%, transparent);
+}
+
+/*
+ * Focus follows the selection (keys, aim and hover move both), whose ring
+ * shows it. Should a focused badge ever not be the selected one, it gets
+ * its own outline.
+ */
+.station:focus-visible {
+  outline: none;
+}
+
+.station:focus-visible:not([data-selected="true"]) {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 7px;
+}
+
+/* The centre: frequency, name, tagline, track and what a click does. */
+.centre {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--size) * 0.009);
+  width: calc(var(--size) * 0.41);
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.centre p {
+  margin: 0;
+  max-width: 100%;
+}
+
+.frequency {
+  font-family: var(--va-font-mono);
+  font-size: max(0.7rem, calc(var(--size) * 0.03));
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* Set apart by weight only: at 75% opacity the small "FM" fell under 4.5:1 on the disc. */
+.band {
+  margin-left: 0.4em;
+  font-weight: 500;
+}
+
+.name {
+  font-family: var(--va-font-display);
+  font-size: max(0.95rem, calc(var(--size) * 0.047));
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--va-color-cream);
+}
+
+.tagline {
+  font-size: max(0.72rem, calc(var(--size) * 0.026));
+  font-style: italic;
+  line-height: 1.25;
+  text-wrap: balance;
+  color: var(--va-color-amber);
+}
+
+.track {
+  display: grid;
+  margin-top: calc(var(--size) * 0.008) !important;
+  font-family: var(--va-font-mono);
+  font-size: max(0.62rem, calc(var(--size) * 0.021));
+  letter-spacing: 0.1em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.trackLabel {
+  font-size: 0.85em;
+  letter-spacing: 0.24em;
+  color: var(--accent);
+}
+
+.trackTitle {
+  color: var(--va-color-text);
+}
+
+/* Phones: the centre is small, the track speaks for itself without its label. */
+@container (max-width: 400px) {
+  .trackLabel {
+    display: none;
+  }
+}
+
+.status {
+  margin-top: calc(var(--size) * 0.012) !important;
+  padding: 0.3em 0.8em;
+  border: 1px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  border-radius: 999px;
+  font-family: var(--va-font-mono);
+  font-size: max(0.56rem, calc(var(--size) * 0.017));
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.status[data-live="true"] {
+  background: var(--accent);
+  color: var(--va-color-night);
+}
+
+.hint {
+  margin: 0;
+  max-width: min(36rem, 100%);
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--va-color-line);
+  border-radius: 999px;
+  background: var(--va-color-glass);
+  font-family: var(--va-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  line-height: 1.5;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--va-color-text);
+}
+
+.close {
+  position: absolute;
+  top: max(1rem, env(safe-area-inset-top));
+  right: max(1rem, env(safe-area-inset-right));
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--va-color-line);
+  border-radius: 50%;
+  background: var(--va-color-glass);
+  color: var(--va-color-text);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.close:hover {
+  border-color: var(--va-color-cyan);
+  color: var(--va-color-cyan);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 3px;
+}
+
+.closeIcon {
+  position: relative;
+  width: 1rem;
+  height: 1rem;
+}
+
+.closeIcon::before,
+.closeIcon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.1rem;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.closeIcon::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .overlay[data-open="true"],
+  .wheel,
+  .overlay[data-open="true"] .wheel,
+  .needle,
+  .station,
+  .wedge,
+  .ringInner {
+    transition: none;
+  }
+
+  .wheel {
+    transform: none;
+  }
+
+  .rim {
+    animation: none;
+  }
+}

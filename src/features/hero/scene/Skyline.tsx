@@ -1,27 +1,26 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef } from "react";
+import { type InstancedMesh, Matrix4, Quaternion, Vector3 } from "three";
+import { createGlowUniforms, glowFragmentShader, glowVertexShader } from "../shaders/neon";
 import {
-  Color,
-  type InstancedMesh,
-  Matrix4,
-  Quaternion,
-  UniformsLib,
-  UniformsUtils,
-  Vector3,
-} from "three";
-import { palette } from "@/design/tokens";
-import { silhouetteFragmentShader, silhouetteVertexShader } from "../shaders/silhouette";
+  createSilhouetteUniforms,
+  silhouetteFragmentShader,
+  silhouetteVertexShader,
+} from "../shaders/silhouette";
 import type { QualityTier } from "../useQualityTier";
-import { buildCity, windowSize, type Block } from "./cityLayout";
+import { buildCity, CITY_CENTRE, windowSize, type Block } from "./cityLayout";
+import { sunDirection } from "./skyUniforms";
 
 type Props = { tier: QualityTier };
 
 const Y_AXIS = new Vector3(0, 1, 0);
 
 /**
- * Art-deco skyline as three instanced draws: silhouettes, windows and neon
- * strips. The layout is deterministic (seeded), so frames are reproducible.
+ * Art-deco city as three instanced draws: silhouettes, windows and neon
+ * (edge strips, shopfronts, blade signs). The avenue buildings come first,
+ * the skyline behind them. The layout is deterministic (seeded), so frames
+ * are reproducible.
  */
 export function Skyline({ tier }: Props) {
   const blocksRef = useRef<InstancedMesh>(null);
@@ -34,18 +33,11 @@ export function Skyline({ tier }: Props) {
   );
 
   const silhouetteUniforms = useMemo(
-    () =>
-      UniformsUtils.merge([
-        UniformsLib.fog,
-        {
-          // Sunlit from above: deep violet at street level, lilac at the top.
-          uBottom: { value: new Color(palette.ink) },
-          uTop: { value: new Color("#8c62b8") },
-          uHeight: { value: 55 },
-        },
-      ]),
+    () => createSilhouetteUniforms({ height: 55, sun: sunDirection(CITY_CENTRE) }),
     [],
   );
+  // Neon and shopfronts keep some colour through the haze.
+  const stripUniforms = useMemo(() => createGlowUniforms(0.75, 1.3), []);
 
   useLayoutEffect(() => {
     const matrix = new Matrix4();
@@ -113,7 +105,12 @@ export function Skyline({ tier }: Props) {
         frustumCulled={false}
       >
         <boxGeometry args={[1, 1, 1]} />
-        <meshBasicMaterial color={[1.15, 1.15, 1.15]} toneMapped={false} />
+        <shaderMaterial
+          uniforms={stripUniforms}
+          vertexShader={glowVertexShader}
+          fragmentShader={glowFragmentShader}
+          fog
+        />
       </instancedMesh>
       <instancedMesh
         ref={windowsRef}

@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
-import { Hero } from "@/features/hero/Hero";
 import { LoadingScreen } from "@/features/loader/LoadingScreen";
-import { Teaser } from "@/features/teaser/Teaser";
 import { hasLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
+import { HomeMain } from "./HomeMain";
 
 export default async function HomePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
@@ -13,11 +12,8 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
   return (
     <>
       {/* Outside <main>: main is inert while the loading screen is up. */}
-      <LoadingScreen dict={dict.loader} />
-      <main id="main">
-        <Hero dict={dict.hero} />
-        <Teaser dict={dict.teaser} />
-      </main>
+      <LoadingScreen dict={dict.loader} name={dict.hero.name} role={dict.hero.role} />
+      <HomeMain dict={dict} lang={lang} />
     </>
   );
 }

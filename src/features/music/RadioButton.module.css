@@ -1,0 +1,139 @@
+/* The music button (RadioButton.tsx) and its one-time callout. */
+.wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.button {
+  gap: 0.5rem;
+}
+
+/*
+ * The station on air: its frequency, then its name. Both stay in the
+ * button's text colour: over the bright sky the station colours fall under
+ * 4.5:1 as text (BABYLON's pink and LEAVE THE GUN's green measured 2.5:1),
+ * so the station's colour lights the equalizer instead.
+ */
+.frequency {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Phones: the frequency alone; the name stays for screen readers. */
+@media (max-width: 639px) {
+  .name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
+/* A tiny equalizer inside the button: it dances while the radio plays. */
+.bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 0.7rem;
+}
+
+.bars span {
+  width: 2px;
+  height: 25%;
+  border-radius: 1px;
+  background: var(--station, currentColor);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--station, currentColor) 70%, transparent);
+}
+
+.bars[data-playing="true"] span {
+  animation: eq 0.9s ease-in-out infinite;
+}
+
+.bars[data-playing="true"] span:nth-child(2) {
+  animation-delay: -0.3s;
+}
+
+.bars[data-playing="true"] span:nth-child(3) {
+  animation-delay: -0.6s;
+}
+
+.bars[data-playing="true"] span:nth-child(4) {
+  animation-delay: -0.45s;
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    height: 25%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+
+/*
+ * Once per visitor: how to open the wheel from the scene. A small tag
+ * hanging under the button, pointing at it.
+ */
+.callout {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  width: max-content;
+  max-width: min(17rem, calc(100vw - 2rem));
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--va-color-pink) 55%, transparent);
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--va-color-night) 88%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--va-color-night) 50%, transparent);
+  font-family: var(--va-font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  color: var(--va-color-cream);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 300ms ease,
+    transform 300ms ease;
+}
+
+.callout::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: 1.4rem;
+  width: 8px;
+  height: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--va-color-pink) 55%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--va-color-pink) 55%, transparent);
+  background: inherit;
+  transform: rotate(45deg);
+}
+
+.callout[data-visible="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bars[data-playing="true"] span {
+    animation: none;
+    height: 70%;
+  }
+
+  .callout {
+    transition: none;
+    transform: none;
+  }
+}

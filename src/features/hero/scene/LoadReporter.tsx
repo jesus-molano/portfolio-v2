@@ -17,7 +17,11 @@ export function LoadReporter() {
   const { progress, active, loaded, total } = useProgress();
   const invalidate = useThree((state) => state.invalidate);
   const settled = useRef(0);
-  const done = !active && (total === 0 || loaded >= total);
+  // The models start loading at import (useGLTF.preload), and drei's
+  // progress store misses that start: it reads "not active, nothing to
+  // load" until the first model arrives. Counting that as done let a slow
+  // connection report the scene ready with every model still downloading.
+  const done = !active && total > 0 && loaded >= total;
 
   useEffect(() => {
     reportSceneProgress(progress);

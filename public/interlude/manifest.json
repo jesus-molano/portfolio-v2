@@ -1,0 +1,37 @@
+{
+  "pxPerCm": 24,
+  "cats": {
+    "kira": {
+      "w": 584,
+      "h": 786,
+      "floorY": 743,
+      "headTopY": 23,
+      "centerX": 315,
+      "headWidth": 301
+    },
+    "tom": {
+      "w": 674,
+      "h": 800,
+      "floorY": 759,
+      "headTopY": 15,
+      "centerX": 312,
+      "headWidth": 342
+    },
+    "dante": {
+      "w": 348,
+      "h": 542,
+      "floorY": 501,
+      "headTopY": 21,
+      "centerX": 153,
+      "headWidth": 196
+    },
+    "odin": {
+      "w": 479,
+      "h": 707,
+      "floorY": 666,
+      "headTopY": 18,
+      "centerX": 236,
+      "headWidth": 259
+    }
+  }
+}

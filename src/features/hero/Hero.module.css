@@ -15,9 +15,18 @@
   overflow: hidden;
 }
 
+/*
+ * The canvas keeps the large-viewport height: phone browsers show and hide
+ * their address bar while scrolling, and a canvas that followed 100dvh would
+ * be resized (and cleared for a frame) every time, which reads as a flash.
+ * The overlays follow the visible area through .sticky; the canvas bottom is
+ * simply clipped while the bar is shown.
+ */
 .canvas {
   position: absolute;
-  inset: 0;
+  inset: 0 0 auto;
+  height: 100vh;
+  height: 100lvh;
   z-index: var(--va-z-canvas);
 }
 
@@ -34,7 +43,7 @@
   right: 0;
   height: 9vh;
   z-index: var(--va-z-ui);
-  background: #000;
+  background: var(--va-color-letterbox);
   pointer-events: none;
 }
 
@@ -73,7 +82,7 @@
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--va-color-cream);
-  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.8);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
   pointer-events: none;
 }
 
@@ -93,6 +102,12 @@
   vertical-align: middle;
 }
 
+/*
+ * The title hangs in the sky like a key-art logo: upper third, under the
+ * letterbox bar (9vh), while the opening shot keeps the car in the lower
+ * third. A soft violet halo behind it keeps the cream type readable on the
+ * brightest part of the sky without a visible box.
+ */
 .title {
   position: absolute;
   inset: 0;
@@ -100,12 +115,25 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  /* Clears the letterbox bar (9vh) and the scroll hint under the tagline. */
-  padding: 0 1rem calc(9vh + 6rem);
+  justify-content: flex-start;
+  padding: calc(9vh + clamp(1rem, 4.5vh, 3rem)) 1rem 0;
   text-align: center;
   pointer-events: none;
   will-change: transform, opacity;
+}
+
+.title::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 62%;
+  z-index: -1;
+  background: radial-gradient(
+    ellipse 62% 58% at 50% 34%,
+    color-mix(in srgb, var(--va-color-night) 30%, transparent),
+    color-mix(in srgb, var(--va-color-night) 12%, transparent) 55%,
+    transparent 78%
+  );
 }
 
 .heading {
@@ -126,9 +154,10 @@
   text-transform: uppercase;
   color: var(--va-color-cream);
   text-shadow:
-    0 0 26px rgba(255, 120, 200, 0.5),
-    0 2px 0 rgba(255, 255, 255, 0.35),
-    0 12px 32px rgba(40, 16, 80, 0.65);
+    0 0 26px color-mix(in srgb, var(--va-color-pink) 50%, transparent),
+    0 2px 0 color-mix(in srgb, var(--va-color-cream) 35%, transparent),
+    0 4px 10px color-mix(in srgb, var(--va-color-night) 45%, transparent),
+    0 12px 32px color-mix(in srgb, var(--va-color-night) 65%, transparent);
 }
 
 .word {
@@ -155,7 +184,9 @@
   letter-spacing: 0.4em;
   text-transform: uppercase;
   color: var(--va-color-amber);
-  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.9), 0 0 16px rgba(255, 180, 140, 0.35);
+  text-shadow:
+    0 1px 2px color-mix(in srgb, var(--va-color-night) 90%, transparent),
+    0 0 12px color-mix(in srgb, var(--va-color-night) 55%, transparent);
   padding-left: 0.4em; /* balances the trailing letter-spacing */
 }
 
@@ -173,12 +204,14 @@
 }
 
 .tagline {
-  margin-top: 1.5rem;
+  margin-top: 1.1rem;
   max-width: 34rem;
   font-size: 0.95rem;
   line-height: 1.5;
   color: var(--va-color-cream);
-  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.9);
+  text-shadow:
+    0 1px 2px color-mix(in srgb, var(--va-color-night) 90%, transparent),
+    0 0 14px color-mix(in srgb, var(--va-color-night) 60%, transparent);
 }
 
 /* Camera readout, top right under the language switch. */
@@ -195,36 +228,27 @@
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--va-color-cream);
-  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.8);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
   pointer-events: none;
-}
-
-.hudRec {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: #ff3b4a;
-  box-shadow: 0 0 10px #ff3b4a;
-  animation: rec-blink 1.4s steps(1) infinite;
 }
 
 .hudShot {
   padding-left: 0.6rem;
-  border-left: 1px solid rgba(255, 246, 238, 0.4);
+  border-left: 1px solid color-mix(in srgb, var(--va-color-cream) 40%, transparent);
   color: var(--va-color-amber);
 }
 
-@keyframes rec-blink {
-  50% {
-    opacity: 0.25;
-  }
-}
 
 /* Dialogue subtitles: speaker in pink, line in cream, bottom centre. */
+/*
+ * Low in the frame, like film subtitles: every shot keeps Jesús and the car
+ * above this band (scene/shots.ts), and the band clears Skip and the
+ * transport readout.
+ */
 .subtitles {
   position: absolute;
   left: 50%;
-  bottom: 13vh;
+  bottom: max(3.75rem, 6vh);
   z-index: var(--va-z-ui);
   display: grid;
   width: min(44rem, calc(100% - 2rem));
@@ -236,8 +260,22 @@
   pointer-events: none;
 }
 
-.subtitle {
+/* Every line and every card sit in the same cell; the film fades one in at a time. */
+.line {
+  display: grid;
   grid-area: 1 / 1;
+}
+
+/* Rewinding flicks through the cards: hide them until the film plays again. */
+.subtitles[data-rewinding] .line {
+  visibility: hidden;
+}
+
+.subtitle {
+  position: relative;
+  display: block;
+  grid-area: 1 / 1;
+  align-self: end;
   font-family: var(--va-font-body);
   font-size: clamp(0.95rem, 1.35vw, 1.2rem);
   font-weight: 500;
@@ -255,10 +293,10 @@
 .subtitleText {
   padding: 0.2em 0.55em;
   border-radius: 0.4em;
-  background: rgba(18, 10, 38, 0.62);
+  background: var(--va-color-osd);
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
-  text-shadow: 0 1px 2px rgba(20, 8, 40, 0.8);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
 }
 
 .speaker {
@@ -266,74 +304,860 @@
   font-weight: 700;
 }
 
+
+/*
+ * The visitor drives the film (scroll/story.ts). Everything below tells her
+ * so: a hint in the letterbox bar that answers her first input, a dashboard
+ * readout (YOU DRIVE, WAITING, FLAT OUT, REVERSE, and the speed), a reel of
+ * the five shots, a bar that fills while a line is read and a marker that
+ * asks for more once it has been, and cues when she stops where no line is
+ * up. All of it is decorative (aria-hidden): the screen-reader help and the
+ * transcript say the same thing in text.
+ */
+
+/* Copy that depends on the input: wheel by default, touch on coarse
+   pointers, then the visitor's last input decides (data-input). */
+.stage:not([data-input="key"]) .forKey,
+.stage[data-input="touch"] .forWheel,
+.stage[data-input="key"] .forWheel,
+.stage[data-input="wheel"] .forTouch,
+.stage[data-input="key"] .forTouch,
+.stage[data-input="touch"] .notTouch {
+  display: none;
+}
+
+@media not (pointer: coarse) {
+  .stage:not([data-input]) .forTouch {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .stage:not([data-input]) .forWheel,
+  .stage:not([data-input]) .notTouch {
+    display: none;
+  }
+}
+
+/* Glyphs drawn in CSS, so no platform renders them as emoji. */
+.glyph {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 0.62em;
+  height: 0.62em;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.glyph[data-g="down"] {
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.glyph[data-g="up"] {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+/* An arrow on its way out, for Skip: a road sign, not a tape deck's fast forward. */
+.glyph[data-g="next"] {
+  width: 0.8em;
+  clip-path: polygon(0 38%, 52% 38%, 52% 8%, 100% 50%, 52% 92%, 52% 62%, 0 62%);
+}
+
+@media (forced-colors: active) {
+  .glyph,
+  .glyph::before,
+  .glyph::after,
+  .cueArrow::after {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
+
+/*
+ * Title hint, inside the bottom letterbox bar: what to do, then the rule of
+ * the film. It pops in like a VCR menu and blinks like PRESS START; it
+ * rides out with the bar and fades as the drive starts.
+ */
 .hint {
   position: absolute;
   left: 0;
   right: 0;
-  /* Breathing room above the bottom letterbox bar (9vh tall). */
-  bottom: calc(9vh + 1.25rem);
+  bottom: 0;
+  height: 9vh;
   z-index: var(--va-z-ui);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transform: translateY(calc(var(--bars, 0) * 9vh));
+}
+
+.hintBox {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.35rem;
+  padding: 0 1rem;
+  text-align: center;
+  opacity: 0;
+}
+
+.hint[data-on] .hintBox {
+  animation: vcr-pop 160ms steps(1, end) forwards;
+}
+
+.hintLine1 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
   font-family: var(--va-font-mono);
-  font-size: 0.64rem;
-  letter-spacing: 0.3em;
+  font-size: clamp(0.72rem, 0.9vw, 0.86rem);
+  font-weight: 600;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--va-color-cream);
-  text-shadow: 0 1px 2px rgba(40, 16, 80, 0.9);
-  pointer-events: none;
 }
 
-.hintLine {
+.hint[data-blink="1"] .hintLine1 {
+  animation: press-start 1.2s steps(1, end) 3;
+}
+
+.hint[data-blink="2"] .hintLine1 {
+  animation: press-start-b 1.2s steps(1, end) 3;
+}
+
+.hintGlyph {
+  width: 0.6em;
+  height: 0.45em;
+  color: var(--va-color-pink);
+}
+
+.hint[data-on] .hintGlyph {
+  animation: hint-bob 1.1s ease-in-out 4;
+}
+
+.hint[data-blink="2"] .hintGlyph {
+  animation-name: hint-bob-b;
+}
+
+/* Her first input answered in place of the ask: the drive is hers. */
+.hintAck {
+  display: none;
+  font-family: var(--va-font-mono);
+  font-size: clamp(0.72rem, 0.9vw, 0.86rem);
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--va-color-cream);
+}
+
+.stage[data-started] .hintLine1 {
+  display: none;
+}
+
+.stage[data-started] .hintAck {
   display: block;
-  width: 1px;
-  height: 1.8rem;
-  background: linear-gradient(180deg, transparent, var(--va-color-cream));
-  animation: hint-pulse 2.4s ease-in-out infinite;
+  animation: vcr-pop 160ms steps(1, end) 1;
 }
 
-@keyframes hint-pulse {
-  0%,
-  100% {
-    transform: scaleY(0.4);
-    transform-origin: top;
-    opacity: 0.4;
+.hintLine2 {
+  font-family: var(--va-font-body);
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--va-color-cream) 85%, transparent);
+}
+
+/* The screen-reader help for the still hero (reduced motion) is the other half of #hero-help. */
+.helpStill {
+  display: none;
+}
+
+/* Shown only under reduced motion. */
+.hintStill {
+  display: none;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.4rem;
+  background: var(--va-color-osd);
+  font-family: var(--va-font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-cream);
+}
+
+/* A finger's trail: a dot rising along a short line, for "swipe up". */
+.trail {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 1px;
+  height: 1.1rem;
+  background: color-mix(in srgb, var(--va-color-cream) 45%, transparent);
+}
+
+.trail::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  bottom: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--va-color-pink);
+  opacity: 0;
+}
+
+.hint[data-on] .trail::after {
+  animation: finger-trail 1.4s ease-out 4;
+}
+
+/* Phones: a chip above the bar, so it never invites a swipe from the home indicator. */
+@media (pointer: coarse) {
+  .hint {
+    bottom: calc(9dvh + 2rem);
+    height: auto;
+    transform: none;
+  }
+
+  .hint .hintBox {
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.4rem;
+    background: var(--va-color-osd);
+  }
+
+  .hint .hintLine1,
+  .hint .hintAck {
+    font-size: 0.74rem;
+    letter-spacing: 0.16em;
+  }
+}
+
+.stage[data-input="touch"] .hint {
+  bottom: calc(9dvh + 2rem);
+  height: auto;
+  transform: none;
+}
+
+.stage[data-input="touch"] .hintBox {
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.4rem;
+  background: var(--va-color-osd);
+}
+
+.stage[data-input="touch"] .hintLine1,
+.stage[data-input="touch"] .hintAck {
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+}
+
+@media (max-width: 359px) {
+  .hint .hintLine1,
+  .hint .hintAck {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+  }
+}
+
+/* Dashboard readout, bottom left: what her input does to the car. */
+.osd {
+  position: absolute;
+  left: max(1.25rem, env(safe-area-inset-left));
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  z-index: var(--va-z-ui);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  height: 2rem;
+  padding: 0 0.7rem;
+  border-radius: 0.35rem;
+  background: var(--va-color-osd);
+  font-family: var(--va-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-cream);
+  text-shadow: 1px 1px 0 color-mix(in srgb, var(--va-color-letterbox) 55%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.osd:not([data-mode="hidden"]) {
+  opacity: 1;
+}
+
+.osd[data-pulse="1"] {
+  animation: osd-pulse 160ms ease-out;
+}
+
+.osd[data-pulse="2"] {
+  animation: osd-pulse-b 160ms ease-out;
+}
+
+/* Waiting for her: the marker that points the way on. */
+.osdWait {
+  display: none;
+  color: var(--va-color-pink);
+}
+
+.osd[data-mode="waiting"] .osdWait {
+  display: inline-block;
+  animation: cue-bob 1.1s ease-in-out 5;
+}
+
+/* The way on, in her input's direction: down for the wheel and keys, up for a swipe
+   (the readout only shows once she has given input, so data-input is set). */
+.stage[data-input="touch"] .osd .osdWait.notTouch,
+.stage:not([data-input="touch"]) .osd .osdWait.forTouch {
+  display: none;
+}
+
+/* Flat out or reversing: the speed blinks, like a warning light. */
+.osd[data-mode="floored"] .osdSpeed,
+.osd[data-mode="reverse"] .osdSpeed {
+  animation: readout-blink 0.5s steps(1, end) 5;
+}
+
+.osdWord {
+  padding-right: 0.55rem;
+  border-right: 1px solid color-mix(in srgb, var(--va-color-cream) 30%, transparent);
+}
+
+.osdWord [data-word] {
+  display: none;
+}
+
+.osd[data-mode="drive"] [data-word="drive"],
+.osd[data-mode="waiting"] [data-word="waiting"],
+.osd[data-mode="floored"] [data-word="floored"],
+.osd[data-mode="reverse"] [data-word="reverse"] {
+  display: inline;
+}
+
+/* The speedometer: the cruise reads 65 km/h, the crawl about 23, flat out up to 130. */
+.osdSpeed {
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--va-color-cream) 70%, transparent);
+}
+
+.osdSpeedValue {
+  display: inline-block;
+  min-width: 3ch;
+  margin-right: 0.4em;
+  text-align: right;
+}
+
+/* The five shots as a reel along the top edge: where she is, nothing buffered. */
+.reel {
+  position: absolute;
+  top: max(0.35rem, env(safe-area-inset-top));
+  left: max(1rem, env(safe-area-inset-left));
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: var(--va-z-ui);
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.stage[data-started] .reel {
+  opacity: 1;
+}
+
+.reelSegment {
+  flex: 1;
+  height: 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--va-color-cream) 22%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--va-color-night) 35%, transparent);
+}
+
+.reelFill {
+  display: block;
+  height: 100%;
+  background: color-mix(in srgb, var(--va-color-cream) 92%, transparent);
+  transform: scaleX(var(--fill, 0));
+  transform-origin: left;
+}
+
+/*
+ * The line's reading time, as a short bar under the active card: it fills
+ * while the line is read (--read), thickens when she pushes into it
+ * (--push), and gives way to the marker once the line has been read and
+ * she waits. "Wait for this to fill" needs no words.
+ */
+.subtitle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.5rem;
+  width: 4rem;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--va-color-pink) calc(var(--read, 0) * 100%),
+    color-mix(in srgb, var(--va-color-cream) 30%, transparent) 0
+  );
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--va-color-night) 45%, transparent);
+  transform: translateX(-50%) scaleY(calc(1 + 0.8 * var(--push, 0)));
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.subtitle[data-active]:not([data-ready])::after {
+  opacity: 1;
+}
+
+/*
+ * The marker at the end of a card, like a game dialogue box: it appears
+ * and bobs once the line has been read and she waits.
+ */
+.cueTail {
+  white-space: nowrap;
+}
+
+.cueArrow {
+  position: relative;
+  display: inline-block;
+  width: 0.8em;
+  height: 0.62em;
+  margin-left: 0.5em;
+  vertical-align: 0.05em;
+  filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--va-color-night) 80%, transparent));
+  opacity: 0;
+}
+
+.cueArrow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--va-color-pink);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.subtitle[data-ready] .cueArrow {
+  opacity: 1;
+}
+
+.subtitle[data-ready="1"] .cueArrow {
+  animation:
+    cue-bob 1.1s ease-in-out 5,
+    glow-once 220ms ease-out 1;
+}
+
+.subtitle[data-ready="2"] .cueArrow {
+  animation:
+    cue-bob-b 1.1s ease-in-out 5,
+    glow-once-b 220ms ease-out 1;
+}
+
+.cueLabel {
+  display: none;
+  margin-left: 0.45em;
+  font-family: var(--va-font-mono);
+  font-size: 0.74em;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-pink);
+}
+
+.subtitle[data-cue-label] .cueLabel {
+  display: inline;
+}
+
+/* "Let the man finish": above the card, at once, the first times she pushes into an unread line. */
+.holdNote {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(3.75rem, 6vh) + var(--va-card-h, 2rem) + 0.75rem);
+  z-index: var(--va-z-ui);
+  padding: 0.3em 0.7em;
+  border-radius: 0.4em;
+  background: var(--va-color-osd);
+  font-family: var(--va-font-mono);
+  font-size: clamp(0.84rem, 1.1vw, 1rem);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-pink);
+  transform: translateX(-50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.holdNote[data-visible] {
+  opacity: 1;
+  transition-duration: 0ms;
+  animation: vcr-pop 160ms steps(1, end) 1;
+}
+
+/* Stopped where no line is up: a caption that says how to keep going. */
+.cue {
+  position: absolute;
+  left: 50%;
+  bottom: max(3.75rem, 6vh);
+  z-index: var(--va-z-ui);
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.4em 0.8em;
+  border-radius: 0.4em;
+  background: var(--va-color-osd);
+  font-family: var(--va-font-mono);
+  font-size: clamp(0.76rem, 0.95vw, 0.86rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-cream);
+  transform: translateX(-50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.cue[data-visible] {
+  opacity: 1;
+}
+
+.cueGlyph {
+  color: var(--va-color-pink);
+}
+
+.cue[data-visible] .cueGlyph,
+.endCue[data-visible] .cueGlyph {
+  animation: cue-bob 1.1s ease-in-out 5;
+}
+
+/* The fade to night: the way on, above the fade so it reads at once. */
+.endCue {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  z-index: var(--va-z-fade);
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.45em 0.9em;
+  border-radius: 0.4em;
+  background: var(--va-color-osd);
+  pointer-events: none;
+  font-family: var(--va-font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-cream);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.endCue[data-visible] {
+  opacity: 1;
+}
+
+/*
+ * Skip the drive, like a cutscene. Shown with the title hint, so there is
+ * always a way out, until the fade, and always reachable by Tab (it shows
+ * on focus). On a dark backing so the label reads on any part of the scene.
+ */
+.skip {
+  position: absolute;
+  right: max(1.25rem, env(safe-area-inset-right));
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  z-index: var(--va-z-ui);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+.skip[data-visible],
+.skip:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.skip .skipButton {
+  background: var(--va-color-osd);
+  backdrop-filter: none;
+}
+
+.skip[data-expanded] .skipButton {
+  border-color: var(--va-color-pink);
+  animation: ring-once 600ms ease-out 1;
+}
+
+/* "In a hurry?" slides out when she has been fighting the walls. */
+.skipHurry {
+  display: inline-block;
+  max-width: 0;
+  margin-right: -0.55rem;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    max-width 300ms ease-out,
+    margin-right 300ms ease-out;
+}
+
+.skip[data-expanded] .skipHurry {
+  max-width: 8rem;
+  margin-right: 0;
+}
+
+.skipKey {
+  padding: 0.15em 0.35em;
+  border: 1px solid color-mix(in srgb, var(--va-color-cream) 40%, transparent);
+  border-radius: 0.2em;
+  font-family: var(--va-font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+
+@keyframes vcr-pop {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
   }
   50% {
-    transform: scaleY(1);
+    opacity: 0.4;
+  }
+  75%,
+  100% {
     opacity: 1;
   }
 }
 
+/* PRESS START: 0.8 s on, 0.4 s at 15%. Two names so a tease restarts it. */
+@keyframes press-start {
+  0% {
+    opacity: 1;
+  }
+  66.67% {
+    opacity: 0.15;
+  }
+}
+
+@keyframes press-start-b {
+  0% {
+    opacity: 1;
+  }
+  66.67% {
+    opacity: 0.15;
+  }
+}
+
+@keyframes hint-bob {
+  50% {
+    translate: 0 0.22em;
+  }
+}
+
+@keyframes hint-bob-b {
+  50% {
+    translate: 0 0.22em;
+  }
+}
+
+@keyframes cue-bob {
+  50% {
+    translate: 0 0.25em;
+  }
+}
+
+@keyframes cue-bob-b {
+  50% {
+    translate: 0 0.25em;
+  }
+}
+
+@keyframes glow-once {
+  50% {
+    filter: drop-shadow(0 0 6px var(--va-color-pink));
+  }
+}
+
+@keyframes glow-once-b {
+  50% {
+    filter: drop-shadow(0 0 6px var(--va-color-pink));
+  }
+}
+
+@keyframes ring-once {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--va-color-pink) 60%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+@keyframes finger-trail {
+  0% {
+    bottom: 0;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    bottom: calc(100% - 5px);
+    opacity: 0;
+  }
+}
+
+@keyframes osd-pulse {
+  from {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes osd-pulse-b {
+  from {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes readout-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Touch: clear the 44 px Skip and centre the readout on it. */
+@media (pointer: coarse) {
+  .subtitles,
+  .cue {
+    bottom: max(4.6rem, 6vh);
+  }
+
+  .holdNote {
+    bottom: calc(max(4.6rem, 6vh) + var(--va-card-h, 2rem) + 0.75rem);
+  }
+
+  .osd {
+    bottom: calc(max(1.1rem, env(safe-area-inset-bottom)) + 0.375rem);
+  }
+
+  .skip .skipButton {
+    height: auto;
+    min-height: 2.75rem;
+  }
+
+  .skipKey {
+    display: none;
+  }
+}
+
+/*
+ * Reduced motion: one still frame of the key art with the title, a pointer
+ * to the script, then the whole script as running text, then the next section.
+ * No scrolling over a frozen frame.
+ */
 @media (prefers-reduced-motion: reduce) {
+  .stage {
+    height: auto;
+  }
+
+  .sticky {
+    position: relative;
+    height: auto;
+    overflow: visible;
+    padding-top: 100dvh;
+    background: linear-gradient(transparent 100dvh, var(--va-color-night) 100dvh);
+  }
+
+  .canvas,
+  .title {
+    inset: 0 0 auto;
+    height: 100dvh;
+  }
+
   .subtitles {
+    position: relative;
+    left: auto;
+    bottom: auto;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    width: min(40rem, calc(100% - 2rem));
+    margin: 0 auto;
+    padding: 3rem 0 4rem;
+    transform: none;
+    text-align: left;
+  }
+
+  .line {
+    display: block;
   }
 
   .subtitle {
+    display: inline;
     opacity: 1;
   }
 
-  .bar,
-  .fade {
+  /* One speaker label per line when the cards read as running text. */
+  .subtitle + .subtitle .speaker {
     display: none;
   }
 
-  .hudRec,
-  .hintLine {
-    animation: none;
+  .hint {
+    position: absolute;
+    top: calc(100dvh - 4.5rem);
+    bottom: auto;
+    height: auto;
+    transform: none;
+  }
+
+  .hint .hintBox {
+    padding: 0;
+    background: none;
+    opacity: 1;
+  }
+
+  .hint .hintLine1,
+  .hint .hintAck,
+  .hint .hintLine2,
+  .helpMotion {
+    display: none;
+  }
+
+  .hint .hintStill {
+    display: inline-flex;
+  }
+
+  .helpStill {
+    display: inline;
+  }
+
+  .bar,
+  .fade,
+  .skip,
+  .osd,
+  .reel,
+  .cue,
+  .holdNote,
+  .endCue,
+  .cueTail {
+    display: none;
   }
 }
 
 @media (max-width: 767px) {
-  .title {
-    padding-bottom: calc(9vh + 7.5rem);
-  }
-
   .name {
     letter-spacing: -0.02em;
   }
@@ -351,10 +1175,6 @@
     font-size: 0.85rem;
   }
 
-  .subtitles {
-    bottom: 11vh;
-  }
-
   .hud {
     left: 1rem;
   }
@@ -369,5 +1189,27 @@
   .hudCamera {
     top: 3.6rem;
     right: 1rem;
+  }
+
+  /* Expanded Skip and the readout share the bottom edge: keep only the glyph. */
+  .stage[data-hurry] .osdWord,
+  .stage[data-hurry] .osdSpeed {
+    display: none;
+  }
+}
+
+@media (max-width: 374px) {
+  .skipHurry {
+    display: none;
+  }
+
+  .holdNote {
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+  }
+
+  /* The readout keeps its speed; the word would run into Skip. */
+  .osdWord {
+    display: none;
   }
 }

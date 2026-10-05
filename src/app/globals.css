@@ -10,6 +10,29 @@ html {
   color-scheme: dark;
   -webkit-text-size-adjust: 100%;
   scroll-behavior: auto;
+  /* Keep the scrollbar's room when the page stops scrolling (radio wheel open), so
+     nothing shifts sideways where scrollbars take space (Windows, Linux). */
+  scrollbar-gutter: stable;
+  /* A section reached by a link (#projects, #main) or by keyboard focus stops
+     clear of the fixed page controls (RADIO, EN/ES): their 1rem inset from
+     the top (layout.module.css), their height, then a 1rem gap. The hero is
+     unaffected: its film scrolls by script (scrollTo ignores this), and
+     nothing focusable sits under the controls in its pinned frame. */
+  scroll-padding-top: calc(1rem + var(--va-control-height-sm) + 1rem);
+}
+
+/* Keyboard focus in the end credits stops clear of their fades (6rem at
+   the top and the bottom, Credits.module.css, the top one under the page
+   controls); only there, so a focused control at the bottom of the hero's
+   pinned frame never scrolls the film. */
+html:has(#credits a:focus) {
+  scroll-padding-block: 6rem;
+}
+
+/* Lenis stops the page with overflow: clip, which drops the scrollbar and its gutter;
+   hidden keeps the reserved gutter (scrollbar-gutter needs a scroll container). */
+html.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 body {
@@ -53,6 +76,14 @@ a:hover {
   outline-offset: 4px;
 }
 
+/* A section that takes the focus when the page lands on it (Skip, a deep
+   link, Back to top), or the page itself once the loading screen has gone
+   (PageEntry), is not a control: no ring round it. */
+main [tabindex="-1"]:focus,
+body[tabindex="-1"]:focus {
+  outline: none;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -92,6 +123,14 @@ a:hover {
   [data-line] {
     opacity: 0;
   }
+}
+
+/* A section with looping animations stops them while it is off screen
+   (PauseOffscreen sets the attribute). */
+[data-offscreen] *,
+[data-offscreen] *::before,
+[data-offscreen] *::after {
+  animation-play-state: paused !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

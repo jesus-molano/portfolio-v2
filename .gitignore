@@ -44,3 +44,9 @@ next-env.d.ts
 tools/blender/*.params.json
 *.blend
 __pycache__/
+
+# visual QA frames (tools/capture)
+.captures/
+
+# art generators (tools/art): font cache and raw renders
+.art-cache/

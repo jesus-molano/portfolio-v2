@@ -1,15 +1,30 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
+import { heroFeedback } from "../scroll/heroProgress";
+import { THROTTLE } from "../scroll/throttle";
 import { drive } from "./drive";
+import { easeTimeScale, timeScale } from "./timeScale";
 
 type Props = { animate: boolean };
 
-/** Advances the shared drive distance before every other frame callback. */
+/**
+ * Advances the shared drive distance before every other frame callback.
+ * Two time scales multiply the step, so traffic and the roadside stay
+ * coherent; `drive.speed` itself never changes and the world never stops or
+ * runs backwards:
+ * - the visitor's pace (heroFeedback.pace, see scroll/throttle.ts): a crawl
+ *   while the film waits for her, x1 to x2 as she pushes;
+ * - `timeScale`, eased here, so the radio wheel can slow the drive down
+ *   without a jolt.
+ */
 export function DriveClock({ animate }: Props) {
   useFrame((_, delta) => {
     if (!animate) return;
-    drive.distance += Math.min(delta, 0.1) * drive.speed;
+    const dt = Math.min(delta, 0.1);
+    timeScale.value = easeTimeScale(timeScale.value, timeScale.target, dt);
+    const pace = Math.min(1 + THROTTLE.gain, Math.max(THROTTLE.crawl, heroFeedback.pace));
+    drive.distance += dt * drive.speed * pace * timeScale.value;
   }, -10);
   return null;
 }
