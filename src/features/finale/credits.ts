@@ -21,6 +21,16 @@ export const CAR_CREDIT = {
   modified: true,
 } as const;
 
+/** The cats' base mesh: Apache-2.0 asks for the licence and a note of changes (public/interlude/LICENSE.txt holds the text). */
+export const CAT_BASE_CREDIT = {
+  title: "Cat",
+  author: "XR Blocks · Google",
+  sourceUrl: "https://github.com/google/xrblocks",
+  licence: "Apache-2.0",
+  licenceUrl: "https://www.apache.org/licenses/LICENSE-2.0",
+  modified: true,
+} as const;
+
 /** CC0 assets: nothing is owed, they are credited anyway (dictionary key of the role, then the maker). */
 export const CC0_ASSETS = [
   { role: "traffic", maker: "Quaternius", licence: "CC0" },

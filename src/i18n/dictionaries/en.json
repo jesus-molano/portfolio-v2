@@ -510,6 +510,8 @@
       "modified": "modified",
       "traffic": "Traffic",
       "body": "The driver’s body",
+      "cats": "The cats’ base model",
+      "catsModified": "rendered in Blender with our own fur, eyes and markings",
       "made": "Aviators, palms, towers, cinema",
       "madeHere": "made in code for this site"
     },

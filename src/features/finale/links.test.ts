@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
-import { CAR_CREDIT, OFL_URL } from "./credits";
+import { CAR_CREDIT, CAT_BASE_CREDIT, OFL_URL } from "./credits";
 import { FEATURES, GITHUB_PROFILE, LINKEDIN_PROFILE, POSTER_SIZES, POSTER_WIDTHS, posterSrc, posterSrcSet } from "./links";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
@@ -29,6 +29,8 @@ const ALLOWED = new Set([
   ...FEATURES.map((feature) => feature.href),
   CAR_CREDIT.sourceUrl,
   CAR_CREDIT.licenceUrl,
+  CAT_BASE_CREDIT.sourceUrl,
+  CAT_BASE_CREDIT.licenceUrl,
   OFL_URL,
 ]);
 

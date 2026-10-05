@@ -301,9 +301,11 @@ also exists as real DOM for keyboard and screen-reader users.
   - Copy in `suspects` (tested in `copy.test.ts`: the header says Tenerife
     or no city, never Madrid; the complaint keeps the owner's words; the
     eating joke belongs to STATS). The Spanish line follows the Spanish
-    dub of *Casablanca*: "Arresten a los sospechosos habituales." Until
-    the Blender renders land, `node tools/art/suspects/placeholder.mjs`
-    writes flat violet silhouettes under the same names.
+    dub of *Casablanca*: "Arresten a los sospechosos habituales." The
+    cats are the Blender renders of `tools/blender/render_interlude.py`
+    (credited in the end credits with the XR Blocks "Cat" base, Apache-2.0);
+    `tools/art/suspects/placeholder.mjs` still writes flat silhouettes for
+    layout work only.
 - `src/features/stats` — STATS (`#stats`), the static pause menu after the
   career city: one screen with two tabs, MAP and STATS. A server component
   (`Stats.tsx`), every word of both tabs DOM text in the server HTML; the
@@ -447,6 +449,24 @@ also exists as real DOM for keyboard and screen-reader users.
   optional Cycles check renders of the head to a folder outside the repo.
   `render_finale_car.py` renders the hero's car for the finale's dawn
   plates (see `src/features/finale`).
+  `build_cats.py` builds the four cats of THE USUAL SUSPECTS interlude
+  (Cycles stills, one transparent layer per cat) on the XR Blocks "Cat":
+  `cats/` is the shared generator (base, shape, pose, cat-space markings,
+  skin, fur, eyes, whiskers, stage, review) and
+  `cats/suspects/<cat>.py` holds everything that makes one cat itself
+  (size, proportions, pose, palette and markings, fur, eyes, skin,
+  whiskers; Odin has no halo), so each cat is tuned in its own file. Run it
+  with the bpy venv's Python: `build_cats.py -- --cat tom --render <folder
+  outside the repo> [--quality clay|test|final] [--views ...] [--field
+  coat]`. It writes the views, a review sheet (every view at full size,
+  96 px, 48 px and as a silhouette), a report (sizes, paw and ear-tip
+  heights, joints in floor cm for tail paths, the muzzle guards) and, with
+  `--cat all`, the line-up on a mock height chart. Shape never reaches the
+  muzzle: the base's sculpted face keeps every cat reading as a cat. The
+  light rig's energies are calibrated (the key lights an 18% grey card to
+  about 0.2) and its colours come from `tokens.ts`. `render_interlude.py`
+  renders the four shipping layers in `public/interlude` together with one
+  light rig, one camera and one setting, so they read as one set.
 
 ## 3D assets and licences
 
@@ -470,6 +490,13 @@ Each folder in `public/models` keeps its `LICENSE.txt`.
 - `sunglasses` — the driver's aviators, an original model made for this
   site by `tools/blender/build_sunglasses.py` (generic style: no brand, no
   logo, no borrowed mesh); materials Frame and Lens, under 3k triangles.
+- XR Blocks "Cat" (an American Shorthair) by Google, Apache-2.0
+  (`xrblocks/assets` at a pinned commit): the base of the four cats.
+  `tools/blender/cats/base.py` downloads it, checks its SHA-256 and keeps
+  it outside the repo; no GLB of it ships, only rendered stills, which
+  carry the licence text, say what was changed and credit the source
+  without implying endorsement. The owner's cat photos never go into the
+  repo.
 - Palms, buildings and props are procedural; they need no licence.
 - `public/stats` — the STATS map (public-domain SRTM, GMTED2010 and ETOPO1
   relief, drawn by `tools/art/stats`) and the rendered portrait; its

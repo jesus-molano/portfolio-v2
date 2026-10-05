@@ -5,6 +5,7 @@ import { BackToTop } from "./BackToTop";
 import {
   BUILT_WITH,
   CAR_CREDIT,
+  CAT_BASE_CREDIT,
   CAREER,
   CAST_CATS,
   CC0_ASSETS,
@@ -182,14 +183,6 @@ export function EndCredits({ dict, newTab, locale }: Props) {
           <dl className={styles.pairs}>
             <Pair role={dict.cast.driver}>{DIRECTOR}</Pair>
             <Pair role={dict.cast.suspects}>{creditList(CAST_CATS)}</Pair>
-            {/*
-             * TODO(cats package): when tools/blender/build_cats.py lands its
-             * renders in public/interlude/, credit them here as rendered in
-             * Blender (a note on this pair, or a line under it, with keys in
-             * both dictionaries and a test). Not before: today the line-up
-             * shows placeholder silhouettes drawn in code, so the credits
-             * have no cat render to name. Odin stays unnamed either way.
-             */}
           </dl>
         </Block>
 
@@ -215,6 +208,21 @@ export function EndCredits({ dict, newTab, locale }: Props) {
                 {asset.maker} · {asset.licence}
               </Pair>
             ))}
+            {/* Apache-2.0: the licence travels with the renders (public/interlude/LICENSE.txt); changes noted. */}
+            <Pair
+              role={<a href={CAT_BASE_CREDIT.sourceUrl}>{dict.assets.cats}</a>}
+              note={
+                <>
+                  <a href={CAT_BASE_CREDIT.licenceUrl} rel="license">
+                    {CAT_BASE_CREDIT.licence}
+                  </a>
+                  {" · "}
+                  {dict.assets.catsModified}
+                </>
+              }
+            >
+              {CAT_BASE_CREDIT.author}
+            </Pair>
             <Pair role={dict.assets.made}>{dict.assets.madeHere}</Pair>
           </dl>
         </Block>

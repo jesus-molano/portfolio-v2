@@ -276,7 +276,7 @@
   align-items: center;
   gap: 0.3rem;
   max-width: 100%;
-  margin-top: calc(var(--cm) * -1.6);
+  margin-top: calc(var(--cm) * -0.6);
   padding: 0.55rem 1.05rem 0.6rem;
   border: 1px solid color-mix(in srgb, var(--va-color-cream) 16%, transparent);
   border-radius: 0.3rem;
@@ -346,7 +346,7 @@
   flex-direction: column;
   align-items: center;
   max-width: 100%;
-  margin-top: calc(var(--cm) * -1.6);
+  margin-top: calc(var(--cm) * -0.6);
 }
 
 .plateButton {

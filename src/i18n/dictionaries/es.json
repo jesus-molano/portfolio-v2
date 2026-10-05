@@ -510,6 +510,8 @@
       "modified": "modificado",
       "traffic": "Tráfico",
       "body": "El cuerpo del conductor",
+      "cats": "La base de los gatos",
+      "catsModified": "renderizados en Blender con pelo, ojos y manchas propios",
       "made": "Gafas, palmeras, torres, cine",
       "madeHere": "hechos en código para esta web"
     },
