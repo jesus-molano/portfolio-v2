@@ -958,7 +958,7 @@ a.missionRow:focus-visible {
   gap: 8px;
 }
 
-.saves li {
+.saveLink {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr);
   align-items: center;
@@ -968,6 +968,15 @@ a.missionRow:focus-visible {
   border: 1px solid var(--panel-line);
   border-radius: 10px;
   background: color-mix(in srgb, var(--va-color-cream) 4%, transparent);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.saveLink:hover,
+.saveLink:focus-visible {
+  border-color: var(--va-color-pink);
+  background: color-mix(in srgb, var(--va-color-pink) 10%, transparent);
 }
 
 .slot {
@@ -983,16 +992,6 @@ a.missionRow:focus-visible {
 
 .slotNote {
   font: 400 13px/1.25 var(--va-font-body);
-  color: var(--va-color-text-muted);
-}
-
-.saves .empty {
-  border-style: dashed;
-  background: none;
-}
-
-.empty .slotPlace {
-  font-weight: 400;
   color: var(--va-color-text-muted);
 }
 
@@ -1343,7 +1342,7 @@ a.missionRow:focus-visible {
     gap: 6px;
   }
 
-  .saves li {
+  .saveLink {
     padding-block: 6px;
   }
 }

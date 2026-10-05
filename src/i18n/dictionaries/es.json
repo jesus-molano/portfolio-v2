@@ -241,7 +241,7 @@
   "stats": {
     "title": "PAUSA",
     "sub": "FUERA DE HORARIO · J. MOLANO",
-    "description": "Es una pantalla de pausa. Su mapa es Tenerife, más o menos, con los pueblos renombrados: traza su carrera en cinco misiones principales, cuatro completadas y una en curso, y esconde por la isla sus videojuegos, películas y series favoritos, y también la Fórmula 1. Junto al mapa, sus partidas guardadas; la segunda pestaña es su ficha de personaje, con sus habilidades y sus récords.",
+    "description": "Es una pantalla de pausa. Su mapa es Tenerife, más o menos, con los pueblos renombrados: traza su carrera en cinco misiones principales, cuatro completadas y una en curso, y esconde por la isla sus videojuegos, películas y series favoritos, y también la Fórmula 1. Junto al mapa, sus misiones secundarias, que son sus proyectos personales; la segunda pestaña es su ficha de personaje, con sus habilidades y sus récords.",
     "tabs": [
       "MAPA",
       "ESTADÍSTICAS"
@@ -393,23 +393,23 @@
       ]
     },
     "saves": {
-      "title": "PARTIDAS GUARDADAS",
+      "title": "MISIONES SECUNDARIAS",
       "slots": [
         {
-          "place": "Los Soprano",
-          "note": "Completada. Del final, mejor ni hablamos."
+          "place": "dotfiles",
+          "note": "Toda mi máquina como código. Nunca se da por terminada."
         },
         {
-          "place": "Breaking Bad",
-          "note": "Completada, con Better Call Saul de postre."
+          "place": "tessera-studio",
+          "note": "Un catálogo que se mira y no se toca."
         },
         {
-          "place": "Peaky Blinders",
-          "note": "Completada, con la gorra bien calada."
+          "place": "project-atlas",
+          "note": "El mapa del código, antes de que entre el agente."
         },
         {
-          "place": "Severance",
-          "note": "En curso, esperando la siguiente temporada."
+          "place": "Expenses-Log-App",
+          "note": "Que ningún cargo me pille por sorpresa."
         }
       ]
     },

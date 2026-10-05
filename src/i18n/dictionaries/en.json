@@ -241,7 +241,7 @@
   "stats": {
     "title": "PAUSED",
     "sub": "OFF THE CLOCK · J. MOLANO",
-    "description": "This is a pause screen. Its map is Tenerife, more or less, with the towns renamed: it traces his career as five main missions, four completed and one still running, and hides his favourite games, films and series, and his Formula 1, as places on the island. Beside the map, his saved games; the second tab is his character sheet, with his skills and records.",
+    "description": "This is a pause screen. Its map is Tenerife, more or less, with the towns renamed: it traces his career as five main missions, four completed and one still running, and hides his favourite games, films and series, and his Formula 1, as places on the island. Beside the map, his side missions, which are his side projects; the second tab is his character sheet, with his skills and records.",
     "tabs": [
       "MAP",
       "STATS"
@@ -393,23 +393,23 @@
       ]
     },
     "saves": {
-      "title": "SAVED GAMES",
+      "title": "SIDE MISSIONS",
       "slots": [
         {
-          "place": "The Sopranos",
-          "note": "Completed. Let's not talk about the ending."
+          "place": "dotfiles",
+          "note": "My whole machine as code. Never quite finished."
         },
         {
-          "place": "Breaking Bad",
-          "note": "Completed, with Better Call Saul for dessert."
+          "place": "tessera-studio",
+          "note": "A catalogue you can look at but not touch."
         },
         {
-          "place": "Peaky Blinders",
-          "note": "Completed, flat cap pulled down low."
+          "place": "project-atlas",
+          "note": "A map of the code before the agent walks in."
         },
         {
-          "place": "Severance",
-          "note": "In progress, waiting for the next season."
+          "place": "Expenses-Log-App",
+          "note": "So no charge ever catches me by surprise."
         }
       ]
     },

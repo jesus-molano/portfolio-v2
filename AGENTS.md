@@ -431,8 +431,8 @@ also exists as real DOM for keyboard and screen-reader users.
   the only link on to `#projects`. Beside the map, the main missions
   (plain rows until the career city lands; turning on
   `CAREER_CITY_ON_PAGE` in `statsLayout.ts` makes them links to its
-  `#work-*` stops) and the saved games (The Sopranos, Severance,
-  Succession). Tab 2 (STATS, `#stats-sheet`) is the character sheet:
+  `#work-*` stops) and the side missions (his side projects, each a
+  link to its poster in the cinema). Tab 2 (STATS, `#stats-sheet`) is the character sheet:
   a Cycles render of his driver model with Dante at his shoulder
   (`public/stats/portrait.{avif,webp}`, `tools/blender/build_stats_portrait.py`), the joke bars (appetite breaks out of
   its panel into the gap beside it; under 1280 px, where the panel meets
@@ -468,7 +468,7 @@ also exists as real DOM for keyboard and screen-reader users.
     taller than the screen less everything around it (`MAP_CHROME_PX`, the
     paddings, menu bar, map title, source line and prompts, mirrored in
     `Stats.module.css`), and beside the map (1280 px up) the missions and
-    saved games use tighter rows, so the MAP tab fits 1440 × 900. The
+    side missions use tighter rows, so the MAP tab fits 1440 × 900. The
     section lands at the viewport's top edge (a negative `scroll-margin-top`
     cancels the html scroll-padding: its own 64 px top padding clears the
     page controls).

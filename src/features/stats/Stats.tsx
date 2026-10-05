@@ -1,3 +1,4 @@
+import { FEATURES } from "@/features/finale/links";
 import type { CSSProperties } from "react";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { StatsIcon } from "./icons";
@@ -280,13 +281,16 @@ export function Stats({ dict }: Props) {
                 {dict.saves.title}
               </h3>
               <ol className={styles.saves}>
+                {/* Side missions are the side projects, in the cinema's order: each opens its poster. */}
                 {dict.saves.slots.map((slot, i) => (
-                  <li key={i} className={slot.note ? undefined : styles.empty}>
-                    <span className={styles.slot} aria-hidden="true">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <span className={styles.slotPlace}>{slot.place}</span>
-                    {slot.note ? <span className={styles.slotNote}>{slot.note}</span> : null}
+                  <li key={i}>
+                    <a className={styles.saveLink} href={`#${FEATURES[i].anchor}`}>
+                      <span className={styles.slot} aria-hidden="true">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span className={styles.slotPlace}>{slot.place}</span>
+                      <span className={styles.slotNote}>{slot.note}</span>
+                    </a>
                   </li>
                 ))}
               </ol>
