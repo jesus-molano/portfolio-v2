@@ -10,3 +10,7 @@ the materials are replaced with opaque paint (the source declares glass).
 
 The site shows the credit, with links to the source and the licence and a
 note that the model is modified, alongside the other asset attributions.
+
+The end credits' dawn plates (public/finale/dawn-*) show a render of the
+modified model (tools/blender/render_finale_car.py), painted as the hero
+paints it, so the same credit covers them.

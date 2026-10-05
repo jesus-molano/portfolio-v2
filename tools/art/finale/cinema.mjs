@@ -26,6 +26,9 @@ export const CIN = {
   cases: [-6.45, -4.35, 4.35, 6.45], caseW: 1.75, caseH: 2.36, caseY: 0.62, posterW: 1.42, posterH: 2.1,
 };
 
+/** The street's height: a 0.15 m kerb below the pavement (y 0). */
+export const STREET = -0.15;
+
 /* ------------------------------------------------------------- helpers */
 const rect = (cam, x0, y0, x1, y1, z) => {
   const a = cam.p(x0, y1, z), b = cam.p(x1, y0, z);
@@ -46,7 +49,9 @@ const box = (x, y, w, h) => ({ x: f(x), y: f(y), w: f(w), h: f(h) });
 /**
  * o: { px, w, h, lang, rows: [cap metres per letter row], mode: "night" | "dawn",
  *      cases: "dom" (night: their light only, the cases are DOM) | "baked" (dawn: dark cases),
- *      lit: { posters, soffit, crest, lobby, crestLetters, booth }, palms, lamps, car, seed }
+ *      lit: { posters, soffit, crest, lobby, crestLetters, booth }, palms, lamps, seed,
+ *      car: { x, z, render } (the car's ground centre in world metres; render: { href,
+ *      window, contactZ } from build.mjs, the render's sidecar with the image as href) }
  * Returns { defs, body, geo }: geo holds the live parts in frame pixels.
  */
 export function cinema(cam, o) {
@@ -499,9 +504,9 @@ export function cinema(cam, o) {
     inlay += `<ellipse cx="${f(c0[0])}" cy="${f(c0[1])}" rx="${f(cam.s(1.0, 0))}" ry="${f(cam.s(0.12, 0))}" fill="#f0c36a" opacity=".35"/>`;
     // curb and street, for the far cameras
     if (zs > 5.6) {
-    const cb = [cam.p(-30, 0, 5.6), cam.p(30, 0, 5.6), cam.p(30, -0.15, 5.6), cam.p(-30, -0.15, 5.6)];
+    const cb = [cam.p(-30, 0, 5.6), cam.p(30, 0, 5.6), cam.p(30, STREET, 5.6), cam.p(-30, STREET, 5.6)];
     inlay += poly(cb, `fill="#d8b8c8" opacity=".55"`);
-    inlay += poly([cam.p(-30, -0.15, 5.6), cam.p(30, -0.15, 5.6), cam.p(30, -0.15, zs), cam.p(-30, -0.15, zs)], `fill="${dawn ? "#3a2a5a" : "#24123a"}"`);
+    inlay += poly([cam.p(-30, STREET, 5.6), cam.p(30, STREET, 5.6), cam.p(30, STREET, zs), cam.p(-30, STREET, zs)], `fill="${dawn ? "#3a2a5a" : "#24123a"}"`);
     if (zs > 12.5) for (let x = -30; x < 30; x += 3.2) {
       const a = cam.p(x, -0.14, 12), b = cam.p(x + 1.8, -0.14, 12), c2 = cam.p(x + 1.8, -0.14, 12.15), d2 = cam.p(x, -0.14, 12.15);
       inlay += poly([a, b, c2, d2], `fill="${C.sodium}" opacity="${dawn ? 0.55 : 0.75}"`);
@@ -519,7 +524,7 @@ export function cinema(cam, o) {
   let street = "";
   if (o.lamps) for (const lp of o.lamps) {
     const z = lp.z;
-    const pole = rect(cam, lp.x - 0.07, -0.15, lp.x + 0.07, 5.2, z);
+    const pole = rect(cam, lp.x - 0.07, STREET, lp.x + 0.07, 5.2, z);
     street += R(pole, `fill="${dawn ? "#2a1a48" : "#1e0e36"}"`);
     const arm = cam.p(lp.x, 5.2, z), head = cam.p(lp.x + lp.dir * 0.9, 5.05, z);
     street += `<path d="M${f(arm[0])},${f(arm[1])} Q${f((arm[0] + head[0]) / 2)},${f(arm[1] - cam.s(0.3, z))} ${f(head[0])},${f(head[1])}" fill="none" stroke="${dawn ? "#2a1a48" : "#1e0e36"}" stroke-width="${f(cam.s(0.1, z))}"/>`;
@@ -527,38 +532,19 @@ export function cinema(cam, o) {
     if (lp.on) street += `<circle cx="${f(head[0])}" cy="${f(head[1] + cam.s(0.2, z))}" r="${f(cam.s(1.4, z))}" fill="url(#${px}bulb)" opacity=".7"/>`;
   }
 
-  /* --- the hero's convertible, parked at the curb (side profile) ------- */
+  /* --- the hero's convertible, parked at the kerb (side profile) ------- */
+  // A Cycles render of the hero's own car, made from this plate's camera
+  // (tools/blender/render_finale_car.py): `render.window` is the image's
+  // extent in metres on the car's centre plane, around its ground centre,
+  // so the plate's projection puts it where the render's camera saw it.
   let car = "";
   if (o.car) {
-    const { x0, z, flip = false } = o.car;
-    const T = cam.front(x0, 1.25, z);
-    const paint = "#173b9e";
-    let g = "";
-    const body = "M.1,1.06 L.04,.86 Q.08,.69 .5,.64 L1.55,.6 L1.95,.58 L3.2,.6 Q3.9,.6 4.32,.66 Q4.6,.7 4.62,.86 L4.56,1.06 L4.1,1.09 A.42,.42 0 0 0 3.28,1.09 L1.27,1.11 A.42,.42 0 0 0 .43,1.09 Z";
-    defs += `<linearGradient id="${px}paint" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${dawn ? "#ffc8d8" : "#ff9ad0"}"/><stop offset=".12" stop-color="#6a5ac8"/><stop offset=".45" stop-color="${paint}"/><stop offset="1" stop-color="#0c1240"/></linearGradient>`;
-    g += `<path d="${body}" fill="url(#${px}paint)"/>`;
-    // rim light along the beltline and the hood, chrome bumpers
-    g += `<path d="M.5,.645 L1.55,.605 L1.95,.585 L3.2,.605 Q3.9,.605 4.32,.665" fill="none" stroke="${dawn ? "#ffd8c8" : "#ffb0d8"}" stroke-width=".025" opacity=".9"/>`;
-    g += `<rect x=".02" y=".9" width=".2" height=".07" rx=".03" fill="#e8e0f8"/><rect x="4.44" y=".9" width=".2" height=".07" rx=".03" fill="#e8e0f8"/>`;
-    g += `<path d="M.5,.79 L4.35,.79" stroke="#e8e0f8" stroke-width=".025" opacity=".85"/>`;
-    g += `<path d="M1.95,.62 V1.08 M3.12,.62 V1.08" stroke="#0c1240" stroke-width=".015" opacity=".7"/>`;
-    g += `<path d="M2.85,.84 h.18" stroke="#e8e0f8" stroke-width=".03" stroke-linecap="round"/>`;
-    // windshield frame and glass, raked back
-    g += `<path d="M1.92,.58 L2.24,.1 L2.34,.1 L2.06,.58 Z" fill="#c9c0e0"/>`;
-    g += `<path d="M2.06,.58 L2.34,.1 L2.4,.12 L2.18,.58 Z" fill="${dawn ? "#ffe0ec" : "#ff9ad0"}" opacity=".35"/>`;
-    // seat backs and headrests
-    g += `<path d="M2.62,.6 Q2.6,.36 2.78,.34 Q2.92,.36 2.9,.6 Z" fill="#d8b4b8"/><path d="M3.25,.6 Q3.23,.38 3.4,.36 Q3.54,.38 3.52,.6 Z" fill="#d8b4b8"/>`;
-    g += `<path d="M2.66,.58 Q2.65,.4 2.78,.38" fill="none" stroke="#fff4f1" stroke-width=".02" opacity=".7"/><path d="M3.29,.58 Q3.28,.42 3.4,.4" fill="none" stroke="#fff4f1" stroke-width=".02" opacity=".7"/>`;
-    // lamps
-    g += `<rect x="4.5" y=".72" width=".11" height=".1" rx=".02" fill="#ff3b5c"/><circle cx="4.56" cy=".77" r=".3" fill="#ff3b5c" opacity=".35" filter="url(#${px}b4)"/>`;
-    g += `<ellipse cx=".1" cy=".76" rx=".05" ry=".07" fill="#e8e0f8" opacity=".8"/>`;
-    // wheels
-    for (const wx of [0.85, 3.69]) {
-      g += `<circle cx="${wx}" cy="1.07" r=".34" fill="#120a1e"/><circle cx="${wx}" cy="1.07" r=".2" fill="#c9c0e0"/><circle cx="${wx}" cy="1.07" r=".09" fill="#6a5a8a"/>`;
-      g += `<path d="M${wx - 0.14},1.0 a.16,.16 0 0 1 .2,-.08" fill="none" stroke="#fff" stroke-width=".02" opacity=".7"/>`;
-    }
-    car = `<g id="${px}car" transform="${T}${flip ? ` translate(4.66 0) scale(-1 1)` : ""}">${g}</g>`;
-    const base = cam.p(0, -0.15, z)[1];
+    const { x, z, render } = o.car;
+    const w = render.window;
+    const r0 = rect(cam, x + w.x0, STREET + w.y0, x + w.x1, STREET + w.y1, z);
+    car = `<g id="${px}car"><image href="${render.href}" x="${f(r0.x)}" y="${f(r0.y)}" width="${f(r0.w)}" height="${f(r0.h)}" preserveAspectRatio="none"/></g>`;
+    // the wet street mirrors it about the near tyres' contact line
+    const base = cam.p(x, STREET, z + render.contactZ)[1];
     car = `<g opacity=".5" filter="url(#${px}smear)"><use href="#${px}car" transform="matrix(1 0 0 -1 0 ${f(2 * base)})"/></g>` + car;
   }
 

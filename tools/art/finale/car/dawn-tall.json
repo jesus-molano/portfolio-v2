@@ -1,0 +1,37 @@
+{
+  "about": "Render of public/models/poly-convertible/convertible.glb by tools/blender/render_finale_car.py; do not edit.",
+  "plate": "dawn-tall",
+  "cam": {
+    "x": 0,
+    "y": 2.4,
+    "z": 30,
+    "f": 790,
+    "cx": 202.5,
+    "cy": 300
+  },
+  "car": {
+    "x": 0,
+    "z": 7.2
+  },
+  "street": -0.15,
+  "density": 2.6666666666666665,
+  "size": [
+    570,
+    154
+  ],
+  "frame": {
+    "x": 95.625,
+    "y": 338.625,
+    "w": 213.75,
+    "h": 57.75
+  },
+  "window": {
+    "x0": -3.084494,
+    "x1": 3.084494,
+    "y0": -0.231456,
+    "y1": 1.435253
+  },
+  "contactZ": 0.717461,
+  "length": 4.5637,
+  "samples": 64
+}

@@ -360,6 +360,16 @@ also exists as real DOM for keyboard and screen-reader users.
     posters' taglines come from `projects.posters` in the dictionaries.
     Each poster is encoded 432 and 216 px wide, a srcset (`links.ts`,
     `POSTER_SIZES`): a case on a 1x facade takes the small one.
+  - The car parked at the kerb on the dawn plates is not drawn: it is a
+    Cycles render of the hero's own `convertible.glb`
+    (`tools/blender/render_finale_car.py`: the hero's paint, top down,
+    wheels straight, no driver, dawn light, a baked contact shadow) from
+    each plate's own camera, cropped to the car on the plate's pixel grid.
+    It writes `tools/art/finale/car/<plate>.png` and `.json`; `build.mjs`
+    embeds the PNG where the plate's camera projects it, mirrors it in the
+    wet street about the near tyres, and refuses a render made for another
+    camera or car place: after moving a dawn camera or the car, update
+    `VIEWS` in the script and re-render before rebuilding the plates.
   - Each side project is one link (`links.ts`, `PosterCase.tsx`): its case
     on the facade and its caption in the bill below. Hover (only where a
     pointer can hover) or keyboard focus chases its bulbs, shows the
@@ -400,6 +410,8 @@ also exists as real DOM for keyboard and screen-reader users.
   data out of the published script. `build_sunglasses.py` runs on
   `driver.glb` and writes `public/models/sunglasses/aviator.glb`, with
   optional Cycles check renders of the head to a folder outside the repo.
+  `render_finale_car.py` renders the hero's car for the finale's dawn
+  plates (see `src/features/finale`).
 
 ## 3D assets and licences
 
@@ -410,9 +422,11 @@ Each folder in `public/models` keeps its `LICENSE.txt`.
   `tools/blender/refine_convertible.py` (runs on the GLB) paints the badges
   out, splits Paint / Glass / Trim / Rim / Tyre materials, smooths the
   bodywork and writes a paint mask into the atlas alpha; `Car.tsx` tints
-  only the masked paint. Blender is also available as `pip install
-  bpy==4.5.4` in a Python 3.11 venv (no download.blender.org needed); never
-  name a script `inspect.py` (it shadows the module bpy imports).
+  only the masked paint. The end credits' dawn plates show a render of
+  it (`render_finale_car.py`), dressed the same way. Blender is also
+  available as `pip install bpy==4.5.4` in a Python 3.11 venv (no
+  download.blender.org needed); never name a script `inspect.py` (it
+  shadows the module bpy imports).
 - `quaternius-cars` — Quaternius, CC0.
 - `makehuman-driver` — built from the MakeHuman system assets, CC0. Never
   use the community beards bundled with MPFB (`wdg_scruffy_beard`,

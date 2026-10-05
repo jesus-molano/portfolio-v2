@@ -12,7 +12,9 @@
  * to AVIF and WebP in public/finale (tools/art/encode.py, Pillow), and
  * writes the plates' geometry to src/features/finale/plates.json: the
  * marquee board and its rails, the bulb strips and the poster cases, in
- * frame units, so the DOM lands on the plate. Deterministic: every random
+ * frame units, so the DOM lands on the plate. The dawn plates' car is a
+ * Blender render (tools/blender/render_finale_car.py, kept in
+ * tools/art/finale/car), embedded in the SVG. Deterministic: every random
  * choice is seeded.
  */
 import { execFileSync } from "node:child_process";
@@ -21,7 +23,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { fontUrl, withRenderer } from "../browser.mjs";
 import { Cam, edgeFade, filters, finish, f } from "./lib.mjs";
-import { BILL, cinema } from "./cinema.mjs";
+import { BILL, cinema, STREET } from "./cinema.mjs";
 import { H as POSTER_H, POSTER_FONTS, W as POSTER_W, posterSvg } from "./posters.mjs";
 
 /** The small posters' width (src/features/finale/links.ts POSTER_WIDTHS). */
@@ -31,6 +33,7 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../.
 const CACHE = path.join(ROOT, ".art-cache/finale");
 const OUT = path.join(ROOT, "public/finale");
 const GEOMETRY = path.join(ROOT, "src/features/finale/plates.json");
+const CAR_RENDERS = path.join(ROOT, "tools/art/finale/car");
 const LOCALES = ["en", "es"];
 
 const { values } = parseArgs({ options: { only: { type: "string" }, png: { type: "boolean", default: false } } });
@@ -52,7 +55,10 @@ const GLOW_ONLY = [0, 0, 0, 0, 0, 1, 1, 1, 1];
 
 /**
  * The plates. `size` is the encoded size in pixels; the SVG is drawn in
- * `w` x `h` frame units, which plates.json uses too.
+ * `w` x `h` frame units, which plates.json uses too. `o.car` is the hero's
+ * car parked at the kerb, its ground centre in world metres: a render made
+ * from this plate's camera (carRender), so moving it or the camera means
+ * re-rendering it.
  */
 const PLATES = {
   "night-wide": {
@@ -80,7 +86,7 @@ const PLATES = {
     o: {
       mode: "dawn", rows: ROWS.dawn, cases: "baked",
       lit: { posters: 0, soffit: 0.4, crest: 0, crestLetters: GLOW_ONLY, lobby: 0, booth: 0 },
-      car: { x0: -1.6, z: 7.2 },
+      car: { x: 0.73, z: 7.2 },
       lamps: [{ x: -8.6, z: 5.3, dir: 1, on: true }, { x: 10.5, z: 5.3, dir: -1, on: false }],
       palms: [{ x: 40, y: 236, size: 120, seed: 21, lean: 10, trunk: 16 }],
       seed: 4,
@@ -94,7 +100,7 @@ const PLATES = {
     o: {
       mode: "dawn", rows: ROWS.dawn, cases: "baked",
       lit: { posters: 0, soffit: 0.15, crest: 0, crestLetters: GLOW_ONLY, lobby: 0, booth: 0 },
-      car: { x0: -2.3, z: 7.2 },
+      car: { x: 0, z: 7.2 },
       lamps: [{ x: -7.6, z: 5.3, dir: 1, on: true }],
       palms: [],
       seed: 4,
@@ -104,11 +110,41 @@ const PLATES = {
   },
 };
 
+/**
+ * The car's render for a plate (tools/blender/render_finale_car.py writes
+ * tools/art/finale/car/<plate>.png and .json): the PNG embedded as a data
+ * URL, so the page renders it without file access. The render is the plate's
+ * own camera cropped to the car; one made for another camera or car place
+ * would sit wrong, so the build refuses it.
+ */
+function carRender(name) {
+  const stem = path.join(CAR_RENDERS, name);
+  if (!fs.existsSync(`${stem}.json`)) throw new Error(`${path.relative(ROOT, stem)}.png is missing: run tools/blender/render_finale_car.py`);
+  const meta = JSON.parse(fs.readFileSync(`${stem}.json`, "utf8"));
+  const P = PLATES[name];
+  const want = { cam: { x: P.cam.x, y: P.cam.y, z: P.cam.z, f: P.cam.F, cx: P.cam.cx, cy: P.cam.cy }, car: { x: P.o.car.x, z: P.o.car.z } };
+  const same = (a, b) => Object.keys(a).every((k) => Math.abs(a[k] - b[k]) < 1e-6);
+  const density = P.size[0] / P.w;
+  if (!same(want.cam, meta.cam) || !same(want.car, meta.car) || Math.abs(meta.density - density) > 1e-6 || meta.street !== STREET) {
+    throw new Error(`${path.relative(ROOT, stem)}.json was rendered for another camera or car place than ${name}: update VIEWS in tools/blender/render_finale_car.py and re-render`);
+  }
+  // Drawn 1:1 on the plate's pixel grid: a preview (half size) or an edited
+  // image would be stretched over the car's frame.
+  const png = fs.readFileSync(`${stem}.png`);
+  const [pw, ph] = [png.readUInt32BE(16), png.readUInt32BE(20)];
+  if (pw !== Math.round(meta.frame.w * density) || ph !== Math.round(meta.frame.h * density)) {
+    throw new Error(`${path.relative(ROOT, stem)}.png is ${pw}x${ph}, not ${name}'s pixels for its frame: re-render it without --preview`);
+  }
+  const href = `data:image/png;base64,${png.toString("base64")}`;
+  return { href, window: meta.window, contactZ: meta.contactZ };
+}
+
 function plateSvg(name, lang) {
   const P = PLATES[name];
   const px = name.replace("-", "") + lang;
   const { w, h } = P;
-  const sc = cinema(P.cam, { px, w, h, lang, ...P.o });
+  const o = P.o.car ? { ...P.o, car: { ...P.o.car, render: carRender(name) } } : P.o;
+  const sc = cinema(P.cam, { px, w, h, lang, ...o });
   let body = sc.body;
   if (P.sun) {
     // the dawn's low sun behind the skyline, on the right
