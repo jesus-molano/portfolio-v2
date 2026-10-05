@@ -16,6 +16,7 @@ import { SLOW_MOTION, timeScale } from "@/features/hero/scene/timeScale";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { focusInPlace } from "@/lib/navigate";
 import {
   closeWheel,
   getRadio,
@@ -202,7 +203,8 @@ export function RadioWheel({ dict }: Props) {
       lenis?.start();
       timeScale.target = 1;
       const back = takeOpener();
-      if (back?.isConnected) back.focus({ preventScroll: true });
+      // Where it is: the page does not move (lib/navigate.ts).
+      if (back?.isConnected) focusInPlace(back);
       else if (layer?.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
     };
   }, [open, lenis, reducedMotion]);

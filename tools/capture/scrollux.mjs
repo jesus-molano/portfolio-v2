@@ -30,7 +30,13 @@
  * on it opens the wheel), trap (whatever moves the page past the frontier,
  * a jump Lenis misses, a programmatic scroll, find in page, a wheel burst
  * on a busy page, hard flings, it is back at the wall within a frame and
- * she drives on), loader (no "press any key" on a phone).
+ * she drives on), stroke (a phone's drag that pauses on a pressure change
+ * or a tremble stays gated; a thumb trembling while a line is read is
+ * still), ends (Ctrl+End and Ctrl+Home, Cmd+Down and Cmd+Up, act as End
+ * and Home in the hero), navigate (the STATS booth, a STATS tab, back to top and a deep
+ * link land with Lenis, the hero's walls open past it, and her next notch
+ * or swipe goes on from there, even before the next frame), loader (no
+ * "press any key" on a phone).
  *
  * WebGL is off by default: the checks read the DOM and its timing, and a
  * machine without a GPU renders the scene at a few frames a second
@@ -81,12 +87,12 @@ const browser = await chromium.launch({
 });
 
 /** A fresh page, entered (without music), with the hero's probe on. */
-async function session(device, lang, { reducedMotion = "no-preference", enter = true } = {}) {
+async function session(device, lang, { reducedMotion = "no-preference", enter = true, hash = "" } = {}) {
   const context = await browser.newContext({ ...DEVICES[device], reducedMotion });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(`${BASE}/${lang}`, { waitUntil: "load" });
+  await page.goto(`${BASE}/${lang}${hash}`, { waitUntil: "load" });
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
   const cdp = await context.newCDPSession(page);
   if (device === "desktop") await page.mouse.move(720, 450);
@@ -733,20 +739,24 @@ const CHECKS = {
       const started = log.filter((f) => f.started);
       const takeAgain = started.filter((f) => f.shown && f.prompt === "hint");
       const arriving = started.filter((f) => f.shown && f.prompt === "ack" && f.naming);
+      // "Still arriving" is owed only if the name was still forming or holding at her first
+      // input (the first frame she had the wheel); on a slow machine the 2.5 s input can land after.
+      const owed = started.length > 0 && started[0].naming;
       const onward = started.filter((f) => f.shown && f.prompt === "onward");
       const ask = lang === "en" ? /take the wheel/i : /toma el volante/i;
       const onTitle = restP < 0.06;
       const ok =
         started.length > 0 &&
         takeAgain.length === 0 &&
-        arriving.length > 0 &&
+        (!owed || arriving.length > 0) &&
         (!onTitle || onward.length > 0) &&
         !onward.some((f) => ask.test(f.text));
       report(
-        `${device} ${lang} titlewait (${at / 1000} s): the name still arriving is said, then keep driving, never take the wheel again`,
+        `${device} ${lang} titlewait (${at / 1000} s): the name still arriving is said (if it was), then keep driving, never take the wheel again`,
         ok,
         {
           takeAgain: takeAgain.length,
+          owed,
           arriving: arriving[0]?.text,
           onward: onward[0]?.text,
           restP,
@@ -894,6 +904,288 @@ const CHECKS = {
       );
       await s.close();
     }
+  },
+
+  async stroke(device, lang) {
+    // A finger's stroke stays gated and a resting thumb is still (gate.ts
+    // Stroke, SmoothScroll): moves with nothing vertical in them (a pressure
+    // change, a tremble Chrome coalesced) never hand the stroke to the
+    // browser's own scrolling, and a thumb trembling on the glass while a
+    // line is read never reads as going back.
+    if (device !== "mobile") return;
+    const s = await session(device, lang);
+    await sleep(1500);
+    await s.page.evaluate(() => {
+      const moves = (window.__moves = []);
+      window.addEventListener("touchmove", (e) => moves.push(e.cancelable), { capture: true, passive: true });
+    });
+    /** Touch points [ms, type, y, force] at wall-clock times, without waiting for the page. */
+    const script = async (points) => {
+      const start = Date.now();
+      const sent = [];
+      for (const [t, type, y, force = 1] of points) {
+        const wait = start + t - Date.now();
+        if (wait > 0) await sleep(wait);
+        const touchPoints = type === "touchEnd" ? [] : [{ x: 195, y, force, radiusX: 10, radiusY: 10 }];
+        sent.push(s.cdp.send("Input.dispatchTouchEvent", { type, touchPoints }).catch(() => {}));
+      }
+      await Promise.all(sent);
+    };
+    /** Onto line `card` just after it came up, so it plays for a while yet. */
+    const onto = async (card) => {
+      await reachCard(s, device, card);
+      for (let i = 0; i < 40; i += 1) {
+        const f = await probe(s.page);
+        if (f.active >= card && f.read > 0.03) return f;
+        await sleep(100);
+      }
+      return probe(s.page);
+    };
+    const since = (t0) =>
+      s.page.evaluate((t0) => {
+        const frames = window.__vaProbe.filter((f) => f.t >= t0);
+        return {
+          frames: frames.length,
+          past: frames.filter((f) => f.maxScroll !== null && f.page > f.maxScroll + 4).length,
+          reverse: frames.filter((f) => f.mode === "reverse").length,
+          hidden: frames.filter((f) => f.active < 0).length,
+          read: frames.length ? frames.at(-1).read : null,
+        };
+      }, t0);
+
+    // A thumb resting on the glass after a calm swipe, trembling by 1 px for 3 s.
+    let start = await onto(1);
+    let t0 = await s.page.evaluate(() => performance.now());
+    const rest = [[0, "touchStart", 640]];
+    for (let i = 1; i <= 9; i += 1) rest.push([i * 16, "touchMove", 640 - (60 * i) / 9]);
+    for (let t = 160, k = 0; t < 3160; t += 16, k += 1) rest.push([t, "touchMove", 580 + (k % 2 ? 0.5 : -0.5)]);
+    rest.push([3170, "touchEnd"]);
+    await script(rest);
+    let r = await since(t0 + 300);
+    report(
+      `${device} ${lang} stroke: a thumb trembling on the glass while a line is read is still (no REVERSE, the line stays up and is read)`,
+      r.reverse === 0 && r.hidden === 0 && (r.read >= 1 || r.read >= start.read + 0.2),
+      { ...r, readAtStart: start.read },
+    );
+
+    // Zero moves mid-stroke: a drag that pauses on a pressure change, and one
+    // that pauses on a tremble (coalesced moves), then drags on hard and flicks off.
+    const drags = {
+      pressure: () => {
+        const p = [[0, "touchStart", 700]];
+        for (let i = 1; i <= 6; i += 1) p.push([i * 16, "touchMove", 700 - i * 50]);
+        p.push([130, "touchMove", 400, 0.6]);
+        for (let i = 1; i <= 10; i += 1) p.push([130 + i * 16, "touchMove", 400 - i * 50, 0.6]);
+        p.push([310, "touchEnd"]);
+        return p;
+      },
+      tremble: () => {
+        const p = [[0, "touchStart", 700]];
+        for (let i = 1; i <= 5; i += 1) p.push([i * 16, "touchMove", 700 - i * 50]);
+        let t = 90;
+        for (let k = 0; k < 25; k += 1, t += 16) p.push([t, "touchMove", 450 + (k % 2 ? 3 : -3)]);
+        for (let i = 1; i <= 8; i += 1) p.push([t + i * 14, "touchMove", 450 - i * 70]);
+        p.push([t + 8 * 14 + 6, "touchEnd"]);
+        return p;
+      },
+    };
+    let card = 2;
+    for (const [name, make] of Object.entries(drags)) {
+      start = await onto(card);
+      await s.page.evaluate(() => (window.__moves.length = 0));
+      t0 = await s.page.evaluate(() => performance.now());
+      await script(make());
+      await sleep(2000);
+      r = await since(t0);
+      const moves = await s.page.evaluate(() => ({ all: window.__moves.length, uncancelable: window.__moves.filter((c) => !c).length }));
+      report(
+        `${device} ${lang} stroke: a drag that pauses (${name}) stays gated: every move cancelable, never past the wall, never REVERSE`,
+        moves.all > 0 && moves.uncancelable === 0 && r.past === 0 && r.reverse === 0,
+        { ...moves, ...r },
+      );
+      card = Math.max(card, (await probe(s.page)).active) + 1;
+    }
+    await s.close();
+  },
+
+  async ends(device, lang) {
+    // Ctrl+End and Ctrl+Home (Cmd+Down and Cmd+Up on a Mac) are the page's
+    // own animated jumps to its ends: in the hero they act as End (Skip) and
+    // Home, so no frame shows the page past the wall on the way.
+    if (device !== "desktop") return;
+    const pastFrames = (s, t0) =>
+      s.page.evaluate((t0) => window.__vaProbe.filter((f) => f.t >= t0 && f.maxScroll !== null && f.page > f.maxScroll + 4).length, t0);
+    for (const [key, name] of [
+      ["Control+End", "Ctrl+End"],
+      ["Meta+ArrowDown", "Cmd+Down"],
+    ]) {
+      const s = await session(device, lang);
+      await sleep(1500);
+      await reachCard(s, device, 1);
+      const t0 = await s.page.evaluate(() => performance.now());
+      await s.page.keyboard.press(key);
+      await sleep(1200);
+      const past = await pastFrames(s, t0);
+      const end = await s.page.evaluate(() => ({
+        suspectsTop: Math.round(document.getElementById("suspects").getBoundingClientRect().top),
+        focus: document.activeElement?.id,
+        frontier: window.__vaProbe.at(-1).frontier,
+      }));
+      report(
+        `${device} ${lang} ends: ${name} mid-film cuts to THE USUAL SUSPECTS like End, never showing the page past the wall`,
+        past === 0 && Math.abs(end.suspectsTop) <= 1 && end.focus === "suspects" && end.frontier === null,
+        { past, ...end },
+      );
+      await s.close();
+    }
+    for (const [key, name] of [
+      ["Control+Home", "Ctrl+Home"],
+      ["Meta+ArrowUp", "Cmd+Up"],
+    ]) {
+      const s = await session(device, lang);
+      await sleep(1500);
+      await reachCard(s, device, 2);
+      const t0 = await s.page.evaluate(() => performance.now());
+      await s.page.keyboard.press(key);
+      await sleep(1500);
+      const past = await pastFrames(s, t0);
+      const y = await s.page.evaluate(() => Math.round(scrollY));
+      report(`${device} ${lang} ends: ${name} mid-film glides back to the top of the hero like Home`, past === 0 && y <= 1, { past, y });
+      await s.close();
+    }
+  },
+
+  async navigate(device, lang) {
+    // Every in-page move goes through one path (lib/navigate.ts): Lenis and
+    // the page land together, and a page sent past the hero opens its walls,
+    // so her next notch or swipe goes on from where she landed, never back
+    // up to the hero's end.
+    const W = DEVICES[device].viewport.width;
+    const H = DEVICES[device].viewport.height;
+    const notch = (s) => (device === "desktop" ? s.page.mouse.wheel(0, 100) : stroke(s.cdp, { dy: 80, ms: 90, y0: H * 0.7, x: W / 2 }));
+    const top = (s, id) => s.page.evaluate((id) => Math.round(document.getElementById(id).getBoundingClientRect().top), id);
+    const state = (s) =>
+      s.page.evaluate(() => {
+        const f = window.__vaProbe.at(-1);
+        return { y: Math.round(scrollY), frontier: f?.frontier ?? null, focus: document.activeElement?.id || document.activeElement?.tagName };
+      });
+    /** Her own input until `ready` holds (the page's own scrolling, never a native jump of the check). */
+    const driveUntil = async (s, ready) => {
+      for (let i = 0; i < 60 && !(await ready()); i += 1) {
+        await notch(s);
+        await sleep(device === "desktop" ? 250 : 450);
+      }
+      await sleep(900);
+    };
+
+    // The STATS booth (a link to #projects), reached by her own input after Skip.
+    const s = await session(device, lang);
+    await sleep(1200);
+    if (device === "desktop") await s.page.mouse.move(W / 2, H / 2);
+    await s.page.keyboard.press("End");
+    await sleep(700);
+    const booth = s.page.locator(device === "desktop" ? 'a[href="#projects"] [class*="marker"]' : 'a[href="#projects"]').first();
+    await driveUntil(s, async () => {
+      const box = await booth.boundingBox();
+      return box !== null && box.y > 80 && box.y + box.height < H - 60;
+    });
+    if (device === "desktop") await booth.click();
+    else await booth.tap();
+    await sleep(900);
+    const landed = { projects: await top(s, "projects"), ...(await state(s)) };
+    await notch(s);
+    await sleep(1500);
+    const after = { projects: await top(s, "projects"), ...(await state(s)) };
+    report(
+      `${device} ${lang} navigate: the booth lands on the cinema with the walls open, and her next ${device === "desktop" ? "notch" : "swipe"} goes on from there`,
+      Math.abs(landed.projects - 64) <= 2 &&
+        landed.frontier === null &&
+        landed.focus === "projects" &&
+        after.y >= landed.y &&
+        after.y - landed.y <= H,
+      { landed, after },
+    );
+
+    // Her next scroll before the page's next frame (a slow phone): a notch right after the click.
+    await s.page.evaluate(() => {
+      window.history.replaceState(null, "", window.location.pathname);
+      document.getElementById("stats").scrollIntoView({ block: "start" });
+    });
+    await sleep(800);
+    const raced = await s.page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          let sent = false;
+          const send = () => {
+            if (sent) return;
+            sent = true;
+            window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100, deltaMode: 0, bubbles: true, cancelable: true }));
+          };
+          window.addEventListener("hashchange", send, { once: true });
+          document.querySelector('a[href="#projects"]').click();
+          setTimeout(send, 0);
+          setTimeout(() => resolve(Math.round(document.getElementById("projects").getBoundingClientRect().top)), 1500);
+        }),
+    );
+    report(`${device} ${lang} navigate: a notch before the next frame after the booth stays in the cinema`, raced <= 64 && raced >= -200, { projectsTop: raced });
+
+    // STATS's tabs: the STATS tab, then a notch.
+    await s.page.evaluate(() => document.getElementById("stats").scrollIntoView({ block: "start" }));
+    await sleep(800);
+    const tab = s.page.locator('#stats [role="tab"]').nth(1);
+    if (device === "desktop") await tab.click();
+    else await tab.tap();
+    await sleep(500);
+    const tabbed = await state(s);
+    await notch(s);
+    await sleep(1500);
+    const tabAfter = await state(s);
+    report(
+      `${device} ${lang} navigate: a STATS tab, then a ${device === "desktop" ? "notch" : "swipe"}: she stays in STATS`,
+      tabAfter.y >= tabbed.y && tabAfter.y - tabbed.y <= H && (await s.page.evaluate(() => window.location.hash)) === "#stats-sheet",
+      { tabbed, tabAfter },
+    );
+
+    // Back to top from the credits, then a notch: she stays at the top.
+    await s.page.evaluate(() => document.getElementById("contact").scrollIntoView({ block: "end" }));
+    await sleep(800);
+    const back = s.page.locator('#credits a[href="#main"], #contact a[href="#main"]').last();
+    if (device === "desktop") await back.click();
+    else await back.tap();
+    await sleep(2200);
+    const atTop = await state(s);
+    await notch(s);
+    await sleep(1500);
+    const topAfter = await state(s);
+    report(
+      `${device} ${lang} navigate: back to top lands at the top on the title, and her next ${device === "desktop" ? "notch" : "swipe"} stays there`,
+      atTop.y <= 1 && atTop.focus === "hero-title" && topAfter.y >= 0 && topAfter.y <= H / 2,
+      { atTop, topAfter },
+    );
+    await s.close();
+
+    // A deep link, then a notch.
+    const d = await session(device, lang, { hash: "#contact" });
+    await sleep(1200);
+    const deep = {
+      contact: await top(d, "contact"),
+      limit: await d.page.evaluate(() => document.documentElement.scrollHeight - innerHeight),
+      ...(await state(d)),
+    };
+    await notch(d);
+    await sleep(1500);
+    const deepAfter = { contact: await top(d, "contact"), ...(await state(d)) };
+    report(
+      `${device} ${lang} navigate: /${lang}#contact lands on the contact with the walls open, and her next ${device === "desktop" ? "notch" : "swipe"} stays there`,
+      // At its top, or as near as the foot of the page allows.
+      deep.frontier === null &&
+        deep.focus === "contact" &&
+        (deep.contact <= 64 || deep.y >= deep.limit - 1) &&
+        deepAfter.y >= deep.y - 1 &&
+        deepAfter.contact > -H,
+      { deep, deepAfter },
+    );
+    await d.close();
   },
 
   async loader(device, lang) {

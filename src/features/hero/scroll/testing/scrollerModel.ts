@@ -15,7 +15,18 @@
 import { motion } from "@/design/tokens";
 import type { FilmTimeline } from "../film";
 import { type Feedback, type FeedbackInput, newFeedback, stepFeedback } from "../feedback";
-import { GATE, gateAction, lenisMissed, liftFling, type PageReading, pageScroll } from "../gate";
+import {
+  GATE,
+  gateAction,
+  lenisMissed,
+  liftFling,
+  newStroke,
+  type PageReading,
+  pageScroll,
+  resetStroke,
+  strokeLift,
+  strokeMove,
+} from "../gate";
 import {
   activeWindow,
   buildWalls,
@@ -94,6 +105,25 @@ export const strokeAndRest =
   (stroke = 400, duration = 0.12): Source =>
   (time, dt) =>
     time < duration - 1e-9 ? [{ type: "touchmove", delta: (stroke * Math.min(dt, duration - time)) / duration }] : [];
+
+/**
+ * A thumb resting on the glass that trembles by `amp` px (peak to peak)
+ * around where it is, one move a frame, never lifting; Chrome coalesces
+ * some of its moves to nothing (`still` of them, every one in four by
+ * default: a zero move, as for a pressure change).
+ */
+export const tremble = (amp: number, still = 4): Source => {
+  // Where the thumb is at frame i: either side of its rest, or where it was (a coalesced move).
+  const at = (i: number): number => {
+    if (i < 0) return 0;
+    if (still > 0 && i % still === still - 1) return at(i - 1);
+    return i % 2 ? amp / 2 : -amp / 2;
+  };
+  return (time, dt) => {
+    const i = Math.round(time / dt);
+    return [{ type: "touchmove", delta: at(i) - at(i - 1) }];
+  };
+};
 
 /** A finger dragging on, `perSecond` viewport heights a second, never lifting. */
 export const drag =
@@ -276,7 +306,8 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
   // Assigned from scrollTo(): a plain annotation would narrow it to null here.
   let glide = null as Glide | null;
   let velocity = 0;
-  let lastTouchDelta = 0;
+  /** The finger on the glass, read through its slop as SmoothScroll reads it. */
+  const stroke = newStroke();
   // Gate and story
   let maxScroll = STORY.titleWallFrom * range;
   let firstInput = Number.NaN;
@@ -370,6 +401,20 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
         if (event.seen && !glide && anim === target) anim = target = page;
         continue;
       }
+      // SmoothScroll.gateInput: a finger moves the page only once past its slop
+      // (gate.ts); a still one, trembling or not, is no input, and its moves
+      // are cancelled, so the browser never takes the stroke.
+      let delta = event.type === "wheel" || event.type === "touchmove" ? event.delta : 0;
+      if (event.type === "touchmove") {
+        touching = true;
+        delta = strokeMove(stroke, event.delta);
+        if (delta === 0) continue;
+      } else if (event.type === "touchend" && strokeLift(stroke) === 0) {
+        // A finger that never left its slop (a tap, a resting thumb) lifts without a fling.
+        touching = false;
+        resetStroke(stroke);
+        continue;
+      }
       if (Number.isNaN(firstInput)) firstInput = time;
       lastInput = time;
       result.inputs.push(time);
@@ -379,25 +424,26 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
       // SmoothScroll measures the room from the page as well as from Lenis' target.
       const room = maxScroll - Math.max(target, page);
       if (event.type === "wheel" || event.type === "touchmove") {
-        if (event.type === "touchmove") touching = true;
-        if (event.delta > 0) forward(time, event.delta / vh);
+        if (delta > 0) forward(time, delta / vh);
         // SmoothScroll.gateInput: trim forward input to the room left; the rest is held.
-        const accepted = event.delta > 0 ? Math.max(0, Math.min(event.delta, room)) : event.delta;
-        if (event.delta > accepted) {
+        const accepted = delta > 0 ? Math.max(0, Math.min(delta, room)) : delta;
+        if (delta > accepted) {
           pushedAt = time;
-          heldPx += event.delta - Math.max(0, accepted);
+          heldPx += delta - Math.max(0, accepted);
         }
-        if (event.delta > 0 && accepted < 1) continue;
-        if (event.type === "touchmove") lastTouchDelta = accepted;
+        if (delta > 0 && accepted < 1) continue;
         scrollTo(target + accepted, { lerp: event.type === "touchmove" ? lambdaTouch : lambdaWheel });
-        if (event.delta < 0) backwardAt = time;
+        if (delta < 0) backwardAt = time;
       } else if (event.type === "touchend") {
         touching = false;
-        // Lenis flings |v|^1.7; forward, the gate lets it fly up to the wall and no further (gate.ts).
+        // Lenis flings |v|^1.7 the stroke's way (gate.ts strokeLift); forward,
+        // the gate lets it fly up to the wall and no further (gate.ts).
+        const lift = strokeLift(stroke);
+        resetStroke(stroke);
         const fling = Math.abs(velocity) ** 1.7;
-        if (lastTouchDelta < 0) {
+        if (lift < 0) {
           scrollTo(target - fling, { lerp: lambdaInertia });
-        } else if (lastTouchDelta > 0) {
+        } else if (lift > 0) {
           const fly = Number.isFinite(room) ? liftFling(fling, room, vh) : fling;
           if (fly > 0) scrollTo(target + fly, { lerp: lambdaInertia });
           if (fly > 0 && fly < fling) {
@@ -405,7 +451,6 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
             heldPx += Math.min(fling - fly, GATE.overshootCap);
           }
         }
-        lastTouchDelta = 0;
       } else if (event.type === "space") {
         forward(time, THROTTLE.keyStep);
         const fr = frontier(walls, story);

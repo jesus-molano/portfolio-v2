@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { VirtualScrollData } from "lenis";
 import { ReactLenis, useLenis, type LenisRef } from "lenis/react";
 import { motion } from "@/design/tokens";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { registerScroller, type Scroller } from "@/lib/navigate";
 import { getSceneLoading } from "../sceneLoading";
-import { GATE, liftFling } from "./gate";
+import { GATE, liftFling, newStroke, resetStroke, strokeLift, strokeMove } from "./gate";
 import { recordInput, scrollGate } from "./heroProgress";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -23,9 +24,12 @@ gsap.registerPlugin(ScrollTrigger);
  * hero story's frontier (see story.ts, gate.ts and HeroStage), and what is
  * held there becomes `scrollGate.pressure`, which the hero shows. Touch
  * scrolling is synced too (`syncTouch`), so phones get the same gate and no
- * native momentum runs past it; a finger's fling flies up to the wall and
- * no further. The input this gate passes never goes past the frontier;
- * whatever else moves the page there, HeroStage puts it back (gate.ts).
+ * native momentum runs past it: every move of a stroke is cancelled, by
+ * Lenis or by the gate, so the browser never takes a stroke over. A
+ * finger moves the page once past its slop, so a resting thumb that
+ * trembles is still, and its fling flies up to the wall and no further.
+ * The input this gate passes never goes past the frontier; whatever else
+ * moves the page there, HeroStage puts it back (gate.ts).
  * Every input is recorded (`recordInput`) for the hero's feedback: the
  * world's pace, the transport and the hints.
  */
@@ -35,10 +39,12 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
 
   /** The current touch stroke moved the page: its touchend may carry inertia. */
   const strokeMoved = useRef(false);
+  /** The finger on the glass, read through its slop (gate.ts): a trembling thumb is still. */
+  const stroke = useRef(newStroke());
 
   /*
    * Gate for wheel and touch input, run by Lenis before it scrolls. It
-   * relies on three Lenis 1.3.26 internals (pinned in package.json and
+   * relies on four Lenis 1.3.26 internals (pinned in package.json and
    * guarded by lenisContract.test.ts):
    * 1. `options.virtualScroll` runs before Lenis' own ctrlKey and isStopped
    *    checks (onVirtualScroll), so pinch zoom is filtered here;
@@ -47,9 +53,19 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
    * 3. touchend inertia, sign(delta)·|velocity|^touchInertiaExponent, is
    *    computed after this callback from Lenis' own velocity: the gate
    *    computes the same fling here and, when it would pass the wall, zeroes
-   *    the deltas (2) and glides into the wall itself.
+   *    the deltas (2) and glides into the wall itself;
+   * 4. a touchmove Lenis drops (zero vertical delta, or `false` from this
+   *    callback) returns before Lenis cancels it. A cancelable touchmove
+   *    nobody cancels hands the rest of the stroke to the browser's own
+   *    scrolling (its later moves come uncancelable), which no gate trims:
+   *    a drag and its fling would run past the wall. So with syncTouch on,
+   *    the gate cancels every move it holds or Lenis would drop itself
+   *    (a still finger whose moves Chrome coalesced to nothing, a pressure
+   *    change, a sideways sway), and the stroke stays gated.
    * The room is measured from the page as well as from Lenis' target: if
-   * the page moved without Lenis (gate.ts), nothing passes the wall.
+   * the page moved without Lenis (gate.ts), nothing passes the wall. A
+   * finger is read through its slop (gate.ts Stroke): a resting thumb that
+   * trembles neither goes back nor pushes.
    */
   const gateInput = useCallback(
     (data: VirtualScrollData) => {
@@ -57,6 +73,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       // Pinch zoom, sideways gestures and input before the visitor entered are not scrolling.
       if (reducedMotion || event.ctrlKey || !getSceneLoading().entered) return true;
       const lenis = lenisRef.current?.lenis;
+      // Every finger lands still.
+      if (event.type === "touchstart") resetStroke(stroke.current);
       // Scroll held (the radio wheel is open): nothing reaches the hero, not
       // even as feedback; Lenis drops the event itself after this callback.
       if (lenis?.isStopped) {
@@ -71,6 +89,18 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         strokeMoved.current = false;
         return true;
       }
+      if (event.type === "touchmove") {
+        // A finger moves the page only once it is past its slop (gate.ts).
+        const move = strokeMove(stroke.current, data.deltaY);
+        if (move === 0) {
+          // Still, or a move with nothing vertical in it: nothing scrolls,
+          // and the move is cancelled here, or the browser takes the rest of
+          // the stroke (internal 4).
+          if (event.cancelable && lenis && lenisDrivesTouch(lenis, event)) event.preventDefault();
+          return false;
+        }
+        data.deltaY = move;
+      }
       const gated = Boolean(lenis) && Number.isFinite(scrollGate.maxScroll);
       const room =
         lenis && gated ? scrollGate.maxScroll - Math.max(lenis.targetScroll, lenis.actualScroll) : Infinity;
@@ -79,6 +109,11 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         scrollGate.touching = false;
         if (strokeMoved.current) scrollGate.touchEndAt = now;
         strokeMoved.current = false;
+        // The fling goes the stroke's way, not its last tremble's; a finger
+        // that never left its slop (a tap, a resting thumb) flings nothing.
+        const lift = strokeLift(stroke.current);
+        if (lift === 0) data.deltaX = 0;
+        data.deltaY = lift;
         // A forward fling flies up to the wall and no further (gate.ts
         // liftFling); near the wall it does not fly at all. A flick back
         // keeps its inertia.
@@ -187,10 +222,52 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         virtualScroll: gateInput,
       }}
     >
+      <ScrollerRegistration />
       <ScrollTriggerSync />
       {children}
     </ReactLenis>
   );
+}
+
+/** Lenis' touch handling that the gate mirrors (lenisContract.test.ts). */
+type LenisTouch = { rootElement: HTMLElement; _isDraggingSelection?: boolean };
+
+/**
+ * Lenis drives this touch stroke: it cancels the moves it scrolls, so the
+ * gate must cancel the ones it drops. Not under an element that keeps its
+ * own touch scrolling (`data-lenis-prevent` and its touch and orientation
+ * variants), nor while iOS drags a text selection's handle, where Lenis
+ * leaves the stroke to the browser.
+ */
+function lenisDrivesTouch(lenis: object, event: Event): boolean {
+  const own = lenis as LenisTouch;
+  if (own._isDraggingSelection) return false;
+  const path = event.composedPath();
+  for (const node of path) {
+    if (node === own.rootElement) break;
+    if (
+      node instanceof HTMLElement &&
+      (node.hasAttribute("data-lenis-prevent") ||
+        node.hasAttribute("data-lenis-prevent-touch") ||
+        node.hasAttribute("data-lenis-prevent-vertical") ||
+        node.hasAttribute("data-lenis-prevent-horizontal"))
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Hands the Lenis instance to the page's navigation (lib/navigate.ts), so
+ * a link, Skip or back to top moves Lenis and the page together. A layout
+ * effect ahead of the page: a section that moves the page as it mounts
+ * (the hero keeping her place) finds the new instance already there.
+ */
+function ScrollerRegistration() {
+  const lenis = useLenis();
+  useLayoutEffect(() => (lenis ? registerScroller(lenis as unknown as Scroller) : undefined), [lenis]);
+  return null;
 }
 
 /** Registers `ScrollTrigger.update` on the Lenis instance once it exists. */

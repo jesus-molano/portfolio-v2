@@ -23,7 +23,20 @@ import { describe, expect, it } from "vitest";
  * 5. `scrollTo` returns early, doing nothing, when asked for its own
  *    `targetScroll`: before pulling the page back to the wall, the stage
  *    sets both fields to where the page is, so the pull never is a no-op.
- * Upgrading Lenis fails this test until someone re-checks all five.
+ * And SmoothScroll's touch gate on one more:
+ * 6. a touchmove Lenis drops (no vertical delta: a still finger whose
+ *    moves Chrome coalesced, a pressure change, a sideways sway; or one
+ *    the gate holds) returns before Lenis cancels it, and a cancelable
+ *    touchmove nobody cancels hands the rest of the stroke to the
+ *    browser's own scrolling, past every gate. So the gate cancels those
+ *    itself, wherever Lenis drives the stroke: not under
+ *    `data-lenis-prevent`, not while iOS drags a selection handle.
+ * And the page's one way of moving (lib/navigate.ts) on one more:
+ * 7. `resize()` re-measures the page and stands Lenis where the page is,
+ *    and `reset()` (public at runtime, private in its types) also stops
+ *    any glide; after both, an immediate `scrollTo` writes Lenis and the
+ *    page together and is never the no-op of a scrollTo to its own target.
+ * Upgrading Lenis fails this test until someone re-checks all seven.
  */
 describe("Lenis contract", () => {
   const root = new URL("../../../../node_modules/lenis/", import.meta.url);
@@ -59,5 +72,39 @@ describe("Lenis contract", () => {
     const scrollTo = source.slice(source.indexOf("scrollTo(_target, {"), source.indexOf("preventNextNativeScrollEvent() {"));
     expect(scrollTo).toContain("if (target === this.targetScroll) {");
     expect(scrollTo).toContain("this.animatedScroll = this.targetScroll = target;");
+  });
+
+  it("still drops a touchmove without vertical delta before it cancels it, and leaves the same strokes alone", () => {
+    const source = readFileSync(new URL("dist/lenis.mjs", root), "utf8");
+    const start = source.indexOf("onVirtualScroll = (data) => {");
+    const body = source.slice(start, source.indexOf("resize()", start));
+    const unknown = body.indexOf('this.options.gestureOrientation === "vertical" && deltaY === 0');
+    const drop = body.indexOf("if (isClickOrTap || isUnknownGesture) return;");
+    const cancel = body.indexOf("if (event.cancelable) event.preventDefault();");
+    expect(unknown).toBeGreaterThan(0);
+    expect(drop).toBeGreaterThan(unknown);
+    expect(cancel).toBeGreaterThan(drop);
+    // Its touch listeners can cancel a move...
+    expect(source).toContain("const listenerOptions = { passive: false };");
+    expect(source).toContain('this.element.addEventListener("touchmove", this.onTouchMove, listenerOptions);');
+    // ...and the strokes it leaves to the browser, which the gate leaves alone too.
+    expect(body).toContain("if (this._isDraggingSelection) {");
+    for (const attribute of ["data-lenis-prevent", "data-lenis-prevent-vertical", "data-lenis-prevent-horizontal", "data-lenis-prevent-touch"]) {
+      expect(body).toContain(`node.hasAttribute?.("${attribute}")`);
+    }
+    expect(body).toContain("composedPath = composedPath.slice(0, composedPath.indexOf(this.rootElement));");
+  });
+
+  it("still re-measures and stands where the page is on resize() and reset(), which also stops a glide", () => {
+    const source = readFileSync(new URL("dist/lenis.mjs", root), "utf8");
+    const resize = source.slice(source.indexOf("\tresize() {"), source.indexOf("\temit() {"));
+    expect(resize).toContain("this.dimensions.resize();");
+    expect(resize).toContain("this.animatedScroll = this.targetScroll = this.actualScroll;");
+    const reset = source.slice(source.indexOf("\treset() {"), source.indexOf("\tstart() {"));
+    expect(reset).toContain("this.animatedScroll = this.targetScroll = this.actualScroll;");
+    expect(reset).toContain("this.animate.stop();");
+    const scrollTo = source.slice(source.indexOf("scrollTo(_target, {"), source.indexOf("preventNextNativeScrollEvent() {"));
+    expect(scrollTo).toContain("if ((this.isStopped || this.isLocked) && !force) return;");
+    expect(scrollTo).toContain("this.setScroll(this.scroll);");
   });
 });

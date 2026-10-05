@@ -16,6 +16,7 @@ import {
 import { flushSync } from "react-dom";
 import { getRadio } from "@/features/music/radio";
 import { idFromHash } from "@/lib/hash";
+import { focusInPlace, goTo } from "@/lib/navigate";
 import { REVEAL_EVENT, type RevealDetail } from "@/lib/reveal";
 import styles from "./Stats.module.css";
 import {
@@ -136,11 +137,14 @@ export function StatsSection({ className, labelledBy, children }: { className: s
       if (!section) return;
       // Switched with the tab bar out of view (from the foot of a long
       // panel, with a shoulder button): back to the section's top, so the
-      // new tab starts there, under its name.
+      // new tab starts there, under its name. Lenis goes with the page
+      // (lib/navigate.ts): a native jump it missed would send her next
+      // notch from where she was.
       const bar = section.querySelector("[role=tablist]")?.getBoundingClientRect();
-      if (bar && (bar.top < 0 || bar.bottom > window.innerHeight)) section.scrollIntoView({ block: "start" });
+      if (bar && (bar.top < 0 || bar.bottom > window.innerHeight)) goTo(section, { focus: null });
       const next = focus === "tab" ? TAB_IDS[tab] : focus === "panel" ? PANEL_IDS[tab] : null;
-      if (next) document.getElementById(next)?.focus({ preventScroll: true });
+      const nextElement = next ? document.getElementById(next) : null;
+      if (nextElement) focusInPlace(nextElement);
     },
     [store],
   );

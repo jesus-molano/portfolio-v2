@@ -100,7 +100,12 @@ also exists as real DOM for keyboard and screen-reader users.
     be passed before it has been on screen for its reading time. The page
     is never left past the frontier (`scroll/gate.ts`): the input the gate
     passes never goes past it (a finger's fling flies up to the wall and
-    no further), and whatever else moves the page there (the scrollbar,
+    no further, and every move of a stroke is cancelled, by Lenis or by
+    the gate: Lenis drops a move with nothing vertical in it, a still
+    finger's coalesced move or a pressure change, before it cancels it,
+    and a move nobody cancels hands the rest of the stroke to the
+    browser's own scrolling, past every wall; `lenisContract.test.ts`),
+    and whatever else moves the page there (the scrollbar,
     find in page, an anchor, a programmatic scroll, wheel events the
     browser would not let the page cancel) goes back to it in the same
     frame, offering Skip for a jump of a viewport. Pulling back, not
@@ -110,7 +115,13 @@ also exists as real DOM for keyboard and screen-reader users.
     from the page itself, never from Lenis alone: Lenis can miss a native
     scroll (it drops the one after its own landing, a whole second at
     1 fps), and once it had, every push was held while the page sat below
-    the hero. Held input
+    the hero. A finger moves the page only once it has moved 8 px, and
+    turning back only once it is 8 px back from the furthest it went
+    (`gate.ts` Stroke, the same in the scroller model): a resting thumb
+    trembles by 0.3 to 3 px, and followed 1:1 every tremble back read as
+    REVERSE (the line being read hid and its clock stopped) and every one
+    forward at a wall as a push. Nothing is lost: starting or turning, the
+    stroke scrolls the finger's whole travel. Held input
     is never silent, and answers in the next frame: it bounces the card
     (`elastic.ts`), raises the world's pace (`throttle.ts`: the drive
     distance step runs x1 to x2; `drive.speed` stays 18 and nothing ever
@@ -176,11 +187,16 @@ also exists as real DOM for keyboard and screen-reader users.
     dialog hands the focus back to it, closed by a click or by Esc, until
     a Tab: the radio button clicked open never reopens on Space; one
     reached with Tab keeps it, even right after a click). Skip (shown from
-    the title hint on), Esc and End cut to the end: the page lands with
-    `#suspects` at the top and that section takes the focus (it has
-    `tabIndex={-1}`; `anchors.test.ts` checks it follows the hero). Focus
-    leaving the hero opens the walls. A viewport change (rotation, resize,
-    address bar) keeps the film where
+    the title hint on), Esc and End cut to the end (and so do Ctrl+End
+    and Cmd+Down, as Ctrl+Home and Cmd+Up act as Home: the browser
+    animates those jumps, and the next section flashed before the gate
+    pulled the page back): the page lands with `#suspects` at the top and
+    that section takes the focus (it has `tabIndex={-1}`;
+    `anchors.test.ts` checks it follows the hero). Focus
+    leaving the hero opens the walls, and so does any move of the page
+    past it that is not her scrolling (a link, a deep link, Skip:
+    `lib/navigate.ts`). A viewport change (rotation, resize, address bar)
+    keeps the film where
     it is, and so does reduced motion switched on mid-film: the line she
     was on shows in the running script, and if motion comes back the film
     resumes exactly where it was (she has not scrolled), at the line she
@@ -509,7 +525,20 @@ also exists as real DOM for keyboard and screen-reader users.
   IntersectionObserver counts as on screen (an edge that only touches the
   viewport does not, which is where Skip leaves the hero); `hash.ts` reads
   the id a URL fragment names; `reveal.ts` asks a deep link's target to
-  show itself before the page lands on it (STATS opens the tab it is in).
+  show itself before the page lands on it (STATS opens the tab it is in);
+  `navigate.ts` (`goTo`, tested) is the one way the page moves when it is
+  not her scrolling: in-page links, deep links and fragment changes
+  (`PageEntry`), back to top, the STATS tabs, Skip, Esc and End, the
+  still hero keeping her place, the loading screen starting at the top.
+  It moves Lenis and the page together (Lenis re-measured and started
+  from where the page is, then an immediate `scrollTo`): a native jump
+  Lenis misses (it drops the scroll event after its own landing) left it
+  behind, and one notch after the STATS booth took her to the cinema the
+  page flew back up to the hero's end. A move past the hero opens its
+  walls first (the hero registers itself as the passage), as the focus
+  moving past it does, so the frontier never pulls back a page that is
+  legitimately past the hero. Focus goes with `focusInPlace` (never
+  scrolls; a target that cannot take the focus can while it has it).
 - `tools/art/stats` — the STATS map. `extract.mjs` (run once, needs the
   network) turns the public-domain Terrain Tiles on AWS (zoom 8: SRTM,
   GMTED2010, ETOPO1 only; it refuses a tile with any other source) into
@@ -660,12 +689,16 @@ To add a track to a station:
   every animation in it while it is off screen, so it costs no style pass a
   frame during the hero.
 - Where the page starts once she is in is `PageEntry` (in `HomeMain.tsx`),
-  once the loading screen has given `<main>` back: a link to a section
-  after the hero (`/en#contact`, or an in-page link) cuts the film the way
-  Skip does (`hero/heroEnd.ts`, registered by `HeroStage`) and lands on
-  that section with the focus (a target in a closed tab opens it first,
-  `lib/reveal.ts`); otherwise the keyboard starts at the top of the page
-  (skip link, radio, languages, then Skip).
+  once the loading screen has given `<main>` back: a deep link
+  (`/en#contact`) lands on its target with the focus through
+  `lib/navigate.ts`, which opens the hero's walls on the way past it (a
+  target in a closed tab opens it first, `lib/reveal.ts`); otherwise the
+  keyboard starts at the top of the page (skip link, radio, languages,
+  then Skip). It also takes every same-page link (`a[href="#..."]`, a
+  plain click no handler has taken) and every later fragment change the
+  same way, the address naming the target as the browser's jump would.
+  Never move the page with `scrollIntoView`, `window.scrollTo` or a bare
+  `lenis.scrollTo(..., { immediate })` next to a native jump: use `goTo`.
 - The page controls (RADIO, EN/ES) are fixed at the top right, so `html`
   has a `scroll-padding-top` (their inset, height and a 1rem gap,
   `globals.css`): a section reached by a link or by keyboard focus stops

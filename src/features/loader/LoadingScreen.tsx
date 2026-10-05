@@ -23,6 +23,7 @@ import { entryStation, readMemory, requestMusic } from "@/features/music/radio";
 import { DEFAULT_STATION_ID, findStation, formatFrequency, STATIONS } from "@/features/music/stations";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { goTo } from "@/lib/navigate";
 import type { Dictionary } from "@/i18n/dictionaries";
 import styles from "./LoadingScreen.module.css";
 import {
@@ -160,7 +161,7 @@ export function LoadingScreen({ dict, name, role }: Props) {
     shownAt.current = performance.now();
     progressAt.current = shownAt.current;
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-    window.scrollTo(0, 0);
+    goTo(0, { focus: null });
     dialog.current?.focus();
   }, []);
 

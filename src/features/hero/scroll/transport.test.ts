@@ -435,6 +435,22 @@ describe("keyAction", () => {
     expect(keyAction(key("Enter"))).toBeNull();
   });
 
+  it("takes the page's own jumps to its ends for End and Home, so none animates natively", () => {
+    expect(keyAction(key("End", { ctrlKey: true }))).toBe("skip");
+    expect(keyAction(key("End", { ctrlKey: true, shiftKey: true }))).toBe("skip");
+    expect(keyAction(key("Home", { ctrlKey: true }))).toBe("home");
+    // A Mac's: Cmd+Down and Cmd+Up.
+    expect(keyAction(key("ArrowDown", { metaKey: true }))).toBe("skip");
+    expect(keyAction(key("ArrowUp", { metaKey: true }))).toBe("home");
+    // Not in a text field, where they move the caret.
+    expect(keyAction(key("End", { ctrlKey: true, targetKind: "text" }))).toBeNull();
+    expect(keyAction(key("ArrowDown", { metaKey: true, targetKind: "text" }))).toBeNull();
+    // Not with Alt, nor other combinations.
+    expect(keyAction(key("End", { ctrlKey: true, altKey: true }))).toBeNull();
+    expect(keyAction(key("ArrowDown", { ctrlKey: true }))).toBeNull();
+    expect(keyAction(key("PageDown", { ctrlKey: true }))).toBeNull();
+  });
+
   it("leaves modifiers, text fields and focused controls alone", () => {
     expect(keyAction(key("ArrowDown", { ctrlKey: true }))).toBeNull();
     expect(keyAction(key(" ", { altKey: true }))).toBeNull();

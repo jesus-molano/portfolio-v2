@@ -26,6 +26,7 @@ import {
   together,
   touch,
   trackpad,
+  tremble,
   wheel,
 } from "./testing/scrollerModel";
 import { THROTTLE, WAIT } from "./throttle";
@@ -281,6 +282,71 @@ describe("acceptance: the hold note under a finger", () => {
           expect(first!.time - up, what).toBeGreaterThan(0.4);
           for (const frame of after(run.frames, run.lastInput + HOLD_NOTE.touchGap + FRAME)) expect(frame.holdNote, what).toBe(false);
         }
+      }
+    });
+  }
+});
+
+describe("acceptance: a resting thumb that trembles is still", () => {
+  for (const [locale, lines] of LOCALES) {
+    const calm = wheel(1);
+    const reach = simulate(lines, calm, { maxTime: 60, vh: 750 });
+    const upAt = (card: number) => reach.frames.find((frame) => frame.playing === "card" && frame.active === card)!.time;
+
+    it(`${locale}: a calm swipe, then a thumb trembling 0.3 to 3 px on the glass: the line stays up and is read`, () => {
+      for (const card of [1, 2, 3]) {
+        // The line has come up and is being read.
+        const up = upAt(card) + 0.4;
+        for (const amp of [0.3, 0.67, 1, 2, 3]) {
+          const input = together(during(up, up + 0.15, strokeAndRest(60, 0.15)), during(up + 0.15, up + 3.15, tremble(amp)));
+          const run = simulate(lines, together(during(0, up, calm), input), { vh: 750, maxTime: up + 3.15 });
+          const rest = run.frames.filter((frame) => frame.time >= up + 0.4 && frame.time < up + 3.15);
+          const what = `card ${card}, ${amp} px`;
+          // Never read as going back, never as pushing: the line stays on screen...
+          expect(rest.filter((frame) => frame.mode === "reverse").length, what).toBe(0);
+          expect(rest.every((frame) => frame.active === card && frame.opacity[card] >= STORY.fullyVisible), what).toBe(true);
+          expect(rest.some((frame) => frame.holdNote), what).toBe(false);
+          // ...and its reading clock runs: read to the end, or 2.7 s further on.
+          const first = rest[0].fill;
+          const last = rest.at(-1)!.fill;
+          expect(last >= 1 || last - first > 0.2, `${what}: ${first} -> ${last}`).toBe(true);
+        }
+      }
+    });
+
+    it(`${locale}: two quick flicks, then a thumb left trembling on the glass: no note, no REVERSE`, () => {
+      for (const card of [1, 2, 3]) {
+        const up = upAt(card);
+        for (const stroke of [350, 500, 650]) {
+          const input = together(
+            during(up, up + 0.3, touch(0.3, stroke, 0.12)),
+            during(up + 0.3, up + 0.42, strokeAndRest(stroke, 0.12)),
+            during(up + 0.42, up + 6, tremble(3)),
+          );
+          const run = simulate(lines, together(during(0, up, calm), input), { vh: 750, maxTime: up + 6 });
+          const rest = after(run.frames, up + 0.42 + STORY.rewindHide + FRAME);
+          const what = `card ${card}, ${stroke} px`;
+          expect(run.frames.some((frame) => frame.time >= up && frame.holdNote), what).toBe(false);
+          expect(rest.filter((frame) => frame.mode === "reverse").length, what).toBe(0);
+        }
+      }
+    });
+
+    it(`${locale}: a real swipe back still rewinds, from a resting thumb or a new one`, () => {
+      const up = upAt(2) + 0.4;
+      // The same thumb, after resting and trembling, drags back at a viewport a second...
+      const same = together(during(up, up + 0.15, strokeAndRest(60, 0.15)), during(up + 0.15, up + 1.15, tremble(3)), during(up + 1.15, up + 1.6, drag(-1)));
+      // ...or a new finger swipes back 150 px.
+      const fresh = during(up, up + 0.5, touch(0.5, -150, 0.15));
+      for (const [label, input, from] of [["resting thumb", same, up + 1.15], ["new finger", fresh, up]] as const) {
+        const run = simulate(lines, together(during(0, up, calm), input), { vh: 750, maxTime: up + 2 });
+        const back = run.frames.filter((frame) => frame.time >= from && frame.time < from + 0.45);
+        const p0 = after(run.frames, from)[0].p;
+        // REVERSE within a few frames of the drag, and the picture goes back.
+        const firstReverse = back.find((frame) => frame.mode === "reverse");
+        expect(firstReverse, label).toBeDefined();
+        expect(firstReverse!.time - from, label).toBeLessThan(0.1);
+        expect(Math.min(...back.map((frame) => frame.p)), label).toBeLessThan(p0 - 60 / (5 * 750));
       }
     });
   }

@@ -30,8 +30,11 @@
  * twice), draws from Lenis' sub-pixel value while the two agree, and
  * starts Lenis again from the page when it missed a move.
  *
- * Pure functions; HeroStage and the scroller model (testing/
- * scrollerModel.ts) apply them.
+ * A finger's stroke is read through its slop (`Stroke`): a resting thumb
+ * that trembles is still, neither going back nor pushing.
+ *
+ * Pure functions; HeroStage, SmoothScroll and the scroller model
+ * (testing/scrollerModel.ts) apply them.
  */
 export const GATE = {
   /** Lenis and the page agree within this (px): the page's offset rounds to device pixels. */
@@ -42,7 +45,75 @@ export const GATE = {
   overshootCap: 400,
   /** Lifting a finger with less room than this (viewport heights) before the wall drops its fling. */
   liftRoom: 0.06,
+  /**
+   * A finger's slop (px): within this of where it landed, or of the
+   * furthest it went, a finger is still. A resting thumb trembles by 0.3
+   * to 3 px; Android's own touch slop is 8 dp.
+   */
+  touchSlop: 8,
 } as const;
+
+/**
+ * A finger's stroke, as the gate reads it (SmoothScroll, the scroller
+ * model). A thumb resting on the glass trembles; the page must not follow
+ * it, or every tremble back reads as going back (REVERSE, the card being
+ * read hides and its reading clock stops) and every tremble forward at a
+ * wall as a push. So a stroke scrolls once the finger has moved
+ * `touchSlop` px from where it landed, and then follows it 1:1 in its
+ * direction; turning back, it waits until the finger is `touchSlop` px
+ * back from the furthest it went (backlash). Nothing is lost: when the
+ * stroke starts or turns, it scrolls the finger's whole travel, so the
+ * page is under the finger again.
+ */
+export type Stroke = {
+  /** Which way the stroke scrolls: 1 forward, -1 back, 0 not yet (the finger is within its slop). */
+  dir: -1 | 0 | 1;
+  /** Finger travel (px, positive forward) since the stroke last scrolled: held in the slop. */
+  slack: number;
+};
+
+export function newStroke(): Stroke {
+  return { dir: 0, slack: 0 };
+}
+
+/** A new finger on the glass: its stroke starts still. */
+export function resetStroke(stroke: Stroke): void {
+  stroke.dir = 0;
+  stroke.slack = 0;
+}
+
+/**
+ * One move of the finger (`delta` px, positive forward): how far it
+ * scrolls the page, 0 while the finger is still (within the slop, or
+ * trembling back from the furthest it went).
+ */
+export function strokeMove(stroke: Stroke, delta: number): number {
+  if (!Number.isFinite(delta)) return 0;
+  stroke.slack += delta;
+  const { dir, slack } = stroke;
+  // Further the way it goes: on at once.
+  if (dir !== 0 && Math.sign(slack) === dir) {
+    stroke.slack = 0;
+    return slack;
+  }
+  // Starting, or turning back: only past the slop.
+  if (Math.abs(slack) >= GATE.touchSlop) {
+    stroke.dir = slack > 0 ? 1 : -1;
+    stroke.slack = 0;
+    return slack;
+  }
+  return 0;
+}
+
+/**
+ * The finger lifts: which way its fling goes (Lenis takes only the sign
+ * of the lift's delta; its size is Lenis' own velocity). A stroke that
+ * never left its slop flings nothing (a tap, a thumb that rested), and a
+ * last tremble back does not turn a forward fling around.
+ */
+export function strokeLift(stroke: Stroke): -1 | 0 | 1 {
+  return stroke.dir;
+}
 
 /** One frame's reading of where the page is. */
 export type PageReading = {

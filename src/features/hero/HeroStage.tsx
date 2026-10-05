@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/Button";
 import { motion } from "@/design/tokens";
 import { REDUCED_MOTION_QUERY, usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { goTo, registerPassage } from "@/lib/navigate";
 import styles from "./Hero.module.css";
 import { HeroCanvas } from "./HeroCanvas";
 import { HeroTitle } from "./HeroTitle";
-import { registerHeroEnd } from "./heroEnd";
 import { getSceneLoading, markQuiet, markSettled } from "./sceneLoading";
 import { titleIntro } from "./titleIntro";
 import { decay, ELASTIC, rubberBand, touchStretchMax } from "./scroll/elastic";
@@ -286,26 +286,22 @@ export function HeroStage({
       const sticky = root.querySelector<HTMLElement>("[data-sticky]");
       const cards = Array.from(root.querySelectorAll<HTMLElement>("[data-card]"));
 
+      /** The hero's section: what a move past it opens (lib/navigate.ts). */
+      const section = root.closest("section") ?? root;
+
       /**
        * Cuts to the end of the drive, like skipping a cutscene: the page
        * lands with the hero's last pixel just gone, so the section after it
        * (THE USUAL SUSPECTS, `#suspects`) starts at the top of the screen,
        * and that section takes the focus, so the keyboard carries on from
        * there instead of from the top of the page. anchors.test.ts checks
-       * that the hero is followed by a section that can take it.
+       * that the hero is followed by a section that can take it. Through
+       * the page's one way of moving (lib/navigate.ts): Lenis and the page
+       * land together, and the film's walls open on the way past.
        */
       const jumpToEnd = () => {
-        heroProgress.value = heroProgress.target = 1;
-        scrollGate.maxScroll = Number.POSITIVE_INFINITY;
-        const hero = root.closest("section") ?? root;
-        const end = hero.getBoundingClientRect().bottom + window.scrollY;
-        if (lenis) lenis.scrollTo(end, { immediate: true, force: true });
-        else window.scrollTo(0, end);
-        const next = hero.nextElementSibling;
-        if (next instanceof HTMLElement) {
-          if (!next.hasAttribute("tabindex")) next.setAttribute("tabindex", "-1");
-          next.focus({ preventScroll: true });
-        }
+        const next = section.nextElementSibling;
+        goTo(section.getBoundingClientRect().bottom + window.scrollY, { focus: next instanceof HTMLElement ? next : null });
       };
 
       if (reducedMotion) {
@@ -319,7 +315,6 @@ export function HeroStage({
         scrollGate.maxScroll = Number.POSITIVE_INFINITY;
         setShot(shotIndexAt(STATIC_PROGRESS));
         actions.current = { skip: jumpToEnd, skipPointerDown: () => {} };
-        const unregister = registerHeroEnd({ section: root.closest("section") ?? root, cut: jumpToEnd });
         // Side hints wait for a quiet moment: once she has scrolled the
         // still title away (nothing covers the name) and rests there.
         let settle = 0;
@@ -331,15 +326,13 @@ export function HeroStage({
         };
         const place = () => {
           // Past the fade: where Skip lands, the hero's section just gone.
-          if (was >= STORY.fadeFrom) return (root.closest("section") ?? root).getBoundingClientRect().bottom + window.scrollY;
+          if (was >= STORY.fadeFrom) return section.getBoundingClientRect().bottom + window.scrollY;
           const card = was > STORY.titleOut ? cardAt(was, timeline) : -1;
           if (card < 0) return 0;
           return Math.max(0, cards[card].getBoundingClientRect().top + window.scrollY - STILL_PLACE * window.innerHeight);
         };
         const keepPlace = () => {
-          const y = place();
-          window.scrollTo({ top: y, behavior: "instant" });
-          lenis?.scrollTo(y, { immediate: true, force: true });
+          goTo(place(), { focus: null });
         };
         let settleFrame = 0;
         // A re-run in the still hero (Lenis rebuilt) keeps the place it took over.
@@ -388,7 +381,6 @@ export function HeroStage({
         window.addEventListener("touchmove", movedOn, { passive: true });
         window.addEventListener("keydown", movedOn);
         return () => {
-          unregister();
           window.removeEventListener("wheel", movedOn);
           window.removeEventListener("touchmove", movedOn);
           window.removeEventListener("keydown", movedOn);
@@ -471,12 +463,8 @@ export function HeroStage({
       const story = kept.current.story;
       resetInput();
       heroProgress.value = heroProgress.target = pNow;
-      if (resuming) {
-        // Lenis still has the still page's (shorter) limit: measure first, or it clamps the jump.
-        lenis?.resize();
-        window.scrollTo(0, scrollFor(pNow));
-        lenis?.scrollTo(scrollFor(pNow), { immediate: true, force: true });
-      }
+      // Lenis still has the still page's (shorter) limit: goTo measures it first, or it would clamp the jump.
+      if (resuming) goTo(scrollFor(pNow), { focus: null });
 
       let reseatAt = Number.NEGATIVE_INFINITY;
       /**
@@ -493,9 +481,8 @@ export function HeroStage({
         measure();
         if (Math.abs(before.top - geom.top) < 0.5 && Math.abs(before.range - geom.range) < 0.5) return;
         if (!lenis || !(p > 0 && p < 1)) return;
-        // Lenis measures its own limit later (debounced): the new position must not be clamped to the old one.
-        lenis.resize();
-        lenis.scrollTo(scrollFor(p), { immediate: true, force: true });
+        // Lenis measures its own limit later (debounced): goTo measures it now, so the new position is not clamped to the old one.
+        goTo(scrollFor(p), { focus: null });
         reseatAt = performance.now();
       };
       const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => remeasure());
@@ -1071,8 +1058,20 @@ export function HeroStage({
         }
       };
 
-      const skipToEnd = () => {
+      /**
+       * The film's walls open: Skip, Esc and End, a link or a deep link to
+       * a later section (lib/navigate.ts opens the passage on the way past),
+       * the focus moving below the hero. She is past the hero for good:
+       * nothing pulls the page back to a wall again.
+       */
+      const openWalls = () => {
         openAll(story);
+        heroProgress.value = heroProgress.target = 1;
+        scrollGate.maxScroll = Number.POSITIVE_INFINITY;
+      };
+
+      const skipToEnd = () => {
+        openWalls();
         jumpToEnd();
       };
 
@@ -1279,8 +1278,8 @@ export function HeroStage({
         },
       };
 
-      // A deep link to a later section cuts the film like Skip (components/PageEntry.tsx).
-      const unregisterEnd = registerHeroEnd({ section: root.closest("section") ?? root, cut: skipToEnd });
+      // A link, a deep link or Skip taking the page past the hero opens its walls first (lib/navigate.ts).
+      const unregisterPassage = registerPassage({ section, open: openWalls });
       window.addEventListener("keydown", onKey);
       window.addEventListener("resize", remeasure);
       document.addEventListener("visibilitychange", onVisibility);
@@ -1303,14 +1302,13 @@ export function HeroStage({
           const fr = frontier(walls, story);
           scrollGate.maxScroll = Number.isFinite(fr) ? scrollFor(fr) : Number.POSITIVE_INFINITY;
           // The scroll is the picture: the page goes there too.
-          if (lenis) lenis.scrollTo(scrollFor(value), { immediate: true, force: true });
-          else window.scrollTo(0, scrollFor(value));
+          goTo(scrollFor(value), { focus: null });
           update(0);
         };
       }
 
       return () => {
-        unregisterEnd();
+        unregisterPassage();
         gsap.ticker.remove(tick);
         window.removeEventListener("keydown", onKey);
         window.removeEventListener("resize", remeasure);

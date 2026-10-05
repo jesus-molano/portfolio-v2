@@ -396,11 +396,19 @@ export type KeyInput = {
 
 /**
  * What a key does in the pinned hero. Modifiers and text fields keep their
- * own keys; Space never takes over a focused button or link.
+ * own keys; Space never takes over a focused button or link. The page's
+ * own jumps to its ends (Ctrl+End and Ctrl+Home, Cmd+Down and Cmd+Up on a
+ * Mac) act as End and Home: the browser animates them, so the page ran
+ * past the wall for a few frames, the next section showing, before the
+ * gate pulled it back.
  */
 export function keyAction(input: KeyInput): KeyAction | null {
-  if (input.ctrlKey || input.altKey || input.metaKey) return null;
   if (input.targetKind === "text") return null;
+  if ((input.ctrlKey || input.metaKey) && !input.altKey) {
+    if ((input.ctrlKey && input.key === "End") || (input.metaKey && input.key === "ArrowDown")) return "skip";
+    if ((input.ctrlKey && input.key === "Home") || (input.metaKey && input.key === "ArrowUp")) return "home";
+  }
+  if (input.ctrlKey || input.altKey || input.metaKey) return null;
   switch (input.key) {
     case " ":
     case "Spacebar":
