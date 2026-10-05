@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 480" width="360" height="480">
   <!-- Jesús as a player card, with Dante on his shoulder as player 2. Drawn for Vice Afterglow; no photo. -->
   <defs>
-    <radialGradient id="halo" cx="50%" cy="38%" r="60%">
+    <radialGradient id="moonGlow" cx="50%" cy="38%" r="60%">
       <stop offset="0" stop-color="#b9a4e0" stop-opacity=".55"/>
       <stop offset=".55" stop-color="#8a4dff" stop-opacity=".16"/>
       <stop offset="1" stop-color="#8a4dff" stop-opacity="0"/>
@@ -51,7 +51,7 @@
   </defs>
 
   <!-- The moon behind him. -->
-  <circle cx="180" cy="190" r="200" fill="url(#halo)"/>
+  <circle cx="180" cy="190" r="200" fill="url(#moonGlow)"/>
   <circle cx="180" cy="186" r="128" fill="url(#moon)"/>
   <g fill="#9d86d6" opacity=".3"><circle cx="128" cy="146" r="15"/><circle cx="236" cy="238" r="20"/><circle cx="230" cy="116" r="8"/><circle cx="114" cy="236" r="9"/></g>
 

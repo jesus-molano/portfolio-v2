@@ -28,7 +28,7 @@ const dicts = [
 ] as const;
 
 describe("THE USUAL SUSPECTS copy", () => {
-  it("has the same keys and the same number of cats and effects in both languages", () => {
+  it("has the same keys and the same number of cats and complaints in both languages", () => {
     expect(shape(es.suspects)).toEqual(shape(en.suspects));
   });
 
@@ -54,13 +54,14 @@ describe("THE USUAL SUSPECTS copy", () => {
       if (cities) expect(cities).toBe("Tenerife");
     });
 
-    it(`${locale}: names the record by its title only, and has five effects`, () => {
-      expect(copy.effects.items).toHaveLength(5);
-      expect(copy.effects.items.some((item) => item.includes("Sweet Child O’ Mine"))).toBe(true);
+    it(`${locale}: files his complaint about the cats, not a list of his things (those live in STATS)`, () => {
+      expect(copy).not.toHaveProperty("effects");
+      const complaint = [copy.complaint.title, ...copy.complaint.items, copy.complaint.tally].join(" ");
+      expect(complaint).not.toMatch(/aviator|gafas|earring|pendiente|tee\b|camiseta|galax|record|disco|Sweet Child/i);
     });
 
-    it(`${locale}: keeps the eating joke for STATS`, () => {
-      expect(copy.effects.items.join(" ")).not.toMatch(/\b(takeaway|food|eat|eating|comida|comer|táper|tupper)\b/i);
+    it(`${locale}: keeps his eating joke for STATS`, () => {
+      expect(copy.complaint.items.join(" ")).not.toMatch(/\b(takeaway|food|eat|eating|comida|comer|táper|tupper)\b/i);
     });
   }
 
@@ -69,9 +70,28 @@ describe("THE USUAL SUSPECTS copy", () => {
     expect(en.suspects.cats.map((cat) => cat.alias)).toEqual(["“The Queen”", "“Fats”", "aka “Satan”", "“Shorty”"]);
   });
 
-  it("keeps Odin's plate line as approved, in both languages", () => {
-    expect(en.suspects.cats[3].description).toBe("Ginger tabby. Short tail. Day pass from upstairs, halo included.");
-    expect(es.suspects.cats[3].description).toMatch(/^Atigrado naranja\. Cola corta\. .*aureola incluida\.$/);
+  it("books Odin as one more suspect: a short ginger tabby, with no halo and no pass from upstairs", () => {
+    expect(en.suspects.cats[3].description).toMatch(/^A ginger tabby, short in the leg/);
+    expect(es.suspects.cats[3].description).toMatch(/^Un atigrado naranja, paticorto y rabicorto/);
+    for (const copy of [en.suspects, es.suspects]) {
+      expect(copy.cats[3].description).not.toMatch(/upstairs|heaven|above|arriba|cielo/i);
+    }
+  });
+
+  it("puts a halo nowhere on the page, in either language (the owner's call)", () => {
+    for (const dict of [en, es]) {
+      for (const [key, text] of strings(dict)) expect(text, key).not.toMatch(/halo|aureola/i);
+    }
+  });
+
+  it("files the complaint in the owner's words: three ticked damages, four suspects, one culprit", () => {
+    expect(es.suspects.complaint.title).toBe("Denuncia");
+    expect(es.suspects.complaint.items).toEqual(["Armarios arañados", "Cables mordidos", "Todos los cuencos relamidos"]);
+    expect(es.suspects.complaint.tally).toBe("Sospechosos: 4. Culpable: 1.");
+    expect(en.suspects.complaint.title).toBe("Complaint");
+    expect(en.suspects.complaint.items).toEqual(["Scratched wardrobes", "Chewed cables", "Every bowl licked clean"]);
+    expect(en.suspects.complaint.tally).toBe("Suspects: 4. Culprit: 1.");
+    for (const copy of [en.suspects, es.suspects]) expect(copy.complaint.owner).toBe("J. Molano");
   });
 
   it("quotes Casablanca as the Spanish dub has it", () => {

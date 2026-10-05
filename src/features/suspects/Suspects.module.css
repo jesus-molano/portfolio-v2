@@ -1,13 +1,13 @@
 /*
  * THE USUAL SUSPECTS: a police line-up wall with a centimetre height chart.
  *
- * One length, --cm, is a centimetre of the chart: the chart, the cats
- * (placed in centimetres by lineup.ts and the renders' manifest) and the
- * halo all multiply it, so every cat keeps its real size next to the others.
+ * One length, --cm, is a centimetre of the chart: the chart and the cats
+ * (placed in centimetres by lineup.ts and the renders' manifest) both
+ * multiply it, so every cat keeps its real size next to the others.
  *
  * Wide screens: one wall, the floor line low on it, four slots at 36, 52,
- * 68 and 84% of the width, the personal-effects slip on the left, the
- * plates and their descriptions on the floor, the caption under them.
+ * 68 and 84% of the width, his complaint taped on the left, the plates
+ * and their descriptions on the floor, the caption under them.
  * Phones and portrait screens: two strips of two at one shared scale, then
  * the slip, then the caption.
  */
@@ -206,7 +206,7 @@
   position: relative;
 }
 
-/* Each cat's own pool of cool booking light on the wall; Odin's is warm. */
+/* Each cat's own pool of cool booking light on the wall. */
 .spot::before {
   content: "";
   position: absolute;
@@ -220,15 +220,6 @@
     ellipse 50% 50% at 50% 62%,
     color-mix(in srgb, var(--va-color-text) 13%, transparent) 0%,
     color-mix(in srgb, var(--va-color-lilac) 16%, transparent) 45%,
-    transparent 100%
-  );
-}
-
-.suspect[data-halo] .spot::before {
-  background: radial-gradient(
-    ellipse 50% 50% at 50% 58%,
-    color-mix(in srgb, var(--va-color-amber) 24%, transparent) 0%,
-    color-mix(in srgb, var(--va-color-orange) 10%, transparent) 50%,
     transparent 100%
   );
 }
@@ -255,10 +246,6 @@
   color: color-mix(in srgb, var(--va-color-cream) 22%, transparent);
 }
 
-.suspect[data-halo] .numeral {
-  color: color-mix(in srgb, var(--va-color-amber) 34%, transparent);
-}
-
 /* The cat: its floor contact on the floor line, centred on the slot. */
 .cat {
   position: absolute;
@@ -267,49 +254,6 @@
   width: calc(var(--cat-w) * var(--cm));
   max-width: none;
   height: auto;
-}
-
-/* Odin's soft glow: the only warm light on the wall. */
-.suspect[data-halo] .cat {
-  filter: drop-shadow(0 0 calc(var(--cm) * 1.6) color-mix(in srgb, var(--va-color-amber) 30%, transparent));
-}
-
-/* A plain golden ring over his head (no character, no logo). */
-.halo {
-  position: absolute;
-  left: 50%;
-  bottom: calc(var(--halo-bottom) * var(--cm));
-  width: calc(var(--halo-w) * var(--cm));
-  height: max(calc(var(--halo-h) * var(--cm)), 6px);
-  translate: -50% 0;
-  rotate: -5deg;
-  border: max(2px, calc(var(--cm) * 0.38)) solid var(--va-color-sodium);
-  border-radius: 50%;
-  box-shadow:
-    0 0 calc(var(--cm) * 1.4) color-mix(in srgb, var(--va-color-amber) 85%, transparent),
-    0 0 calc(var(--cm) * 4) color-mix(in srgb, var(--va-color-sodium) 35%, transparent),
-    inset 0 0 calc(var(--cm) * 0.5) color-mix(in srgb, var(--va-color-amber) 70%, transparent);
-}
-
-/* Its bright upper rim. */
-.halo::after {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: 50%;
-  border-top: 1px solid color-mix(in srgb, var(--va-color-cream) 80%, transparent);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .halo {
-    animation: halo-bob 4s ease-in-out infinite;
-  }
-}
-
-@keyframes halo-bob {
-  50% {
-    translate: -50% -3px;
-  }
 }
 
 /* ---------------------------------------------------------------- the floor */
@@ -344,10 +288,6 @@
     ),
     var(--va-lineup-plate);
   box-shadow: 0 0.6rem 1.4rem var(--va-color-glass);
-}
-
-.suspect[data-halo] .plate {
-  border-color: color-mix(in srgb, var(--va-color-amber) 34%, transparent);
 }
 
 .number {
@@ -389,9 +329,116 @@
   color: color-mix(in srgb, var(--va-color-cream) 86%, transparent);
 }
 
+/* ---------------------------------------------------------------- the culprit */
+
+/*
+ * The culprit's plate: a button dressed as the others, and the verdict
+ * stamped across it. The stamp is out of the flow, so the plate keeps the
+ * width its own name gives it (a hidden CULPABLE must not widen it into a
+ * tell), and the pair sits over the neighbours' plates, so a stamp wider
+ * than its slot lands on top of them instead of under. The plate's step
+ * down onto the floor moves to the pair.
+ */
+.culprit {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+  margin-top: calc(var(--cm) * -1.6);
+}
+
+.plateButton {
+  margin-top: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * GUILTY in rubber-stamp ink, a double rule round it and the ink worn in
+ * places. Nowhere at first sight: pointer hover and keyboard focus bring
+ * it up, a click or a tap pins it (aria-expanded on the plate). It lets
+ * the pointer through to the plate, so hovering it keeps it up.
+ */
+.stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  z-index: 3;
+  padding: 0.3em 0.5em 0.24em 0.66em;
+  border: 2px solid currentColor;
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--va-lineup-plate) 90%, transparent);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--va-lineup-plate) 90%, transparent),
+    inset 0 0 0 3px currentColor;
+  font-family: var(--va-font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-lineup-verdict);
+  rotate: -9deg;
+  pointer-events: none;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -5 0 0 0 4.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -5 0 0 0 4.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
+  visibility: hidden;
+  opacity: 0;
+}
+
+.plateButton[aria-expanded="true"] + .stamp,
+.plateButton:focus-visible + .stamp {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Only where a pointer really hovers: a phone's tap would leave it stuck. */
+@media (hover: hover) {
+  .plateButton:hover + .stamp {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+/* The slam: it comes down from above the plate and lands; off under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .stamp {
+    scale: 1.7;
+    transition:
+      opacity 160ms ease-out,
+      visibility 0s linear 160ms,
+      scale 0s linear 160ms;
+  }
+
+  .plateButton[aria-expanded="true"] + .stamp,
+  .plateButton:focus-visible + .stamp {
+    scale: 1;
+    transition:
+      opacity 90ms ease-in,
+      visibility 0s,
+      scale 150ms cubic-bezier(0.55, 0, 0.85, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .plateButton:hover + .stamp {
+    scale: 1;
+    transition:
+      opacity 90ms ease-in,
+      visibility 0s,
+      scale 150ms cubic-bezier(0.55, 0, 0.85, 0.35);
+  }
+}
+
 /* ---------------------------------------------------------------- the slip */
 
-/* Personal effects: typed on warm paper, taped to the wall at a slant. */
+/* His complaint: a form typed on warm paper, taped to the wall at a slant. */
 .slip {
   grid-area: 1 / 1 / 2 / 2;
   align-self: end;
@@ -450,23 +497,44 @@
   letter-spacing: 0.24em;
 }
 
-.effects {
+/* The damage, each line ticked off in pen in its printed box. */
+.damages {
   display: grid;
-  gap: 0.3rem;
+  gap: 0.35rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.effects li {
+.damages li {
   display: grid;
   grid-template-columns: 1.85rem minmax(0, 1fr);
+  align-items: start;
   text-wrap: pretty;
 }
 
-.effectNumber {
+.tick {
+  display: grid;
+  place-items: center;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-top: calc((1lh - 0.85rem) / 2);
+  border: 1px solid color-mix(in srgb, var(--va-color-ink) 55%, transparent);
+  font-size: 1.05rem;
   font-weight: 700;
+  line-height: 0;
   color: var(--va-lineup-stamp);
+}
+
+/* The tally, typed under a dashed rule at the foot of the form. */
+.tally {
+  margin-top: 0.7rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed color-mix(in srgb, var(--va-color-ink) 45%, transparent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  /* Two even lines when it wraps, never "1." alone on the second. */
+  text-wrap: balance;
 }
 
 /* ---------------------------------------------------------------- the caption */
@@ -659,7 +727,6 @@
     left: calc(50% + (var(--cat-left) + var(--phone-nudge)) * var(--cm));
   }
 
-  .halo,
   .spot::before {
     left: calc(50% + var(--phone-nudge) * var(--cm));
   }
@@ -687,6 +754,10 @@
 
   .description {
     font-size: 0.8125rem;
+  }
+
+  .stamp {
+    font-size: 1.05rem;
   }
 
   .slip {

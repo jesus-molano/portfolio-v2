@@ -1,6 +1,10 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import type { Dictionary } from "@/i18n/dictionaries";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
+import { Stats } from "./Stats";
 import { PLACES, SIDE_BLIPS } from "./statsLayout";
 
 /** Every string under a value, with its path. */
@@ -67,6 +71,17 @@ describe("STATS copy", () => {
       for (const [path, text] of strings(dict.stats)) {
         expect(/madrid|remot|teletrabajo|home office|@/i.test(text), `${path}: ${text}`).toBe(false);
       }
+    }
+  });
+
+  it("counts the cats as 3 + 1 in words alone, with no halo drawn over the 1", () => {
+    for (const dict of [en, es]) {
+      const cats = dict.stats.records.items.find((record) => record.id === "cats");
+      expect(cats?.value).toBe("3 + 1");
+      expect(cats?.caption).toMatch(/^(cats|gatos): /);
+      const html = renderToStaticMarkup(createElement(Stats, { dict: dict.stats as Dictionary["stats"] }));
+      expect(html).toContain(">3 + 1<");
+      expect(html).not.toMatch(/halo|<svg[^>]*viewBox="0 0 40 12"/i);
     }
   });
 

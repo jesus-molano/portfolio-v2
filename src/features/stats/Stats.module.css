@@ -1102,21 +1102,6 @@ a.missionRow:focus-visible {
   color: var(--va-color-text-muted);
 }
 
-.haloed {
-  position: relative;
-  display: inline-block;
-}
-
-.halo {
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  width: 40px;
-  color: var(--va-color-sodium);
-  transform: translateX(-50%) rotate(-6deg);
-  filter: drop-shadow(0 0 4px var(--va-color-sodium));
-}
-
 .hint {
   align-self: flex-end;
   font: 600 12px/1 var(--va-font-mono);

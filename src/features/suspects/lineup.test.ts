@@ -5,7 +5,6 @@ import manifestJson from "../../../public/interlude/manifest.json";
 import {
   CAT_IDS,
   extents,
-  HALO,
   isCatId,
   lowestHead,
   parseManifest,
@@ -56,7 +55,7 @@ describe("parseManifest", () => {
     expect(Object.keys(manifest.cats).sort()).toEqual([...CAT_IDS].sort());
   });
 
-  it("keeps the contract's fields and an optional baked halo, nothing else", () => {
+  it("keeps the contract's fields and the old halo flag, nothing else", () => {
     const parsed = parseManifest(withCat("odin", { haloInImage: true, extra: 1 } as Partial<CatImage>));
     expect(parsed.cats.odin).toEqual({ ...SAMPLE, haloInImage: true });
     expect(parsed.cats.kira).toEqual(SAMPLE);
@@ -87,8 +86,6 @@ describe("placeCat", () => {
     expect(p.bottomCm).toBe(-1);
     expect(p.headTopCm).toBe(28);
     expect(p.headWidthCm).toBe(10);
-    expect(p.halo).toBeNull();
-    expect(p.topCm).toBe(28);
   });
 
   it("puts the image's floor contact on the floor line and its centre on the slot", () => {
@@ -98,15 +95,10 @@ describe("placeCat", () => {
     expect(extents(p)).toEqual({ leftCm: 12.5, rightCm: 7.5 });
   });
 
-  it("gives Odin a halo above his head, sized from the head, unless the render has one", () => {
-    const p = placeCat("odin", SAMPLE, 24);
-    expect(p.halo).not.toBeNull();
-    expect(p.halo!.bottomCm).toBeCloseTo(28 + HALO.gapCm);
-    expect(p.halo!.widthCm).toBeCloseTo(HALO.widthRatio * 10);
-    expect(p.halo!.heightCm).toBeCloseTo(HALO.heightRatio * HALO.widthRatio * 10);
-    expect(p.topCm).toBeCloseTo(p.halo!.bottomCm + p.halo!.heightCm);
-    expect(placeCat("odin", { ...SAMPLE, haloInImage: true }, 24).halo).toBeNull();
-    expect(placeCat("kira", SAMPLE, 24).halo).toBeNull();
+  it("places Odin like any other suspect: no halo, nothing over his head", () => {
+    const odin = placeCat("odin", SAMPLE, 24);
+    expect({ ...odin, id: "kira" }).toEqual(placeCat("kira", SAMPLE, 24));
+    expect(Object.keys(odin).some((key) => /halo/i.test(key))).toBe(false);
   });
 });
 
@@ -128,13 +120,9 @@ describe("the line-up", () => {
     expect(byId.tom.headTopCm - byId.kira.headTopCm).toBeLessThan(3);
   });
 
-  it("gives Odin, and only Odin, the CSS halo", () => {
-    expect(lineup.filter((p) => p.halo).map((p) => p.id)).toEqual(manifest.cats.odin.haloInImage ? [] : ["odin"]);
-  });
-
-  it("keeps every head and the halo under the wide chart's numerals", () => {
+  it("keeps every head under the wide chart's numerals", () => {
     const numeralBottom = WIDE_CHART.numeralCm - WIDE_CHART.numeralHeightCm / 2;
-    for (const p of lineup) expect(p.topCm, p.id).toBeLessThan(numeralBottom);
+    for (const p of lineup) expect(p.headTopCm, p.id).toBeLessThan(numeralBottom);
   });
 
   it("keeps neighbours apart on a wide screen", () => {
@@ -180,16 +168,15 @@ describe("phone strips", () => {
 });
 
 describe("placementStyle", () => {
-  it("hands the stylesheet centimetres, rounded, and the halo only when there is one", () => {
+  it("hands the stylesheet centimetres, rounded, and no halo for anyone", () => {
     const style = placementStyle(placeCat("odin", SAMPLE, 24));
-    expect(style["--cat-w"]).toBe("20");
-    expect(style["--cat-left"]).toBe("-10");
-    expect(style["--cat-bottom"]).toBe("-1");
-    expect(style["--halo-w"]).toBe("6.2");
-    expect(style["--halo-h"]).toBe("1.364");
-    expect(style["--halo-bottom"]).toBe("30.5");
-    expect(style["--phone-nudge"]).toBe("0");
-    expect(placementStyle(placeCat("tom", SAMPLE, 24))["--halo-w"]).toBeUndefined();
+    expect(style).toEqual({
+      "--cat-w": "20",
+      "--cat-left": "-10",
+      "--cat-bottom": "-1",
+      "--cat-head": "28",
+      "--phone-nudge": "0",
+    });
   });
 });
 
@@ -212,6 +199,10 @@ describe("helpers", () => {
 
 describe("the renders in public/interlude", () => {
   const m: LineupManifest = manifest;
+
+  it("carries no halo in any render: Odin wears none any more", () => {
+    for (const id of CAT_IDS) expect(m.cats[id].haloInImage, id).toBeUndefined();
+  });
 
   it("has a WebP and an AVIF per cat, the WebP at the manifest's size", () => {
     for (const id of CAT_IDS) {

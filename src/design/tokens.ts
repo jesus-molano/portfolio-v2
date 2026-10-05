@@ -109,7 +109,7 @@ export type RadioColor = keyof typeof radio;
 /**
  * THE USUAL SUSPECTS (src/features/suspects): the police line-up wall
  * after the hero. The wall starts on `night` (where the hero fades out)
- * and eases into violet; the personal-effects slip is warm paper in `ink`.
+ * and eases into violet; his complaint is warm paper in `ink`.
  * Emitted as `--va-lineup-*`.
  */
 export const lineup = {
@@ -120,10 +120,16 @@ export const lineup = {
   floor: "#150b2e",
   /** The letter-board plates. */
   plate: "#120a26",
-  /** The slip: warm paper, its shaded edge, and its typed numbers. */
+  /** The complaint: warm paper, its shaded edge, and the pen ticks on it. */
   paper: "#f2e6dd",
   paperShade: "#e6d7ce",
   stamp: "#7a1f4c",
+  /**
+   * The culprit's GUILTY stamp on his plate: rubber-stamp ink on the
+   * berry side of red, so it never reads as the on-air tally
+   * (`palette.onAir`, the site's one true red).
+   */
+  verdict: "#ff4d7a",
   /** The strip of tape that holds the slip to the wall (used translucent). */
   tape: "#a99fc4",
 } as const;

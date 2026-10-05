@@ -34,7 +34,7 @@ describe("line-up colours", () => {
     expect(contrast(over(cream, 0.86, rgb(lineup.floor)), rgb(lineup.floor))).toBeGreaterThanOrEqual(12);
   });
 
-  it("ink on the slip is at least 11:1 across the paper, the numbers at least 7:1", () => {
+  it("ink on the complaint is at least 11:1 across the paper, the ticks at least 7:1", () => {
     for (const paper of [lineup.paper, lineup.paperShade]) {
       expect(contrast(rgb(palette.ink), rgb(paper)), paper).toBeGreaterThanOrEqual(11);
       expect(contrast(rgb(lineup.stamp), rgb(paper)), paper).toBeGreaterThanOrEqual(7);
@@ -43,5 +43,10 @@ describe("line-up colours", () => {
 
   it("the plates' pink aliases read at least 7:1", () => {
     expect(contrast(rgb(palette.pink), rgb(lineup.plate))).toBeGreaterThanOrEqual(7);
+  });
+
+  it("the GUILTY stamp reads at least 4.5:1 on the plate, and is not the on-air red", () => {
+    expect(contrast(rgb(lineup.verdict), rgb(lineup.plate))).toBeGreaterThanOrEqual(4.5);
+    expect(lineup.verdict.toLowerCase()).not.toBe(palette.onAir.toLowerCase());
   });
 });

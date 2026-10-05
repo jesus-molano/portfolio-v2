@@ -344,21 +344,7 @@ export function Stats({ dict }: Props) {
             <ul className={styles.recordList}>
               {dict.records.items.map((record) => (
                 <li key={record.id} className={styles[`record_${record.id}`]}>
-                  <span className={styles.recordValue}>
-                    {record.id === "cats" ? (
-                      <>
-                        {record.value.slice(0, -1)}
-                        <span className={styles.haloed}>
-                          {record.value.slice(-1)}
-                          <svg className={styles.halo} viewBox="0 0 40 12" aria-hidden="true" focusable="false">
-                            <ellipse cx="20" cy="6" rx="16" ry="3.6" fill="none" stroke="currentColor" strokeWidth="2.4" />
-                          </svg>
-                        </span>
-                      </>
-                    ) : (
-                      record.value
-                    )}
-                  </span>
+                  <span className={styles.recordValue}>{record.value}</span>
                   <span className={styles.recordCaption}>{record.caption}</span>
                 </li>
               ))}

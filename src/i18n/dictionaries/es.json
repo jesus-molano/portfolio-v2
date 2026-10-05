@@ -108,8 +108,9 @@
     "title": "Sospechosos habituales",
     "place": "Rueda de reconocimiento · Tenerife",
     "associates": "Cómplices conocidos de J. Molano",
-    "description": "Una rueda de reconocimiento con los cuatro gatos de Jesús ante una regla de alturas, cada uno tras su placa numerada. Dante, el cachorro, es el más pequeño. Odin, que ya no está, ocupa el cuarto puesto con una aureola dorada sobre la cabeza.",
+    "description": "Una rueda de reconocimiento con los cuatro gatos de Jesús ante una regla de alturas, cada uno tras su placa numerada. Tom y Kira son los más altos, Odin se queda un poco por debajo y a Dante, el cachorro, todos le sacan una cabeza.",
     "numberPrefix": "Nº",
+    "stamp": "Culpable",
     "cats": [
       {
         "id": "kira",
@@ -133,19 +134,18 @@
         "id": "odin",
         "name": "Odin",
         "alias": "«El Enano»",
-        "description": "Atigrado naranja. Cola corta. Permiso de un día desde allá arriba, aureola incluida."
+        "description": "Un atigrado naranja, paticorto y rabicorto, que vuela tan bajo que nunca sale en el radar."
       }
     ],
-    "effects": {
-      "title": "Efectos personales",
+    "complaint": {
+      "title": "Denuncia",
       "owner": "J. Molano",
       "items": [
-        "Unas gafas de aviador doradas.",
-        "Un pendiente de aro oscuro.",
-        "Una camiseta de rayas.",
-        "Un recuerdo de una galaxia muy, muy lejana.",
-        "Un disco de «Sweet Child O’ Mine», rayado de tanto ponerlo."
-      ]
+        "Armarios arañados",
+        "Cables mordidos",
+        "Todos los cuencos relamidos"
+      ],
+      "tally": "Sospechosos: 4. Culpable: 1."
     },
     "speaker": "Jesús",
     "line": "Arresten a los sospechosos habituales."
@@ -381,7 +381,7 @@
         {
           "id": "episode",
           "value": "02:47",
-          "caption": "cuando anoche acabó por fin el «solo un capítulo más»"
+          "caption": "la hora a la que apagué la tele anoche, después de «solo un capítulo más»"
         },
         {
           "id": "grandsPrix",
@@ -394,20 +394,20 @@
       "title": "PARTIDAS GUARDADAS",
       "slots": [
         {
-          "place": "La charcutería",
-          "note": "gabagool, en lonchas finas"
+          "place": "Los Soprano",
+          "note": "Completada. Del final, mejor ni hablamos."
         },
         {
-          "place": "La oficina del sótano",
-          "note": "el trabajo se queda allí"
+          "place": "Breaking Bad",
+          "note": "Completada, con Better Call Saul de postre."
         },
         {
-          "place": "La empresa familiar",
-          "note": "sucesión pendiente"
+          "place": "Peaky Blinders",
+          "note": "Completada, con la gorra bien calada."
         },
         {
-          "place": "— vacía —",
-          "note": ""
+          "place": "Severance",
+          "note": "En curso, esperando la siguiente temporada."
         }
       ]
     },

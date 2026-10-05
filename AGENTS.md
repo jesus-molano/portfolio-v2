@@ -260,29 +260,50 @@ also exists as real DOM for keyboard and screen-reader users.
     least 5 s); hover or focus holds a tip, Next skips it.
 - `src/features/suspects` — THE USUAL SUSPECTS (`#suspects`), right after
   the hero: a police line-up of his four cats against a centimetre height
-  chart, a static server component (no script, no canvas; one CSS effect,
-  Odin's halo bobbing 3 px, off under reduced motion). One CSS length,
-  `--cm`, is a centimetre of the chart; `lineup.ts` (pure, tested) turns
-  the renders' manifest (`public/interlude/manifest.json`, contract in
-  `public/interlude/README.md`) into centimetres, so every cat keeps its
-  real size, in the owner's order (tested): Tom the biggest and a bit
+  chart, a server component with no canvas and no looping animation; its
+  one piece of script is the culprit's plate (`CulpritPlate.tsx`). One CSS
+  length, `--cm`, is a centimetre of the chart; `lineup.ts` (pure, tested)
+  turns the renders' manifest (`public/interlude/manifest.json`, contract
+  in `public/interlude/README.md`) into centimetres, so every cat keeps
+  its real size, in the owner's order (tested): Tom the biggest and a bit
   chubby, only just over Kira, a normal adult; Odin smaller than both, a
   little short in the leg, with a shorter tail; Dante, a kitten of six
-  months, the smallest, his head the lowest. Odin sits in slot 4 like
-  the others, with only a CSS golden halo and a warm glow. Wide screens:
-  one wall, slots at 36/52/68/84% of the width, the personal-effects slip
-  on the left, never over the slug (a short window grows the wall
-  instead). Landscape phones and windows under 32rem tall keep the chart
-  at a readable scale over the full width, with the slip under the
-  line-up. Phones and portrait screens: two strips of two at one scale
-  (Kira and Tom, Dante and Odin), then the slip; a cat too wide for its
-  strip is nudged inward (`phoneNudge`). Colours are `lineup` tokens. Copy
-  in `suspects` (tested in `copy.test.ts`: the header says Tenerife or no
-  city, never Madrid; the record is named by its title only; the eating
-  joke belongs to STATS). The Spanish line follows the Spanish dub of
-  *Casablanca*: "Arresten a los sospechosos habituales." Until the Blender
-  renders land, `node tools/art/suspects/placeholder.mjs` writes flat
-  violet silhouettes under the same names.
+  months, the smallest, his head the lowest. Odin sits in slot 4 as one
+  more suspect, described like the others: no halo, no glow, nothing over
+  his head and no pass from upstairs on his plate (the owner's call;
+  `lineup.test.ts` refuses a render whose manifest sets `haloInImage`,
+  `copy.test.ts` a halo anywhere in the dictionaries).
+  - The slip taped to the wall is his complaint against the cats
+    (DENUNCIA / COMPLAINT · J. MOLANO), not a list of his things: his gear
+    and hobbies live in STATS. It ticks off the damage like a police form
+    (scratched wardrobes, chewed cables, every bowl licked clean) and ends
+    on the owner's tally, "Sospechosos: 4. Culpable: 1."
+  - The culprit is Dante (`CULPRIT`, tested to be the smallest: the Usual
+    Suspects twist is the one who looks least capable of it), and the
+    reveal stays quiet: his plate is a real button that looks like the
+    others, and the GUILTY / CULPABLE stamp (`suspects.stamp`, real text,
+    `lineup.verdict` ink, never the on-air red) shows nowhere at first
+    sight; it sits out of the flow, so even hidden it never widens his
+    plate. Pointer hover (only under `hover: hover`) and keyboard focus
+    bring it up in CSS, so they work before hydration; a click or a tap
+    pins it (`aria-expanded`; `aria-controls` names the stamp). It slams down
+    under `prefers-reduced-motion: no-preference` and simply appears
+    otherwise. `verdict.test.ts` checks the button, its name in both
+    languages, the stamp's place and that the stylesheet hides it.
+  - Wide screens: one wall, slots at 36/52/68/84% of the width, the
+    complaint on the left, never over the slug (a short window grows the
+    wall instead). Landscape phones and windows under 32rem tall keep the
+    chart at a readable scale over the full width, with the complaint
+    under the line-up. Phones and portrait screens: two strips of two at
+    one scale (Kira and Tom, Dante and Odin), then the complaint; a cat too
+    wide for its strip is nudged inward (`phoneNudge`). Colours are
+    `lineup` tokens.
+  - Copy in `suspects` (tested in `copy.test.ts`: the header says Tenerife
+    or no city, never Madrid; the complaint keeps the owner's words; the
+    eating joke belongs to STATS). The Spanish line follows the Spanish
+    dub of *Casablanca*: "Arresten a los sospechosos habituales." Until
+    the Blender renders land, `node tools/art/suspects/placeholder.mjs`
+    writes flat violet silhouettes under the same names.
 - `src/features/stats` — STATS (`#stats`), the static pause menu after the
   career city: a server component, no client code, every word DOM text.
   Screen 1 (MAP) is Tenerife at night under parody names (GTA-style: real
@@ -312,7 +333,8 @@ also exists as real DOM for keyboard and screen-reader users.
   no photo; a render may replace it), the joke bars (appetite breaks out of
   its panel into the gap beside it; under 1280 px, where the panel meets
   the page's edge, the tracks are shorter and it breaks out of its track
-  only; the section has `overflow-x: clip`) and the records.
+  only; the section has `overflow-x: clip`) and the records (the cats
+  are "3 + 1" in words alone, with no halo over the 1).
   `statsLayout.ts` holds the projection, every point as real longitude
   and latitude, the caption sides and the page geometry; its tests check
   that the blips stand on land and that no caption, name or marker
@@ -470,8 +492,8 @@ To add a track to a station:
 ## Conventions
 
 - CSS Modules + tokens. No Tailwind.
-- A section with a looping CSS animation (bulbs, the booth's ring, Odin's
-  halo) carries `data-loops`: `PauseOffscreen` (in `HomeMain.tsx`) pauses
+- A section with a looping CSS animation (bulbs, the booth's ring) carries
+  `data-loops`: `PauseOffscreen` (in `HomeMain.tsx`) pauses
   every animation in it while it is off screen, so it costs no style pass a
   frame during the hero.
 - Where the page starts once she is in is `PageEntry` (in `HomeMain.tsx`),

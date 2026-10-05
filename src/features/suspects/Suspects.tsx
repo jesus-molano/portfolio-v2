@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 import type { Dictionary } from "@/i18n/dictionaries";
 import manifest from "../../../public/interlude/manifest.json";
-import { isCatId, parseManifest, placeLineup, placementStyle, plateNumber, PHONE_CHART, WIDE_CHART } from "./lineup";
+import { CulpritPlate } from "./CulpritPlate";
+import { CULPRIT, isCatId, parseManifest, placeLineup, placementStyle, plateNumber, PHONE_CHART, WIDE_CHART } from "./lineup";
 import styles from "./Suspects.module.css";
 
 type Props = { dict: Dictionary["suspects"] };
@@ -19,14 +20,15 @@ function marks(topCm: number): number[] {
 
 /**
  * THE USUAL SUSPECTS: a police line-up of Jesús's four cats against a
- * height chart, right after the hero. Static: a server component with no
- * script, no canvas and one CSS effect (Odin's halo bobs, except under
- * reduced motion). The cats are images on one scale (lineup.ts), the
- * wall, chart, plates and slip are HTML, and every word is real text.
+ * height chart, right after the hero. A server component with no canvas
+ * and no looping animation; its one piece of script is the culprit's
+ * plate (CulpritPlate), whose GUILTY stamp hover, focus or a tap brings
+ * up. The cats are images on one scale (lineup.ts), the wall, chart,
+ * plates and his complaint are HTML, and every word is real text.
  */
 export function Suspects({ dict }: Props) {
   return (
-    <section id="suspects" className={styles.suspects} aria-labelledby="suspects-title" tabIndex={-1} data-loops>
+    <section id="suspects" className={styles.suspects} aria-labelledby="suspects-title" tabIndex={-1}>
       {/* The wall and its height chart, read from the floor line. */}
       <div className={styles.wall} aria-hidden="true">
         {WIDE_MARKS.map((cm) => (
@@ -58,7 +60,6 @@ export function Suspects({ dict }: Props) {
               key={cat.id}
               className={styles.suspect}
               data-cat={cat.id}
-              data-halo={placement.halo ? "" : undefined}
               style={placementStyle(placement) as CSSProperties}
             >
               <div className={styles.spot} aria-hidden="true">
@@ -82,17 +83,20 @@ export function Suspects({ dict }: Props) {
                     decoding="async"
                   />
                 </picture>
-                {placement.halo ? <span className={styles.halo} /> : null}
               </div>
               <div className={styles.tag}>
-                <p className={styles.plate}>
-                  <span className={styles.number} aria-hidden="true">
-                    {dict.numberPrefix} {plateNumber(index)}
-                  </span>
-                  <span className={styles.name}>{cat.name}</span>
-                  <span className="sr-only">, </span>
-                  <span className={styles.alias}>{cat.alias}</span>
-                </p>
+                {cat.id === CULPRIT ? (
+                  <CulpritPlate number={`${dict.numberPrefix} ${plateNumber(index)}`} name={cat.name} alias={cat.alias} stamp={dict.stamp} />
+                ) : (
+                  <p className={styles.plate}>
+                    <span className={styles.number} aria-hidden="true">
+                      {dict.numberPrefix} {plateNumber(index)}
+                    </span>
+                    <span className={styles.name}>{cat.name}</span>
+                    <span className="sr-only">, </span>
+                    <span className={styles.alias}>{cat.alias}</span>
+                  </p>
+                )}
                 <p className={styles.description}>{cat.description}</p>
               </div>
             </li>
@@ -100,23 +104,28 @@ export function Suspects({ dict }: Props) {
         })}
       </ol>
 
-      {/* Part of the line-up, not a landmark of its own: its heading is enough to reach it. */}
+      {/*
+        His complaint, taped to the wall: the damage ticked off like a report,
+        then the tally. Part of the line-up, not a landmark of its own: its
+        heading is enough to reach it.
+      */}
       <div className={styles.slip}>
         <h3 className={styles.slipTitle}>
-          <span>{dict.effects.title}</span>
+          <span>{dict.complaint.title}</span>
           <span className="sr-only">, </span>
-          <span className={styles.slipOwner}>{dict.effects.owner}</span>
+          <span className={styles.slipOwner}>{dict.complaint.owner}</span>
         </h3>
-        <ol className={styles.effects}>
-          {dict.effects.items.map((item, index) => (
+        <ul className={styles.damages}>
+          {dict.complaint.items.map((item) => (
             <li key={item}>
-              <span className={styles.effectNumber} aria-hidden="true">
-                {plateNumber(index)}
+              <span className={styles.tick} aria-hidden="true">
+                ✓
               </span>
               <span>{item}</span>
             </li>
           ))}
-        </ol>
+        </ul>
+        <p className={styles.tally}>{dict.complaint.tally}</p>
       </div>
 
       <p className={styles.caption}>

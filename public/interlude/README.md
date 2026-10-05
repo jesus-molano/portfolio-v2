@@ -20,9 +20,10 @@ transparent images on one scale, and the manifest that places them.
   in image pixels: `w` x `h` the image size, `floorY` the row where the cat
   meets the floor, `headTopY` the highest row of the head (ear tips
   included), `centerX` the column of the slot centre, `headWidth` the width
-  of the head across the cheeks. Odin's halo is drawn by the page from
-  `headTopY`, `centerX` and `headWidth`; a render that already carries the
-  halo sets `"haloInImage": true` on its cat and the page draws none.
+  of the head across the cheeks. Nobody wears a halo, Odin included: the
+  page draws none and a render must not carry one (the optional
+  `"haloInImage"` flag survives from when he wore one, and the tests refuse
+  a manifest that sets it on any cat).
 - `src/features/suspects/lineup.test.ts` checks the manifest, the image
   sizes and the budget, that the heads keep that size order and that
   Dante's head stays the lowest on the chart.

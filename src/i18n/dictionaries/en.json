@@ -108,8 +108,9 @@
     "title": "The usual suspects",
     "place": "Line-up · Tenerife",
     "associates": "Known associates of J. Molano",
-    "description": "A police line-up of Jesús's four cats in front of a height chart, each behind a numbered plate. Dante, the kitten, is the smallest. Odin, who has passed away, sits fourth with a golden halo over his head.",
+    "description": "A police line-up of Jesús's four cats in front of a height chart, each behind a numbered plate. Tom and Kira stand the tallest, Odin a little lower, and Dante, the kitten, is the smallest by a head.",
     "numberPrefix": "Nº",
+    "stamp": "Guilty",
     "cats": [
       {
         "id": "kira",
@@ -133,19 +134,18 @@
         "id": "odin",
         "name": "Odin",
         "alias": "“Shorty”",
-        "description": "Ginger tabby. Short tail. Day pass from upstairs, halo included."
+        "description": "A ginger tabby, short in the leg and shorter in the tail, who flies too low to show up on radar."
       }
     ],
-    "effects": {
-      "title": "Personal effects",
+    "complaint": {
+      "title": "Complaint",
       "owner": "J. Molano",
       "items": [
-        "One pair of gold aviators.",
-        "One dark hoop earring.",
-        "One striped tee.",
-        "A souvenir from a galaxy far, far away.",
-        "One “Sweet Child O’ Mine” record, played to death."
-      ]
+        "Scratched wardrobes",
+        "Chewed cables",
+        "Every bowl licked clean"
+      ],
+      "tally": "Suspects: 4. Culprit: 1."
     },
     "speaker": "Jesús",
     "line": "Round up the usual suspects."
@@ -381,7 +381,7 @@
         {
           "id": "episode",
           "value": "02:47",
-          "caption": "when last night's “just one more episode” finally ended"
+          "caption": "the time I switched off the TV last night, after “just one more episode”"
         },
         {
           "id": "grandsPrix",
@@ -394,20 +394,20 @@
       "title": "SAVED GAMES",
       "slots": [
         {
-          "place": "The pork store",
-          "note": "gabagool, sliced thin"
+          "place": "The Sopranos",
+          "note": "Completed. Let's not talk about the ending."
         },
         {
-          "place": "The basement office",
-          "note": "work stays at work"
+          "place": "Breaking Bad",
+          "note": "Completed, with Better Call Saul for dessert."
         },
         {
-          "place": "The family firm",
-          "note": "succession pending"
+          "place": "Peaky Blinders",
+          "note": "Completed, flat cap pulled down low."
         },
         {
-          "place": "— empty —",
-          "note": ""
+          "place": "Severance",
+          "note": "In progress, waiting for the next season."
         }
       ]
     },

@@ -16,6 +16,12 @@
 export const CAT_IDS = ["kira", "tom", "dante", "odin"] as const;
 export type CatId = (typeof CAT_IDS)[number];
 
+/**
+ * Who did it: Dante, the smallest, alias Satanás. Four suspects, one
+ * culprit, and the twist is the one who looks least capable of it.
+ */
+export const CULPRIT: CatId = "dante";
+
 export type CatImage = {
   w: number;
   h: number;
@@ -23,7 +29,11 @@ export type CatImage = {
   headTopY: number;
   centerX: number;
   headWidth: number;
-  /** Optional: the render already carries the halo, so the page draws none. */
+  /**
+   * Optional, from when Odin wore a halo: a render that carried one said
+   * so here. Nobody wears a halo now (the owner's call), the page draws
+   * none, and the tests refuse a manifest that sets this on any cat.
+   */
   haloInImage?: boolean;
 };
 
@@ -31,15 +41,6 @@ export type LineupManifest = {
   pxPerCm: number;
   cats: Record<CatId, CatImage>;
 };
-
-/** Who wears a halo: Odin, who is no longer with us. */
-export const HALO_CATS: readonly CatId[] = ["odin"];
-
-/**
- * The halo, a plain golden ring (no character, no logo): this far above
- * the head top, this wide against the head, this flat against its width.
- */
-export const HALO = { gapCm: 2.5, widthRatio: 0.62, heightRatio: 0.22 } as const;
 
 /** The chart on a wide screen: one wall, the slot numerals high on it. */
 export const WIDE_CHART = { topCm: 50, numeralCm: 46, numeralHeightCm: 9 } as const;
@@ -83,10 +84,6 @@ export type Placement = {
   /** How high the head reaches above the floor, ear tips included. */
   headTopCm: number;
   headWidthCm: number;
-  /** The CSS halo, or null when the cat wears none (or the render has it). */
-  halo: { widthCm: number; heightCm: number; bottomCm: number } | null;
-  /** The highest thing in the slot: the halo's top, or the head's. */
-  topCm: number;
   /** On a phone, how far the cat moves toward the middle of its strip (+: right). */
   phoneNudgeCm: number;
 };
@@ -136,16 +133,9 @@ export function parseManifest(value: unknown): LineupManifest {
   return { pxPerCm, cats: out };
 }
 
-/** One cat on the chart: its image's box and its halo, in centimetres. */
+/** One cat on the chart: its image's box and its head, in centimetres. */
 export function placeCat(id: CatId, image: CatImage, pxPerCm: number): Placement {
   const cm = (px: number) => px / pxPerCm;
-  const headTopCm = cm(image.floorY - image.headTopY);
-  const headWidthCm = cm(image.headWidth);
-  let halo: Placement["halo"] = null;
-  if (HALO_CATS.includes(id) && !image.haloInImage) {
-    const widthCm = HALO.widthRatio * headWidthCm;
-    halo = { widthCm, heightCm: HALO.heightRatio * widthCm, bottomCm: headTopCm + HALO.gapCm };
-  }
   return {
     id,
     w: image.w,
@@ -154,10 +144,8 @@ export function placeCat(id: CatId, image: CatImage, pxPerCm: number): Placement
     heightCm: cm(image.h),
     leftCm: -cm(image.centerX),
     bottomCm: -cm(image.h - image.floorY),
-    headTopCm,
-    headWidthCm,
-    halo,
-    topCm: halo ? halo.bottomCm + halo.heightCm : headTopCm,
+    headTopCm: cm(image.floorY - image.headTopY),
+    headWidthCm: cm(image.headWidth),
     phoneNudgeCm: 0,
   };
 }
@@ -202,7 +190,7 @@ export function phoneStrips(placements: readonly Placement[]) {
     topCm: PHONE_CHART.topCm,
     strips: PHONE_CHART.strips.map((ids) => ({
       ids,
-      tallestCm: Math.max(...ids.map((id) => byId.get(id)?.topCm ?? 0)),
+      tallestCm: Math.max(...ids.map((id) => byId.get(id)?.headTopCm ?? 0)),
     })),
   };
 }
@@ -217,19 +205,13 @@ function num(value: number): string {
  * multiplies each by `--cm`.
  */
 export function placementStyle(p: Placement): Record<`--${string}`, string> {
-  const style: Record<`--${string}`, string> = {
+  return {
     "--cat-w": num(p.widthCm),
     "--cat-left": num(p.leftCm),
     "--cat-bottom": num(p.bottomCm),
     "--cat-head": num(p.headTopCm),
     "--phone-nudge": num(p.phoneNudgeCm),
   };
-  if (p.halo) {
-    style["--halo-w"] = num(p.halo.widthCm);
-    style["--halo-h"] = num(p.halo.heightCm);
-    style["--halo-bottom"] = num(p.halo.bottomCm);
-  }
-  return style;
 }
 
 /** "01", "02", ... for the plates. */
