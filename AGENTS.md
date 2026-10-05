@@ -115,7 +115,10 @@ also exists as real DOM for keyboard and screen-reader users.
     from the page itself, never from Lenis alone: Lenis can miss a native
     scroll (it drops the one after its own landing, a whole second at
     1 fps), and once it had, every push was held while the page sat below
-    the hero. A finger moves the page only once it has moved 8 px, and
+    the hero. Her input does the same before Lenis scrolls (`gateInput`,
+    the hero's keys and taps): a native move's scroll event comes with the
+    next frame, and a notch before it went on from where Lenis had the
+    page, not from where it was. A finger moves the page only once it has moved 8 px, and
     turning back only once it is 8 px back from the furthest it went
     (`gate.ts` Stroke, the same in the scroller model): a resting thumb
     trembles by 0.3 to 3 px, and followed 1:1 every tremble back read as
@@ -530,10 +533,11 @@ also exists as real DOM for keyboard and screen-reader users.
   not her scrolling: in-page links, deep links and fragment changes
   (`PageEntry`), back to top, the STATS tabs, Skip, Esc and End, the
   still hero keeping her place, the loading screen starting at the top.
-  It moves Lenis and the page together (Lenis re-measured and started
-  from where the page is, then an immediate `scrollTo`): a native jump
-  Lenis misses (it drops the scroll event after its own landing) left it
-  behind, and one notch after the STATS booth took her to the cinema the
+  It moves Lenis and the page together (Lenis re-measured and stopped,
+  the page moved, Lenis stood where it landed; never Lenis' own
+  immediate `scrollTo`, which drops the next native scroll event): a
+  native jump Lenis misses (it drops the scroll event after its own
+  landing) left it behind, and one notch after the STATS booth took her to the cinema the
   page flew back up to the hero's end. A move past the hero opens its
   walls first (the hero registers itself as the passage), as the focus
   moving past it does, so the frontier never pulls back a page that is

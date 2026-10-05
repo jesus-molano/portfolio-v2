@@ -12,8 +12,8 @@
  *   immediate jump, and ignores them while it glides), and her next wheel
  *   notch or swipe then scrolls on from there: one notch after the booth
  *   took her to the cinema, the page flew back up to the hero's end. So
- *   the page is moved by Lenis itself (an immediate `scrollTo`), started
- *   from where the page really is.
+ *   Lenis is re-measured and stopped, the page moved, and Lenis stood
+ *   where the page landed, in the same task.
  * - A page sent past a passage (the hero, whose walls hold the scroll for
  *   its film) opens it first, as the focus moving past it does: a link to
  *   a later section is her moving on, not a jump the hero pulls back.
@@ -29,7 +29,7 @@ import type Lenis from "lenis";
  * page is) is public at runtime but private in Lenis' types; the Lenis
  * contract test guards it.
  */
-export type Scroller = Pick<Lenis, "scrollTo" | "resize"> & { reset(): void };
+export type Scroller = Pick<Lenis, "scrollTo" | "resize" | "animatedScroll" | "targetScroll"> & { reset(): void };
 
 /**
  * A section whose scroll is held until it opens (the hero film's walls,
@@ -179,9 +179,8 @@ export function goTo(to: HTMLElement | number, options: GoToOptions = {}): void 
     return;
   }
   // Lenis starts from where the page really is, with the page's current
-  // height (a tab that just opened, a picture that just loaded): its
-  // scrollTo clamps to the height it last measured, and does nothing when
-  // asked for the target it already has.
+  // height (a tab that just opened, a picture that just loaded: its
+  // scrollTo clamps to the height it last measured), and any glide stopped.
   lenis.resize();
   lenis.reset();
   if (options.glide && options.glide > 0) {
@@ -189,6 +188,11 @@ export function goTo(to: HTMLElement | number, options: GoToOptions = {}): void 
     // Already there: Lenis completes at once, and has called `arrive`.
     return;
   }
-  lenis.scrollTo(y, { immediate: true, force: true });
+  // The page goes there, and Lenis stands where it landed. Not Lenis' own
+  // immediate scrollTo: that drops the next native scroll event, until the
+  // next frame (seconds on a slow device), so a native move right after
+  // (the scrollbar, find in page) would leave it behind again.
+  window.scrollTo({ top: y, behavior: "instant" });
+  lenis.animatedScroll = lenis.targetScroll = window.scrollY;
   arrive();
 }

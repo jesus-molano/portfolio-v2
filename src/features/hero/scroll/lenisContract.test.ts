@@ -34,8 +34,9 @@ import { describe, expect, it } from "vitest";
  * And the page's one way of moving (lib/navigate.ts) on one more:
  * 7. `resize()` re-measures the page and stands Lenis where the page is,
  *    and `reset()` (public at runtime, private in its types) also stops
- *    any glide; after both, an immediate `scrollTo` writes Lenis and the
- *    page together and is never the no-op of a scrollTo to its own target.
+ *    any glide; then the page is moved natively and Lenis' public
+ *    `animatedScroll` and `targetScroll` set to where it landed. Lenis' own
+ *    immediate `scrollTo` would drop the next native scroll event (4).
  * Upgrading Lenis fails this test until someone re-checks all seven.
  */
 describe("Lenis contract", () => {
@@ -103,8 +104,8 @@ describe("Lenis contract", () => {
     const reset = source.slice(source.indexOf("\treset() {"), source.indexOf("\tstart() {"));
     expect(reset).toContain("this.animatedScroll = this.targetScroll = this.actualScroll;");
     expect(reset).toContain("this.animate.stop();");
+    // A glide (back to top) still runs while the radio holds the scroll, when forced.
     const scrollTo = source.slice(source.indexOf("scrollTo(_target, {"), source.indexOf("preventNextNativeScrollEvent() {"));
     expect(scrollTo).toContain("if ((this.isStopped || this.isLocked) && !force) return;");
-    expect(scrollTo).toContain("this.setScroll(this.scroll);");
   });
 });

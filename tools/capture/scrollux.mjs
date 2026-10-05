@@ -1129,6 +1129,25 @@ const CHECKS = {
     );
     report(`${device} ${lang} navigate: a notch before the next frame after the booth stays in the cinema`, raced <= 64 && raced >= -200, { projectsTop: raced });
 
+    // A native move nobody routed (the scrollbar, find in page) and a notch in the same task, before
+    // Lenis hears the scroll event: the notch goes on from where the page is.
+    const native = await s.page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const stats = document.getElementById("stats");
+          const from = Math.round(scrollY);
+          stats.scrollIntoView({ block: "start" });
+          const to = Math.round(scrollY);
+          window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100, deltaMode: 0, bubbles: true, cancelable: true }));
+          setTimeout(() => resolve({ from, to, after: Math.round(scrollY) }), 1500);
+        }),
+    );
+    report(
+      `${device} ${lang} navigate: a native move and a notch before the next frame: the notch goes on from where the page is`,
+      Math.abs(native.after - (native.to + 100)) <= 2,
+      native,
+    );
+
     // STATS's tabs: the STATS tab, then a notch.
     await s.page.evaluate(() => document.getElementById("stats").scrollIntoView({ block: "start" }));
     await sleep(800);

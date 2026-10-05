@@ -415,6 +415,15 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
         resetStroke(stroke);
         continue;
       }
+      // SmoothScroll and HeroStage start Lenis from the page at her input
+      // if it missed a native move: its next frame would be too late.
+      reading.page = page;
+      reading.lenis = anim;
+      reading.gliding = glide !== null || anim !== target;
+      if (lenisMissed(reading)) {
+        anim = target = page;
+        glide = null;
+      }
       if (Number.isNaN(firstInput)) firstInput = time;
       lastInput = time;
       result.inputs.push(time);

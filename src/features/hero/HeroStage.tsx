@@ -1130,6 +1130,8 @@ export function HeroStage({
         });
         if (!action) return;
         event.preventDefault();
+        // Lenis steps on from the page, even after a native move it has not heard of yet (gate.ts).
+        readScroll();
         const now = performance.now();
         const vh = geom.vh;
         switch (action) {
@@ -1208,7 +1210,9 @@ export function HeroStage({
           sinceScroll: down.at - down.lastInput,
           button: down.button,
         });
-        if (tap) stepLine(1, down.type === "touch" ? "touch" : "wheel");
+        if (!tap) return;
+        readScroll();
+        stepLine(1, down.type === "touch" ? "touch" : "wheel");
       };
 
       /**

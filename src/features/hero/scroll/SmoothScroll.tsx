@@ -9,7 +9,7 @@ import { motion } from "@/design/tokens";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { registerScroller, type Scroller } from "@/lib/navigate";
 import { getSceneLoading } from "../sceneLoading";
-import { GATE, liftFling, newStroke, resetStroke, strokeLift, strokeMove } from "./gate";
+import { GATE, lenisMissed, liftFling, newStroke, type PageReading, resetStroke, strokeLift, strokeMove } from "./gate";
 import { recordInput, scrollGate } from "./heroProgress";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -41,6 +41,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
   const strokeMoved = useRef(false);
   /** The finger on the glass, read through its slop (gate.ts): a trembling thumb is still. */
   const stroke = useRef(newStroke());
+  /** Where the page is when her input comes, against where Lenis thinks it is (gate.ts). */
+  const reading = useRef<PageReading>({ page: 0, lenis: 0, gliding: false });
 
   /*
    * Gate for wheel and touch input, run by Lenis before it scrolls. It
@@ -83,6 +85,18 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
           strokeMoved.current = false;
         }
         return true;
+      }
+      // Lenis scrolls on from where it thinks the page is. A native move it
+      // has not heard of yet (the scrollbar, find in page: scroll events
+      // come with the next frame, seconds away on a slow device, and it
+      // drops the one after its own landing) would send her input from
+      // there; it starts from the page instead, as the hero's frame does.
+      if (lenis) {
+        const at = reading.current;
+        at.page = window.scrollY;
+        at.lenis = lenis.scroll;
+        at.gliding = lenis.isScrolling === "smooth";
+        if (lenisMissed(at)) lenis.animatedScroll = lenis.targetScroll = at.page;
       }
       if (event.type === "touchstart") {
         scrollGate.touching = true;

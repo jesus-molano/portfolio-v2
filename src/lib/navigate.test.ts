@@ -67,7 +67,15 @@ describe("goTo", () => {
   /** A page 12000 px tall in a 900 px window, scrolled to `scrollY`, with the hero ending at 5400. */
   function page(scrollY: number) {
     const log: string[] = [];
-    vi.stubGlobal("window", { scrollY, innerHeight: 900, scrollTo: (o: { top: number }) => log.push(`native ${o.top}`) });
+    const win = {
+      scrollY,
+      innerHeight: 900,
+      scrollTo: (o: { top: number }) => {
+        log.push(`page ${o.top}`);
+        win.scrollY = o.top;
+      },
+    };
+    vi.stubGlobal("window", win);
     vi.stubGlobal("document", { documentElement: { scrollHeight: 12000 } });
     vi.stubGlobal("Node", { DOCUMENT_POSITION_FOLLOWING: 4 });
     vi.stubGlobal("getComputedStyle", (element: { margin?: string }) => ({
@@ -85,12 +93,14 @@ describe("goTo", () => {
       }) as unknown as HTMLElement & { follows: boolean };
     const hero = {
       isConnected: true,
-      getBoundingClientRect: () => ({ bottom: 5400 - scrollY }),
+      getBoundingClientRect: () => ({ bottom: 5400 - win.scrollY }),
       contains: () => false,
       compareDocumentPosition: (other: { follows: boolean }) => (other.follows ? 4 : 2),
     } as unknown as HTMLElement;
     const unregisterPassage = registerPassage({ section: hero, open: () => log.push("open") });
     const lenis = {
+      animatedScroll: scrollY,
+      targetScroll: scrollY,
       resize: () => log.push("resize"),
       reset: () => log.push("reset"),
       scrollTo: (y: number, o: { immediate?: boolean; force?: boolean; duration?: number; onComplete?: () => void }) => {
@@ -102,6 +112,8 @@ describe("goTo", () => {
     return {
       log,
       element,
+      /** Where Lenis stands: animatedScroll and targetScroll. */
+      lenis: () => [lenis.animatedScroll, lenis.targetScroll],
       done: () => {
         unregisterPassage();
         unregisterScroller();
@@ -109,11 +121,12 @@ describe("goTo", () => {
     };
   }
 
-  it("opens the hero, then moves Lenis and the page together from where the page is, then focuses", () => {
+  it("opens the hero, then moves the page with Lenis standing where it lands, then focuses", () => {
     const p = page(6300);
     // The booth's link: the cinema, 900 px down, after the hero.
     goTo(p.element(900, true));
-    expect(p.log).toEqual(["open", "resize", "reset", "lenis 7136 immediate force", "focus"]);
+    expect(p.log).toEqual(["open", "resize", "reset", "page 7136", "focus"]);
+    expect(p.lenis()).toEqual([7136, 7136]);
     p.done();
   });
 
@@ -121,14 +134,15 @@ describe("goTo", () => {
     const p = page(6300);
     goTo(0, { focus: null });
     goTo(2000, { focus: null });
-    expect(p.log).toEqual(["resize", "reset", "lenis 0 immediate force", "resize", "reset", "lenis 2000 immediate force"]);
+    expect(p.log).toEqual(["resize", "reset", "page 0", "resize", "reset", "page 2000"]);
+    expect(p.lenis()).toEqual([2000, 2000]);
     p.done();
   });
 
   it("opens the hero for a position at its end (Skip), and glides when asked", () => {
     const p = page(1200);
     goTo(5400, { focus: null });
-    expect(p.log).toEqual(["open", "resize", "reset", "lenis 5400 immediate force"]);
+    expect(p.log).toEqual(["open", "resize", "reset", "page 5400"]);
     p.log.length = 0;
     const arrived = vi.fn();
     goTo(0, { glide: 1.2, onArrive: arrived });
@@ -146,6 +160,6 @@ describe("goTo", () => {
     const q = page(0);
     q.done();
     goTo(300, { focus: null });
-    expect(q.log).toEqual(["native 300"]);
+    expect(q.log).toEqual(["page 300"]);
   });
 });

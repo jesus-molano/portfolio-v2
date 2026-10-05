@@ -511,6 +511,32 @@ describe("acceptance: the page never traps her", () => {
   });
 });
 
+describe("acceptance: her input goes on from where the page is", () => {
+  for (const [locale, lines] of LOCALES) {
+    it(`${locale}: a native move Lenis has not heard of, then a notch in the same frame: on from there, never back`, () => {
+      const range = 5 * 900;
+      for (const fps of [60, 4, 0.8]) {
+        // Read to the end (the walls open): slower under 4 fps, where the reading clocks are capped.
+        const read = simulate(lines, wheel(3), { fps, maxTime: 900 });
+        const open = read.frames.find((frame) => !Number.isFinite(frame.frontier))!.time;
+        // Past the hero (the walls open), then further down or back up into the hero.
+        for (const to of [1.15, 1.3, 0.4]) {
+          const at = Math.ceil((open + 3) * fps) / fps;
+          const run = simulate(lines, together(during(0, open + 1, wheel(3)), jump(at, to, false), during(at, at + 0.01, wheel(0.1))), {
+            fps,
+            maxTime: at + 3,
+          });
+          const what = `${fps} fps, to ${to}`;
+          const settled = run.frames.at(-1)!;
+          // One notch on from where the page was moved, never from where Lenis had it.
+          expect(settled.page, what).toBeCloseTo(to * range + 100, 0);
+          for (const frame of after(run.frames, at)) expect(frame.page, `${what}, ${frame.time.toFixed(2)} s`).toBeGreaterThanOrEqual(to * range - 1);
+        }
+      }
+    });
+  }
+});
+
 describe("acceptance: no stuck states (fuzz)", () => {
   for (let seed = 1; seed <= 20; seed += 1) {
     it(`seed ${seed}: keeps every invariant and always says how to go on`, () => {
