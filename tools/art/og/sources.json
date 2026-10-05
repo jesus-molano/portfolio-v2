@@ -1,0 +1,30 @@
+{
+  "en": {
+    "words": [
+      "Jesús Molano",
+      "Frontend Engineer"
+    ],
+    "files": {
+      "public/finale/night-wide-en.webp": "f29d6c1af217bd33b4c42d74a5a646758e6634981dae9be80a6ee177c9eff404",
+      "public/finale/poster-dotfiles-en.webp": "b4eeb7cca29521498291f0bd7f093e5921876f5629424c6d6671023f6450a679",
+      "public/finale/poster-tessera-studio-en.webp": "a3373a0f23012a069703848abf4973622e39d16911e3020a5002ba6094581741",
+      "public/finale/poster-project-atlas-en.webp": "7730e3efebd87f702a0a5a9a4dc30bf87210a493dfe07e242330f7f47dee80ab",
+      "public/finale/poster-expenses-log-app-en.webp": "355e8fb026323794f729d2eb2bf9bc5931f64aea9d94e342fee3e1fc8044f2d2"
+    },
+    "card": "6c002c7108b7b69dc407c38e392ad49904c1e8db0d712b37d8d1a7d58e0d5c64"
+  },
+  "es": {
+    "words": [
+      "Jesús Molano",
+      "Frontend Engineer"
+    ],
+    "files": {
+      "public/finale/night-wide-es.webp": "f96bda6d21470225a1afca20462916d1acde46eb646f87c71e6dd648837ebb91",
+      "public/finale/poster-dotfiles-es.webp": "5a6d664db33e5fa2d1914800314b4c7bc3372007d1eb1602d3e3b5719b182e99",
+      "public/finale/poster-tessera-studio-es.webp": "f18d767bc485e1878e9f64c5e61b29846169b089180808f572cc98e5a299caa2",
+      "public/finale/poster-project-atlas-es.webp": "ccd06375d270bf3a8b2cf8741680e43b7fd0cc8dfb356defafcdee81a4e62543",
+      "public/finale/poster-expenses-log-app-es.webp": "2824d7cd2152c9b46692a0b519554bf75927170519821f146251d0e9ea3361d7"
+    },
+    "card": "47644092544069b552183d28dd375eb6f22563f011b993c233fc2fae65f07b23"
+  }
+}

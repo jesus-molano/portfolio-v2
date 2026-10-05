@@ -3,14 +3,17 @@
  * (tools/art/stats/map.mjs, public/stats/*.svg) and the DOM over it share
  * one projection.
  *
- * Pure and dependency-free on purpose: map.mjs imports this file with
- * Node's type stripping, so it must not import anything at runtime.
+ * Pure on purpose: map.mjs imports this file with Node's type stripping,
+ * so at runtime it imports only the career's facts (career.ts, as
+ * dependency-free), by the file's full name, as Node resolves it.
  *
  * Coordinates are real ([longitude, latitude], WGS 84): the towns stand
  * where the real ones do, under their parody names. The home glyph (HQ) is
  * the exception that proves it: it sits in the Teide's caldera, a national
  * park where nobody lives, so it never points at a real home.
  */
+
+import { CAREER, isLive, type JobId } from "../career/career.ts";
 
 /** [longitude, latitude] in degrees. */
 export type LonLat = readonly [number, number];
@@ -148,7 +151,7 @@ export const PLACES: readonly Place[] = [
   { id: "americas", kind: "town", town: [-16.727, 28.074], label: [-16.745, 28.14], minor: true },
   { id: "cristianos", kind: "town", town: [-16.715, 28.052], label: [-16.83, 27.96], minor: true },
   { id: "medano", kind: "town", town: [-16.537, 28.046], minor: true },
-  { id: "guimar", kind: "town", town: [-16.41, 28.315], label: [-16.329, 28.286], minor: true },
+  { id: "guimar", kind: "town", town: [-16.41, 28.315], label: [-16.285, 28.29], minor: true },
   { id: "teresitas", kind: "town", town: [-16.188, 28.508], label: [-16.134, 28.452], minor: true },
   { id: "esperanza", kind: "town", town: [-16.372, 28.452], label: [-16.384, 28.398], minor: true },
   { id: "anaga", kind: "region", label: [-16.25, 28.6], minor: true },
@@ -223,7 +226,7 @@ export const PLAYER = { at: [-16.6, 28.045] as LonLat, heading: -38, side: "bott
 /** Home base, in the caldera: a villain's lair, not an address. */
 export const HQ = { at: [-16.585, 28.236] as LonLat, side: "bottom" as CaptionSide };
 
-export type MissionId = "army" | "pwc" | "cloud-district" | "logixs" | "heuristik";
+export type MissionId = JobId;
 
 export type Mission = {
   id: MissionId;
@@ -253,17 +256,31 @@ export type Mission = {
 export const CAREER_CITY_ON_PAGE = false;
 
 /**
- * The career: one to five, ticked, the last one LIVE. The army in Las
- * Palmas (in the box), then four jobs, every one of them done from home
- * base, so no job points at an office.
+ * Where each mission sits on the map. The army in Las Palmas (in the box),
+ * then four jobs, every one of them done from home base, so no job points
+ * at an office.
  */
-export const MISSIONS: readonly Mission[] = [
-  { id: "army", number: 1, anchor: "work-army", years: [2018, 2021], at: [-15.43, 28.11], inset: true, live: false },
-  { id: "pwc", number: 2, anchor: "work-pwc", years: [2023, 2024], at: "home", inset: false, live: false },
-  { id: "cloud-district", number: 3, anchor: "work-cloud-district", years: [2024, 2025], at: "home", inset: false, live: false },
-  { id: "logixs", number: 4, anchor: "work-logixs", years: [2025, 2026], at: "home", inset: false, live: false },
-  { id: "heuristik", number: 5, anchor: "work-heuristik", years: [2026, null], at: "home", inset: false, live: true },
-];
+const MISSION_PLACES: Record<MissionId, Pick<Mission, "at" | "inset">> = {
+  army: { at: [-15.43, 28.11], inset: true },
+  pwc: { at: "home", inset: false },
+  "cloud-district": { at: "home", inset: false },
+  logixs: { at: "home", inset: false },
+  heuristik: { at: "home", inset: false },
+};
+
+/**
+ * The career (src/features/career/career.ts) as main missions: one to
+ * five, ticked, the last one LIVE. Numbers, years and anchors come from
+ * there; this file adds only where each one sits on the map.
+ */
+export const MISSIONS: readonly Mission[] = CAREER.map((job) => ({
+  id: job.id,
+  number: job.number,
+  anchor: job.anchor,
+  years: job.years,
+  ...MISSION_PLACES[job.id],
+  live: isLive(job),
+}));
 
 /** The home missions' badges, in a row to the right of the HQ marker (CSS px). */
 export const HOME_STACK = { gap: 4, badge: 24, step: 34, liveTag: 40 };
@@ -274,7 +291,10 @@ export const HOME_STACK = { gap: 4, badge: 24, step: 34, liveTag: 40 };
 
 /** Viewports from this width up show the wide map with captions; below it, the square map and a legend. */
 export const WIDE_FROM = 1000;
-/** Side by side with the panels from this width up; below it, the map spans the column. */
+/**
+ * The main missions stand beside the map from this width up, as tall as its
+ * frame; below it they run above the map and the map spans the column.
+ */
 export const SIDE_BY_SIDE_FROM = 1280;
 /** The menu's content stops growing at this width (Stats.module.css, .stats). */
 export const SCREEN_MAX = 1680;
@@ -285,7 +305,9 @@ export const MAP_MIN = 740;
  * (Stats.module.css): the section's top padding (64), the menu bar (46),
  * the gap (24), the map's title (23), its source line (27), the gap (24),
  * the button prompts (24) and the bottom padding (24). The map is never
- * taller than the rest of the screen, so the whole tab fits on one.
+ * taller than the rest of the screen, so from 1280 px, where the missions
+ * stand beside it, the whole tab fits on one. Below that the missions run
+ * above the map and the tab scrolls on.
  */
 export const MAP_CHROME_PX = 256;
 
@@ -435,7 +457,7 @@ export type MapTexts = {
   you: string;
   hq: string;
   live: string;
-  inset: { name: string; city: string; caption: string };
+  inset: { name: string; city: string };
   north: string;
   scale: string;
 };
@@ -507,12 +529,10 @@ export function wideMapItems(texts: MapTexts, mapWidth: number, layout: MapLayou
     items.push({ id: `label:${place.id}`, kind: "label", box: labelBox(at, frame, mapWidth, texts.places[place.id], place.kind) });
   }
 
-  // Gran Canaria's name (top) and his line (bottom), inside the box.
+  // Gran Canaria's name and its city's, at the top of the box.
   const inset = frame.inset;
   const ix = inset.x * k;
   const iy = inset.y * k;
-  const iw = inset.width * k;
-  const ih = inset.height * k;
   const nameFont = labelFontPx(mapWidth);
   const nameWidth = Math.max(
     textWidth(texts.inset.name, nameFont, 0.96 + 0.24),
@@ -522,13 +542,6 @@ export function wideMapItems(texts: MapTexts, mapWidth: number, layout: MapLayou
     id: "inset:name",
     kind: "text",
     box: { left: ix + 14, right: ix + 14 + nameWidth, top: iy + 12, bottom: iy + 12 + nameFont * 1.2 * 2 + 4 },
-  });
-  const insetFont = Math.min(13, Math.max(12, mapWidth * 0.015));
-  const insetLines = wrap(texts.inset.caption, insetFont, iw - 28);
-  items.push({
-    id: "inset:caption",
-    kind: "text",
-    box: { left: ix + 14, right: ix + iw - 14, top: iy + ih - 12 - insetLines.length * insetFont * 1.3, bottom: iy + ih - 12 },
   });
 
   const [nx, ny] = frame.compass;

@@ -3,9 +3,10 @@
  *
  * The plates (public/finale) are drawn by tools/art/finale/build.mjs, which
  * also writes plates.json: the projected marquee board and its rails, the
- * bulb strips and the poster cases, in the plate's own frame units. Every
- * DOM part is placed in those units through container-query widths (cqw),
- * so the page and the plate scale together at any size.
+ * bulb strips, the poster cases and the box office, in the plate's own
+ * frame units. Every DOM part is placed in those units through
+ * container-query widths (cqw), so the page and the plate scale together
+ * at any size.
  */
 import { createRandom } from "@/features/hero/scene/world";
 import plates from "./plates.json";
@@ -16,7 +17,8 @@ export type Row = { top: number; bottom: number; base: number; cap: number };
 /** A straight line of bulbs: its two ends, the count and the bulb radius. */
 export type Strip = { x0: number; x1: number; y: number; n: number; r: number };
 export type CaseSlot = { repo: string; frame: Rect; poster: Rect; plate: Rect; pool: Rect };
-export type Plate = { width: number; height: number; board: Rect; rows: Row[]; strips: Strip[]; cases: CaseSlot[] };
+/** `booth`: the painted box office (its sign, dome and body), which the page makes a link to the contact. */
+export type Plate = { width: number; height: number; board: Rect; rows: Row[]; strips: Strip[]; cases: CaseSlot[]; booth: Rect };
 export type PlateName = "night-wide" | "night-tall" | "dawn-wide" | "dawn-tall";
 
 export const PLATES: Record<PlateName, Plate> = plates;

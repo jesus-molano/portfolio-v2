@@ -3,12 +3,12 @@
  * in place (StatsTabs.tsx); without JS the two panels simply follow each
  * other down the page. Colours come from
  * the tokens only; translucency is mixed from them. Layout numbers that the
- * caption test relies on (paddings, the aside's width, marker size, caption
+ * caption test relies on (paddings, the missions' width, marker size, caption
  * offsets and fonts) are mirrored in statsLayout.ts: change both together.
  *
  * Breakpoints: below 1000 px the square map with keyed pins and a legend
  * (one column on phones, below 700 px); from 1000 px the wide map with its
- * captions; from 1280 px the map and the panels side by side.
+ * captions; from 1280 px the map and the main missions side by side.
  */
 
 .stats {
@@ -286,13 +286,56 @@
   }
 }
 
-/* ── Tab 1: the map and its panels ────────────────────────────────── */
+/* ── Tab 1: the main missions and the map ─────────────────────────── */
 
+/*
+ * The missions come first in the page (the career index, and on a phone
+ * the content before the map's way out); from 1280 px they stand beside
+ * the map's frame, as tall as it: the figure's rows (title, frame, source
+ * line) are the layout's, through a subgrid.
+ */
 .mapLayout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(300px, 28vw, 420px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 32px;
+}
+
+@media (min-width: 1280px) {
+  .mapLayout {
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 28vw, 420px);
+    grid-template-rows: auto auto auto;
+    row-gap: 0;
+  }
+
+  .map {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: 1 / span 3;
+    grid-column: 1;
+  }
+
+  .missionsPanel {
+    display: flex;
+    flex-direction: column;
+    grid-row: 2;
+    grid-column: 2;
+    align-self: stretch;
+  }
+
+  /* The five rows share the frame's height, each centred in its share. */
+  .missionsPanel .missions {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .missionsPanel .missions li {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+  }
 }
 
 .map {
@@ -758,22 +801,17 @@
   }
 }
 
-/* Gran Canaria's box: its name on top, his line at the bottom. */
+/* Gran Canaria's box: the island's name and its city's at the top, like a map's inset. */
 .inset {
   position: absolute;
   left: calc(var(--px) * 1%);
   top: calc(var(--py) * 1%);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 4px;
   width: calc(var(--w) * 1%);
   height: calc(var(--h) * 1%);
   padding: 12px 14px;
-}
-
-.insetHead {
-  display: grid;
-  gap: 4px;
 }
 
 .insetName {
@@ -788,12 +826,6 @@
   color: var(--va-color-sodium);
 }
 
-.insetCaption {
-  font: 500 clamp(12px, 1.5cqi, 13px) / 1.3 var(--va-font-body);
-  font-style: italic;
-  color: var(--va-color-cream);
-}
-
 .source {
   margin-top: 10px;
   font: 400 12px/1.4 var(--va-font-mono);
@@ -802,11 +834,6 @@
 }
 
 /* ── Panels ───────────────────────────────────────────────────────── */
-
-.aside {
-  display: grid;
-  gap: 24px;
-}
 
 .panel {
   position: relative;
@@ -852,7 +879,6 @@
 }
 
 .missions,
-.saves,
 .recordList {
   margin: 0;
   padding: 0;
@@ -953,46 +979,89 @@ a.missionRow:focus-visible {
   box-shadow: 0 0 10px var(--va-color-on-air);
 }
 
-.saves {
-  display: grid;
-  gap: 8px;
+/*
+ * On a phone and beside the map the rows run in a column, their badges on
+ * one route, like the map's career route. A segment runs from a badge's
+ * centre (the middle of its row) to the next one's: the rows are the same
+ * height (beside the map, the same share of it), 2 px apart.
+ */
+@media (max-width: 699.98px), (min-width: 1280px) {
+  .missions li {
+    position: relative;
+  }
+
+  .missions li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    /* The badge's centre: the row's border and padding (11 px) and half the badge, less half the line. */
+    left: 23px;
+    width: 2px;
+    height: calc(100% + 2px);
+    background: color-mix(in srgb, var(--va-color-sodium) 50%, transparent);
+  }
+
+  /* Into the live one: from sodium to the on-air red. */
+  .missions li:nth-last-child(2)::after {
+    background: linear-gradient(color-mix(in srgb, var(--va-color-sodium) 50%, transparent), var(--va-color-on-air));
+  }
+
+  .missionBadge {
+    position: relative;
+    z-index: 1;
+    background: var(--va-color-night);
+  }
 }
 
-.saveLink {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  align-items: center;
-  column-gap: 12px;
-  row-gap: 2px;
-  padding: 9px 12px;
-  border: 1px solid var(--panel-line);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--va-color-cream) 4%, transparent);
-  color: inherit;
-  text-decoration: none;
-  transition: border-color 150ms ease, background-color 150ms ease;
+/*
+ * From 700 to 1279 px the missions run in a row above the map, each one
+ * under its own segment of the progress line (the same five columns).
+ */
+@media (min-width: 700px) and (max-width: 1279.98px) {
+  .progress,
+  .missions {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    column-gap: 16px;
+  }
+
+  .progress {
+    margin-bottom: 8px;
+  }
+
+  .missionRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "badge status"
+      "text text";
+    align-content: start;
+    row-gap: 10px;
+    height: 100%;
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .missionBadge {
+    grid-area: badge;
+  }
+
+  .missionText {
+    grid-area: text;
+  }
+
+  .status {
+    grid-area: status;
+    justify-self: end;
+  }
 }
 
-.saveLink:hover,
-.saveLink:focus-visible {
-  border-color: var(--va-color-pink);
-  background: color-mix(in srgb, var(--va-color-pink) 10%, transparent);
-}
-
-.slot {
-  grid-row: span 2;
-  font: 700 12px/1 var(--va-font-mono);
-  color: var(--va-color-sodium);
-}
-
-.slotPlace {
-  font: 600 14px/1.25 var(--va-font-body);
-  color: var(--va-color-cream);
-}
-
-.slotNote {
-  font: 400 13px/1.25 var(--va-font-body);
-  color: var(--va-color-text-muted);
+/* From 1000 px the map under them is no wider than the screen's height allows: neither are they. */
+@media (min-width: 1000px) and (max-width: 1279.98px) {
+  .missionsPanel {
+    width: 100%;
+    max-width: max(740px, calc((100svh - 256px) * 16 / 11));
+    margin-inline: auto;
+  }
 }
 
 /* ── Tab 2: the character sheet ───────────────────────────────────── */
@@ -1049,7 +1118,6 @@ a.missionRow:focus-visible {
   position: relative;
   display: grid;
   align-content: center;
-  gap: 7px;
   height: 74px;
   padding: 0 20px;
   border-top: 1px solid var(--panel-line);
@@ -1063,13 +1131,6 @@ a.missionRow:focus-visible {
 .plateName {
   font: 800 20px/1 var(--va-font-display);
   color: var(--va-color-cream);
-}
-
-.plateSub {
-  font: 500 11px/1 var(--va-font-mono);
-  /* "FUERA DE SERVICIO · TENERIFE" on one line in the 300 px card. */
-  letter-spacing: 0.16em;
-  color: var(--va-color-text-muted);
 }
 
 .skills {
@@ -1199,6 +1260,11 @@ a.missionRow:focus-visible {
   padding: 22px 24px 8px;
 }
 
+.recordList {
+  /* The values' size; each record scales it to its glyphs. */
+  --value: 40px;
+}
+
 .recordList li {
   display: grid;
   gap: 8px;
@@ -1211,19 +1277,34 @@ a.missionRow:focus-visible {
 }
 
 .recordValue {
-  font: 800 40px/1 var(--va-font-display);
+  font: 800 var(--value)/1 var(--va-font-display);
   letter-spacing: -0.01em;
   white-space: nowrap;
   color: var(--va-color-cream);
 }
 
+/*
+ * Stars, ∞ and ≈ come from whichever face has them (the display face has
+ * none): the stars a little smaller, ∞ (a low, small glyph in most faces)
+ * much larger on the same line height.
+ */
+.record_wanted .recordValue {
+  font-size: calc(var(--value) * 0.85);
+  letter-spacing: 0.06em;
+  color: var(--va-color-cream);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--va-color-magenta) 40%, transparent);
+}
+
 .record_episode .recordValue {
+  font-size: calc(var(--value) * 1.8);
+  /* The others' line: 1 / 1.8. */
+  line-height: 0.56;
   color: var(--va-color-pink);
   text-shadow: 0 0 18px color-mix(in srgb, var(--va-color-magenta) 45%, transparent);
 }
 
 .record_grandsPrix .recordValue {
-  font-size: 32px;
+  font-size: calc(var(--value) * 0.8);
   color: var(--va-color-sodium);
 }
 
@@ -1241,11 +1322,22 @@ a.missionRow:focus-visible {
   min-height: 24px;
 }
 
-.otherTab {
+/* Both prompts are links: a 44 px target that lays out as 24 px (the foot's row, MAP_CHROME_PX). */
+.otherTab,
+.hint {
+  display: inline-flex;
+  align-items: center;
+  /* Between the arrow and the word: as flex items, the space in the markup collapses. */
+  gap: 0.6em;
+  min-height: 44px;
+  margin-block: -10px;
   font: 600 12px/1 var(--va-font-mono);
   letter-spacing: 0.26em;
-  color: var(--va-color-cream);
   text-decoration: none;
+}
+
+.otherTab {
+  color: var(--va-color-cream);
 }
 
 .otherTab span {
@@ -1258,9 +1350,11 @@ a.missionRow:focus-visible {
 
 .hint {
   margin-left: auto;
-  font: 600 12px/1 var(--va-font-mono);
-  letter-spacing: 0.26em;
   color: var(--va-color-text-muted);
+}
+
+.hint:hover {
+  color: var(--va-color-pink);
 }
 
 .hintArrow {
@@ -1298,67 +1392,14 @@ a.missionRow:focus-visible {
     border-bottom: 0;
   }
 
-  .recordValue {
-    font-size: clamp(28px, 3.6vw, 40px);
-  }
-
-  .record_grandsPrix .recordValue {
-    font-size: clamp(24px, 3vw, 32px);
-  }
-}
-
-/*
- * Beside the map (from 1280 px) the missions and the saved games stand as
- * tall as the screen allows it: rows a little tighter than in the column
- * below the map, so the MAP tab fits on a 900 px screen.
- */
-@media (min-width: 1280px) {
-  .aside {
-    gap: 20px;
-  }
-
-  .aside .panel {
-    padding-block: 16px;
-  }
-
-  .aside .panelTitle {
-    margin-bottom: 12px;
-  }
-
-  .progress {
-    margin-bottom: 10px;
-  }
-
-  .missionRow {
-    min-height: 0;
-    padding-block: 5px;
-  }
-
-  .missionText {
-    gap: 1px;
-  }
-
-  .saves {
-    gap: 6px;
-  }
-
-  .saveLink {
-    padding-block: 6px;
+  .recordList {
+    --value: clamp(28px, 3.6vw, 40px);
   }
 }
 
 @media (max-width: 1279.98px) {
   .stats {
     --pad: 32px;
-  }
-
-  .mapLayout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .aside {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
   }
 }
 
@@ -1578,7 +1619,7 @@ a.missionRow:focus-visible {
     background: var(--va-color-magenta);
   }
 
-  /* Gran Canaria's line joins the legend, after a little box like the map's. */
+  /* Gran Canaria joins the legend after a little box like the map's: the island, then its city. */
   .inset {
     position: relative;
     flex-flow: row wrap;
@@ -1602,26 +1643,19 @@ a.missionRow:focus-visible {
     background: radial-gradient(circle 3px at 70% 35%, var(--va-color-sodium) 90%, transparent 100%);
   }
 
-  .insetCaption {
-    font-size: 14px;
-  }
-
-  .insetHead {
-    display: contents;
+  .insetName {
+    font: 500 14px/1.3 var(--va-font-body);
+    letter-spacing: 0.04em;
+    color: var(--va-color-cream);
   }
 
   .insetCity {
-    display: none;
-  }
-
-  .insetName {
-    order: 2;
     font: 600 12px/1.3 var(--va-font-mono);
     letter-spacing: 0.08em;
     color: var(--va-color-text-muted);
   }
 
-  .insetName::before {
+  .insetCity::before {
     content: "· ";
   }
 
@@ -1660,7 +1694,6 @@ a.missionRow:focus-visible {
   .mapTitle,
   .panelTitle,
   .years,
-  .plateSub,
   .statusLive {
     font-size: 12px;
   }
@@ -1669,10 +1702,6 @@ a.missionRow:focus-visible {
     height: 44px;
     padding: 0 16px;
     font-size: 12px;
-  }
-
-  .aside {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .sheet {
@@ -1704,12 +1733,8 @@ a.missionRow:focus-visible {
     border-bottom: 1px solid var(--panel-line);
   }
 
-  .recordValue {
-    font-size: 34px;
-  }
-
-  .record_grandsPrix .recordValue {
-    font-size: 28px;
+  .recordList {
+    --value: 34px;
   }
 }
 

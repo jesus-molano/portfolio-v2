@@ -1,4 +1,3 @@
-import { FEATURES } from "@/features/finale/links";
 import type { CSSProperties } from "react";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { StatsIcon } from "./icons";
@@ -83,6 +82,60 @@ export function Stats({ dict }: Props) {
       {/* ── Tab 1: MAP ──────────────────────────────────────────────── */}
       <StatsPanel tab="map">
         <div className={styles.mapLayout}>
+          {/*
+            The career index first: beside the map from 1280 px, above it
+            below that, and on a phone before the map and its way out.
+          */}
+          <div className={`${styles.panel} ${styles.missionsPanel}`}>
+            <h3 id="stats-missions" className={styles.panelTitle}>
+              {missions.title} <span className={styles.count}>· {missions.count}</span>
+            </h3>
+            <div className={styles.progress} aria-hidden="true">
+              {MISSIONS.map((mission) => (
+                <i key={mission.id} className={mission.live ? styles.progressLive : styles.progressDone} />
+              ))}
+            </div>
+            <ol className={styles.missions}>
+              {MISSIONS.map((mission) => {
+                const item = missions.items[mission.id];
+                // A link to its stop in the career city once that is on the page; a plain row until then.
+                const Row = CAREER_CITY_ON_PAGE ? "a" : "div";
+                return (
+                  <li key={mission.id}>
+                    <Row
+                      className={`${styles.missionRow} ${mission.live ? styles.missionRowLive : ""}`}
+                      href={CAREER_CITY_ON_PAGE ? `#${mission.anchor}` : undefined}
+                    >
+                      <span className={styles.missionBadge} aria-hidden="true">
+                        {mission.number}
+                      </span>
+                      <span className={styles.missionText}>
+                        <span className={styles.years} aria-hidden={mission.live ? true : undefined}>
+                          {years(mission.years[0], mission.years[1])}
+                        </span>
+                        <span className={styles.missionName}>{item.name}</span>
+                        <span className={styles.role}>{item.role}</span>
+                      </span>
+                      <span className={styles.status}>
+                        {mission.live ? (
+                          <span className={styles.statusLive} aria-hidden="true">
+                            <i />
+                            <span lang="en">{missions.live}</span>
+                          </span>
+                        ) : (
+                          <span className={styles.statusDone} aria-hidden="true">
+                            ✓
+                          </span>
+                        )}
+                        <span className="sr-only">, {mission.live ? missions.liveText : missions.done}</span>
+                      </span>
+                    </Row>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
           <figure className={styles.map} aria-labelledby="stats-map-title">
             <h3 id="stats-map-title" className={styles.mapTitle}>
               {map.title}
@@ -154,7 +207,10 @@ export function Stats({ dict }: Props) {
                             <span className={styles.text}>{map.booth.caption}</span>{" "}
                             <span className={styles.action}>
                               <span className={styles.text}>
-                                {map.booth.action} <span aria-hidden="true">▼</span>
+                                {/* The name says the visible action, then where it leads (WCAG 2.5.3). */}
+                                {map.booth.action}
+                                <span className="sr-only">: {dict.hintTarget}</span>{" "}
+                                <span aria-hidden="true">▼</span>
                               </span>
                             </span>
                           </>
@@ -172,7 +228,7 @@ export function Stats({ dict }: Props) {
                       style={placeAt(blip.at)}
                     >
                       {blip.id === "booth" ? (
-                        <a className={styles.boothLink} href="#projects" aria-label={map.booth.name}>
+                        <a className={styles.boothLink} href="#projects">
                           {content}
                         </a>
                       ) : (
@@ -212,90 +268,16 @@ export function Stats({ dict }: Props) {
                     ))}
                   </span>
                 </li>
+                {/* Gran Canaria's box: the island and its city, named like the rest (mission 1 is on it). */}
                 <li className={styles.inset} style={insetBox()}>
-                  <span className={styles.insetHead}>
-                    <span className={styles.insetName}>{map.inset.name}</span>
-                    <span className={styles.insetCity}>{map.inset.city}</span>
-                  </span>
-                  <span className={styles.insetCaption}>{map.inset.caption}</span>
+                  <span className={styles.insetName}>{map.inset.name}</span>
+                  <span className={styles.insetCity}>{map.inset.city}</span>
                 </li>
               </ol>
             </div>
             <figcaption className="sr-only">{map.label}</figcaption>
             <p className={styles.source}>{map.source}</p>
           </figure>
-
-          <div className={styles.aside}>
-            <div className={styles.panel}>
-              <h3 id="stats-missions" className={styles.panelTitle}>
-                {missions.title} <span className={styles.count}>· {missions.count}</span>
-              </h3>
-              <div className={styles.progress} aria-hidden="true">
-                {MISSIONS.map((mission) => (
-                  <i key={mission.id} className={mission.live ? styles.progressLive : styles.progressDone} />
-                ))}
-              </div>
-              <ol className={styles.missions}>
-                {MISSIONS.map((mission) => {
-                  const item = missions.items[mission.id];
-                  // A link to its stop in the career city once that is on the page; a plain row until then.
-                  const Row = CAREER_CITY_ON_PAGE ? "a" : "div";
-                  return (
-                    <li key={mission.id}>
-                      <Row
-                        className={`${styles.missionRow} ${mission.live ? styles.missionRowLive : ""}`}
-                        href={CAREER_CITY_ON_PAGE ? `#${mission.anchor}` : undefined}
-                      >
-                        <span className={styles.missionBadge} aria-hidden="true">
-                          {mission.number}
-                        </span>
-                        <span className={styles.missionText}>
-                          <span className={styles.years} aria-hidden={mission.live ? true : undefined}>
-                            {years(mission.years[0], mission.years[1])}
-                          </span>
-                          <span className={styles.missionName}>{item.name}</span>
-                          <span className={styles.role}>{item.role}</span>
-                        </span>
-                        <span className={styles.status}>
-                          {mission.live ? (
-                            <span className={styles.statusLive} aria-hidden="true">
-                              <i />
-                              <span lang="en">{missions.live}</span>
-                            </span>
-                          ) : (
-                            <span className={styles.statusDone} aria-hidden="true">
-                              ✓
-                            </span>
-                          )}
-                          <span className="sr-only">, {mission.live ? missions.liveText : missions.done}</span>
-                        </span>
-                      </Row>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-
-            <div className={styles.panel}>
-              <h3 id="stats-saves" className={styles.panelTitle}>
-                {dict.saves.title}
-              </h3>
-              <ol className={styles.saves}>
-                {/* Side missions are the side projects, in the cinema's order: each opens its poster. */}
-                {dict.saves.slots.map((slot, i) => (
-                  <li key={i}>
-                    <a className={styles.saveLink} href={`#${FEATURES[i].anchor}`}>
-                      <span className={styles.slot} aria-hidden="true">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-                      <span className={styles.slotPlace}>{slot.place}</span>
-                      <span className={styles.slotNote}>{slot.note}</span>
-                    </a>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
         </div>
       </StatsPanel>
 
@@ -309,7 +291,6 @@ export function Stats({ dict }: Props) {
             </span>
             <figcaption className={styles.plate}>
               <span className={styles.plateName}>{dict.player.name}</span>
-              <span className={styles.plateSub}>{dict.player.sub}</span>
             </figcaption>
           </figure>
 
@@ -347,9 +328,13 @@ export function Stats({ dict }: Props) {
               {dict.records.title}
             </h3>
             <ul className={styles.recordList}>
+              {/* The value's glyphs (stars, ∞, ≈) are for the eye; screen readers get it in words. */}
               {dict.records.items.map((record) => (
                 <li key={record.id} className={styles[`record_${record.id}`]}>
-                  <span className={styles.recordValue}>{record.value}</span>
+                  <span className={styles.recordValue} aria-hidden="true">
+                    {record.value}
+                  </span>
+                  <span className="sr-only">{record.spoken} </span>
                   <span className={styles.recordCaption}>{record.caption}</span>
                 </li>
               ))}
@@ -358,12 +343,20 @@ export function Stats({ dict }: Props) {
         </div>
       </StatsPanel>
 
-      {/* The button prompts: the other tab, and on down the page. */}
+      {/*
+        The button prompts: the other tab, and on down the page to the
+        cinema, the same way out as the booth (a plain same-page link:
+        PageEntry lands it).
+      */}
       <div className={styles.foot}>
         <StatsOtherTab names={dict.tabs} />
-        <p className={styles.hint} aria-hidden="true">
-          <span className={styles.hintArrow}>▼</span> {dict.hint}
-        </p>
+        <a className={styles.hint} href="#projects">
+          <span className={styles.hintArrow} aria-hidden="true">
+            ▼
+          </span>{" "}
+          {dict.hint}
+          <span className="sr-only">: {dict.hintTarget}</span>
+        </a>
       </div>
     </StatsSection>
   );

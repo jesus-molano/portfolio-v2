@@ -94,6 +94,15 @@ describe("THE USUAL SUSPECTS copy", () => {
     for (const copy of [en.suspects, es.suspects]) expect(copy.complaint.owner).toBe("J. Molano");
   });
 
+  it("names him once in the section, on the complaint: the slug says flatmates, in the owner's words", () => {
+    expect(es.suspects.associates).toBe("Compañeros de piso");
+    expect(en.suspects.associates).toBe("Flatmates");
+    for (const copy of [en.suspects, es.suspects]) {
+      const visible = [copy.title, copy.place, copy.associates, ...copy.cats.map((cat) => cat.description)];
+      expect(visible.join(" ")).not.toMatch(/Molano/);
+    }
+  });
+
   it("quotes Casablanca as the Spanish dub has it", () => {
     expect(en.suspects.line).toBe("Round up the usual suspects.");
     expect(es.suspects.line).toBe("Arresten a los sospechosos habituales.");

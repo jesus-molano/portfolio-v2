@@ -1,9 +1,16 @@
 /**
  * The four one-sheets of The Afterglow (src/features/finale): one original
- * poster per side project, each in its own genre (a heist blueprint, a
- * museum job, a procedural's evidence board, a neo-noir). 27 x 40 ratio,
- * 270 x 400 units, one per repository and locale; title, tagline and
- * billing are baked in. Our own drawings and type, no borrowed art or logos.
+ * poster per side project, each in its own genre (a fifties sci-fi
+ * B-movie, a museum job, a procedural's evidence board, a neo-noir). 27 x
+ * 40 ratio, 270 x 400 units, one per repository and locale; title, tagline
+ * and billing are baked in. Our own drawings and type, no borrowed art or
+ * logos.
+ *
+ * Each part of a poster has one job: the tagline and the line under the
+ * title make the joke, the billing block gives names and stack (the cinema
+ * presents, never his name), and the caption under the case on the page
+ * (projects.posters.<id>.oneLiner) says plainly what the project does.
+ * None of them repeats another.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -26,8 +33,8 @@ export const POSTERS = [
     tag: copy("dotfiles", "tagline"),
     sub: copy("dotfiles", "sub"),
     bill: {
-      en: ["JESÚS MOLANO PRESENTS A JOB ON TWO SYSTEMS · WINDOWS · CACHYOS", "ONE SETUP · ANY NEW MACHINE · NO STEP REPEATED BY HAND"],
-      es: ["JESÚS MOLANO PRESENTA UN GOLPE EN DOS SISTEMAS · WINDOWS · CACHYOS", "UNA CONFIGURACIÓN · CUALQUIER EQUIPO NUEVO · NADA A MANO"],
+      en: ["THE AFTERGLOW PRESENTS A DOUBLE BILL · STARRING WINDOWS · CACHYOS"],
+      es: ["THE AFTERGLOW PRESENTA UNA SESIÓN DOBLE · CON WINDOWS · CACHYOS"],
     },
   },
   {
@@ -35,8 +42,8 @@ export const POSTERS = [
     tag: copy("tessera-studio", "tagline"),
     sub: copy("tessera-studio", "sub"),
     bill: {
-      en: ["JESÚS MOLANO PRESENTS A READ-ONLY CATALOGUE · COMPONENTS · INVENTORY · REUSE", "WRITTEN IN PYTHON · ZERO DEPENDENCIES · STRICT CSP · RUNS LOCAL"],
-      es: ["JESÚS MOLANO PRESENTA UN CATÁLOGO DE SOLO LECTURA · COMPONENTES · INVENTARIO · REUTILIZACIÓN", "ESCRITO EN PYTHON · CERO DEPENDENCIAS · CSP ESTRICTA · EN LOCAL"],
+      en: ["THE AFTERGLOW PRESENTS · STARRING PYTHON 3.11 AND ITS STANDARD LIBRARY", "WITH PLAIN HTML · CSS · ES MODULES · AND A STRICT CSP"],
+      es: ["THE AFTERGLOW PRESENTA · CON PYTHON 3.11 Y SU BIBLIOTECA ESTÁNDAR", "HTML · CSS · MÓDULOS ES · Y UNA CSP ESTRICTA"],
     },
   },
   {
@@ -44,8 +51,8 @@ export const POSTERS = [
     tag: copy("project-atlas", "tagline"),
     sub: copy("project-atlas", "sub"),
     bill: {
-      en: ["JESÚS MOLANO PRESENTS AN EVIDENCE SIDECAR · FOR CODING AGENTS", "COMPONENTS · DESIGN EVIDENCE · DECISIONS · RISKS · BEFORE ANY CODE CHANGES"],
-      es: ["JESÚS MOLANO PRESENTA UN SIDECAR DE EVIDENCIAS · PARA AGENTES DE CÓDIGO", "COMPONENTES · EVIDENCIAS DE DISEÑO · DECISIONES · RIESGOS · ANTES DE TOCAR CÓDIGO"],
+      en: ["THE AFTERGLOW PRESENTS · STARRING TYPESCRIPT · NODE 24 · NUXT 4", "WITH ADAPTERS FOR REACT · VUE · ASTRO · AND ITS OWN CLI"],
+      es: ["THE AFTERGLOW PRESENTA · CON TYPESCRIPT · NODE 24 · NUXT 4", "ADAPTADORES PARA REACT · VUE · ASTRO · Y SU PROPIA CLI"],
     },
   },
   {
@@ -53,8 +60,8 @@ export const POSTERS = [
     tag: copy("expenses-log-app", "tagline"),
     sub: copy("expenses-log-app", "sub"),
     bill: {
-      en: ["JESÚS MOLANO PRESENTS A MOBILE-FIRST PWA · SMART LISTS · ONE-TAP PAID", "WEB PUSH REMINDERS · WORKS OFFLINE · SUPABASE SYNC · NEXT 16"],
-      es: ["JESÚS MOLANO PRESENTA UNA PWA MÓVIL · LISTAS INTELIGENTES · PAGOS EN UN TOQUE", "AVISOS WEB PUSH · FUNCIONA SIN CONEXIÓN · SINCRONIZACIÓN CON SUPABASE · NEXT 16"],
+      en: ["THE AFTERGLOW PRESENTS · STARRING NEXT 16 · REACT 19 · SUPABASE", "WITH WEB PUSH · SERWIST · TYPESCRIPT · ZOD · TAILWIND CSS"],
+      es: ["THE AFTERGLOW PRESENTA · CON NEXT 16 · REACT 19 · SUPABASE", "Y WEB PUSH · SERWIST · TYPESCRIPT · ZOD · TAILWIND CSS"],
     },
   },
 ];
@@ -67,9 +74,18 @@ const T = {
 /* ------------------------------------------------------------- helpers */
 const txt = (x, y, s, t, { fam = "Space Grotesk", w = 700, ls = 0, fill = C.cream, op = 1, anchor = "middle", extra = "", italic = false } = {}) =>
   `<text x="${f(x)}" y="${f(y)}" text-anchor="${anchor}" font-family="${fam}" font-weight="${w}"${italic ? ' font-style="italic"' : ""} font-size="${s}" letter-spacing="${ls}" fill="${fill}" fill-opacity="${op}" ${extra}>${esc(t)}</text>`;
-/** Billing block: condensed credits like a real one-sheet, squeezed to the width. */
+/**
+ * Billing block: condensed credits like a real one-sheet. Every line keeps
+ * the face's own proportions (Six Caps sets about 0.2 em a character), so
+ * a short line stays short instead of stretching, and a long one is
+ * squeezed to the width.
+ */
+const SIX_CAPS_EM = 0.202;
 function billing(y, lines, { fill = C.cream, op = 0.78, width = 226, size = 15.5 } = {}) {
-  return lines.map((l, i) => `<text x="${W / 2}" y="${y + i * size * 0.86}" text-anchor="middle" font-family="'Six Caps'" font-size="${size}" fill="${fill}" fill-opacity="${op}" textLength="${width}" lengthAdjust="spacingAndGlyphs">${esc(l)}</text>`).join("");
+  return lines.map((l, i) => {
+    const length = Math.min(width, Array.from(l).length * SIX_CAPS_EM * size);
+    return `<text x="${W / 2}" y="${f(y + i * size * 0.86)}" text-anchor="middle" font-family="'Six Caps'" font-size="${size}" text-rendering="geometricPrecision" fill="${fill}" fill-opacity="${op}" textLength="${f(length)}" lengthAdjust="spacingAndGlyphs">${esc(l)}</text>`;
+  }).join("");
 }
 /** Squeeze a long subtitle to the poster's safe width. */
 const subFit = (t, size) => (t.length * size * 0.56 > 232 ? `textLength="232" lengthAdjust="spacingAndGlyphs"` : "");
@@ -83,111 +99,120 @@ function paperGrain(id, freq = 0.9) {
 const grainRect = (id, op) => `<rect width="${W}" height="${H}" filter="url(#${id})" opacity="${op}" style="mix-blend-mode:overlay"/>`;
 
 /* ---------------------------------------------------------- 1 dotfiles */
+/**
+ * A fifties sci-fi one-sheet: a flying saucer beams his dotfiles down onto
+ * two machines on a desk, and both screens come out the same. The two
+ * plates under them name the systems (Windows, CachyOS); no logos.
+ */
 function dotfiles(p, lang, id, hot = false) {
   const r = rng(11);
-  let grid = "";
-  for (let x = 0; x <= W; x += 10) grid += `<path d="M${x},0 V${H}" stroke="${C.cyan}" stroke-opacity="${x % 50 === 0 ? 0.13 : 0.05}" stroke-width=".5"/>`;
-  for (let y = 0; y <= H; y += 10) grid += `<path d="M0,${y} H${W}" stroke="${C.cyan}" stroke-opacity="${y % 50 === 0 ? 0.13 : 0.05}" stroke-width=".5"/>`;
   const cy = C.cyan;
-  // the plan: a tiled desktop drawn as the floor plan of the job
-  const rooms = [
-    [34, 98, 104, 136, lang === "es" ? "TERMINAL" : "TERMINAL"],
-    [142, 98, 94, 50, lang === "es" ? "EDITOR" : "EDITOR"],
-    [142, 152, 94, 40, lang === "es" ? "NAVEGADOR" : "BROWSER"],
-    [142, 196, 94, 38, lang === "es" ? "MÚSICA" : "MUSIC"],
-  ];
-  let plan = "";
-  plan += `<rect x="26" y="78" width="218" height="164" rx="3" fill="${cy}" fill-opacity=".035" stroke="${cy}" stroke-width="2.2"/>`;
-  plan += `<rect x="29.5" y="81.5" width="211" height="157" rx="2" fill="none" stroke="${cy}" stroke-opacity=".5" stroke-width=".6"/>`;
-  plan += `<rect x="34" y="84" width="202" height="10" fill="none" stroke="${cy}" stroke-width=".9"/>`;
-  plan += `<text x="38" y="91.4" font-family="JetBrains Mono" font-size="4.8" font-weight="700" fill="${cy}" fill-opacity=".85" letter-spacing=".8">BAR · 23:59 · ▮▮▮▮▯</text>`;
-  for (const [x, y, w, h, label] of rooms) {
-    plan += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${cy}" stroke-width="1.1"/>`;
-    plan += `<rect x="${x + 2.5}" y="${y + 2.5}" width="${w - 5}" height="${h - 5}" fill="none" stroke="${cy}" stroke-opacity=".35" stroke-width=".45"/>`;
-    plan += `<text x="${x + 6}" y="${y + 10}" font-family="JetBrains Mono" font-weight="700" font-size="5.4" letter-spacing="1" fill="${cy}" fill-opacity=".9">${label}</text>`;
-    // a door in each room: a gap and its swing
-    plan += `<path d="M${x + w - 16},${y + h} h10" stroke="#0e1546" stroke-width="2.4"/><path d="M${x + w - 16},${y + h} a10,10 0 0 1 10,-10" fill="none" stroke="${cy}" stroke-opacity=".7" stroke-width=".55"/><path d="M${x + w - 6},${y + h} v-10" stroke="${cy}" stroke-opacity=".7" stroke-width=".55"/>`;
-  }
-  // terminal "furniture": lines of a prompt
-  for (let i = 0; i < 9; i++) plan += `<path d="M42,${116 + i * 11} h${f(18 + r() * 62)}" stroke="${cy}" stroke-opacity="${i === 8 ? 0.9 : 0.3}" stroke-width="${i === 8 ? 1.2 : 0.7}" stroke-dasharray="${i % 3 === 0 ? "2 1.5" : "none"}"/>`;
-  // dimension lines
-  plan += `<g stroke="${cy}" stroke-opacity=".6" stroke-width=".5" fill="none"><path d="M26,68 H244 M26,64 V72 M244,64 V72"/><path d="M252,78 V242 M248,78 H256 M248,242 H256"/></g>`;
-  plan += `<text x="135" y="65" text-anchor="middle" font-family="JetBrains Mono" font-size="4.8" fill="${cy}" fill-opacity=".75" letter-spacing=".6">2560</text>`;
-  plan += `<text x="258" y="162" text-anchor="middle" font-family="JetBrains Mono" font-size="4.8" fill="${cy}" fill-opacity=".75" transform="rotate(90 258 162)">1440</text>`;
-  // the route: dry run, apply, way out (through the west door)
-  const L = lang === "es" ? ["ENSAYO", "APLICAR", "SALIDA"] : ["DRY RUN", "APPLY", "WAY OUT"];
-  plan += `<path d="M26,150 h-2" stroke="#0e1546" stroke-width="3"/>`;
-  const route = "M64,218 C92,214 112,196 104,170 S70,136 92,118 S128,104 120,138 S60,154 40,150 L12,150";
-  if (hot) plan += `<path d="${route}" fill="none" stroke="${C.magenta}" stroke-width="6" opacity=".55" filter="url(#${id}b3)"/>`;
-  plan += `<path d="${route}" fill="none" stroke="${hot ? "#ffd0ea" : C.magenta}" stroke-width="1.8" stroke-dasharray="4 2.6"/>`;
-  plan += `<path d="M14,146 l-6,4 6,4" fill="none" stroke="${C.magenta}" stroke-width="1.8"/>`;
-  const marks = [[64, 218, "1", L[0], 74, 221, "start"], [92, 118, "2", L[1], 101, 114, "start"], [22, 150, "3", L[2], 8, 166, "start"]];
-  for (const [x, y, n, lab, lx, ly, anc] of marks) {
-    plan += `<circle cx="${x}" cy="${y}" r="6.4" fill="#0e1546" stroke="${C.magenta}" stroke-width="1.4"/><text x="${x}" y="${y + 2.6}" text-anchor="middle" font-family="'Big Shoulders Display'" font-weight="900" font-size="8" fill="${C.cream}">${n}</text>`;
-    plan += `<text x="${lx}" y="${ly}" text-anchor="${anc}" font-family="JetBrains Mono" font-weight="700" font-size="5.4" letter-spacing=".9" fill="${C.pink}" stroke="#0e1546" stroke-width="2.4" paint-order="stroke">${lab}</text>`;
-  }
-  // the dial: a combination lock laid on the plan
-  const dx = 186, dy = 176, R = 52;
-  let ticks = "", nums = "";
-  for (let i = 0; i < 100; i++) {
-    const a = (i / 100) * Math.PI * 2 + (hot ? 1.05 : 0.31);
-    const l = i % 10 === 0 ? 8 : i % 5 === 0 ? 5.5 : 3.2;
-    const r0 = R - 4.5, r1 = r0 - l;
-    ticks += `<path d="M${f(dx + Math.sin(a) * r0)},${f(dy - Math.cos(a) * r0)} L${f(dx + Math.sin(a) * r1)},${f(dy - Math.cos(a) * r1)}" stroke="#2b1848" stroke-width="${i % 10 === 0 ? 1.1 : 0.55}"/>`;
-    if (i % 10 === 0) {
-      const rn = R - 19;
-      nums += `<text x="${f(dx + Math.sin(a) * rn)}" y="${f(dy - Math.cos(a) * rn + 2.6)}" text-anchor="middle" font-family="'Big Shoulders Display'" font-weight="800" font-size="7.4" fill="#2b1848" transform="rotate(${f((a * 180) / Math.PI)} ${f(dx + Math.sin(a) * rn)} ${f(dy - Math.cos(a) * rn)})">${i}</text>`;
-    }
-  }
-  let knurl = "";
+  let stars = "";
   for (let i = 0; i < 90; i++) {
-    const a = (i / 90) * Math.PI * 2;
-    knurl += `<path d="M${f(dx + Math.sin(a) * (R + 1))},${f(dy - Math.cos(a) * (R + 1))} L${f(dx + Math.sin(a) * (R + 6))},${f(dy - Math.cos(a) * (R + 6))}" stroke="#3a2a5c" stroke-opacity=".55" stroke-width=".9"/>`;
+    const x = r() * W, y = 8 + r() * 226, s = r();
+    if (y < 52 && Math.abs(x - W / 2) < 100) continue; // clear of the tagline
+    stars += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(0.25 + s * 0.75)}" fill="${s > 0.85 ? C.pink : "#e3fbff"}" opacity="${f(0.2 + r() * 0.6)}"/>`;
   }
-  let grips = "";
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 + 0.31;
-    grips += `<circle cx="${f(dx + Math.sin(a) * 19.5)}" cy="${f(dy - Math.cos(a) * 19.5)}" r="2.6" fill="#5a4a7a"/>`;
+  // the saucer: a chrome hull, a glass dome, running lights round the rim
+  const sx = 135, sy = 100;
+  let rim = "";
+  for (let i = 0; i < 11; i++) {
+    const a = Math.PI * (0.08 + (0.84 * i) / 10);
+    const x = sx - Math.cos(a) * 66, y = sy + 3 + Math.sin(a) * 6.5;
+    const c = [C.magenta, C.sodium, cy][i % 3];
+    if (hot) rim += `<circle cx="${f(x)}" cy="${f(y)}" r="5" fill="${c}" opacity=".55" filter="url(#${id}b3)"/>`;
+    rim += `<circle cx="${f(x)}" cy="${f(y)}" r="2.1" fill="${c}"/><circle cx="${f(x - 0.6)}" cy="${f(y - 0.7)}" r=".7" fill="#fff" opacity=".8"/>`;
   }
-  const dial = `
-    <ellipse cx="${dx + 7}" cy="${dy + 12}" rx="${R + 8}" ry="${R + 6}" fill="#050214" opacity=".6" filter="url(#${id}b6)"/>
-    <circle cx="${dx}" cy="${dy}" r="${R + 6}" fill="url(#${id}chrome)"/>
-    ${knurl}
-    <circle cx="${dx}" cy="${dy}" r="${R}" fill="url(#${id}face)" stroke="#5a4a7a" stroke-width=".8"/>
-    ${ticks}${nums}
-    <circle cx="${dx}" cy="${dy}" r="22" fill="url(#${id}knob)" stroke="#2b1848" stroke-width=".6"/>
-    ${grips}
-    <circle cx="${dx}" cy="${dy}" r="14.5" fill="url(#${id}chrome)" stroke="#2b1848" stroke-width=".5"/>
-    <circle cx="${dx}" cy="${dy}" r="6.2" fill="${C.magenta}"/><circle cx="${dx - 1.8}" cy="${dy - 2}" r="1.8" fill="#fff" opacity=".7"/>
-    <path d="M${dx},${dy - R - 8} l-5,-9 h10 z" fill="${C.magenta}"/>
-    <path d="M${dx - 34},${dy - 40} a52,52 0 0 1 30,-12" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"/>`;
+  const saucer = `<g transform="rotate(-4 ${sx} ${sy})">
+    ${hot ? `<ellipse cx="${sx}" cy="${sy - 4}" rx="96" ry="30" fill="${C.pink}" opacity=".3" filter="url(#${id}b6)"/>` : ""}
+    <ellipse cx="${sx}" cy="${sy + 12}" rx="46" ry="9" fill="${cy}" opacity="${hot ? 0.9 : 0.55}" filter="url(#${id}b6)"/>
+    <path d="M${sx - 30},${sy - 2} C${sx - 30},${sy - 30} ${sx + 30},${sy - 30} ${sx + 30},${sy - 2} Z" fill="url(#${id}dome)" stroke="#e3fbff" stroke-opacity=".6" stroke-width=".6"/>
+    <path d="M${sx - 17},${sy - 18} C${sx - 12},${sy - 25} ${sx - 3},${sy - 26} ${sx + 4},${sy - 25}" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/>
+    <ellipse cx="${sx}" cy="${sy}" rx="78" ry="14" fill="url(#${id}hull)"/>
+    <ellipse cx="${sx}" cy="${sy - 3}" rx="70" ry="8" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".7"/>
+    <path d="M${sx - 78},${sy} C${sx - 60},${sy + 16} ${sx + 60},${sy + 16} ${sx + 78},${sy}" fill="none" stroke="#2b1848" stroke-opacity=".55" stroke-width="1.2"/>
+    ${rim}
+    <ellipse cx="${sx}" cy="${sy + 11}" rx="28" ry="5" fill="#bff6ff"/>
+    <ellipse cx="${sx}" cy="${sy + 11}" rx="17" ry="2.8" fill="#fff"/></g>`;
+  // the beam, from the saucer's belly down to the desk
+  const beamTop = sy + 11, beamFoot = 238;
+  const cone = `M${sx - 26},${beamTop} L${sx + 26},${beamTop} L246,${beamFoot} L24,${beamFoot} Z`;
+  const beam = `<path d="${cone}" fill="url(#${id}beam)" opacity="${hot ? 1 : 0.8}"/>` +
+    (hot ? `<path d="${cone}" fill="${C.pink}" opacity=".16" filter="url(#${id}b6)"/><path d="M${sx - 12},${beamTop} L${sx + 12},${beamTop} L${sx + 60},${beamFoot} L${sx - 60},${beamFoot} Z" fill="#fff" opacity=".18" filter="url(#${id}b3)"/>` : "") +
+    [0.22, 0.45, 0.7].map((t) => {
+      const y = beamTop + (beamFoot - beamTop) * t, half = 26 + (109 - 26) * t;
+      return `<ellipse cx="${sx}" cy="${f(y)}" rx="${f(half)}" ry="${f(3 + t * 6)}" fill="none" stroke="#e3fbff" stroke-opacity="${hot ? 0.45 : 0.22}" stroke-width=".7"/>`;
+    }).join("");
+  // the dotfiles coming down: sheets with a dot, the corner folded
+  const sheets = [[110, 128, -18], [158, 134, 14], [90, 154, 10], [134, 148, -6], [178, 158, -20], [204, 178, 16]];
+  let files = "";
+  for (const [x, y, a] of sheets) {
+    if (hot) files += `<circle cx="${x}" cy="${y}" r="10" fill="${C.pink}" opacity=".35" filter="url(#${id}b3)"/>`;
+    files += `<g transform="rotate(${a} ${x} ${y})" opacity="${hot ? 1 : 0.92}">
+      <path d="M${x - 6.5},${y - 8} h9 l4,4 v12 h-13 Z" fill="#fff4f1"/><path d="M${x + 2.5},${y - 8} v4 h4" fill="#cfe9f2"/>
+      <circle cx="${x - 1}" cy="${y + 0.5}" r="2.4" fill="${C.magenta}"/>
+      <path d="M${x - 4},${y + 5} h7" stroke="#6a4bc4" stroke-width=".8"/></g>`;
+  }
+  // one screen, drawn twice: the same wallpaper, the same terminal, the same cursor
+  const screen = (x, y, w, h) => {
+    const t = `${id}s${x}`;
+    return `<clipPath id="${t}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1"/></clipPath>
+    <g clip-path="url(#${t})">
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${id}wall)"/>
+      <circle cx="${f(x + w * 0.72)}" cy="${f(y + h * 0.66)}" r="${f(h * 0.2)}" fill="#ffd8a8" opacity=".9"/>
+      <rect x="${f(x)}" y="${f(y + h * 0.78)}" width="${w}" height="${f(h * 0.22)}" fill="#2a1442"/>
+      <rect x="${f(x + w * 0.1)}" y="${f(y + h * 0.14)}" width="${f(w * 0.56)}" height="${f(h * 0.56)}" rx="1.4" fill="#0d0716" fill-opacity=".9" stroke="${cy}" stroke-opacity=".5" stroke-width=".5"/>
+      ${[0, 1, 2].map((k) => `<circle cx="${f(x + w * 0.1 + 3 + k * 3)}" cy="${f(y + h * 0.14 + 2.6)}" r=".9" fill="${[C.magenta, C.sodium, cy][k]}"/>`).join("")}
+      ${[0, 1, 2].map((k) => `<path d="M${f(x + w * 0.1 + 3)},${f(y + h * (0.34 + k * 0.1))} h${f(w * (0.4 - k * 0.1))}" stroke="${cy}" stroke-opacity=".75" stroke-width=".9"/>`).join("")}
+      <rect x="${f(x + w * 0.1 + 3)}" y="${f(y + h * 0.6)}" width="3" height="${f(h * 0.06)}" fill="${C.magenta}"/>
+    </g>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1" fill="#fff" opacity="${hot ? 0.12 : 0.04}"/>`;
+  };
+  const plateText = (x, y, label) => `<rect x="${f(x - label.length * 2.2 - 4)}" y="${y - 6}" width="${f(label.length * 4.4 + 8)}" height="8.5" rx="1" fill="#0a0828" stroke="${cy}" stroke-opacity=".6" stroke-width=".5"/><text x="${x}" y="${y}" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="5.2" letter-spacing=".8" fill="${cy}">${label}</text>`;
+  const machines = `
+    <rect x="0" y="236" width="${W}" height="30" fill="url(#${id}desk)"/>
+    <path d="M0,236.5 H${W}" stroke="${cy}" stroke-opacity="${hot ? 0.9 : 0.5}" stroke-width=".8"/>
+    <ellipse cx="${sx}" cy="237" rx="${hot ? 118 : 104}" ry="6" fill="${cy}" opacity="${hot ? 0.5 : 0.28}" filter="url(#${id}b3)"/>
+    <!-- the desktop's monitor -->
+    <rect x="98" y="218" width="10" height="16" fill="#2b1848"/><path d="M84,236 h38 l-4,-4 h-30 Z" fill="#3a2a5c"/>
+    <rect x="52" y="168" width="102" height="54" rx="3" fill="#1a1238" stroke="#5a4a7a" stroke-width=".8"/>
+    ${screen(56, 172, 94, 46)}
+    <!-- the laptop -->
+    <rect x="164" y="186" width="74" height="46" rx="3" fill="#1a1238" stroke="#5a4a7a" stroke-width=".8"/>
+    ${screen(168, 190, 66, 38)}
+    <path d="M158,232 h86 l6,5 h-98 Z" fill="#4a3a6a"/><path d="M190,233.5 h22" stroke="#2b1848" stroke-width="1"/>
+    ${plateText(103, 252, "WINDOWS")}${plateText(201, 252, "CACHYOS")}`;
   const [t1, t2] = p.tag[lang];
   return `<symbol id="${id}" viewBox="0 0 ${W} ${H}">
   <defs>
-    <linearGradient id="${id}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16245e"/><stop offset=".55" stop-color="#0f1748"/><stop offset="1" stop-color="#0a0828"/></linearGradient>
-    <radialGradient id="${id}lamp" cx=".55" cy=".42" r=".55"><stop offset="0" stop-color="#3a63c8" stop-opacity=".55"/><stop offset="1" stop-color="#3a63c8" stop-opacity="0"/></radialGradient>
-    <radialGradient id="${id}chrome" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#e6dcf0"/><stop offset=".7" stop-color="#8f7cae"/><stop offset="1" stop-color="#3a2a5c"/></radialGradient>
-    <radialGradient id="${id}face" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#fffaf2"/><stop offset=".7" stop-color="#efe2d2"/><stop offset="1" stop-color="#c9b4b0"/></radialGradient>
-    <radialGradient id="${id}knob" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#d8cce6"/><stop offset="1" stop-color="#6a5a8a"/></radialGradient>
+    <linearGradient id="${id}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c0f3a"/><stop offset=".55" stop-color="#16245e"/><stop offset="1" stop-color="#0a0828"/></linearGradient>
+    <radialGradient id="${id}lamp" cx=".5" cy=".3" r=".55"><stop offset="0" stop-color="#3a63c8" stop-opacity=".5"/><stop offset="1" stop-color="#3a63c8" stop-opacity="0"/></radialGradient>
+    <linearGradient id="${id}hull" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#d6cce6"/><stop offset=".6" stop-color="#8f7cae"/><stop offset="1" stop-color="#3a2a5c"/></linearGradient>
+    <linearGradient id="${id}dome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e3fbff" stop-opacity=".95"/><stop offset=".6" stop-color="#5fd8ee" stop-opacity=".75"/><stop offset="1" stop-color="#2a6a9a" stop-opacity=".9"/></linearGradient>
+    <linearGradient id="${id}beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bff6ff" stop-opacity=".62"/><stop offset=".55" stop-color="${cy}" stop-opacity=".2"/><stop offset="1" stop-color="${cy}" stop-opacity=".1"/></linearGradient>
+    <linearGradient id="${id}wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a4bc4"/><stop offset=".55" stop-color="#e39bbd"/><stop offset="1" stop-color="#ff8a5c"/></linearGradient>
+    <linearGradient id="${id}desk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b1848"/><stop offset="1" stop-color="#0a0828"/></linearGradient>
     <linearGradient id="${id}title" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#e3fbff"/><stop offset="1" stop-color="#8fe9f7"/></linearGradient>
     <filter id="${id}b6" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="6"/></filter>
     <filter id="${id}b3" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter>
     ${paperGrain(id + "g")}
   </defs>
   <rect width="${W}" height="${H}" fill="url(#${id}bg)"/>
-  <rect width="${W}" height="${H}" fill="url(#${id}lamp)" opacity="${hot ? 1.6 : 1}"/>${hot ? `<rect width="${W}" height="${H}" fill="url(#${id}lamp)"/>` : ""}
-  <g>${grid}</g>
-  <g transform="rotate(-3 135 160)">${plan}</g>
-  ${dial}
+  <rect width="${W}" height="${H}" fill="url(#${id}lamp)" opacity="${hot ? 1.6 : 1}"/>
+  <g>${stars}</g>
+  ${beam}
+  ${saucer}
+  ${files}
+  ${machines}
   <rect y="262" width="${W}" height="138" fill="#0a0828" fill-opacity=".55"/>
   ${txt(W / 2, 30, 8.6, t1, { ls: 3.2 })}
   ${txt(W / 2, 43, 8.6, t2, { ls: 3.2, fill: C.pink })}
-  <text x="146" y="324" text-anchor="middle" font-family="'Big Shoulders Display'" font-weight="900" font-size="66" letter-spacing="1" fill="${C.cyan}" opacity=".55" filter="url(#${id}b3)" textLength="196" lengthAdjust="spacingAndGlyphs">DOTFILES</text>
+  <text x="146" y="324" text-anchor="middle" font-family="'Big Shoulders Display'" font-weight="900" font-size="66" letter-spacing="1" fill="${cy}" opacity=".55" filter="url(#${id}b3)" textLength="196" lengthAdjust="spacingAndGlyphs">DOTFILES</text>
   <text x="146" y="324" text-anchor="middle" font-family="'Big Shoulders Display'" font-weight="900" font-size="66" letter-spacing="1" fill="url(#${id}title)" textLength="196" lengthAdjust="spacingAndGlyphs">DOTFILES</text>
   <circle cx="38" cy="318" r="6.4" fill="${C.magenta}"/>
   ${txt(W / 2, 341, 8.6, p.sub[lang], { w: 500, fill: C.pink, ls: 0.4, extra: subFit(p.sub[lang], 8.6) })}
-  ${billing(357, p.bill[lang], { width: 230, size: 14 })}
-  ${footer(lang, p, { y: 384 })}
+  ${billing(359, p.bill[lang], { width: 230, size: 16 })}
+  ${footer(lang, p, { y: 382 })}
   ${grainRect(id + "g", 0.16)}
 </symbol>`;
 }
@@ -291,8 +316,8 @@ function tessera(p, lang, id, hot = false) {
 function atlas(p, lang, id, hot = false) {
   const r = rng(37);
   const L = lang === "es"
-    ? { comp: "COMPONENTES", design: "DISEÑO", dec: "DECISIONES", risk: "RIESGOS", note: ["AGENTE:", "LEE ESTO", "PRIMERO."], card: ["DECISIÓN 014", "Los tokens", "no se tocan."], stamp: "EVIDENCIAS", sheet: "ATLAS · HOJA 1", tokens: "TOKENS", button: "BOTÓN ×14", modal: "¿RIESGO?" }
-    : { comp: "COMPONENTS", design: "DESIGN", dec: "DECISIONS", risk: "RISKS", note: ["AGENT:", "READ THIS", "FIRST."], card: ["DECISION 014", "The tokens", "stay put."], stamp: "EVIDENCE", sheet: "ATLAS · SHEET 1", tokens: "TOKENS", button: "BUTTON ×14", modal: "RISK?" };
+    ? { comp: "COMPONENTES", design: "DISEÑO", dec: "DECISIONES", risk: "RIESGOS", note: ["¿QUIÉN", "TOCÓ LOS", "TOKENS?"], card: ["DECISIÓN 014", "Los tokens", "no se tocan."], stamp: "EVIDENCIAS", sheet: "ATLAS · HOJA 1", tokens: "TOKENS", button: "BOTÓN ×14", modal: "¿RIESGO?" }
+    : { comp: "COMPONENTS", design: "DESIGN", dec: "DECISIONS", risk: "RISKS", note: ["WHO", "MOVED THE", "TOKENS?"], card: ["DECISION 014", "The tokens", "stay put."], stamp: "EVIDENCE", sheet: "ATLAS · SHEET 1", tokens: "TOKENS", button: "BUTTON ×14", modal: "RISK?" };
   // The stamp's box fits its word; a long one (EVIDENCIAS) moves left so it stays on the sheet.
   const stampW = L.stamp.length * 8.2 + 14;
   const stampX = Math.min(176, W - 12 - stampW);
@@ -356,7 +381,7 @@ function atlas(p, lang, id, hot = false) {
     <rect x="121" y="206" width="56" height="52" fill="${C.sodium}"/><rect x="121" y="206" width="56" height="9" fill="#f5c45a"/>
     ${L.note.map((l, i) => `<text x="128" y="${226 + i * 10}" font-family="'Special Elite'" font-size="8" fill="#2b1848">${l}</text>`).join("")}</g>`;
   // red string: from the items to the districts
-  const ends = [[34, 58, ...pins.comp], [228, 62, ...pins.design], [52, 210, ...pins.dec], [224, 196, ...pins.risk], [150, 212, ...pins.comp], [150, 212, ...pins.risk]];
+  const ends = [[34, 58, ...pins.comp], [228, 62, ...pins.design], [88, 210, ...pins.dec], [224, 196, ...pins.risk], [150, 212, ...pins.comp], [150, 212, ...pins.risk]];
   let strings = "";
   for (const [a, b, c, d] of ends) {
     const mxp = (a + c) / 2, myp = (b + d) / 2 + 6;
@@ -380,7 +405,7 @@ function atlas(p, lang, id, hot = false) {
   <g transform="rotate(-3 137 155)"><rect x="58" y="100" width="166" height="122" fill="#1a0b14" opacity=".4" filter="url(#${id}sh)"/>${map}</g>
   ${polaroid}${swatch}${card}${photo}${sticky}
   ${strings}
-  ${pin(...pins.comp)}${pin(...pins.design)}${pin(...pins.dec)}${pin(...pins.risk, "#ffd27a")}${pin(34, 56)}${pin(228, 60)}${pin(52, 208)}${pin(224, 194)}${pin(150, 210, "#19e6ff")}
+  ${pin(...pins.comp)}${pin(...pins.design)}${pin(...pins.dec)}${pin(...pins.risk, "#ffd27a")}${pin(34, 56)}${pin(228, 60)}${pin(88, 208)}${pin(224, 194)}${pin(150, 210, "#19e6ff")}
   <g transform="rotate(-14 210 150)" opacity=".8"><rect x="${stampX}" y="138" width="${stampW}" height="22" rx="2" fill="none" stroke="#e0185a" stroke-width="1.8"/><text x="${stampX + 7}" y="154" font-family="'Big Shoulders Display'" font-weight="900" font-size="15" letter-spacing="2" fill="#e0185a">${L.stamp}</text></g>
   <rect y="250" width="${W}" height="150" fill="url(#${id}fade)"/>
   <rect width="${W}" height="46" fill="url(#${id}top)"/>
@@ -390,7 +415,7 @@ function atlas(p, lang, id, hot = false) {
   <text x="${W / 2 + 2}" y="345" text-anchor="middle" font-family="Anton" font-size="58" fill="#ff2d6f" opacity=".85" textLength="196" lengthAdjust="spacingAndGlyphs">ATLAS</text>
   <text x="${W / 2}" y="342" text-anchor="middle" font-family="Anton" font-size="58" fill="${C.cream}" textLength="196" lengthAdjust="spacingAndGlyphs">ATLAS</text>
   ${txt(W / 2, 355, 8.2, p.sub[lang], { w: 500, fill: "#ffd8a8", ls: 0.3, extra: subFit(p.sub[lang], 8.2) })}
-  ${billing(370.5, p.bill[lang], { width: 234, size: 11.5, op: 0.72 })}
+  ${billing(368, p.bill[lang], { width: 234, size: 10.5, op: 0.74 })}
   ${footer(lang, p, { y: 389 })}
   ${grainRect(id + "g", 0.2)}
 </symbol>`;
@@ -411,8 +436,8 @@ function expenses(p, lang, id, hot = false) {
     bokeh += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(rr)}" fill="${cols[i % cols.length]}" opacity="${f(0.05 + r() * 0.12)}"/>`;
   }
   const L = lang === "es"
-    ? { day: "viernes 30", n1: ["El alquiler vence mañana.", "650,00 € · toca para marcar pagado"], n2: ["Gimnasio · cobra en 3 días", "29,90 €"], app: "EXPENSES LOG", now: "1 min", stamp: "PAGADO", off: "SIN CONEXIÓN · EN COLA" }
-    : { day: "Friday 30", n1: ["Rent is due tomorrow.", "€650.00 · tap to mark it paid"], n2: ["Gym · charges in 3 days", "€29.90"], app: "EXPENSES LOG", now: "1m", stamp: "PAID", off: "OFFLINE · QUEUED" };
+    ? { day: "viernes 30", n1: ["El alquiler vence mañana.", "650,00 €"], n2: ["Gimnasio · cobra en 3 días", "29,90 €"], app: "EXPENSES LOG", now: "1 min", stamp: "PAGADO" }
+    : { day: "Friday 30", n1: ["Rent is due tomorrow.", "€650.00"], n2: ["Gym · charges in 3 days", "€29.90"], app: "EXPENSES LOG", now: "1m", stamp: "PAID" };
   const stampW = L.stamp.length * 15 + 22;
   const [t1, t2] = p.tag[lang];
   return `<symbol id="${id}" viewBox="0 0 ${W} ${H}">
@@ -465,7 +490,6 @@ function expenses(p, lang, id, hot = false) {
         <text x="98" y="185" font-family="Space Grotesk" font-weight="700" font-size="5.6" fill="#1a0b2c">${L.n2[0]}</text>
         <text x="98" y="193" font-family="Space Grotesk" font-weight="500" font-size="5" fill="#4a2a6a">${L.n2[1]}</text>
       </g>
-      <text x="140" y="211" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="4.4" fill="#fff4f1" fill-opacity=".75" letter-spacing=".8">${L.off}</text>
     </g>
     <rect x="124" y="70" width="32" height="7" rx="3.5" fill="#0d0716"/>
     <path d="M94,70 L128,70 L98,290 L92,290 Z" fill="#fff" opacity=".06"/>
@@ -484,7 +508,7 @@ function expenses(p, lang, id, hot = false) {
   <path d="M74,340 H108 M162,340 H196" stroke="#ffd8a8" stroke-width=".7"/>
   ${txt(W / 2, 344, 11, "LOG", { fam: "Playfair Display", w: 900, ls: 9, fill: "#ffd8a8" })}
   ${txt(W / 2, 354.5, 7.8, p.sub[lang], { w: 500, fill: C.cream, op: 0.85, ls: 0.3, extra: subFit(p.sub[lang], 7.8) })}
-  ${billing(370, p.bill[lang], { width: 234, size: 11.5, op: 0.72 })}
+  ${billing(368, p.bill[lang], { width: 234, size: 10.5, op: 0.74 })}
   ${footer(lang, p, { y: 389 })}
   ${grainRect(id + "g", 0.16)}
 </symbol>`;

@@ -35,8 +35,9 @@ also exists as real DOM for keyboard and screen-reader users.
 - `pnpm typecheck` — `tsc --noEmit`.
 - `pnpm test` — Vitest unit tests (`src/**/*.test.ts`): locale negotiation,
   proxy redirects, the deterministic city layout, the shader `pow()` rule,
-  the loading screen's tips, keys and key-art budget, and the hero's scroll
-  UX acceptance checks (`scroll/acceptance.test.ts`).
+  the loading screen's tips, keys and key-art budget, the content map
+  (`i18n/contentMap.test.ts`), and the hero's scroll UX acceptance checks
+  (`scroll/acceptance.test.ts`).
   Add a test for every new pure function.
 - `pnpm build` — production build. `next/font/google` downloads fonts at build
   time, so the build needs access to `fonts.googleapis.com` and `fonts.gstatic.com`.
@@ -72,9 +73,28 @@ also exists as real DOM for keyboard and screen-reader users.
   The home page runs, in order: the hero, THE USUAL SUSPECTS (`#suspects`),
   the career city (still to come: a comment in `HomeMain.tsx` marks its
   place), STATS (`#stats`), the finale's cinema (`#projects`) and the end
-  credits (`#credits`, ending on `#contact`). `HomeMain.tsx` renders them, so
+  credits (`#credits`, with `#contact` before their fine print). `HomeMain.tsx` renders them, so
   `anchors.test.ts` can render the page in both locales: every
-  `href="#..."` must reach an element id that exists (no dead links).
+  `href="#..."` must reach an element id that exists (no dead links). Any
+  other path under a locale (`[...rest]`) renders the localized 404
+  (`not-found.tsx`), with its own title (`notFound.title`, "Wrong exit —
+  Jesús Molano").
+- Metadata: the layout's `generateMetadata` gives each locale its title,
+  description, canonical and hreflang links and a link preview card (Open
+  Graph and Twitter): `public/og/<locale>.jpg`, 1200 × 630 and under 300 KB
+  (`lib/shareCard.ts`, tested), the cinema's night plate with his name and
+  role on the marquee and the posters in their cases, built by
+  `python3 tools/art/og/build.py` (Pillow; Bebas Neue fetched once into
+  `.art-cache/fonts/`, or `--font` names a copy). Rebuild the cards when the
+  plate, a poster, his name or his role changes: the script writes what it
+  used to `tools/art/og/sources.json` (the words, the SHA-256 of the plate,
+  each poster and the card), and `shareCard.test.ts` fails on a card left
+  behind. `src/app/robots.ts` and `src/app/sitemap.ts` list
+  both locales. Every absolute URL comes from `siteUrl()` (`lib/siteUrl.ts`,
+  tested): `NEXT_PUBLIC_SITE_URL` if set (a custom domain), else
+  `https://$VERCEL_PROJECT_PRODUCTION_URL` (Vercel sets it on every
+  deployment, previews too: the production domain,
+  portfolio-v2-sage-six-74.vercel.app today), else `http://localhost:3000`.
 - `src/proxy.ts` — redirects `/` to `/en` or `/es` from `Accept-Language`.
 - `src/i18n` — locale config and JSON dictionaries. English is the default,
   Spanish is the second language. Add keys to both files.
@@ -290,9 +310,12 @@ also exists as real DOM for keyboard and screen-reader users.
     equals `AVENUE.zTo`. Skyline and landmark share the silhouette shader
     (`createSilhouetteUniforms`: violet ramp, warm sun-side rim).
   - Rooftop billboards (`Billboards.tsx`, layout in `billboardLayout.ts`)
-    show `hero.billboards`, site facts only, from one canvas atlas drawn in
-    the display font. They stay unlit while the title is up and switch on
-    one after another as it leaves (`neonLevel`). `sightCap` keeps every
+    show `hero.billboards` from one canvas atlas drawn in the display font:
+    his name and his role, then two ads for stations on the dial (BABYLON
+    105.1, CROCKETT 91.4), a hint at the radio; nothing else (tested), the
+    same in both languages. The first two repeat the title on purpose. They
+    stay unlit while the title is up and switch on one after another as it
+    leaves (`neonLevel`). `sightCap` keeps every
     building under the sightlines to the boards, and the layout tests cast
     rays (`sightlines.ts`) so nothing hides a board or the tower's crown.
   - The sky is a dome centred on the camera with a direction-based gradient,
@@ -356,8 +379,15 @@ also exists as real DOM for keyboard and screen-reader users.
     reads about driving. The same kinds and conditions at every index in
     both languages, 120 characters at most (the card reserves the lines),
     `tips[0]` a tip with no device condition, all six stations named, and
-    no tip retells a hero line (the film's beats are the film's). Natural
-    sentences, never telegraphic. `tips.ts` orders them (`tipOrder`: the
+    no tip retells a hero line (the film's beats are the film's) or gives
+    away a later section (the cats and their complaint, STATS' bars, map
+    and favourites, the cinema, the credits; tested). Nothing promises what
+    is not on the page yet: the career city's tip ("a sign for every
+    employer") comes back with the city. Every trivia is true of the site
+    (the aviators mirror our sky, the palms are made in code, the grain
+    changes 24 times a second, every station keeps its own clock, the
+    traffic going her way holds her pace). Natural sentences, never
+    telegraphic. `tips.ts` orders them (`tipOrder`: the
     first card, then her tips in authored order alternating with shuffled
     trivia) and times them (`tipDuration`: reading time plus 1.5 s, at
     least 5 s); hover or focus holds a tip, Next skips it.
@@ -402,46 +432,80 @@ also exists as real DOM for keyboard and screen-reader users.
     wide for its strip is nudged inward (`phoneNudge`). Colours are
     `lineup` tokens.
   - Copy in `suspects` (tested in `copy.test.ts`: the header says Tenerife
-    or no city, never Madrid; the complaint keeps the owner's words; the
+    or no city, never Madrid; the slug says "Flatmates" / "Compañeros de
+    piso", the owner's words without his name, which the section shows
+    once, on the complaint; the complaint keeps the owner's words; the
     eating joke belongs to STATS). The Spanish line follows the Spanish
     dub of *Casablanca*: "Arresten a los sospechosos habituales." The
     cats are the Blender renders of `tools/blender/render_interlude.py`
     (credited in the end credits with the XR Blocks "Cat" base, Apache-2.0);
     `tools/art/suspects/placeholder.mjs` still writes flat silhouettes for
     layout work only.
+- `src/features/career` — the career, written down once (`career.ts`,
+  pure, tested): per job, oldest first, the employer as it writes itself
+  (for the army, his unit, the Batallón de Zapadores XVI), the years, its
+  stop in the career city (`#work-*`) and the role, in English in both
+  languages (Frontend Developer, Full Stack Developer, Frontend Engineer)
+  except the army's (Zapador / Combat engineer; the city's service record
+  spells it Soldado zapador). Las Palmas de Gran Canaria is the army's
+  alone: no civilian job names a city, and no copy says Madrid or remote
+  (tested over both dictionaries). Heuristik is on air, LIVE in English
+  everywhere. STATS derives its main missions from it (`statsLayout.ts`
+  adds only where each one sits on the map; `stats.missions.items` in the
+  dictionaries is tested to say the same), and the career city reads it
+  too. It imports nothing at runtime: `statsLayout.ts` imports it by its
+  `.ts` file name (`allowImportingTsExtensions`), because
+  `tools/art/stats/map.mjs` loads that file in Node.
 - `src/features/stats` — STATS (`#stats`), the static pause menu after the
   career city: one screen with two tabs, MAP and STATS. A server component
   (`Stats.tsx`), every word of both tabs DOM text in the server HTML; the
   tabs are its only client code (`StatsTabs.tsx`, below). Tab 1 (MAP,
   `#stats`) is Tenerife at night under parody names (GTA-style: real
-  places, renamed; Spanish in both locales, `stats.map.places`). The
-  career is five main missions: the army in a Gran Canaria box ("enemy
-  territory"), then the four jobs since, every one done from home, as
-  badges beside the HQ glyph (no job points at an office), which sits in
+  places, renamed; Spanish in both locales, `stats.map.places`; each one
+  gives the real town away at a glance, like GÜIMARCIANO for Güímar). The
+  career is five main missions: the army in a Gran Canaria box (the
+  island and its city named, nothing more: the Tenerife-versus-Gran-Canaria
+  joke is the hero's, and the army's road-opening is the career city's),
+  then the four jobs since, every one done from home, as badges beside
+  the HQ glyph (no job points at an office), which sits in
   the Teide's caldera so it never points at a real home (tested);
   Heuristik is the only red blip
   (`palette.onAir`). Side activities are the favourites as places a fan
   recognises, never as titles: pit lane "Box 33" at the circuit Atogo has
   been promising for decades (F1: Alonso's long-awaited 33rd win, and
   Verstappen's old number; the owner chose 33: never change it to a
-  current car number, `statsCopy.test.ts` holds it), a box that moved in Masca (Metal Gear), pizza without olives in
-  Puerto (Devil May Cry), the arena on the Sahara sand of Las Teresitas
+  current car number, `statsCopy.test.ts` holds it), a box that moved in
+  Masca (Metal Gear; the box is this blip's alone, the sheet's STEALTH bar
+  is about the cats and a tin), pizza without olives in Puerto (Devil May
+  Cry), the arena on the Sahara sand of Las Teresitas
   (Gladiator; "Fuerza y honor" is the Spanish dub), a cash-only car wash at
   the Malpaís de Güímar (Breaking Bad), a law office behind a nail salon
   (Better Call Saul), a betting shop with caps on in Garachico (Peaky
   Blinders), the player at the south airport ("Eh, tú, al fin has
   despertado", Skyrim's Spanish line) and the ringing booth (The Matrix),
-  the only link on to `#projects`. Beside the map, the main missions
-  (plain rows until the career city lands; turning on
+  the only link on to `#projects` (STATS names no side project: they are
+  the cinema's, `statsMarkup.test.ts`). The booth's link is named by its
+  own words, the visible "Answer to continue" then an unseen ": side
+  projects", never an `aria-label` that drops the words she can see
+  (label in name, tested). The main missions are the career
+  index (plain rows until the career city lands; turning on
   `CAREER_CITY_ON_PAGE` in `statsLayout.ts` makes them links to its
-  `#work-*` stops) and the side missions (his side projects, each a
-  link to its poster in the cinema). Tab 2 (STATS, `#stats-sheet`) is the character sheet:
+  `#work-*` stops), first in the page: from 1280 px a column beside the
+  map's frame, as tall as it (a subgrid), the badges on one route; from
+  700 to 1279 px a row of five above the map, each under its segment of
+  the progress line; on a phone a column before the map, so the content
+  comes before the map's way out. Tab 2 (STATS, `#stats-sheet`) is the
+  character sheet:
   a Cycles render of his driver model with Dante at his shoulder
   (`public/stats/portrait.{avif,webp}`, `tools/blender/build_stats_portrait.py`), the joke bars (appetite breaks out of
   its panel into the gap beside it; under 1280 px, where the panel meets
   the page's edge, the tracks are shorter and it breaks out of its track
-  only; the section has `overflow-x: clip`) and the records (the cats
-  are "3 + 1" in words alone, with no halo over the 1).
+  only; the section has `overflow-x: clip`) and the records: Dante's
+  wanted level (five stars since the cables), the countless "just one more
+  episode" and the Grand Prix kilometres without a ticket ("from the
+  sofa" is said once, under RACECRAFT). No record counts the cats and no
+  halo shows anywhere (`statsCopy.test.ts`); each value's glyphs are
+  hidden from screen readers, which hear `spoken` instead.
   `statsLayout.ts` holds the projection, every point as real longitude
   and latitude, the caption sides and the page geometry; its tests check
   that the blips stand on land and that no caption, name or marker
@@ -454,9 +518,11 @@ also exists as real DOM for keyboard and screen-reader users.
     focus, roving tabindex, the open panel focusable next), `[` and `]` as
     shoulder buttons while STATS crosses the middle of the viewport or
     holds the focus (never Q or E: Q is the radio's), and a prompt to the
-    other tab at the foot beside RESUME, which brings the tab bar back into
-    view (on a phone the map runs for screens). A switch writes the tab's
-    fragment with `replaceState` (no scroll, no hashchange): `#stats` is
+    other tab at the foot, which brings the tab bar back into view (on a
+    phone the map runs for screens). Beside it RESUME (CONTINUAR) is a real
+    link on to `#projects`, like the booth, never a button-shaped label;
+    both prompts are 44 px targets that lay out as 24 px. A switch writes
+    the tab's fragment with `replaceState` (no scroll, no hashchange): `#stats` is
     MAP, `#stats-sheet` is STATS (`statsTabs.ts`, pure, tested: fragments
     and keys). A deep link opens its tab before `PageEntry` lands, through
     `lib/reveal.ts`, and lands the section's top with the panel focused.
@@ -470,11 +536,11 @@ also exists as real DOM for keyboard and screen-reader users.
     on the page (`display: none`), as tall as it needs. The map is never
     taller than the screen less everything around it (`MAP_CHROME_PX`, the
     paddings, menu bar, map title, source line and prompts, mirrored in
-    `Stats.module.css`), and beside the map (1280 px up) the missions and
-    side missions use tighter rows, so the MAP tab fits 1440 × 900. The
-    section lands at the viewport's top edge (a negative `scroll-margin-top`
-    cancels the html scroll-padding: its own 64 px top padding clears the
-    page controls).
+    `Stats.module.css`), and beside the map (1280 px up) the missions take
+    the frame's height, so the MAP tab fits 1440 × 900. The section lands
+    at the viewport's top edge (a negative `scroll-margin-top` cancels the
+    html scroll-padding: its own 64 px top padding clears the page
+    controls).
   - Without JS (the stacking only applies under `@media (scripting:
     enabled)`) both panels stay on the page, one under the other, with two
     plain links; the tab roles come with hydration (`statsMarkup.test.ts`
@@ -491,14 +557,26 @@ also exists as real DOM for keyboard and screen-reader users.
     night-wide,posters]`; Playwright's Chromium, Google Fonts cached in
     `.art-cache/`, Pillow AVIF + WebP via `tools/art/encode.py`). It writes
     `public/finale/*` and `plates.json`: the marquee board, its rails, the
-    bulb strips and the poster cases in plate units. The live DOM goes on
+    bulb strips, the poster cases and the box office in plate units. The live DOM goes on
     the plate in cqw of a container as wide as it (`finaleLayout.ts`,
     tested): changeable letters in Bebas Neue (`--va-font-marquee`; kits
     have no accents, so accents are taped on), chasing bulbs, and four
     cases. Change the art in the generators, never in the images; the
     posters' taglines come from `projects.posters` in the dictionaries.
     Each poster is encoded 432 and 216 px wide, a srcset (`links.ts`,
-    `POSTER_SIZES`): a case on a 1x facade takes the small one.
+    `POSTER_SIZES`): a case on a 1x facade takes the small one. The dawn
+    plates hang the same posters, dimmed, so a poster change rebuilds
+    them too (`--only dawn-wide,dawn-tall,posters`), and then the link
+    preview cards (`tools/art/og/build.py`), which hang them as well.
+  - Every part of a poster has one job, and none repeats another: the
+    tagline and the line under the title (`tagline`, `sub`) make the
+    joke; the billing block (baked in `posters.mjs`) gives names and
+    stack and opens with THE AFTERGLOW PRESENTS (the cinema presents,
+    never his name); the caption under the case (`oneLiner`) says plainly
+    what the project does. A poster only claims what its repository does:
+    dotfiles is a fifties sci-fi bill, a saucer beaming his setup onto a
+    Windows and a CachyOS machine (no heist, no Hyprland), and Expenses
+    Log never promises a push reminder without a connection.
   - The car parked at the kerb on the dawn plates is not drawn: it is a
     Cycles render of the hero's own `convertible.glb`
     (`tools/blender/render_finale_car.py`: the hero's paint, top down,
@@ -510,19 +588,39 @@ also exists as real DOM for keyboard and screen-reader users.
     camera or car place: after moving a dawn camera or the car, update
     `VIEWS` in the script and re-render before rebuilding the plates.
   - Each side project is one link (`links.ts`, `PosterCase.tsx`): its case
-    on the facade and its caption in the bill below. Hover (only where a
+    on the facade and its caption in the bill below. Its name is the repo
+    and the GitHub cue; its description is the genre, then the words that
+    are only in the poster's image (tagline and `sub`, unseen) and the
+    caption, so a screen reader gets the whole joke (`links.test.ts`).
+    Hover (only where a
     pointer can hover) or keyboard focus chases its bulbs, shows the
     poster's lit state and re-letters the marquee (`ProjectsMarquee.tsx`);
     reduced motion stops the chases and cuts the letters.
+  - The painted box office (TICKETS / TAQUILLA) is a link too, a plain
+    same-page one to `#contact` (`PageEntry` takes it), placed from
+    `plates.json` on both night plates: hover or focus lights it and shows
+    where it leads; on touch that chip shows from the start. The marquee's
+    second row bills the show as FREE ADMISSION / ENTRADA LIBRE (the code
+    is open; "off the clock" is STATS's).
   - The credits roll is the page's own scroll: on wide screens the dawn
     frame is sticky and the roll scrolls over its right side. It is real
-    text and a plain CV (`credits.ts`, tested): no city for the civilian
-    jobs, Las Palmas for the army, Heuristik as Frontend
-    Engineer, 2026 to LIVE (in English everywhere). It keeps every licence
-    credit (the CC BY 3.0 car, every radio track in its author's format,
-    the CC0 assets) and the typefaces, and ends on the GitHub and LinkedIn
-    tickets (`rel="me"`, never the email). Odin is not named in the
-    credits (the owner's call).
+    text (`credits.ts`, tested) and tells only what is its own, the
+    contact before the fine print (tested): the title and who wrote it
+    (his name once more, and in the copyright), the cast (the driver as
+    Himself; of the cats only the culprit, Dante: Odin is not named in the
+    credits, the owner's call), then THANKS FOR DRIVING BY and the GitHub
+    and LinkedIn tickets (`#contact`, `rel="me"`, never the email), then
+    the fine print: PROPS AND SETS (the CC BY 3.0 car, the CC0 traffic and
+    body, the cats' Apache-2.0 base as a modified version, the map's
+    public-domain relief), every radio track in its author's format, the
+    typefaces, HIS TOOLKIT and BUILT WITH (no name in both: what only this
+    site uses is in BUILT WITH alone; no Vue or Nuxt), smaller and two
+    credits to a row once the roll is wide enough (a container query: a
+    desktop window from about 990 px, a tablet's column), every word still
+    on the page, as CC BY asks. A link to `#contact` lands its head below
+    the roll's sticky top fade (`scroll-margin-top`), never dimmed under it. Then THE END and "Same time
+    tomorrow?". No job and no side project is named there (tested): STATS,
+    the career city and the cinema tell them.
 - `src/hooks` — SSR-safe media query hooks.
 - `src/lib` — small shared helpers: `onScreen.ts` says what an
   IntersectionObserver counts as on screen (an edge that only touches the
@@ -703,7 +801,16 @@ To add a track to a station:
   same way, the address naming the target as the browser's jump would.
   Never move the page with `scrollIntoView`, `window.scrollTo` or a bare
   `lenis.scrollTo(..., { immediate })` next to a native jump: use `goTo`.
-- The page controls (RADIO, EN/ES) are fixed at the top right, so `html`
+- The page controls (RADIO, EN/ES) are fixed at the top right
+  (`components/PageControls.tsx`). Over the hero's picture they float on
+  their own glass; anywhere else they sit on one backing (`data-backdrop`,
+  the `controlsBackdrop` token, opaque, drawn around them so they never
+  move), so the text of STATS and the credits never shows through. An
+  IntersectionObserver whose root is the line of pixels at their bottom
+  edge (`lineRootMargin`) watches the scene's wrapper (`data-scene` in
+  `HeroCanvas.tsx`): no work per frame. They ask again on every new path,
+  since a client-side navigation (the 404's way back) keeps the layout
+  that holds them. `html`
   has a `scroll-padding-top` (their inset, height and a 1rem gap,
   `globals.css`): a section reached by a link or by keyboard focus stops
   below them. Scripted scrolls (`scrollTo`, Lenis) ignore it; nothing
@@ -731,6 +838,67 @@ To add a track to a station:
   depth of field and the clear coat on the driver's lenses, and renders a
   smaller environment cube.
 - Deterministic layouts use `createRandom(seed)` so screenshots are stable.
+
+## Content map
+
+Each thing is told in full in one place; everywhere else gets at most a
+link or a wink (a name or a nod in passing, never a retelling). The
+sections were built one task at a time, each wanting to stand on its own,
+and together they told the career four times and the side projects three.
+Before writing copy, find the section that owns it here.
+`src/i18n/contentMap.test.ts` holds both dictionaries to the map: a side
+project's repository is named only under `projects.*`; an employer or a
+client only in the career index (`stats.missions.items`) and the career
+city's `work.*` keys, and so is the army's unit or service (Batallón de
+Zapadores XVI, Ejército de Tierra / Spanish Army); Gran Canaria only in
+`hero.lines`, on the STATS map's inset (its name, and the map's text
+alternative that describes it) and in the career city's `work.*` keys,
+where the army's posting is a fact, not the joke; the cardboard box only
+on the STATS map; "from the sofa" once; Madrid never. Widen an allowance only with a comment saying why. Baked text (the
+posters' billing blocks in `posters.mjs`, the city's canvases) is outside
+the dictionaries and the test: hold it to the map by hand.
+
+What each section is for, and what it owns:
+
+- Loading screen — the trailer: how to drive and what is on the radio. It
+  owns the controls, the stations and trivia about the shoot that no other
+  section tells; it gives nothing away.
+- Hero — who he is, in six lines: his name, his role, Tenerife, and the
+  army story with the Gran Canaria joke.
+- THE USUAL SUSPECTS — him at home: the four cats, the complaint and Dante
+  as the culprit.
+- The career city (still to come) — the career, once and whole: the five
+  jobs (employer, role, years, clients, stack, a link) and the army's
+  facts (the unit, Las Palmas).
+- STATS — him off the clock: the hobbies (the map's winks, the sheet, the
+  bars, the records). The career only as an index: the main missions, LIVE
+  and, with the city, links to its stops.
+- The cinema — what he makes for fun: the four side projects, each linked
+  to GitHub.
+- The end credits — the close and the contact: the cast, the licences, the
+  typefaces, what the site is built with, one list of his toolkit, and
+  the GitHub and LinkedIn tickets.
+
+Each subject, who tells it in full, and what the rest may do:
+
+- The five jobs: the career city (until it lands, STATS' main missions,
+  read from `src/features/career`). STATS: an index with links. The
+  credits: nothing.
+- The army's facts: the career city. The hero: the anecdote only. The
+  STATS map: the first badge, in the Gran Canaria inset, with no joke.
+- Tenerife against Gran Canaria: the hero. Nowhere else.
+- The side projects: the cinema. STATS and the credits: nothing (STATS'
+  ringing booth is a link to the cinema).
+- The cats: THE USUAL SUSPECTS. Winks only elsewhere: Dante as player 2
+  on the STATS sheet and in its wanted-level record, the STEALTH bar's tin
+  on the STATS sheet, the culprit in the credits' cast.
+- F1: STATS (the Box 33 blip, RACECRAFT and the Grand Prix record). The
+  loader: the pit-lane limiter tip only. The hero: its dashboard.
+- The cardboard box: the STATS map's Masca blip. Nowhere else.
+- His stack: the career city (per job) and the cinema (per project). The
+  credits: one toolkit list that shares no name with BUILT WITH.
+- The contact: the end credits. Elsewhere only links to `#contact` (the
+  cinema's box office).
 
 ## Content rules
 

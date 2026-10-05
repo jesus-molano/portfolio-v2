@@ -59,7 +59,7 @@ describe("marqueeTiles", () => {
   });
 
   it("keeps every letter only a hair crooked", () => {
-    for (const tile of marqueeTiles("TONIGHT · FOUR SIDE JOBS", 0)) {
+    for (const tile of marqueeTiles("TONIGHT · FOUR FEATURES", 0)) {
       expect(Math.abs(tile.tilt)).toBeLessThanOrEqual(0.9);
       expect(Math.abs(tile.drop)).toBeLessThanOrEqual(0.015);
     }
@@ -129,6 +129,25 @@ describe("the plates", () => {
     expect(c.frame.x + c.frame.w).toBeLessThan(d.frame.x);
     // Symmetric about the entrance.
     expect(a.frame.x + d.frame.x + d.frame.w).toBeCloseTo(plate.width, 0);
+  });
+
+  it("night plates: the box office, a link to the contact, stands under the marquee, between the cases, a finger wide on a phone", () => {
+    for (const name of ["night-wide", "night-tall"] as PlateName[]) {
+      const plate = PLATES[name];
+      const { booth } = plate;
+      // Centred on the entrance, under the marquee, inside the frame.
+      expect(booth.x + booth.w / 2, name).toBeCloseTo(plate.width / 2, 0);
+      expect(booth.y, name).toBeGreaterThan(plate.board.y + plate.board.h);
+      expect(booth.y + booth.h, name).toBeLessThanOrEqual(plate.height + 0.5);
+      // At least a 44 px target on a 360 px phone (the tall plate fills the width there).
+      if (name === "night-tall") {
+        expect((booth.w / plate.width) * 360, name).toBeGreaterThanOrEqual(44);
+        expect((booth.h / plate.width) * 360, name).toBeGreaterThanOrEqual(44);
+      }
+    }
+    const wide = PLATES["night-wide"];
+    expect(wide.cases[1].frame.x + wide.cases[1].frame.w).toBeLessThan(wide.booth.x);
+    expect(wide.booth.x + wide.booth.w).toBeLessThan(wide.cases[2].frame.x);
   });
 
   it("dawn plates keep their cases on the plate (dark, drawn in)", () => {

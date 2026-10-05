@@ -1,7 +1,8 @@
 {
   "meta": {
     "title": "Jesús Molano — Frontend Engineer",
-    "description": "Cinematic portfolio of Jesús Molano, frontend engineer. Vue, Nuxt, React and Next, under a neon sunset."
+    "description": "Cinematic portfolio of Jesús Molano, a Frontend Engineer from Tenerife: a sunset film you drive yourself.",
+    "imageAlt": "An art-deco cinema at night with “Jesús Molano, Frontend Engineer” on its marquee"
   },
   "nav": {
     "languageLabel": "Language",
@@ -64,7 +65,7 @@
     "skip": "Skip",
     "skipLabel": "Skip the intro",
     "skipHurry": "In a hurry?",
-    "sceneLabel": "Sunset drive over a causeway toward a neon city skyline and an art-deco tower at the end of the avenue, palm trees on both sides",
+    "sceneLabel": "Sunset drive over a causeway toward a city skyline and an art-deco tower at the end of the avenue, palm trees on both sides",
     "hud": {
       "title": "Jesús Molano",
       "subtitle": "Portfolio · work in progress",
@@ -81,8 +82,8 @@
     "billboards": [
       "JESÚS MOLANO",
       "FRONTEND ENGINEER",
-      "VUE · NUXT",
-      "REACT · NEXT"
+      "BABYLON 105.1",
+      "CROCKETT 91.4"
     ],
     "lines": [
       [
@@ -109,7 +110,7 @@
   "suspects": {
     "title": "The usual suspects",
     "place": "Line-up · Tenerife",
-    "associates": "J. Molano’s flatmates",
+    "associates": "Flatmates",
     "description": "A police line-up of Jesús's four cats in front of a height chart, each behind a numbered plate. Tom and Kira stand the tallest, Odin a little lower, and Dante, the kitten, is the smallest by a head.",
     "numberPrefix": "Nº",
     "stamp": "Guilty",
@@ -154,7 +155,7 @@
   },
   "loader": {
     "loading": "Loading the city",
-    "ready": "Loaded. Choose how to enter the city.",
+    "ready": "All set. Choose how to enter the city.",
     "slowLabel": "Slow connection",
     "slow": "Your connection is taking the scenic route. Enter now and the city will catch up, or wait for the full picture.",
     "labels": {
@@ -166,7 +167,7 @@
       {
         "kind": "tip",
         "when": ["motion"],
-        "text": "This film is not suitable for passengers: nothing moves until you scroll or swipe, because you're the one driving."
+        "text": "This film is not suitable for passengers: it won't move on until you scroll or swipe, because you're the one driving."
       },
       {
         "kind": "tip",
@@ -201,7 +202,7 @@
       {
         "kind": "tip",
         "when": [],
-        "text": "MR. WOLF solves problems with hard rock, LEAVE THE GUN brings the funk, and LOVE DADDY spins nineties hip-hop beats."
+        "text": "MR. WOLF plays hard rock, LEAVE THE GUN brings the funk and LOVE DADDY spins nineties hip-hop beats."
       },
       {
         "kind": "trivia",
@@ -211,27 +212,27 @@
       {
         "kind": "trivia",
         "when": [],
-        "text": "After the drive, his four cats face a line-up over scratched wardrobes and chewed cables, though only one did it."
+        "text": "The driver's aviators mirror the scene's own sky: the sunset you're watching is in his lenses too."
       },
       {
         "kind": "trivia",
         "when": [],
-        "text": "Later on, a stats screen measures his appetite. The bar runs out long before he does."
+        "text": "Every palm on the causeway is made in code, frond by frond."
+      },
+      {
+        "kind": "trivia",
+        "when": ["motion"],
+        "text": "The film grain changes 24 times a second, like a real reel."
       },
       {
         "kind": "trivia",
         "when": [],
-        "text": "Between The Godfather, Pulp Fiction and The Sopranos, he has watched enough crime to know a good getaway car."
+        "text": "Every station keeps its own clock: switch from one to another and you land mid-song."
       },
       {
         "kind": "trivia",
         "when": [],
-        "text": "At night the city lights a sign for every employer he has had, which is more neon than any CV has ever deserved."
-      },
-      {
-        "kind": "trivia",
-        "when": [],
-        "text": "Metal Gear taught him that a cardboard box is a fine place to hide. A loading screen isn't, so this one won't last long."
+        "text": "The cars going your way keep your exact pace, so nobody overtakes you, and you never overtake anyone either."
       }
     ],
     "withMusic": "Enter with music",
@@ -240,8 +241,8 @@
   },
   "stats": {
     "title": "PAUSED",
-    "sub": "OFF THE CLOCK · J. MOLANO",
-    "description": "This is a pause screen. Its map is Tenerife, more or less, with the towns renamed: it traces his career as five main missions, four completed and one still running, and hides his favourite games, films and series, and his Formula 1, as places on the island. Beside the map, his side missions, which are his side projects; the second tab is his character sheet, with his skills and records.",
+    "sub": "OFF THE CLOCK",
+    "description": "This is a pause screen. His main missions sum up his career in five: four completed and one still running. The map is Tenerife, more or less, with the towns renamed, and hides his favourite games, films and series around the island, and Formula 1 too. A phone booth that won't stop ringing leads to his side projects. The second tab is his character sheet, with his skills and records.",
     "tabs": [
       "MAP",
       "STATS"
@@ -262,7 +263,7 @@
         "americas": "PLAYA DE LAS TOALLAS",
         "cristianos": "LOS GUIRISTIANOS",
         "medano": "EL VENDAVAL",
-        "guimar": "GÜÍZA",
+        "guimar": "GÜIMARCIANO",
         "teresitas": "LAS SAHARITAS",
         "esperanza": "LA PACIENCIA",
         "anaga": "LA JUNGLA",
@@ -272,8 +273,7 @@
       },
       "inset": {
         "name": "GRAN CANARIA",
-        "city": "LAS PALMERITAS",
-        "caption": "Enemy territory: four years behind the lines."
+        "city": "LAS PALMERITAS"
       },
       "you": "Hey, you. You're finally awake.",
       "hq": "HQ in a volcano, obviously.",
@@ -289,8 +289,7 @@
       },
       "booth": {
         "caption": "A phone booth that won't stop ringing.",
-        "action": "Answer to continue",
-        "name": "A phone booth that won't stop ringing: answer it to go on to the side projects."
+        "action": "Answer to continue"
       },
       "scale": "10 km",
       "north": "N",
@@ -301,7 +300,7 @@
       "count": "4/5",
       "done": "completed",
       "live": "LIVE",
-      "liveText": "live, since 2026",
+      "liveText": "on air since 2026",
       "items": {
         "army": {
           "name": "Batallón de Zapadores XVI",
@@ -327,7 +326,6 @@
     },
     "player": {
       "name": "JESÚS MOLANO",
-      "sub": "OFF DUTY · TENERIFE",
       "player2": "PLAYER 2",
       "alt": "Jesús drawn as a game character: gold aviators, a dark hoop earring, a beard and a striped tee, with Dante, a cream lynx-point kitten with blue eyes, on his shoulder as player 2."
     },
@@ -350,13 +348,13 @@
           "id": "stealth",
           "label": "STEALTH",
           "value": 12,
-          "caption": "The cats find me in any box."
+          "caption": "I can't open a tin without the cats turning up."
         },
         {
           "id": "twists",
           "label": "PLOT TWISTS SEEN COMING",
           "value": 0,
-          "caption": "Not one, so I watch them all again."
+          "caption": "Not one, and I watch every film and series twice."
         },
         {
           "id": "stamina",
@@ -376,44 +374,27 @@
       "title": "RECORDS",
       "items": [
         {
-          "id": "cats",
-          "value": "3 + 1",
-          "caption": "cats: three at home, one keeping watch from above"
+          "id": "wanted",
+          "value": "★★★★★",
+          "spoken": "Five stars:",
+          "caption": "Dante's wanted level since the cables"
         },
         {
           "id": "episode",
-          "value": "02:47",
-          "caption": "the time I switched off the TV last night, after “just one more episode”"
+          "value": "∞",
+          "spoken": "Countless",
+          "caption": "times I've said “just one more episode”"
         },
         {
           "id": "grandsPrix",
           "value": "≈7,000 km",
-          "caption": "of Grands Prix a season, every one of them from the sofa"
+          "spoken": "About 7,000 km",
+          "caption": "of Grands Prix a season, and not one speeding ticket"
         }
       ]
     },
-    "saves": {
-      "title": "SIDE MISSIONS",
-      "slots": [
-        {
-          "place": "dotfiles",
-          "note": "My Windows and CachyOS setup, ready for any new machine."
-        },
-        {
-          "place": "tessera-studio",
-          "note": "A catalogue you can look at but not touch."
-        },
-        {
-          "place": "project-atlas",
-          "note": "A map of the code before the agent walks in."
-        },
-        {
-          "place": "Expenses-Log-App",
-          "note": "So no charge ever catches me by surprise."
-        }
-      ]
-    },
-    "hint": "RESUME"
+    "hint": "RESUME",
+    "hintTarget": "side projects"
   },
   "common": {
     "newTab": "(opens in a new tab)"
@@ -422,24 +403,28 @@
     "title": "Side projects",
     "marquee": {
       "rows": [
-        "TONIGHT · FOUR SIDE JOBS",
-        "AFTER HOURS · NO PAYDAY"
+        "TONIGHT · FOUR FEATURES",
+        "FREE ADMISSION"
       ],
       "showing": "NOW SHOWING:"
     },
     "speaker": "Jesús",
-    "line": "I made these side projects on my own time, on nobody's dime.",
+    "line": "I made these on my own time, on nobody's dime.",
     "github": "GitHub",
     "onGithub": "on GitHub",
+    "boxOffice": {
+      "sign": "Tickets",
+      "contact": "Contact"
+    },
     "posters": {
       "dotfiles": {
         "title": "DOTFILES",
-        "genre": "Heist",
+        "genre": "Sci-fi",
         "tagline": [
-          "DRY RUN FIRST.",
-          "ALWAYS A WAY OUT."
+          "NEW MACHINE.",
+          "SAME OLD HABITS."
         ],
-        "sub": "One combination per machine.",
+        "sub": "Formatting won't save you.",
         "oneLiner": "My Windows and CachyOS dotfiles: a freshly installed machine set up the way I like it, without redoing every step by hand."
       },
       "tessera-studio": {
@@ -450,7 +435,7 @@
           "TOUCH NOTHING."
         ],
         "sub": "Zero dependencies, because it works alone.",
-        "oneLiner": "A local, read-only browser for Tessera catalogues, with their reusable components, inventory and reuse decisions, written in Python with zero dependencies and a strict CSP."
+        "oneLiner": "A local, read-only viewer for Tessera catalogues: their components, the inventory behind them and the decisions on what to reuse."
       },
       "project-atlas": {
         "title": "PROJECT ATLAS",
@@ -459,8 +444,8 @@
           "NOBODY MOVES",
           "UNTIL THE BOARD IS DONE."
         ],
-        "sub": "An evidence sidecar for coding agents.",
-        "oneLiner": "An evidence sidecar for coding agents: it maps a frontend project (components, design evidence, decisions, risks) before the agent changes code."
+        "sub": "Read the file, Agent.",
+        "oneLiner": "A map of a frontend project that a coding agent reads before it touches anything: its components, its design, the decisions already made and the risks."
       },
       "expenses-log-app": {
         "title": "EXPENSES LOG",
@@ -469,8 +454,8 @@
           "Pay on time",
           "and nobody gets hurt."
         ],
-        "sub": "A reminder before every charge, even offline.",
-        "oneLiner": "A mobile-first PWA for recurring expenses, built with Next 16: smart lists, one tap to mark a bill paid, Web Push reminders before each charge, offline use and Supabase sync."
+        "sub": "The bills know where to find you.",
+        "oneLiner": "A mobile-first web app for recurring expenses: smart lists, one tap to mark a bill paid, a reminder before each charge, offline use and cloud sync."
       }
     }
   },
@@ -485,35 +470,24 @@
     },
     "speaker": "Jesús",
     "opening": "Roll credits. I'll keep the engine running.",
-    "byline": "A film by Jesús Molano",
     "written": "Written, directed and built by",
-    "career": {
-      "title": "THE CAREER",
-      "present": "to the present",
-      "roles": {
-        "heuristik": "Frontend Engineer",
-        "logixs": "Full Stack Developer",
-        "cloud-district": "Frontend Developer",
-        "pwc": "Frontend Developer",
-        "army": "Combat engineer"
-      },
-      "army": "Spanish Army (Ejército de Tierra) · Batallón de Zapadores XVI"
-    },
-    "sideProjects": "SIDE PROJECTS",
-    "equipment": "EQUIPMENT",
+    "toolkit": "HIS TOOLKIT",
     "cast": {
       "title": "CAST",
       "driver": "The driver",
-      "suspects": "The usual suspects"
+      "himself": "Himself",
+      "culprit": "The culprit"
     },
     "assets": {
-      "title": "THE CAR AND THE CITY",
+      "title": "PROPS AND SETS",
       "car": "“Convertible”",
       "modified": "modified",
       "traffic": "Traffic",
-      "body": "The driver’s body",
-      "cats": "The cats’ base model",
-      "catsModified": "rendered in Blender with our own fur, eyes and markings",
+      "body": "The driver's body",
+      "cats": "The cats' base model",
+      "catsModified": "a modified version, with new fur, eyes and markings on each cat, rendered in Blender",
+      "relief": "The map's relief",
+      "publicDomain": "public domain",
       "made": "Aviators, palms, towers, cinema",
       "madeHere": "made in code for this site"
     },
@@ -533,7 +507,7 @@
     },
     "type": {
       "title": "TYPE",
-      "site": "Titles, text, captions",
+      "site": "Titles, text, labels",
       "radio": "Radio, marquee, tickets",
       "posters": "Posters",
       "licences": "Licences",
@@ -541,7 +515,6 @@
     },
     "builtWith": "BUILT WITH",
     "notice": "No logos, liveries or typefaces of any game, film or team were used.",
-    "gag": "The cats slept through the entire production.",
     "thanks": "THANKS FOR DRIVING BY",
     "contact": {
       "title": "Contact",
@@ -554,6 +527,7 @@
     "top": "Back to the top"
   },
   "notFound": {
+    "title": "Wrong exit — Jesús Molano",
     "heading": "Wrong exit",
     "back": "Back to the city"
   }

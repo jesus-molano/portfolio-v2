@@ -74,14 +74,30 @@ describe("STATS copy", () => {
     }
   });
 
-  it("counts the cats as 3 + 1 in words alone, with no halo drawn over the 1", () => {
+  it("never counts the cats in a record, and draws no halo anywhere", () => {
     for (const dict of [en, es]) {
-      const cats = dict.stats.records.items.find((record) => record.id === "cats");
-      expect(cats?.value).toBe("3 + 1");
-      expect(cats?.caption).toMatch(/^(cats|gatos): /);
+      // The line-up shows the four of them; a count here only raised the question of the fourth.
+      for (const record of dict.stats.records.items) {
+        const text = `${record.value} ${record.spoken} ${record.caption}`;
+        expect(text, record.id).not.toMatch(/\d\s*\+\s*\d|\bcats?\b|\bgat[oa]s?\b|odin/i);
+      }
+      // Dante's record is his wanted level: five stars, said in words to a screen reader.
+      const wanted = dict.stats.records.items.find((record) => record.id === "wanted");
+      expect(wanted?.value).toBe("★★★★★");
+      expect(wanted?.caption).toMatch(/Dante/);
+      for (const [path, text] of strings(dict.stats)) {
+        expect(/halo|aureola|from above|desde arriba|keeping watch|vigilando/i.test(text), `${path}: ${text}`).toBe(false);
+      }
       const html = renderToStaticMarkup(createElement(Stats, { dict: dict.stats as Dictionary["stats"] }));
-      expect(html).toContain(">3 + 1<");
       expect(html).not.toMatch(/halo|<svg[^>]*viewBox="0 0 40 12"/i);
+    }
+  });
+
+  it("says each record's value in words for screen readers, and tells the sofa once", () => {
+    for (const dict of [en, es]) {
+      for (const record of dict.stats.records.items) expect(record.spoken, record.id).toMatch(/\p{L}/u);
+      const sofa = strings(dict.stats).filter(([, text]) => /sofa|sofá/i.test(text));
+      expect(sofa.map(([path]) => path)).toEqual(["bars.items[0].caption"]);
     }
   });
 

@@ -1,0 +1,40 @@
+/* Page controls, top right: music and language. Above the hero fade. */
+.controls {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: var(--va-z-chrome);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/*
+ * Off the hero's picture, one backing behind both controls and the gap
+ * between them (PageControls.tsx sets data-backdrop), so the text of
+ * STATS and the credits never shows through as it scrolls under them.
+ * Drawn around the controls, never padding them: they do not move.
+ */
+.controls::before {
+  content: "";
+  position: absolute;
+  inset: -0.35rem;
+  z-index: -1;
+  border-radius: var(--va-control-radius);
+  /* No backdrop-filter: over the hero it would blur the scene again every frame. */
+  background: var(--va-color-controls-backdrop);
+  box-shadow: 0 0.3rem 1rem var(--va-color-glass);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.controls[data-backdrop]::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .controls::before {
+    transition: none;
+  }
+}

@@ -94,12 +94,16 @@ export function PosterCase({ feature, index, copy, github, onGithub, newTab, loc
           </span>
         </span>
         <span className={styles.label}>
-          <span className={styles.genre}>{copy.genre}</span>
+          {/* Said in the description, where it reads as a sentence (this one is set in capitals). */}
+          <span className={styles.genre} aria-hidden="true">
+            {copy.genre}
+          </span>
           <span id={`${id}-name`} className={styles.repo}>
             {feature.repo}
           </span>
           <span id={`${id}-about`} className={styles.about}>
-            <span className="sr-only">{copy.tagline.join(" ")} </span>
+            {/* The genre, then the poster's words, which are only in the image: its tagline and the line under the title. One text node, so no space goes missing. */}
+            <span className="sr-only">{`${copy.genre}. ${copy.tagline.join(" ")} ${copy.sub} `}</span>
             {copy.oneLiner}
           </span>
           <span id={`${id}-cta`} className={styles.cta}>

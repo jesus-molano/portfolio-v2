@@ -46,6 +46,11 @@ export const palette = {
   /** Fill of the selected segment in a segmented control. */
   selected: "rgba(246, 241, 255, 0.14)",
   /**
+   * The page controls' backing off the hero's picture: opaque, so the text
+   * scrolling under them never shows through (at 0.9 it still ghosted).
+   */
+  controlsBackdrop: "rgb(18, 10, 38)",
+  /**
    * Backing of the hero's on-screen display: transport, Skip, captions,
    * cues and the touch hint. Cream on it stays above 7.5:1 over any part
    * of the scene, the pink accents above 3.9:1.

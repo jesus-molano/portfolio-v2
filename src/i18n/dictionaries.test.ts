@@ -151,6 +151,15 @@ describe("loading screen copy", () => {
       }
     });
 
+    it(`${locale}: gives away no later section, and promises nothing that is not on the page yet`, () => {
+      // The cats and their complaint, STATS (its bars, its map and his favourites), the
+      // cinema and the credits keep their own jokes. The career city's tip comes back
+      // with the city.
+      const later =
+        /(?<!\p{L})(cats?|gatos?|line-?up|rueda de reconocimiento|suspects?|sospechosos?|culprit|culpable|appetite|apetito|stats|estadísticas|Metal Gear|cardboard|cartón|Godfather|Padrino|Sopranos?|Breaking Bad|Gladiator|Matrix|Skyrim|cinema|cine|posters?|carteles?|credits|créditos|employers?|currículum|CV)(?!\p{L})/iu;
+      for (const tip of tips) expect(tip.text).not.toMatch(later);
+    });
+
     it(`${locale}: keeps the buttons and the slow note short`, () => {
       expect(Array.from(loader.withMusic).length).toBeLessThanOrEqual(22);
       expect(Array.from(loader.withoutMusic).length).toBeLessThanOrEqual(22);
@@ -161,6 +170,18 @@ describe("loading screen copy", () => {
       const words = /\b(play|pause|rewind|fast.?forward|reproduc\w*|pausa|rebobin\w*)\b/i;
       const copy = [...Object.values(flatten(loader)), ...tips.map((tip) => tip.text)];
       for (const text of copy) expect(text).not.toMatch(words);
+    });
+  }
+});
+
+describe("not-found page copy", () => {
+  for (const [locale, dict] of [
+    ["en", en],
+    ["es", es],
+  ] as const) {
+    it(`${locale}: titles the 404 with its own heading and his name, never as the home page`, () => {
+      expect(dict.notFound.title).toBe(`${dict.notFound.heading} — ${dict.hero.name}`);
+      expect(dict.notFound.title).not.toBe(dict.meta.title);
     });
   }
 });

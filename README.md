@@ -1,9 +1,34 @@
 # Vice Afterglow
 
-Cinematic portfolio of Jesús Molano, frontend engineer. A neon sunset, a city
-skyline, palm trees and a camera that drives into the city as you scroll.
+The portfolio of Jesús Molano, Frontend Engineer from Tenerife, as one page
+you drive: a sunset film that moves only when you do, then his cats, a pause
+menu, his side projects in a cinema at night and the end credits at dawn.
 
-Phase 1: the hero prototype.
+**Live:** https://portfolio-v2-sage-six-74.vercel.app, in English (`/en`)
+and Spanish (`/es`).
+
+## The page, in order
+
+1. **Loading screen.** A cold open: his name as the game logo, a card of
+   tips and trivia, and the way in, with the radio on or off.
+2. **The hero.** A WebGL drive over a causeway at sunset toward an art-deco
+   skyline. Scrolling, swiping or the keys move the film, and every subtitle
+   waits until you have read it. A radio wheel with six stations of licensed
+   instrumental music opens with a held right-click, Q, a long-press or the
+   RADIO button.
+3. **The Usual Suspects.** A police line-up of his four cats against a
+   height chart, and one complaint.
+4. **The career city** (coming next): the night drive through every job.
+5. **STATS.** A pause menu: Tenerife at night under parody names, with his
+   career and his pastimes on the map, and a character sheet.
+6. **The Afterglow.** A beach-deco cinema at night, his side projects on the
+   posters.
+7. **The end credits.** The roll at dawn: the cast, then GitHub and
+   LinkedIn, then every licence credit, the typefaces and what the site is
+   built with.
+
+With reduced motion the hero is one still frame and its script runs as text;
+without WebGL the page stays readable over a CSS sky.
 
 ## Run
 
@@ -12,17 +37,50 @@ pnpm install
 pnpm dev
 ```
 
-Open http://localhost:3000. The root redirects to `/en` or `/es`.
+Open http://localhost:3000; the root redirects to `/en` or `/es` from the
+browser's language.
 
 ## Check
 
-```bash
-pnpm check
-```
+| Command          | What it runs                                |
+| ---------------- | ------------------------------------------- |
+| `pnpm lint`      | ESLint                                      |
+| `pnpm typecheck` | `tsc --noEmit`                              |
+| `pnpm test`      | Vitest unit tests                           |
+| `pnpm build`     | The production build (fetches Google Fonts) |
+| `pnpm check`     | All four, in that order                     |
 
-Runs ESLint, `tsc --noEmit` and `next build`.
+With the dev server running, `tools/capture` and `tools/loader` hold the
+browser checks: the hero's scroll behaviour, frames of the film and the
+loading screen's layout. `AGENTS.md` explains each one.
+
+## Deploy
+
+Absolute URLs (canonical and language links, link previews, `robots.txt`,
+the sitemap) use `NEXT_PUBLIC_SITE_URL` when it is set, for a custom domain.
+Otherwise they use the production domain Vercel sets on every deployment
+(`VERCEL_PROJECT_PRODUCTION_URL`), and `http://localhost:3000` in
+development.
 
 ## Stack
 
-Next 16 (App Router) · React 19 · React Three Fiber · drei · postprocessing ·
-GSAP ScrollTrigger · Lenis. See `AGENTS.md` for structure and conventions.
+Next 16 (App Router) · React 19 · TypeScript · Three.js with React Three
+Fiber, drei and postprocessing · GSAP · Lenis · CSS Modules on design tokens.
+`AGENTS.md` is the project guide: structure, conventions and the rules each
+section follows.
+
+## Licences
+
+Everything the page uses from elsewhere keeps its licence next to it, and
+the end credits name every author:
+
+- 3D models: `public/models/*/LICENSE.txt` (the convertible is CC BY 3.0,
+  Poly by Google; the traffic and the driver's assets are CC0).
+- Radio music: `public/music/LICENSE.txt`, track by track.
+- The cats: `public/interlude/LICENSE.txt` (built on the XR Blocks "Cat",
+  Apache-2.0).
+- The STATS map's relief: `public/stats/LICENSE.txt` (public-domain SRTM,
+  GMTED2010 and ETOPO1 data).
+
+Inspired by open-world game key art; no game assets, logos or typefaces are
+used.

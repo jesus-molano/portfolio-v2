@@ -3,6 +3,7 @@ import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
 import { Color } from "three";
 import { palette } from "@/design/tokens";
+import { formatFrequency, visibleStations } from "@/features/music/stations";
 import {
   buildBillboards,
   fitLines,
@@ -84,9 +85,16 @@ describe("buildBillboards", () => {
     expect(es.hero.billboards).toHaveLength(BILLBOARD_PLOTS.length);
   });
 
-  it("only says what the site already says", () => {
-    const allowed = ["JESÚS MOLANO", "FRONTEND ENGINEER", "INGENIERO FRONTEND", "VUE · NUXT", "REACT · NEXT"];
+  it("only says what the site already says: his name, his role and ads for stations on the dial", () => {
+    const stationAds = visibleStations().map((station) => `${station.name} ${formatFrequency(station.frequency)}`);
+    const allowed = [en.hero.name.toUpperCase(), en.hero.role.toUpperCase(), ...stationAds];
     for (const text of [...en.hero.billboards, ...es.hero.billboards]) expect(allowed).toContain(text);
+    // The name and the role open the row on purpose: they light up as the title leaves.
+    expect(en.hero.billboards.slice(0, 2)).toEqual(["JESÚS MOLANO", "FRONTEND ENGINEER"]);
+  });
+
+  it("reads the same in both languages: the role is in English everywhere, the stations as written", () => {
+    expect(es.hero.billboards).toEqual(en.hero.billboards);
   });
 
   it("turns every face toward the causeway", () => {

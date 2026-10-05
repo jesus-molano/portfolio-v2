@@ -11,18 +11,23 @@
   font-family: var(--va-font-display);
   font-size: clamp(5rem, 20vw, 14rem);
   line-height: 0.9;
-  background: linear-gradient(180deg, #ffffff 0%, var(--va-color-pink) 60%, var(--va-color-magenta) 100%);
+  background: linear-gradient(180deg, var(--va-color-cream) 0%, var(--va-color-pink) 60%, var(--va-color-magenta) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 22px rgba(255, 45, 149, 0.5));
+  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--va-color-magenta) 50%, transparent));
 }
 
+/*
+ * The 404 never has a scene: it sits on the body's CSS sky, whose peach
+ * and pink horizon runs behind this line. Night ink reads above 10:1 on
+ * every part of it (cyan read about 1:1).
+ */
 .heading {
   font-family: var(--va-font-body);
   font-size: 1rem;
   font-weight: 500;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--va-color-cyan);
+  color: var(--va-color-night);
 }

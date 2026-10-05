@@ -7,8 +7,9 @@
  * The plates leave the live parts to the DOM: the marquee board is blank
  * (its changeable letters are DOM), the bulb strips and the poster cases of
  * the night plate are DOM too (they chase and light on hover). `cinema()`
- * returns the projected geometry of every live part, so the page can put
- * its elements exactly on the plate (finaleLayout.ts reads it).
+ * returns the projected geometry of every live part, and of the box office
+ * (painted, but a link on the page), so the page can put its elements
+ * exactly on the plate (finaleLayout.ts reads it).
  */
 import { C, rng, f, clamp, lerp, mix, esc, poly, palmCrown } from "./lib.mjs";
 import { posterSymbol } from "./posters.mjs";
@@ -273,6 +274,9 @@ export function cinema(cam, o) {
     {
       const B = CIN.booth, z = B.z;
       const body = rect(cam, -B.half, 0, B.half, 2.3, z);
+      // The page makes the booth a link to the contact: its body, dome and neon sign, within the frame.
+      const hit = rect(cam, -B.half - 0.1, 0, B.half + 0.1, 3.15, z);
+      geo.booth = box(hit.x, hit.y, hit.w, Math.min(hit.h, H - hit.y));
       const dome = cam.p(0, 2.3, z);
       const rx = cam.s(B.half, z), ry = cam.s(0.42, z);
       ground += `<ellipse cx="${f(dome[0])}" cy="${f(dome[1])}" rx="${f(rx)}" ry="${f(ry)}" fill="url(#${px}booth)"/>`;

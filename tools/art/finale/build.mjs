@@ -11,8 +11,8 @@
  * in .art-cache/fonts), keeps the PNGs in .art-cache/finale, encodes them
  * to AVIF and WebP in public/finale (tools/art/encode.py, Pillow), and
  * writes the plates' geometry to src/features/finale/plates.json: the
- * marquee board and its rails, the bulb strips and the poster cases, in
- * frame units, so the DOM lands on the plate. The dawn plates' car is a
+ * marquee board and its rails, the bulb strips, the poster cases and the
+ * box office, in frame units, so the DOM lands on the plate. The dawn plates' car is a
  * Blender render (tools/blender/render_finale_car.py, kept in
  * tools/art/finale/car), embedded in the SVG. Deterministic: every random
  * choice is seeded.

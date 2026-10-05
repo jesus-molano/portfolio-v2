@@ -7,6 +7,9 @@ export const defaultLocale: Locale = "en";
 /** Each language named in itself, for the language switch. */
 export const localeNames: Record<Locale, string> = { en: "English", es: "Español" };
 
+/** Each language as Open Graph names it (language_TERRITORY), for the link preview cards. */
+export const openGraphLocales: Record<Locale, string> = { en: "en_GB", es: "es_ES" };
+
 export function hasLocale(value: string): value is Locale {
   return (locales as readonly string[]).includes(value);
 }

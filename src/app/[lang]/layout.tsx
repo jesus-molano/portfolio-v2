@@ -15,14 +15,16 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import "lenis/dist/lenis.css";
 import "../globals.css";
-import styles from "./layout.module.css";
 import { TokensStyle } from "@/design/TokensStyle";
+import { PageControls } from "@/components/PageControls";
 import { SmoothScroll } from "@/features/hero/scroll/SmoothScroll";
 import { RadioButton } from "@/features/music/RadioButton";
 import { RadioWheel } from "@/features/music/RadioWheel";
 import { SegmentedNav } from "@/components/ui/SegmentedNav";
-import { defaultLocale, hasLocale, localeNames, locales } from "@/i18n/config";
+import { defaultLocale, hasLocale, localeNames, locales, openGraphLocales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
+import { SHARE_CARD, shareCardPath } from "@/lib/shareCard";
+import { siteUrl } from "@/lib/siteUrl";
 
 const displayFont = Unbounded({
   subsets: ["latin"],
@@ -132,8 +134,6 @@ const fontVariables = [
  */
 const NO_JS_STYLE = "[data-letter],[data-line]{opacity:1}[data-loader]{display:none}";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
 type Params = Promise<{ lang: string }>;
 
 export function generateStaticParams() {
@@ -144,8 +144,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { lang } = await params;
   if (!hasLocale(lang)) return {};
   const dict = await getDictionary(lang);
+  // The link preview card: the cinema at night with his name on the marquee (tools/art/og).
+  const card = { url: shareCardPath(lang), alt: dict.meta.imageAlt };
   return {
-    metadataBase: new URL(siteUrl),
+    metadataBase: new URL(siteUrl()),
     title: dict.meta.title,
     description: dict.meta.description,
     icons: { icon: "/favicon.svg" },
@@ -155,6 +157,22 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
         ...Object.fromEntries(locales.map((locale) => [locale, `/${locale}`])),
         "x-default": `/${defaultLocale}`,
       },
+    },
+    openGraph: {
+      type: "website",
+      url: `/${lang}`,
+      siteName: dict.hero.name,
+      title: dict.meta.title,
+      description: dict.meta.description,
+      locale: openGraphLocales[lang],
+      alternateLocale: locales.filter((locale) => locale !== lang).map((locale) => openGraphLocales[locale]),
+      images: [{ ...card, width: SHARE_CARD.width, height: SHARE_CARD.height, type: SHARE_CARD.type }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: dict.meta.title,
+      description: dict.meta.description,
+      images: [card],
     },
   };
 }
@@ -184,7 +202,7 @@ export default async function RootLayout({
         </a>
         {/* Inside SmoothScroll so the radio wheel can hold the scroll while it is open. */}
         <SmoothScroll>
-          <div className={styles.controls} data-page-controls>
+          <PageControls>
             <RadioButton dict={dict.radio} />
             <SegmentedNav
               label={dict.nav.languageLabel}
@@ -197,7 +215,7 @@ export default async function RootLayout({
                 lang: locale,
               }))}
             />
-          </div>
+          </PageControls>
           {/* Outside the page controls: they are inert while the wheel is open. */}
           <RadioWheel dict={dict.radio} />
           {children}

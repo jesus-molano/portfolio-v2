@@ -1,7 +1,8 @@
 {
   "meta": {
     "title": "Jesús Molano — Frontend Engineer",
-    "description": "Portfolio cinematográfico de Jesús Molano, ingeniero frontend. Vue, Nuxt, React y Next bajo un atardecer de neón."
+    "description": "Portfolio cinematográfico de Jesús Molano, Frontend Engineer de Tenerife: una película al atardecer que conduces tú.",
+    "imageAlt": "Un cine art déco de noche con «Jesús Molano, Frontend Engineer» en la marquesina"
   },
   "nav": {
     "languageLabel": "Idioma",
@@ -9,9 +10,9 @@
   },
   "radio": {
     "label": "Radio",
-    "off": "Apagar",
+    "off": "Radio apagada",
     "offState": "Radio: apagada",
-    "gesture": "Mantén clic derecho o Q para la radio",
+    "gesture": "Mantén el clic derecho o la Q para la radio",
     "gestureTouch": "Mantén pulsada la escena para la radio",
     "calloutTouch": "Toca aquí para la radio",
     "hintAim": "Apunta a una emisora y suelta para sintonizar",
@@ -64,7 +65,7 @@
     "skip": "Saltar",
     "skipLabel": "Saltar la intro",
     "skipHurry": "¿Con prisa?",
-    "sceneLabel": "Atardecer conduciendo por una autopista sobre el agua hacia un skyline de neón y una torre art déco al final de la avenida, con palmeras a ambos lados",
+    "sceneLabel": "Conduciendo al atardecer por una autopista sobre el agua hacia el skyline de una ciudad y una torre art déco al final de la avenida, con palmeras a ambos lados",
     "hud": {
       "title": "Jesús Molano",
       "subtitle": "Portfolio · en construcción",
@@ -80,9 +81,9 @@
     "speaker": "Jesús",
     "billboards": [
       "JESÚS MOLANO",
-      "INGENIERO FRONTEND",
-      "VUE · NUXT",
-      "REACT · NEXT"
+      "FRONTEND ENGINEER",
+      "BABYLON 105.1",
+      "CROCKETT 91.4"
     ],
     "lines": [
       [
@@ -109,7 +110,7 @@
   "suspects": {
     "title": "Sospechosos habituales",
     "place": "Rueda de reconocimiento · Tenerife",
-    "associates": "Compañeros de piso de J. Molano",
+    "associates": "Compañeros de piso",
     "description": "Una rueda de reconocimiento con los cuatro gatos de Jesús ante una regla de alturas, cada uno tras su placa numerada. Tom y Kira son los más altos, Odin se queda un poco por debajo y a Dante, el cachorro, todos le sacan una cabeza.",
     "numberPrefix": "Nº",
     "stamp": "Culpable",
@@ -154,7 +155,7 @@
   },
   "loader": {
     "loading": "Cargando la ciudad",
-    "ready": "Cargado. Elige cómo entrar en la ciudad.",
+    "ready": "Todo listo. Elige cómo entrar en la ciudad.",
     "slowLabel": "Conexión lenta",
     "slow": "Tu conexión ha tirado por la carretera de la costa. Entra ya y la ciudad te alcanzará, o espera a verla entera.",
     "labels": {
@@ -166,7 +167,7 @@
       {
         "kind": "tip",
         "when": ["motion"],
-        "text": "Esta película no es apta para pasajeros: aquí nada se mueve hasta que haces scroll o deslizas, porque conduces tú."
+        "text": "Esta película no es apta para pasajeros: no avanza hasta que haces scroll o deslizas, porque conduces tú."
       },
       {
         "kind": "tip",
@@ -196,12 +197,12 @@
       {
         "kind": "tip",
         "when": [],
-        "text": "De serie suena el disco de BABYLON, pero el dial también tiene el synth ochentero de CROCKETT y el rock de K-CALIMA."
+        "text": "De serie suena la música disco de BABYLON; el dial también trae el synth ochentero de CROCKETT y el rock de K-CALIMA."
       },
       {
         "kind": "tip",
         "when": [],
-        "text": "MR. WOLF soluciona problemas a golpe de rock duro, LEAVE THE GUN pone el funk y LOVE DADDY pincha hip-hop noventero."
+        "text": "MR. WOLF pone el rock duro, LEAVE THE GUN el funk y LOVE DADDY el hip-hop de los noventa."
       },
       {
         "kind": "trivia",
@@ -211,27 +212,27 @@
       {
         "kind": "trivia",
         "when": [],
-        "text": "Sus cuatro gatos acaban en rueda de reconocimiento por armarios arañados y cables mordidos, pero culpable solo hay uno."
+        "text": "Las gafas del conductor reflejan el cielo de la escena: el atardecer que ves también está en sus cristales."
       },
       {
         "kind": "trivia",
         "when": [],
-        "text": "Más adelante, una pantalla de estadísticas mide su apetito. La barra se acaba mucho antes que él."
+        "text": "Cada palmera de la carretera está hecha con código, hoja a hoja."
+      },
+      {
+        "kind": "trivia",
+        "when": ["motion"],
+        "text": "El grano de la imagen cambia 24 veces por segundo, como el de una película de verdad."
       },
       {
         "kind": "trivia",
         "when": [],
-        "text": "Entre El Padrino, Pulp Fiction y Los Soprano ha visto crímenes de sobra para saber qué coche elegir para una huida."
+        "text": "Cada emisora sigue su propio reloj: si cambias de una a otra, entras con la canción empezada."
       },
       {
         "kind": "trivia",
         "when": [],
-        "text": "De noche, la ciudad enciende un letrero por cada sitio donde ha trabajado: más neón del que merece ningún currículum."
-      },
-      {
-        "kind": "trivia",
-        "when": [],
-        "text": "Metal Gear le enseñó que una caja de cartón es buen escondite. Una pantalla de carga no lo es, así que esta dura poco."
+        "text": "Los coches de tu sentido van justo a tu ritmo: nadie te adelanta y tú tampoco adelantas a nadie."
       }
     ],
     "withMusic": "Entrar con música",
@@ -240,8 +241,8 @@
   },
   "stats": {
     "title": "PAUSA",
-    "sub": "FUERA DE HORARIO · J. MOLANO",
-    "description": "Es una pantalla de pausa. Su mapa es Tenerife, más o menos, con los pueblos renombrados: traza su carrera en cinco misiones principales, cuatro completadas y una en curso, y esconde por la isla sus videojuegos, películas y series favoritos, y también la Fórmula 1. Junto al mapa, sus misiones secundarias, que son sus proyectos personales; la segunda pestaña es su ficha de personaje, con sus habilidades y sus récords.",
+    "sub": "FUERA DE HORARIO",
+    "description": "Es una pantalla de pausa. Sus misiones principales resumen su carrera en cinco: cuatro completadas y una en curso. El mapa es Tenerife, más o menos, con los pueblos renombrados, y esconde por la isla sus videojuegos, películas y series favoritos, y también la Fórmula 1. Una cabina que no para de sonar lleva a sus proyectos personales. La segunda pestaña es su ficha de personaje, con sus habilidades y sus récords.",
     "tabs": [
       "MAPA",
       "ESTADÍSTICAS"
@@ -262,7 +263,7 @@
         "americas": "PLAYA DE LAS TOALLAS",
         "cristianos": "LOS GUIRISTIANOS",
         "medano": "EL VENDAVAL",
-        "guimar": "GÜÍZA",
+        "guimar": "GÜIMARCIANO",
         "teresitas": "LAS SAHARITAS",
         "esperanza": "LA PACIENCIA",
         "anaga": "LA JUNGLA",
@@ -272,8 +273,7 @@
       },
       "inset": {
         "name": "GRAN CANARIA",
-        "city": "LAS PALMERITAS",
-        "caption": "Territorio enemigo: cuatro años tras sus líneas."
+        "city": "LAS PALMERITAS"
       },
       "you": "Eh, tú, al fin has despertado.",
       "hq": "Cuartel general en un volcán, claro.",
@@ -283,14 +283,13 @@
         "box": "Una caja de cartón que se ha movido.",
         "pizza": "Pizza para llevar, y sin aceitunas.",
         "arena": "Fuerza y honor en la arena.",
-        "carWash": "Un lavadero que solo acepta efectivo.",
+        "carWash": "Lavado de coches: solo en efectivo.",
         "law": "Un bufete detrás de un salón de manicura.",
-        "betting": "Una casa de apuestas con la gorra calada."
+        "betting": "Aquí se apuesta con la gorra puesta."
       },
       "booth": {
         "caption": "Una cabina que no para de sonar.",
-        "action": "Contesta para seguir",
-        "name": "Una cabina que no para de sonar: contesta para pasar a los proyectos personales."
+        "action": "Contesta para seguir"
       },
       "scale": "10 km",
       "north": "N",
@@ -301,11 +300,11 @@
       "count": "4/5",
       "done": "completada",
       "live": "LIVE",
-      "liveText": "en directo, desde 2026",
+      "liveText": "en antena, desde 2026",
       "items": {
         "army": {
           "name": "Batallón de Zapadores XVI",
-          "role": "Ingeniero zapador"
+          "role": "Zapador"
         },
         "pwc": {
           "name": "PwC España",
@@ -327,7 +326,6 @@
     },
     "player": {
       "name": "JESÚS MOLANO",
-      "sub": "FUERA DE SERVICIO · TENERIFE",
       "player2": "JUGADOR 2",
       "alt": "Jesús dibujado como personaje de videojuego: gafas de aviador doradas, un aro oscuro en la oreja, barba y camiseta de rayas, con Dante, un gatito crema lynx point de ojos azules, al hombro como jugador 2."
     },
@@ -350,13 +348,13 @@
           "id": "stealth",
           "label": "SIGILO",
           "value": 12,
-          "caption": "Los gatos me encuentran en cualquier caja."
+          "caption": "No puedo abrir una lata sin que aparezcan los gatos."
         },
         {
           "id": "twists",
-          "label": "GIROS DE GUION VISTOS VENIR",
+          "label": "GIROS DE GUION QUE VI VENIR",
           "value": 0,
-          "caption": "Ni uno, así que repito todas las películas y series."
+          "caption": "Ni uno, y eso que veo cada película y cada serie dos veces."
         },
         {
           "id": "stamina",
@@ -376,44 +374,27 @@
       "title": "RÉCORDS",
       "items": [
         {
-          "id": "cats",
-          "value": "3 + 1",
-          "caption": "gatos: tres en casa y uno vigilando desde arriba"
+          "id": "wanted",
+          "value": "★★★★★",
+          "spoken": "Cinco estrellas:",
+          "caption": "el nivel de busca y captura de Dante desde lo de los cables"
         },
         {
           "id": "episode",
-          "value": "02:47",
-          "caption": "la hora a la que apagué la tele anoche, después de «solo un capítulo más»"
+          "value": "∞",
+          "spoken": "Infinitas",
+          "caption": "veces que he dicho «solo un capítulo más»"
         },
         {
           "id": "grandsPrix",
           "value": "≈7.000 km",
-          "caption": "de Grandes Premios por temporada, todos desde el sofá"
+          "spoken": "Unos 7.000 km",
+          "caption": "de Grandes Premios por temporada, y ni una multa"
         }
       ]
     },
-    "saves": {
-      "title": "MISIONES SECUNDARIAS",
-      "slots": [
-        {
-          "place": "dotfiles",
-          "note": "Mi configuración de Windows y CachyOS, lista para cualquier equipo nuevo."
-        },
-        {
-          "place": "tessera-studio",
-          "note": "Un catálogo que se mira y no se toca."
-        },
-        {
-          "place": "project-atlas",
-          "note": "El mapa del código, antes de que entre el agente."
-        },
-        {
-          "place": "Expenses-Log-App",
-          "note": "Que ningún cargo me pille por sorpresa."
-        }
-      ]
-    },
-    "hint": "CONTINUAR"
+    "hint": "CONTINUAR",
+    "hintTarget": "proyectos personales"
   },
   "common": {
     "newTab": "(se abre en una pestaña nueva)"
@@ -422,8 +403,8 @@
     "title": "Proyectos personales",
     "marquee": {
       "rows": [
-        "ESTA NOCHE · CUATRO GOLPES",
-        "FUERA DE HORARIO · SIN BOTÍN"
+        "ESTA NOCHE · CUATRO FUNCIONES",
+        "ENTRADA LIBRE"
       ],
       "showing": "EN PANTALLA:"
     },
@@ -431,15 +412,19 @@
     "line": "Son proyectos de mis ratos libres, hechos por amor al arte.",
     "github": "GitHub",
     "onGithub": "en GitHub",
+    "boxOffice": {
+      "sign": "Taquilla",
+      "contact": "Contacto"
+    },
     "posters": {
       "dotfiles": {
         "title": "DOTFILES",
-        "genre": "Atracos",
+        "genre": "Ciencia ficción",
         "tagline": [
-          "PRIMERO, EL ENSAYO.",
-          "SIEMPRE HAY SALIDA."
+          "EQUIPO NUEVO.",
+          "LAS MANÍAS DE SIEMPRE."
         ],
-        "sub": "Una combinación por máquina.",
+        "sub": "Ni formateando te libras.",
         "oneLiner": "Mis dotfiles de Windows y CachyOS: con ellos dejo un equipo recién instalado a mi gusto sin repetir cada paso a mano."
       },
       "tessera-studio": {
@@ -450,7 +435,7 @@
           "NO TOQUES NADA."
         ],
         "sub": "Cero dependencias, porque trabaja solo.",
-        "oneLiner": "Un navegador local y de solo lectura para catálogos de Tessera, con sus componentes reutilizables, su inventario y sus decisiones de reutilización, escrito en Python, sin dependencias y con una CSP estricta."
+        "oneLiner": "Un visor local, de solo lectura, para catálogos de Tessera: sus componentes, el inventario que hay detrás y las decisiones sobre qué reutilizar."
       },
       "project-atlas": {
         "title": "PROJECT ATLAS",
@@ -459,8 +444,8 @@
           "NADIE SE MUEVE",
           "HASTA COMPLETAR EL TABLERO."
         ],
-        "sub": "Un sidecar de evidencias para agentes de código.",
-        "oneLiner": "Un sidecar de evidencias para agentes de código: mapea un proyecto frontend (componentes, evidencias de diseño, decisiones y riesgos) antes de que el agente toque el código."
+        "sub": "Lea el expediente, agente.",
+        "oneLiner": "Un mapa de un proyecto frontend que el agente de código lee antes de tocar nada: sus componentes, su diseño, las decisiones ya tomadas y los riesgos."
       },
       "expenses-log-app": {
         "title": "EXPENSES LOG",
@@ -469,8 +454,8 @@
           "Paga a tiempo",
           "y nadie saldrá herido."
         ],
-        "sub": "Un aviso antes de cada cargo, incluso sin conexión.",
-        "oneLiner": "Una PWA mobile-first para gastos recurrentes, hecha con Next 16: listas inteligentes, un toque para marcar un pago, avisos Web Push antes de cada cargo, uso sin conexión y sincronización con Supabase."
+        "sub": "Los recibos saben dónde vives.",
+        "oneLiner": "Una app web para gastos recurrentes, pensada para el móvil: listas inteligentes, un toque para marcar un pago, un aviso antes de cada cargo, uso sin conexión y sincronización en la nube."
       }
     }
   },
@@ -485,35 +470,24 @@
     },
     "speaker": "Jesús",
     "opening": "Que rueden los créditos. Yo dejo el motor en marcha.",
-    "byline": "Una película de Jesús Molano",
     "written": "Escrita, dirigida y programada por",
-    "career": {
-      "title": "LA CARRERA",
-      "present": "hasta la actualidad",
-      "roles": {
-        "heuristik": "Frontend Engineer",
-        "logixs": "Full Stack Developer",
-        "cloud-district": "Frontend Developer",
-        "pwc": "Frontend Developer",
-        "army": "Ingeniero zapador"
-      },
-      "army": "Ejército de Tierra · Batallón de Zapadores XVI"
-    },
-    "sideProjects": "PROYECTOS PERSONALES",
-    "equipment": "HERRAMIENTAS",
+    "toolkit": "SU CAJA DE HERRAMIENTAS",
     "cast": {
       "title": "REPARTO",
       "driver": "El conductor",
-      "suspects": "Los sospechosos habituales"
+      "himself": "Él mismo",
+      "culprit": "El culpable"
     },
     "assets": {
-      "title": "EL COCHE Y LA CIUDAD",
+      "title": "ATREZO Y DECORADOS",
       "car": "«Convertible»",
       "modified": "modificado",
       "traffic": "Tráfico",
       "body": "El cuerpo del conductor",
       "cats": "La base de los gatos",
-      "catsModified": "renderizados en Blender con pelo, ojos y manchas propios",
+      "catsModified": "versión modificada, con pelo, ojos y manchas nuevos en cada gato, y renderizada en Blender",
+      "relief": "Relieve del mapa",
+      "publicDomain": "dominio público",
       "made": "Gafas, palmeras, torres, cine",
       "madeHere": "hechos en código para esta web"
     },
@@ -526,7 +500,7 @@
         "»"
       ],
       "licences": {
-        "CC BY 4.0": "Con licencia Creative Commons: Reconocimiento 4.0",
+        "CC BY 4.0": "con licencia Creative Commons: Atribución 4.0 Internacional",
         "CC0 1.0": "CC0 (dominio público)",
         "Pixabay": "Licencia de contenido de Pixabay"
       }
@@ -541,7 +515,6 @@
     },
     "builtWith": "HECHO CON",
     "notice": "No se ha usado ningún logo, librea ni tipografía de juegos, películas o equipos.",
-    "gag": "Los gatos durmieron durante todo el rodaje.",
     "thanks": "GRACIAS POR PASAR",
     "contact": {
       "title": "Contacto",
@@ -554,6 +527,7 @@
     "top": "Volver arriba"
   },
   "notFound": {
+    "title": "Salida equivocada — Jesús Molano",
     "heading": "Salida equivocada",
     "back": "Volver a la ciudad"
   }

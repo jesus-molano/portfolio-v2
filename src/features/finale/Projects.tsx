@@ -1,5 +1,5 @@
 import type { Dictionary } from "@/i18n/dictionaries";
-import { cq, PLATES } from "./finaleLayout";
+import { cq, PLATES, rectCq } from "./finaleLayout";
 import { FEATURES } from "./links";
 import { BulbStrips, marqueeSizes, rowsTiles, rowVars, type PlatePair, type Vars } from "./Marquee";
 import { PlatePicture } from "./PlatePicture";
@@ -8,6 +8,21 @@ import { ProjectsMarquee } from "./ProjectsMarquee";
 import styles from "./Projects.module.css";
 
 const NIGHT: PlatePair = { wide: "night-wide", tall: "night-tall" };
+
+/** Where the box office stands on both night plates, in cqw (Projects.module.css picks the layout's). */
+function boothVars(): Vars {
+  const vars: Vars = {};
+  for (const [layout, name] of Object.entries(NIGHT) as ["wide" | "tall", keyof typeof PLATES][]) {
+    const plate = PLATES[name];
+    const box = rectCq(plate, plate.booth);
+    const p = layout === "wide" ? "w" : "t";
+    vars[`--${p}-x`] = box.x;
+    vars[`--${p}-y`] = box.y;
+    vars[`--${p}-w`] = box.w;
+    vars[`--${p}-h`] = box.h;
+  }
+  return vars;
+}
 
 type Props = {
   dict: Dictionary["projects"];
@@ -19,8 +34,10 @@ type Props = {
  * The side projects: The Afterglow, a beach-deco picture palace at night,
  * the last stop of the drive. A pre-drawn plate with live DOM on it: the
  * changeable letters of the marquee, its chasing bulbs, and four poster
- * cases, one per repository, each a link to it on GitHub. Static: no
- * canvas, no scroll-driven motion, only hover and focus effects.
+ * cases, one per repository, each a link to it on GitHub. The painted box
+ * office is a link too, a plain one to the contact in the end credits.
+ * Static: no canvas, no scroll-driven motion, only hover and focus
+ * effects.
  */
 export function Projects({ dict, newTab, locale }: Props) {
   const titles = FEATURES.map((feature) => dict.posters[feature.id].title);
@@ -68,6 +85,14 @@ export function Projects({ dict, newTab, locale }: Props) {
             />
           ))}
         </ol>
+        {/* The box office sells the tickets: the contact's, at the end of the credits. */}
+        <a className={styles.booth} href="#contact" style={boothVars()}>
+          <span className="sr-only">{dict.boxOffice.sign}: </span>
+          <span className={styles.boothChip}>
+            {dict.boxOffice.contact}
+            <span aria-hidden="true"> ↓</span>
+          </span>
+        </a>
       </div>
     </section>
   );

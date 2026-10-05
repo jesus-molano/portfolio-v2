@@ -1,9 +1,10 @@
 /**
- * The end credits' facts (pure data and helpers, tested): the career as a
- * plain CV, the cast, the equipment, and every licence credit the site owes
- * (this is the one place on the site that carries them). The words around
- * them live in the dictionaries (`credits`); names, years, places and URLs
- * live here.
+ * The end credits' facts (pure data and helpers, tested): the cast, his
+ * toolkit, what the site is built with, and every licence credit the site
+ * owes (this is the one place on the site that carries them). The career
+ * is not here: STATS and the career city tell it (src/features/career).
+ * The words around them live in the dictionaries (`credits`); names and
+ * URLs live here.
  */
 import { stationCredits, type Credit } from "@/features/music/stations";
 
@@ -37,54 +38,37 @@ export const CC0_ASSETS = [
   { role: "body", maker: "MakeHuman · MPFB 2", licence: "CC0" },
 ] as const;
 
-export type CareerId = "heuristik" | "logixs" | "cloud-district" | "pwc" | "army";
+/**
+ * The STATS map's relief and coast: public-domain elevation data, through
+ * the Terrain Tiles on AWS Open Data (public/stats/LICENSE.txt). Nothing
+ * is owed; it is credited anyway.
+ */
+export const RELIEF_CREDIT = {
+  datasets: ["SRTM", "GMTED2010", "ETOPO1"],
+  makers: ["NASA", "USGS", "NOAA"],
+  sourceUrl: "https://registry.opendata.aws/terrain-tiles/",
+} as const;
 
-export type CareerEntry = {
-  id: CareerId;
-  /** As the company writes itself; the army's name is translated (dictionary `credits.career.army`). */
-  company: string | null;
-  /** Only where he was posted, in the army: the credits name no city for a civilian job. */
-  place: string | null;
-  from: number;
-  /** `"live"`: the job on air now (Heuristik), tagged LIVE like a broadcast in every language. */
-  to: number | "live";
-};
-
-/** Newest first, like a CV. */
-export const CAREER: readonly CareerEntry[] = [
-  { id: "heuristik", company: "Heuristik", place: null, from: 2026, to: "live" },
-  { id: "logixs", company: "Logixs", place: null, from: 2025, to: 2026 },
-  { id: "cloud-district", company: "Cloud District", place: null, from: 2024, to: 2025 },
-  { id: "pwc", company: "PwC España", place: null, from: 2023, to: 2024 },
-  { id: "army", company: null, place: "Las Palmas de Gran Canaria", from: 2018, to: 2021 },
-];
-
-/** Heuristik's tag: always this word, in English, in every locale (the on-air tally). */
-export const LIVE = "LIVE";
-
-/** "2025 – 2026", or "2026 – LIVE" for the job on air; the dash is an en dash, as in credits. */
-export function yearsLabel(entry: Pick<CareerEntry, "from" | "to">): { from: string; to: string; live: boolean } {
-  const live = entry.to === "live";
-  return { from: String(entry.from), to: live ? LIVE : String(entry.to), live };
-}
-
-/** The usual suspects, by name (Odin is not named in the credits: the owner's call). */
-export const CAST_CATS = ["Kira", "Tom", "Dante"] as const;
+/** The cast: the driver plays himself (dictionary `credits.cast`); of the cats, only the culprit is billed, and Odin is never named in the credits (the owner's call). */
+export const CAST_CULPRIT = "Dante";
 
 export const DIRECTOR = "Jesús Molano";
 export const FILM_TITLE = "VICE AFTERGLOW";
 export const COPYRIGHT = "© 2026 Jesús Molano · Vice Afterglow";
 
-/** What he works with, from the jobs and the side projects (Vue and Nuxt left out until he confirms them). */
-export const EQUIPMENT = [
+/**
+ * His toolkit: what he works with, from the jobs and the side projects.
+ * No Vue or Nuxt (the owner took them out). No name here is in BUILT_WITH:
+ * the libraries only this site uses are listed there alone.
+ */
+export const TOOLKIT = [
   "React", "Next.js", "TypeScript", "Tailwind CSS", "Zod", "React Hook Form", "Material UI", "Keycloak",
-  "Veracode", "Docker", "Strapi", "Storybook", "Atomic Design", "Supabase", "Python", "Three.js",
-  "React Three Fiber", "GSAP", "Scrum", "Git",
+  "Veracode", "Docker", "Strapi", "Storybook", "Atomic Design", "Supabase", "Python", "Scrum", "Git",
 ] as const;
 
-/** What this site is made with. */
+/** What this site is made with, beyond his toolkit. */
 export const BUILT_WITH = [
-  "Next.js", "React", "Three.js", "React Three Fiber", "drei", "postprocessing", "GSAP", "Lenis", "Blender",
+  "Three.js", "React Three Fiber", "drei", "postprocessing", "GSAP", "Lenis", "Blender",
 ] as const;
 
 /**

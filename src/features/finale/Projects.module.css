@@ -3,7 +3,7 @@
  * plate, so every part placed on the plate scales with it (cqw). On wide
  * screens the poster cases hang on the plate and their captions form the
  * bill under it; on portrait screens the cases leave the plate and hang in
- * a list beside their captions.
+ * a list beside their captions. The box office stays on the plate in both.
  */
 
 .projects {
@@ -278,6 +278,73 @@
   }
 }
 
+/* --- the box office, on the plate: a link to the contact -------------------- */
+
+.booth {
+  position: absolute;
+  left: calc(var(--w-x) * 1cqw);
+  top: calc(var(--w-y) * 1cqw);
+  width: calc(var(--w-w) * 1cqw);
+  height: calc(var(--w-h) * 1cqw);
+  border-radius: 45% 45% 4% 4% / 25% 25% 2% 2%;
+  color: var(--va-color-cream);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Its light on the painted booth, as a lit case's on the terrazzo. */
+.booth::before {
+  content: "";
+  position: absolute;
+  inset: -12% -35%;
+  background: radial-gradient(closest-side, var(--va-finale-pool), var(--va-finale-pool-edge));
+  opacity: 0;
+  mix-blend-mode: screen;
+  transition: opacity 260ms ease;
+  pointer-events: none;
+}
+
+/* Where it leads, over the booth's window. */
+.boothChip {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  translate: -50% -50%;
+  padding: 0.4em 0.75em;
+  border-radius: 4px;
+  background: var(--va-finale-card);
+  font: 600 clamp(0.62rem, 0.8cqw, 0.8rem) / 1 var(--va-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.booth:focus-visible {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 4px;
+}
+
+.booth:focus-visible::before,
+.booth:focus-visible .boothChip {
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  .booth:hover::before,
+  .booth:hover .boothChip {
+    opacity: 1;
+  }
+}
+
+/* No hover on touch: the chip shows where the booth leads from the start. */
+@media (hover: none) {
+  .boothChip {
+    opacity: 1;
+  }
+}
+
 /* --- the caption ------------------------------------------------------------ */
 
 .label {
@@ -384,6 +451,13 @@
     display: none;
   }
 
+  .booth {
+    left: calc(var(--t-x) * 1cqw);
+    top: calc(var(--t-y) * 1cqw);
+    width: calc(var(--t-w) * 1cqw);
+    height: calc(var(--t-h) * 1cqw);
+  }
+
   /* Fixed glow sizes: the case is large here. */
   .link:focus-visible .frame {
     outline-offset: 8px;
@@ -445,7 +519,9 @@
   .glass,
   .hot,
   .pool,
-  .arrow {
+  .arrow,
+  .booth::before,
+  .boothChip {
     transition: none;
   }
 

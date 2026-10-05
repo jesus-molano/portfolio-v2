@@ -26,7 +26,8 @@ type Props = {
  * hero is scrolled out of view, including where Skip leaves it, its edge
  * touching the viewport's (lib/onScreen.ts). A held right click or a
  * long-press on it opens the radio wheel (`data-radio-surface`, see
- * RadioWheel).
+ * RadioWheel). While it is behind the page controls they need no backing
+ * (`data-scene`, see PageControls).
  */
 export function HeroCanvas({ label, billboards }: Props) {
   const tier = useQualityTier();
@@ -46,7 +47,7 @@ export function HeroCanvas({ label, billboards }: Props) {
   }, []);
 
   return (
-    <div ref={wrapper} className={styles.canvas} role="img" aria-label={label} data-radio-surface>
+    <div ref={wrapper} className={styles.canvas} role="img" aria-label={label} data-radio-surface data-scene>
       {/* A failed scene (no WebGL) must not keep the loading screen up. */}
       <SceneErrorBoundary onError={markSceneReady}>
         <HeroScene tier={tier} reducedMotion={reducedMotion} active={inView} billboards={billboards} />

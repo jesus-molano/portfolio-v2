@@ -158,8 +158,8 @@ describe("projection and frames", () => {
 });
 
 describe("the page geometry", () => {
-  it("gives the map its column beside the panels from 1280 px, the whole width below", () => {
-    // 1440 less the paddings (2 x 48), the gap (32) and the panels (28% of 1440).
+  it("gives the map its column beside the main missions from 1280 px, the whole width below", () => {
+    // 1440 less the paddings (2 x 48), the gap (32) and the missions (28% of 1440).
     expect(mapWidthAt(1440, 900)).toBeCloseTo(908.8, 5);
     expect(mapWidthAt(SIDE_BY_SIDE_FROM - 1, 2000)).toBe(SIDE_BY_SIDE_FROM - 1 - 64);
     expect(mapWidthAt(1024, 768)).toBeCloseTo(((768 - MAP_CHROME_PX) * 16) / 11, 5);

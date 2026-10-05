@@ -7,7 +7,8 @@
  */
 
 .credits {
-  --roll-w: clamp(23rem, 37vw, 34rem);
+  /* Wide enough from about 990 px that the fine print runs in two columns. */
+  --roll-w: clamp(23rem, 40vw, 34rem);
   position: relative;
   z-index: var(--va-z-title);
   background: var(--va-color-night);
@@ -199,12 +200,6 @@
   color: var(--va-color-cream);
 }
 
-.byline {
-  margin-top: 0.5rem;
-  font-size: 1rem;
-  color: var(--va-color-text);
-}
-
 .block {
   margin-top: 3.2rem;
 }
@@ -252,28 +247,114 @@
   color: var(--va-color-text-muted);
 }
 
-.years {
-  white-space: nowrap;
-}
-
-/* The broadcast word for the job on air: no red here, that tally is the tower's. */
-.live {
-  font: 700 0.72rem / 1 var(--va-font-mono);
-  letter-spacing: 0.18em;
-  padding: 0.1em 0.4em;
-  border: 1px solid currentColor;
-  border-radius: 3px;
-  color: var(--va-color-cream);
-}
-
 .list {
   font-size: 0.92rem;
   line-height: 1.7;
   color: var(--va-color-text);
 }
 
-.repo {
-  white-space: nowrap;
+/* --- the fine print ------------------------------------------------------------ */
+
+/*
+ * After the contact: the licences, the type and the tool lists, smaller
+ * and two credits to a row once the roll is wide enough (a wide screen's
+ * roll, a tablet's column). Every word stays on the page: the CC BY
+ * licences ask for a visible credit. The rows read left to right, so the
+ * page's own scroll never has to climb back up a column.
+ */
+.fine {
+  container-type: inline-size;
+  margin-top: 4.5rem;
+}
+
+.fine .block {
+  margin-top: 2.6rem;
+}
+
+.fine > .block:first-child {
+  margin-top: 0;
+}
+
+.cells,
+.lists {
+  display: grid;
+  gap: 1.1rem 1.4rem;
+  margin: 0;
+}
+
+.lists {
+  margin-top: 2.6rem;
+  row-gap: 2.6rem;
+}
+
+/* Each list's head and words on rows shared with its neighbour: a head that wraps keeps both lists level. */
+.lists .block {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  row-gap: 0;
+  margin-top: 0;
+}
+
+.lists .head {
+  align-self: end;
+}
+
+@container (min-width: 24rem) {
+  .cells,
+  .lists {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/*
+ * Beside the frame the roll is narrow for its window: there two columns
+ * start at 21rem, so a desktop window has them from about 990 px. A
+ * phone's full-width roll keeps one column up to 24rem.
+ */
+@media (min-aspect-ratio: 5/6) and (min-width: 641px) {
+  @container (min-width: 21rem) {
+    .cells,
+    .lists {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+/* Its role over its name and note, centred like the rest of the roll. */
+.cell {
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+}
+
+.cell dt {
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--va-color-pink);
+}
+
+.cell dd {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+}
+
+.cell .name {
+  font-size: 0.84rem;
+}
+
+.cell .note {
+  font-size: 0.74rem;
+}
+
+.fine .list {
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.fine .aside {
+  font-size: 0.76rem;
 }
 
 .aside {
@@ -284,7 +365,7 @@
 }
 
 .block .aside {
-  margin: 0 0 0.4rem;
+  margin: 0 0 1rem;
 }
 
 .station {
@@ -295,11 +376,11 @@
 
 .tracks {
   display: grid;
-  gap: 0.45rem;
-  margin: 0;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0;
   padding: 0;
   list-style: none;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   line-height: 1.45;
   color: var(--va-color-text-muted);
 }
@@ -326,6 +407,8 @@
 
 .contact {
   margin-top: 4.5rem;
+  /* A link or a deep link to #contact lands its head below the roll's sticky top fade (6rem), not dimmed under it. */
+  scroll-margin-top: 2.5rem;
 }
 
 .tickets {
@@ -526,6 +609,11 @@
     display: none;
   }
 
+  /* No fade to clear here. */
+  .contact {
+    scroll-margin-top: 0;
+  }
+
   .roll > .eyebrow,
   .roll > .top {
     margin-block: 0;
@@ -537,18 +625,6 @@
 
   .film {
     margin-top: 2.5rem;
-  }
-
-  /* A track list is too long for half a phone's width: the station goes above it. */
-  .stationPair {
-    grid-template-columns: minmax(0, 1fr);
-    row-gap: 0.3rem;
-    margin-top: 1.2rem;
-    text-align: center;
-  }
-
-  .stationPair dt {
-    text-align: center;
   }
 }
 
