@@ -1034,7 +1034,7 @@ a.missionRow:focus-visible {
 
 .player2 {
   position: absolute;
-  top: calc((100% - 74px) * 0.42);
+  top: calc((100% - 74px) * 0.5);
   left: 12px;
   padding: 5px 8px;
   border: 1px solid color-mix(in srgb, var(--va-color-cyan) 55%, transparent);
@@ -1685,7 +1685,7 @@ a.missionRow:focus-visible {
   }
 
   .portrait {
-    object-position: 50% 60%;
+    object-position: 50% 100%;
   }
 
   .skills {

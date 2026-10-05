@@ -47,6 +47,6 @@ describe("STATS in the server HTML", () => {
     const { stats } = await getDictionary("en");
     const html = renderToStaticMarkup(createElement(Stats, { dict: stats }));
     expect(html).toMatch(/<img[^>]*src="\/stats\/map\.svg"[^>]*loading="lazy"/);
-    expect(html).toMatch(/<img[^>]*src="\/stats\/portrait\.svg"[^>]*loading="lazy"/);
+    expect(html).toMatch(/<img[^>]*src="\/stats\/portrait\.webp"[^>]*loading="lazy"/);
   });
 });

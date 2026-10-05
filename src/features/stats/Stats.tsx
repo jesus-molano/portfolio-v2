@@ -299,7 +299,7 @@ export function Stats({ dict }: Props) {
       <StatsPanel tab="sheet">
         <div className={styles.sheet}>
           <figure className={styles.card}>
-            <StatsPortrait className={styles.portrait} src="/stats/portrait.svg" alt={dict.player.alt} width={360} height={480} />
+            <StatsPortrait className={styles.portrait} src="/stats/portrait.webp" avif="/stats/portrait.avif" alt={dict.player.alt} width={660} height={825} />
             <span className={styles.player2} aria-hidden="true">
               {dict.player.player2}
             </span>

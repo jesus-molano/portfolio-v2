@@ -331,8 +331,8 @@ also exists as real DOM for keyboard and screen-reader users.
   `CAREER_CITY_ON_PAGE` in `statsLayout.ts` makes them links to its
   `#work-*` stops) and the saved games (The Sopranos, Severance,
   Succession). Tab 2 (STATS, `#stats-sheet`) is the character sheet:
-  the drawn portrait with Dante on his shoulder (`public/stats/portrait.svg`,
-  no photo; a render may replace it), the joke bars (appetite breaks out of
+  a Cycles render of his driver model with Dante at his shoulder
+  (`public/stats/portrait.{avif,webp}`, `tools/blender/build_stats_portrait.py`), the joke bars (appetite breaks out of
   its panel into the gap beside it; under 1280 px, where the panel meets
   the page's edge, the tracks are shorter and it breaks out of its track
   only; the section has `overflow-x: clip`) and the records (the cats
@@ -472,7 +472,7 @@ Each folder in `public/models` keeps its `LICENSE.txt`.
   logo, no borrowed mesh); materials Frame and Lens, under 3k triangles.
 - Palms, buildings and props are procedural; they need no licence.
 - `public/stats` — the STATS map (public-domain SRTM, GMTED2010 and ETOPO1
-  relief, drawn by `tools/art/stats`) and the drawn portrait; its
+  relief, drawn by `tools/art/stats`) and the rendered portrait; its
   `LICENSE.txt` gives the sources.
 
 ## Radio music and licences

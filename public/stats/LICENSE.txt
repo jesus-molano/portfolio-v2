@@ -13,5 +13,11 @@ map.svg, map-square.svg
   curves through the real towns, not traced from any map. Place names on
   the page are parodies written for this site.
 
-portrait.svg
-  An original drawing made for this site (no photo, no borrowed artwork).
+portrait.avif, portrait.webp
+  A Cycles render made for this site by tools/blender/build_stats_portrait.py
+  (no photo): Jesús is the hero's driver model, built from the MakeHuman
+  system assets (CC0), wearing the site's own aviators
+  (tools/blender/build_sunglasses.py); Dante comes from the cats generator
+  (tools/blender/cats), whose body is the XR Blocks "Cat" by Google,
+  Apache License 2.0 (https://github.com/google/xrblocks), modified (fur,
+  markings, eyes and pose are ours).

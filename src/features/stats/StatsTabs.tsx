@@ -321,18 +321,20 @@ export function StatsOtherTab({ names }: { names: readonly string[] }) {
 }
 
 /** The STATS portrait: lazy, but fetched once the section is near or its tab opens, so it never shows up empty. */
-export function StatsPortrait({ className, src, alt, width, height }: { className: string; src: string; alt: string; width: number; height: number }) {
+export function StatsPortrait({ className, src, avif, alt, width, height }: { className: string; src: string; avif: string; alt: string; width: number; height: number }) {
   const { tab, near } = use(Context);
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- a static SVG drawing
-    <img
-      className={className}
-      src={src}
-      alt={alt}
-      width={width}
-      height={height}
-      loading={near || tab === "sheet" ? "eager" : "lazy"}
-      decoding="async"
-    />
+    <picture>
+      <source srcSet={avif} type="image/avif" />
+      <img
+        className={className}
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        loading={near || tab === "sheet" ? "eager" : "lazy"}
+        decoding="async"
+      />
+    </picture>
   );
 }
