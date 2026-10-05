@@ -397,7 +397,7 @@
       "slots": [
         {
           "place": "dotfiles",
-          "note": "My whole machine as code. Never quite finished."
+          "note": "My Windows and CachyOS setup, ready for any new machine."
         },
         {
           "place": "tessera-studio",
@@ -440,7 +440,7 @@
           "ALWAYS A WAY OUT."
         ],
         "sub": "One combination per machine.",
-        "oneLiner": "My whole machine as code: CachyOS and Hyprland, one composition per machine, simulated before it lands, rolled back if it fails."
+        "oneLiner": "My Windows and CachyOS dotfiles: a freshly installed machine set up the way I like it, without redoing every step by hand."
       },
       "tessera-studio": {
         "title": "TESSERA STUDIO",
