@@ -13,6 +13,40 @@
   user-select: none;
 }
 
+/* The long-press, armed: a ring under the held finger. Lifting it opens the radio; moving it is a swipe. */
+.holdRing {
+  position: fixed;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  z-index: var(--va-z-radio);
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: -2.25rem 0 0 -2.25rem;
+  border: 2px solid var(--va-color-pink);
+  border-radius: 50%;
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--va-color-pink) 55%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--va-color-pink) 35%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 120ms ease,
+    transform 160ms ease-out;
+}
+
+.holdRing[data-armed="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holdRing {
+    transform: none;
+    transition: none;
+  }
+}
+
 .overlay {
   position: fixed;
   inset: 0;

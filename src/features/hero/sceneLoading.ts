@@ -16,6 +16,17 @@ export type SceneLoading = {
   enteredAt: number;
   /** How she entered: a key press or a pointer (click or tap). */
   enteredVia: EnteredVia | null;
+  /**
+   * She has watched the intro's first line (or skipped it, or the intro is
+   * a still) and is at rest: a quiet moment for side hints, like the radio's.
+   */
+  settled: boolean;
+  /**
+   * Nothing in the hero asks her for anything right now: a line plays, she
+   * drives, or the hero is a still or behind her. Side hints show only
+   * then, never next to a prompt (HeroStage writes it when it changes).
+   */
+  quiet: boolean;
 };
 
 export type EnteredVia = "key" | "pointer";
@@ -26,6 +37,8 @@ const INITIAL: SceneLoading = {
   entered: false,
   enteredAt: Number.NEGATIVE_INFINITY,
   enteredVia: null,
+  settled: false,
+  quiet: true,
 };
 
 let state: SceneLoading = INITIAL;
@@ -68,6 +81,16 @@ export function markSceneReady() {
  */
 export function markEntered(via: EnteredVia = "pointer", now: number = performance.now()) {
   if (!state.entered) update({ entered: true, enteredAt: now, enteredVia: via });
+}
+
+/** The hero reached a quiet moment after its first line (see `settled`). Once. */
+export function markSettled() {
+  if (state.entered && !state.settled) update({ settled: true });
+}
+
+/** Whether the hero asks her for nothing right now (see `quiet`). */
+export function markQuiet(quiet: boolean) {
+  if (state.quiet !== quiet) update({ quiet });
 }
 
 /** Tests only. */

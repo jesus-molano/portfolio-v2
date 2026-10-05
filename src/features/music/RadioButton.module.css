@@ -80,13 +80,15 @@
 }
 
 /*
- * Once per visitor: how to open the wheel from the scene. A small tag
- * hanging under the button, pointing at it.
+ * Once per visitor: how to open the wheel. A small tag on the right, below
+ * the hero's HUD (its camera label sits under these controls), so it never
+ * covers it; the button glows meanwhile, so the tag reads as its own. While
+ * it is up, a tap or click on it opens the wheel ("tap here" on touch).
  */
 .callout {
-  position: absolute;
-  top: calc(100% + 0.6rem);
-  right: 0;
+  position: fixed;
+  top: 5.75rem;
+  right: 1rem;
   width: max-content;
   max-width: min(17rem, calc(100vw - 2rem));
   padding: 0.5rem 0.75rem;
@@ -108,22 +110,32 @@
     transform 300ms ease;
 }
 
-.callout::before {
-  content: "";
-  position: absolute;
-  top: -5px;
-  right: 1.4rem;
-  width: 8px;
-  height: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--va-color-pink) 55%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--va-color-pink) 55%, transparent);
-  background: inherit;
-  transform: rotate(45deg);
+@media (max-width: 639px) {
+  .callout {
+    top: 5.25rem;
+  }
 }
 
 .callout[data-visible="true"] {
   opacity: 1;
   transform: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* The button the callout talks about glows while it is up. */
+.wrap[data-calling="true"] .button {
+  border-color: var(--va-color-pink);
+  animation: call 1.2s ease-out 3;
+}
+
+@keyframes call {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--va-color-pink) 60%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 10px transparent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -135,5 +147,9 @@
   .callout {
     transition: none;
     transform: none;
+  }
+
+  .wrap[data-calling="true"] .button {
+    animation: none;
   }
 }

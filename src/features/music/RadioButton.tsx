@@ -14,9 +14,16 @@ type Props = { dict: Dictionary["radio"] };
 const GESTURES = ["pointerdown", "keydown", "touchend"] as const;
 /** "seen" once the visitor was shown how to open the wheel. */
 const HINT_KEY = "va-radio-hint";
-/** After entering, once the title has had its moment. */
-const HINT_DELAY_MS = 3500;
+/**
+ * Once the hero has settled (its first line read and the visitor at rest,
+ * see sceneLoading), the callout waits for a quiet moment that lasts: a
+ * line playing, nothing on screen asking her for anything. It never shares
+ * the screen with a prompt: when the hero asks her again, it goes.
+ */
+const HINT_DELAY_MS = 800;
+/** Up this long at most, and seen once it has been up this long in all. */
 const HINT_MS = 7000;
+const HINT_SEEN_MS = 2500;
 
 function hintSeen(): boolean {
   try {
@@ -40,21 +47,33 @@ function markHintSeen() {
  * wheel. Browsers only allow sound after a gesture, so on pages without the
  * loading screen the remembered station starts on the first click, tap or
  * key press, unless the visitor turned the radio off. Once per visitor, a
- * small callout under it says how to open the wheel from the scene.
+ * small callout says how to open the wheel, while the button glows: after
+ * the hero's first line, in a quiet moment (a line playing, no prompt up,
+ * so never two instructions at once), below the hero's HUD so it never
+ * covers it. A tap or click on the callout opens the wheel too: on touch
+ * screens it says "tap here".
  */
 export function RadioButton({ dict }: Props) {
   const radio = useSyncExternalStore(subscribeRadio, getRadio, getServerRadio);
-  const entered = useSyncExternalStore(
+  /** The hero has settled and asks her for nothing right now. */
+  const calm = useSyncExternalStore(
     subscribeSceneLoading,
-    () => getSceneLoading().entered,
+    () => getSceneLoading().settled && getSceneLoading().quiet,
     () => false,
   );
+  /** How long the callout has been up so far (ms), over its appearances. */
+  const shownMs = useRef(0);
   const touch = useMediaQuery("(pointer: coarse)");
   const button = useRef<HTMLButtonElement>(null);
   const [callout, setCallout] = useState(false);
   const open = radio.wheel !== null;
   const entry = findEntry(radio.tuned);
   const gesture = touch ? dict.gestureTouch : dict.gesture;
+  /** On touch the button (or the callout itself) is the obvious way in. */
+  const calloutText = touch ? dict.calloutTouch : dict.gesture;
+
+  /** In the same render as the hero asking her again: the callout never shares a frame with a prompt. */
+  const showCallout = callout && calm && !open;
 
   useEffect(() => {
     const remove = () => GESTURES.forEach((name) => window.removeEventListener(name, onGesture, true));
@@ -70,17 +89,29 @@ export function RadioButton({ dict }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!entered || hintSeen()) return;
-    const show = window.setTimeout(() => setCallout(true), HINT_DELAY_MS);
-    const hide = window.setTimeout(() => {
-      setCallout(false);
-      markHintSeen();
-    }, HINT_DELAY_MS + HINT_MS);
+    if (!calm || hintSeen()) return;
+    let shownAt = Number.NaN;
+    const show = window.setTimeout(() => {
+      shownAt = performance.now();
+      setCallout(true);
+    }, HINT_DELAY_MS);
+    const hide = window.setTimeout(
+      () => {
+        setCallout(false);
+        markHintSeen();
+      },
+      HINT_DELAY_MS + Math.max(0, HINT_MS - shownMs.current),
+    );
     return () => {
+      // The hero asks her something again: the callout steps aside, and comes back at the next quiet
+      // moment until it has been up HINT_SEEN_MS in all.
       window.clearTimeout(show);
       window.clearTimeout(hide);
+      setCallout(false);
+      if (!Number.isNaN(shownAt)) shownMs.current += performance.now() - shownAt;
+      if (shownMs.current >= HINT_SEEN_MS) markHintSeen();
     };
-  }, [entered]);
+  }, [calm]);
 
   // Whoever opened the wheel knows the way: the hint is done.
   useEffect(() => {
@@ -88,7 +119,7 @@ export function RadioButton({ dict }: Props) {
   }, [open]);
 
   return (
-    <span className={styles.wrap}>
+    <span className={styles.wrap} data-calling={showCallout}>
       <Button
         ref={button}
         className={styles.button}
@@ -123,8 +154,14 @@ export function RadioButton({ dict }: Props) {
       <span id="radio-gesture" hidden>
         {gesture}
       </span>
-      <span className={styles.callout} data-visible={callout && !open} aria-hidden="true">
-        {gesture}
+      {/* The button is the control for keyboards and screen readers; the tag only adds a bigger target. */}
+      <span
+        className={styles.callout}
+        data-visible={showCallout}
+        aria-hidden="true"
+        onClick={() => openWheel("browse", "button", button.current)}
+      >
+        {calloutText}
       </span>
     </span>
   );

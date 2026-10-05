@@ -9,6 +9,7 @@ const CAPS: [RegExp, number][] = [
   [/^intro\.hint/, 34],
   [/^intro\.ack$/, 34],
   [/^intro\.model$/, 40],
+  [/^intro\.arriving$/, 40],
   [/^intro\.keepGoing/, 30],
   [/^intro\.hold$/, 32],
   [/^intro\.next/, 12],
@@ -16,6 +17,8 @@ const CAPS: [RegExp, number][] = [
   [/^osd\./, 9],
   [/^skipLabel$/, 16],
   [/^skipHurry$/, 12],
+  // Under the name: two lines at most on a 320 px phone.
+  [/^tagline$/, 66],
 ];
 
 function flatten(value: unknown, prefix = ""): Record<string, string> {
@@ -41,14 +44,33 @@ describe("hero UI copy", () => {
     expect(Object.keys(es.hero.osd).sort()).toEqual(Object.keys(en.hero.osd).sort());
   });
 
+  it("has the same radio keys in both languages, and a callout short enough for its tag", () => {
+    expect(Object.keys(flatten(es.radio)).sort()).toEqual(Object.keys(flatten(en.radio)).sort());
+    for (const radio of [en.radio, es.radio]) {
+      // Three lines at most in the 17rem tag under the music button.
+      expect(Array.from(radio.calloutTouch).length).toBeLessThanOrEqual(56);
+      expect(Array.from(radio.gesture).length).toBeLessThanOrEqual(56);
+    }
+  });
+
   for (const [locale, hero] of dicts) {
     it(`${locale}: keeps every hint, cue and label short enough for its chip`, () => {
-      const copy = flatten({ intro: hero.intro, osd: hero.osd, skipLabel: hero.skipLabel, skipHurry: hero.skipHurry });
+      const copy = flatten({
+        intro: hero.intro,
+        osd: hero.osd,
+        skipLabel: hero.skipLabel,
+        skipHurry: hero.skipHurry,
+        tagline: hero.tagline,
+      });
       for (const [key, text] of Object.entries(copy)) {
         const cap = CAPS.find(([pattern]) => pattern.test(key))?.[1];
         if (cap === undefined) continue;
         expect(Array.from(text).length, `${locale} hero.${key}`).toBeLessThanOrEqual(cap);
       }
+    });
+
+    it(`${locale}: the tagline never says he drives: she has the wheel`, () => {
+      expect(hero.tagline).not.toMatch(/wheel|drive|volante|conduzco|conduce/i);
     });
 
     it(`${locale}: Skip's accessible name contains its visible label`, () => {

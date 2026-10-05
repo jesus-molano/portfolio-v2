@@ -350,12 +350,26 @@
   clip-path: polygon(0 0, 100% 50%, 0 100%);
 }
 
+/*
+ * The way on, as an arrow in the direction her input moves: down for the
+ * wheel and the keys (scroll down), up for a finger (swipe up). One arrow
+ * per input type, the same everywhere in the hero; it bobs the way it
+ * points (--bob).
+ */
+.glyph[data-g="down"],
+.glyph[data-g="up"] {
+  width: 0.6em;
+  height: 0.78em;
+}
+
 .glyph[data-g="down"] {
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  --bob: 0.22em;
+  clip-path: polygon(33% 0, 67% 0, 67% 50%, 100% 50%, 50% 100%, 0 50%, 33% 50%);
 }
 
 .glyph[data-g="up"] {
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  --bob: -0.22em;
+  clip-path: polygon(50% 0, 100% 50%, 67% 50%, 67% 100%, 33% 100%, 33% 50%, 0 50%);
 }
 
 /* An arrow on its way out, for Skip: a road sign, not a tape deck's fast forward. */
@@ -367,8 +381,7 @@
 @media (forced-colors: active) {
   .glyph,
   .glyph::before,
-  .glyph::after,
-  .cueArrow::after {
+  .glyph::after {
     forced-color-adjust: none;
     background: CanvasText;
   }
@@ -377,7 +390,11 @@
 /*
  * Title hint, inside the bottom letterbox bar: what to do, then the rule of
  * the film. It pops in like a VCR menu and blinks like PRESS START; it
- * rides out with the bar and fades as the drive starts.
+ * stays centred in what is left of the bar as the bar slides out, and
+ * fades as the drive starts. data-prompt says which: the ask ("hint"),
+ * the answer to her first input ("ack", with why the road waits while the
+ * name still arrives: data-naming), or, resting on the title once the
+ * wheel is hers, the way on ("onward"), never the ask again.
  */
 .hint {
   position: absolute;
@@ -390,7 +407,7 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  transform: translateY(calc(var(--bars, 0) * 9vh));
+  transform: translateY(calc(var(--bars, 0) * 4.5vh));
 }
 
 .hintBox {
@@ -401,13 +418,24 @@
   padding: 0 1rem;
   text-align: center;
   opacity: 0;
+  transition: opacity 250ms ease;
 }
 
-.hint[data-on] .hintBox {
-  animation: vcr-pop 160ms steps(1, end) forwards;
+.hint[data-prompt] .hintBox {
+  opacity: 1;
+  transition-duration: 0ms;
 }
 
-.hintLine1 {
+.hint[data-pop="1"] .hintBox {
+  animation: vcr-pop 160ms steps(1, end) 1;
+}
+
+.hint[data-pop="2"] .hintBox {
+  animation: vcr-pop-b 160ms steps(1, end) 1;
+}
+
+.hintLine1,
+.hintOnward {
   display: inline-flex;
   align-items: center;
   gap: 0.6em;
@@ -428,17 +456,16 @@
 }
 
 .hintGlyph {
-  width: 0.6em;
-  height: 0.45em;
   color: var(--va-color-pink);
 }
 
-.hint[data-on] .hintGlyph {
-  animation: hint-bob 1.1s ease-in-out 4;
+.hint[data-pop="1"] .hintGlyph {
+  animation: bob 1.1s ease-in-out 4;
 }
 
+.hint[data-pop="2"] .hintGlyph,
 .hint[data-blink="2"] .hintGlyph {
-  animation-name: hint-bob-b;
+  animation: bob-b 1.1s ease-in-out 4;
 }
 
 /* Her first input answered in place of the ask: the drive is hers. */
@@ -452,19 +479,40 @@
   color: var(--va-color-cream);
 }
 
-.stage[data-started] .hintLine1 {
+.hint[data-prompt="ack"] .hintLine1,
+.hint[data-prompt="onward"] .hintLine1 {
   display: none;
 }
 
-.stage[data-started] .hintAck {
+.hint[data-prompt="ack"] .hintAck {
   display: block;
-  animation: vcr-pop 160ms steps(1, end) 1;
 }
 
-.hintLine2 {
+.hintOnward {
+  display: none;
+}
+
+.hint[data-prompt="onward"] .hintOnward {
+  display: inline-flex;
+}
+
+.hintLine2,
+.hintArriving {
   font-family: var(--va-font-body);
   font-size: 0.8rem;
   color: color-mix(in srgb, var(--va-color-cream) 85%, transparent);
+}
+
+.hintArriving {
+  display: none;
+}
+
+.hint[data-prompt="ack"][data-naming] .hintLine2 {
+  display: none;
+}
+
+.hint[data-prompt="ack"][data-naming] .hintArriving {
+  display: block;
 }
 
 /* The screen-reader help for the still hero (reduced motion) is the other half of #hero-help. */
@@ -487,32 +535,6 @@
   color: var(--va-color-cream);
 }
 
-/* A finger's trail: a dot rising along a short line, for "swipe up". */
-.trail {
-  position: relative;
-  display: inline-block;
-  flex: none;
-  width: 1px;
-  height: 1.1rem;
-  background: color-mix(in srgb, var(--va-color-cream) 45%, transparent);
-}
-
-.trail::after {
-  content: "";
-  position: absolute;
-  left: -2px;
-  bottom: 0;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--va-color-pink);
-  opacity: 0;
-}
-
-.hint[data-on] .trail::after {
-  animation: finger-trail 1.4s ease-out 4;
-}
-
 /* Phones: a chip above the bar, so it never invites a swipe from the home indicator. */
 @media (pointer: coarse) {
   .hint {
@@ -528,7 +550,8 @@
   }
 
   .hint .hintLine1,
-  .hint .hintAck {
+  .hint .hintAck,
+  .hint .hintOnward {
     font-size: 0.74rem;
     letter-spacing: 0.16em;
   }
@@ -547,14 +570,16 @@
 }
 
 .stage[data-input="touch"] .hintLine1,
-.stage[data-input="touch"] .hintAck {
+.stage[data-input="touch"] .hintAck,
+.stage[data-input="touch"] .hintOnward {
   font-size: 0.74rem;
   letter-spacing: 0.16em;
 }
 
 @media (max-width: 359px) {
   .hint .hintLine1,
-  .hint .hintAck {
+  .hint .hintAck,
+  .hint .hintOnward {
     font-size: 0.68rem;
     letter-spacing: 0.1em;
   }
@@ -605,7 +630,12 @@
 
 .osd[data-mode="waiting"] .osdWait {
   display: inline-block;
-  animation: cue-bob 1.1s ease-in-out 5;
+  animation: bob 1.1s ease-in-out 5;
+}
+
+/* A long wait: the arrow asks again (the car crawls lower meanwhile). */
+.osd[data-deep] .osdWait {
+  animation-name: bob-b;
 }
 
 /* The way on, in her input's direction: down for the wheel and keys, up for a swipe
@@ -716,29 +746,21 @@
 
 /*
  * The marker at the end of a card, like a game dialogue box: it appears
- * and bobs once the line has been read and she waits.
+ * and bobs once the line has been read and she waits. It is glued to the
+ * card's last word, so it never wraps onto a line of its own (an empty
+ * caption pill while the line is read).
  */
+.cueGlue,
 .cueTail {
   white-space: nowrap;
 }
 
 .cueArrow {
-  position: relative;
-  display: inline-block;
-  width: 0.8em;
-  height: 0.62em;
+  display: inline-flex;
   margin-left: 0.5em;
-  vertical-align: 0.05em;
-  filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--va-color-night) 80%, transparent));
+  vertical-align: -0.05em;
+  color: var(--va-color-pink);
   opacity: 0;
-}
-
-.cueArrow::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--va-color-pink);
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
 
 .subtitle[data-ready] .cueArrow {
@@ -746,15 +768,19 @@
 }
 
 .subtitle[data-ready="1"] .cueArrow {
-  animation:
-    cue-bob 1.1s ease-in-out 5,
-    glow-once 220ms ease-out 1;
+  animation: glow-once 220ms ease-out 1;
 }
 
 .subtitle[data-ready="2"] .cueArrow {
-  animation:
-    cue-bob-b 1.1s ease-in-out 5,
-    glow-once-b 220ms ease-out 1;
+  animation: glow-once-b 220ms ease-out 1;
+}
+
+.subtitle[data-ready="1"] .cueArrow .glyph {
+  animation: bob 1.1s ease-in-out 5;
+}
+
+.subtitle[data-ready="2"] .cueArrow .glyph {
+  animation: bob-b 1.1s ease-in-out 5;
 }
 
 .cueLabel {
@@ -772,12 +798,18 @@
   display: inline;
 }
 
-/* "Let the man finish": above the card, at once, the first times she pushes into an unread line. */
+/*
+ * "Let the man finish": above the card, only while she keeps pushing into
+ * an unread line (scroll/transport.ts HOLD_NOTE), gone the moment she stops.
+ * Centred on its own width, which may wrap on a narrow phone.
+ */
 .holdNote {
   position: absolute;
   left: 50%;
   bottom: calc(max(3.75rem, 6vh) + var(--va-card-h, 2rem) + 0.75rem);
   z-index: var(--va-z-ui);
+  width: max-content;
+  max-width: calc(100vw - 2rem);
   padding: 0.3em 0.7em;
   border-radius: 0.4em;
   background: var(--va-color-osd);
@@ -785,13 +817,13 @@
   font-size: clamp(0.84rem, 1.1vw, 1rem);
   font-weight: 700;
   letter-spacing: 0.16em;
+  text-align: center;
   text-transform: uppercase;
-  white-space: nowrap;
   color: var(--va-color-pink);
   transform: translateX(-50%);
   pointer-events: none;
   opacity: 0;
-  transition: opacity 300ms ease;
+  transition: opacity 150ms ease;
 }
 
 .holdNote[data-visible] {
@@ -800,7 +832,7 @@
   animation: vcr-pop 160ms steps(1, end) 1;
 }
 
-/* Stopped where no line is up: a caption that says how to keep going. */
+/* Stopped where no line is up: a caption that says how to keep going, centred on its own width. */
 .cue {
   position: absolute;
   left: 50%;
@@ -809,6 +841,8 @@
   display: flex;
   align-items: center;
   gap: 0.7em;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
   padding: 0.4em 0.8em;
   border-radius: 0.4em;
   background: var(--va-color-osd);
@@ -828,13 +862,23 @@
   opacity: 1;
 }
 
+/* A card coming up takes the cue's place at once: the two never share the band, even mid-fade. */
+.cue[data-gone] {
+  visibility: hidden;
+}
+
 .cueGlyph {
   color: var(--va-color-pink);
 }
 
 .cue[data-visible] .cueGlyph,
 .endCue[data-visible] .cueGlyph {
-  animation: cue-bob 1.1s ease-in-out 5;
+  animation: bob 1.1s ease-in-out 5;
+}
+
+/* A long wait: the cue bobs again. */
+.cue[data-remind="2"] .cueGlyph {
+  animation-name: bob-b;
 }
 
 /* The fade to night: the way on, above the fade so it reads at once. */
@@ -846,6 +890,8 @@
   display: flex;
   align-items: center;
   gap: 0.7em;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
   padding: 0.45em 0.9em;
   border-radius: 0.4em;
   background: var(--va-color-osd);
@@ -939,6 +985,22 @@
   }
 }
 
+@keyframes vcr-pop-b {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  75%,
+  100% {
+    opacity: 1;
+  }
+}
+
 /* PRESS START: 0.8 s on, 0.4 s at 15%. Two names so a tease restarts it. */
 @keyframes press-start {
   0% {
@@ -958,27 +1020,16 @@
   }
 }
 
-@keyframes hint-bob {
+/* An arrow bobs the way it points (--bob on the glyph). Two names, so a state change restarts it. */
+@keyframes bob {
   50% {
-    translate: 0 0.22em;
+    translate: 0 var(--bob, 0.22em);
   }
 }
 
-@keyframes hint-bob-b {
+@keyframes bob-b {
   50% {
-    translate: 0 0.22em;
-  }
-}
-
-@keyframes cue-bob {
-  50% {
-    translate: 0 0.25em;
-  }
-}
-
-@keyframes cue-bob-b {
-  50% {
-    translate: 0 0.25em;
+    translate: 0 var(--bob, 0.22em);
   }
 }
 
@@ -1000,23 +1051,6 @@
   }
   to {
     box-shadow: 0 0 0 8px transparent;
-  }
-}
-
-@keyframes finger-trail {
-  0% {
-    bottom: 0;
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    bottom: calc(100% - 5px);
-    opacity: 0;
   }
 }
 
@@ -1131,7 +1165,9 @@
 
   .hint .hintLine1,
   .hint .hintAck,
+  .hint .hintOnward,
   .hint .hintLine2,
+  .hint .hintArriving,
   .helpMotion {
     display: none;
   }

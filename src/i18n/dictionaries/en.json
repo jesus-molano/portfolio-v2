@@ -13,6 +13,7 @@
     "offState": "Radio: off",
     "gesture": "Hold right-click or Q for the radio",
     "gestureTouch": "Long-press the scene for the radio",
+    "calloutTouch": "Tap here for the radio",
     "hintAim": "Aim at a station, let go to tune",
     "hintAimKey": "Aim with the mouse or the arrows, let go of Q to tune",
     "hintBrowse": "Arrows to browse · Enter to tune · Esc to close",
@@ -33,13 +34,14 @@
   "hero": {
     "name": "Jesús Molano",
     "role": "Frontend Engineer",
-    "tagline": "Any framework, any road. I'm the one at the wheel.",
+    "tagline": "Any framework, any road. I know the shortcuts.",
     "intro": {
       "hint": "Scroll to take the wheel",
       "hintTouch": "Swipe up to take the wheel",
       "hintKey": "Press Space to take the wheel",
       "ack": "You have the wheel",
       "model": "You drive. The film waits for you.",
+      "arriving": "Easy, the name's still pulling in.",
       "next": "Scroll",
       "nextTouch": "Swipe up",
       "nextKey": "Space",

@@ -5,13 +5,13 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
   useEffect,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import { getSceneLoading, subscribeSceneLoading } from "@/features/hero/sceneLoading";
+import { scrollInput } from "@/features/hero/scroll/heroProgress";
 import { SLOW_MOTION, timeScale } from "@/features/hero/scene/timeScale";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -45,6 +45,7 @@ import {
   WHEEL_START,
   type WheelEntry,
 } from "./stations";
+import { holdArmed, holdCancelled, holdMayStart, TOUCH_HOLD } from "./touchHold";
 import { ringSectorPath, sectorArcPath, unwrapAngle, WHEEL_LAYOUT } from "./wheelGeometry";
 
 type Props = { dict: Dictionary["radio"] };
@@ -54,9 +55,6 @@ const COUNT = WHEEL.length;
 const DEAD_ZONE = 26;
 /** The virtual stick's reach: past it, the aim origin trails the pointer. */
 const REACH = 90;
-const LONG_PRESS_MS = 450;
-/** A finger that moves this far is scrolling, not pressing. */
-const LONG_PRESS_SLOP = 10;
 /** Taps this soon after a long-press opened the wheel are the same finger lifting. */
 const TOUCH_GRACE_MS = 350;
 /**
@@ -125,9 +123,11 @@ function stationLabel(entry: WheelEntry, dict: Props["dict"], playing: Credit | 
  * The radio wheel, GTA style: a ring of station badges around a centre that
  * shows the station under the pointer. Opens by holding the right mouse
  * button over the hero scene (aim, let go to tune; a quick click leaves it
- * open), by holding or pressing Q, by a long-press on the scene, or from the
- * music button. While it is open the scene behind dims and the drive goes
- * into slow motion (not under reduced motion).
+ * open), by holding or pressing Q, by a long-press on the scene (held still,
+ * opened on release, see touchHold.ts: it never steals a swipe), or from the
+ * music button. While it is open the scene behind dims, the drive goes
+ * into slow motion (not under reduced motion) and the wheel keeps every
+ * scroll and swipe to itself.
  *
  * Accessibility: a modal dialog with a radio group (the current station is
  * checked); focus moves in and returns to the opener; arrows browse, Enter
@@ -166,8 +166,18 @@ export function RadioWheel({ dict }: Props) {
   const origin = useRef<{ x: number; y: number } | null>(null);
   const touchOpenedAt = useRef(-Infinity);
   const scroll = useRef(0);
+  /** The page's Lenis, for the long-press: a press on a page still in motion is stopping a scroll. */
+  const lenisRef = useRef(lenis);
+  /** A finger down on the empty backdrop: a tap closes the wheel, a swipe does not. */
+  const backdropTouch = useRef<{ id: number; x: number; y: number } | null>(null);
+  /** Where a held finger has armed the long-press: a ring says "lift to open the radio". */
+  const [armedAt, setArmedAt] = useState<{ x: number; y: number } | null>(null);
   /** Mounted once the visitor is in (the logos' fonts load then), or on first use. */
   const mounted = entered || open;
+
+  useEffect(() => {
+    lenisRef.current = lenis;
+  }, [lenis]);
 
   // The open/close side effects: inert page, no scroll, slow motion, focus.
   useEffect(() => {
@@ -197,6 +207,39 @@ export function RadioWheel({ dict }: Props) {
     };
   }, [open, lenis, reducedMotion]);
 
+  // While open, the wheel keeps scrolls and swipes to itself: the mouse
+  // wheel browses the stations and nothing reaches the page behind (the
+  // hero would take them for driving). React's wheel listener is passive,
+  // so this one is native.
+  useEffect(() => {
+    const layer = overlay.current;
+    if (!open || !layer) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.ctrlKey) return;
+      scroll.current += event.deltaY;
+      if (Math.abs(scroll.current) < WHEEL_STEP) return;
+      const step = scroll.current > 0 ? 1 : -1;
+      scroll.current = 0;
+      aimed.current = true;
+      const current = getRadio().wheel?.selected ?? 0;
+      select(step > 0 ? nextIndex(current, COUNT) : previousIndex(current, COUNT), { focus: true });
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.cancelable) event.preventDefault();
+      event.stopPropagation();
+    };
+    layer.addEventListener("wheel", onWheel, { passive: false });
+    layer.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => {
+      layer.removeEventListener("wheel", onWheel);
+      layer.removeEventListener("touchmove", onTouchMove);
+    };
+    // select only touches refs and the store.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   function pointNeedle(angle: number) {
     needle.current = unwrapAngle(needle.current, angle);
     dial.current?.style.setProperty("--needle", `${needle.current.toFixed(2)}deg`);
@@ -225,7 +268,9 @@ export function RadioWheel({ dict }: Props) {
   // Handlers read the store directly, so they are installed once.
   useEffect(() => {
     let pointer: { x: number; y: number } | null = null;
-    let press: { id: number; x: number; y: number; timer: number } | null = null;
+    /** A finger held on the scene: it may become the long-press that opens the wheel. */
+    let press: { id: number; x: number; y: number; at: number; inputAt: number; moved: number; timer: number } | null =
+      null;
     let holdingQ = false;
     /** When the right button last let go of an aim. */
     let aimReleasedAt = -Infinity;
@@ -233,7 +278,20 @@ export function RadioWheel({ dict }: Props) {
     const cancelPress = () => {
       if (press) window.clearTimeout(press.timer);
       press = null;
+      setArmedAt(null);
     };
+
+    /**
+     * The held finger's state, for the touchHold rules, as of `at` (an
+     * event's own timeStamp, or now). The press is timed by the events'
+     * own times, so a slow frame that runs the release handler late never
+     * turns a tap into a long-press.
+     */
+    const holdOf = (current: NonNullable<typeof press>, at = performance.now()) => ({
+      heldMs: at - current.at,
+      moved: current.moved,
+      scrolled: scrollInput.at > current.inputAt,
+    });
 
     const startAim = (at: { x: number; y: number } | null) => {
       origin.current = at;
@@ -272,14 +330,18 @@ export function RadioWheel({ dict }: Props) {
       }
       if (event.pointerType === "touch" && event.isPrimary && !current && onRadioSurface(event)) {
         cancelPress();
-        const timer = window.setTimeout(() => {
-          press = null;
-          if (getRadio().wheel || isLoading()) return;
-          touchOpenedAt.current = performance.now();
-          openWheel("browse", "touch");
-          navigator.vibrate?.(12);
-        }, LONG_PRESS_MS);
-        press = { id: event.pointerId, x: event.clientX, y: event.clientY, timer };
+        // The event's own time (performance.now()'s clock), not when this handler got to run.
+        const at = event.timeStamp;
+        // A finger landing on a page in motion is stopping a scroll, not asking for the radio.
+        if (!holdMayStart({ sinceScrollMs: at - scrollInput.at, scrolling: Boolean(lenisRef.current?.isScrolling) })) return;
+        const next = { id: event.pointerId, x: event.clientX, y: event.clientY, at, inputAt: scrollInput.at, moved: 0, timer: 0 };
+        // Held still long enough: a ring under the finger says lifting opens the radio.
+        next.timer = window.setTimeout(() => {
+          if (press !== next || !holdArmed(holdOf(next)) || getRadio().wheel || isLoading()) return;
+          setArmedAt({ x: next.x, y: next.y });
+          navigator.vibrate?.(8);
+        }, TOUCH_HOLD.armMs);
+        press = next;
       }
     };
 
@@ -292,14 +354,24 @@ export function RadioWheel({ dict }: Props) {
     const onPointerMove = (event: PointerEvent) => {
       pointer = { x: event.clientX, y: event.clientY };
       if (press && event.pointerId === press.id) {
-        if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > LONG_PRESS_SLOP) cancelPress();
+        // Any real movement makes it a swipe: the hold is off.
+        press.moved = Math.max(press.moved, Math.hypot(event.clientX - press.x, event.clientY - press.y));
+        if (holdCancelled(holdOf(press))) cancelPress();
       }
       const current = getRadio().wheel;
       if (current?.mode === "aim" && event.pointerType !== "touch") aim(event.clientX, event.clientY);
     };
 
     const onPointerUp = (event: PointerEvent) => {
-      if (press && event.pointerId === press.id) cancelPress();
+      if (press && event.pointerId === press.id) {
+        // The wheel opens as the still, held finger lifts: never under a finger that went on to swipe.
+        const opens = holdArmed(holdOf(press, event.timeStamp)) && !getRadio().wheel && !isLoading();
+        cancelPress();
+        if (opens) {
+          touchOpenedAt.current = performance.now();
+          openWheel("browse", "touch");
+        }
+      }
       const current = getRadio().wheel;
       if (event.button === 2 && current?.mode === "aim" && current.via === "pointer") {
         aimReleasedAt = performance.now();
@@ -428,188 +500,205 @@ export function RadioWheel({ dict }: Props) {
     select(index, { focus: true });
   };
 
-  const onScrollWheel = (event: ReactWheelEvent) => {
-    scroll.current += event.deltaY;
-    if (Math.abs(scroll.current) < WHEEL_STEP) return;
-    const step = scroll.current > 0 ? 1 : -1;
-    scroll.current = 0;
-    aimed.current = true;
-    select(step > 0 ? nextIndex(selected, COUNT) : previousIndex(selected, COUNT), { focus: true });
-  };
-
+  /**
+   * A click on the empty backdrop closes the wheel. A finger closes it only
+   * with a tap: one that swipes across the backdrop is not asking to leave,
+   * and the swipe stays in the wheel instead of scrolling the page.
+   */
   const onBackdrop = (event: ReactPointerEvent) => {
     if (event.button !== 0 || event.target !== event.currentTarget) return;
     if (performance.now() - touchOpenedAt.current < TOUCH_GRACE_MS) return;
+    if (event.pointerType === "touch") {
+      backdropTouch.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      return;
+    }
     closeWheel();
   };
 
+  const onBackdropUp = (event: ReactPointerEvent) => {
+    const down = backdropTouch.current;
+    backdropTouch.current = null;
+    if (!down || down.id !== event.pointerId || event.target !== event.currentTarget) return;
+    if (Math.hypot(event.clientX - down.x, event.clientY - down.y) < TOUCH_HOLD.slop) closeWheel();
+  };
+
   return (
-    <div
-      ref={overlay}
-      className={styles.overlay}
-      data-open={open}
-      data-mode={mode}
-      inert={!open}
-      onPointerDown={onBackdrop}
-      onPointerMove={(event) => {
-        if (event.movementX !== 0 || event.movementY !== 0) hoverArmed.current = true;
-      }}
-      onWheel={onScrollWheel}
-    >
+    <>
+      {/* A held finger has armed the long-press: lifting it opens the radio. */}
       <div
-        className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="radio-title"
-        aria-describedby="radio-hint"
-        onKeyDown={onKeyDown}
+        className={styles.holdRing}
+        data-armed={armedAt !== null}
+        style={armedAt ? ({ "--x": `${armedAt.x}px`, "--y": `${armedAt.y}px` } as CSSProperties) : undefined}
+        aria-hidden="true"
+      />
+      <div
+        ref={overlay}
+        className={styles.overlay}
+        data-open={open}
+        data-mode={mode}
+        inert={!open}
         onPointerDown={onBackdrop}
-        onMouseDown={(event) => {
-          // A press on the centre or the hint must not take the focus out of the dialog.
-          if (event.target instanceof Element && !event.target.closest("button")) event.preventDefault();
+        onPointerUp={onBackdropUp}
+        onPointerMove={(event) => {
+          if (event.movementX !== 0 || event.movementY !== 0) hoverArmed.current = true;
         }}
       >
-        <h2 id="radio-title" className="sr-only">
-          {dict.label}
-        </h2>
-
         <div
-          ref={dial}
-          className={styles.wheel}
-          data-count={COUNT}
-          style={{ ...LAYOUT_STYLE, "--accent": `var(--va-radio-${entry.accent})` } as CSSProperties}
+          className={styles.dialog}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="radio-title"
+          aria-describedby="radio-hint"
+          onKeyDown={onKeyDown}
+          onPointerDown={onBackdrop}
+          onPointerUp={onBackdropUp}
+          onMouseDown={(event) => {
+            // A press on the centre or the hint must not take the focus out of the dialog.
+            if (event.target instanceof Element && !event.target.closest("button")) event.preventDefault();
+          }}
         >
-          <svg className={styles.ring} viewBox="-100 -100 200 200" aria-hidden="true">
-            <defs>
-              {/* The selected wedge glows in its station's colour, brightest at the rim. */}
-              {WHEEL.map((station) => (
-                <radialGradient
-                  key={station.id}
-                  id={`radio-glow-${station.id}`}
-                  gradientUnits="userSpaceOnUse"
-                  cx="0"
-                  cy="0"
-                  r={RING.outer}
-                >
-                  <stop
-                    offset={GLOW_FROM}
-                    style={{ stopColor: `var(--va-radio-${station.accent})`, stopOpacity: 0.1 }}
-                  />
-                  <stop offset="1" style={{ stopColor: `var(--va-radio-${station.accent})`, stopOpacity: 0.62 }} />
-                </radialGradient>
-              ))}
-            </defs>
-            <circle className={styles.ringTrack} r="99" />
-            {WEDGES.map((d, i) => (
-              <path
-                key={WHEEL[i].id}
-                d={d}
-                className={styles.wedge}
-                data-selected={i === selected}
-                style={
-                  {
-                    "--wedge": `var(--va-radio-${WHEEL[i].accent})`,
-                    fill: i === selected ? `url(#radio-glow-${WHEEL[i].id})` : undefined,
-                  } as CSSProperties
-                }
-                onPointerEnter={onHover(i)}
-                onClick={(event) => onPick(i, event.detail)}
-              />
-            ))}
-            {/* The station on air: its rim is lit, and breathes while it plays. */}
-            {WHEEL.map((station, i) =>
-              station.id === radio.tuned && isStation(station) ? (
+          <h2 id="radio-title" className="sr-only">
+            {dict.label}
+          </h2>
+
+          <div
+            ref={dial}
+            className={styles.wheel}
+            data-count={COUNT}
+            style={{ ...LAYOUT_STYLE, "--accent": `var(--va-radio-${entry.accent})` } as CSSProperties}
+          >
+            <svg className={styles.ring} viewBox="-100 -100 200 200" aria-hidden="true">
+              <defs>
+                {/* The selected wedge glows in its station's colour, brightest at the rim. */}
+                {WHEEL.map((station) => (
+                  <radialGradient
+                    key={station.id}
+                    id={`radio-glow-${station.id}`}
+                    gradientUnits="userSpaceOnUse"
+                    cx="0"
+                    cy="0"
+                    r={RING.outer}
+                  >
+                    <stop
+                      offset={GLOW_FROM}
+                      style={{ stopColor: `var(--va-radio-${station.accent})`, stopOpacity: 0.1 }}
+                    />
+                    <stop offset="1" style={{ stopColor: `var(--va-radio-${station.accent})`, stopOpacity: 0.62 }} />
+                  </radialGradient>
+                ))}
+              </defs>
+              <circle className={styles.ringTrack} r="99" />
+              {WEDGES.map((d, i) => (
                 <path
-                  key={station.id}
-                  d={RIMS[i]}
-                  className={styles.rim}
-                  data-playing={radio.playing}
-                  style={{ "--wedge": `var(--va-radio-${station.accent})` } as CSSProperties}
+                  key={WHEEL[i].id}
+                  d={d}
+                  className={styles.wedge}
+                  data-selected={i === selected}
+                  style={
+                    {
+                      "--wedge": `var(--va-radio-${WHEEL[i].accent})`,
+                      fill: i === selected ? `url(#radio-glow-${WHEEL[i].id})` : undefined,
+                    } as CSSProperties
+                  }
+                  onPointerEnter={onHover(i)}
+                  onClick={(event) => onPick(i, event.detail)}
                 />
-              ) : null,
-            )}
-            <circle className={styles.ringInner} r={RING.inner - 3} />
-          </svg>
-
-          <div className={styles.needle} aria-hidden="true" />
-
-          <div role="radiogroup" aria-labelledby="radio-title" className={styles.stations}>
-            {WHEEL.map((station, i) => (
-              <button
-                key={station.id}
-                ref={(element) => {
-                  radios.current[i] = element;
-                }}
-                type="button"
-                role="radio"
-                aria-checked={station.id === radio.tuned}
-                aria-label={stationLabel(station, dict, onAir(station))}
-                tabIndex={i === selected ? 0 : -1}
-                className={styles.station}
-                data-selected={i === selected}
-                data-current={station.id === radio.tuned}
-                style={
-                  {
-                    "--angle": `${sectorCentre(i, COUNT)}deg`,
-                    "--station": `var(--va-radio-${station.accent})`,
-                  } as CSSProperties
-                }
-                onPointerEnter={onHover(i)}
-                onFocus={() => {
-                  if (i !== getRadio().wheel?.selected) select(i);
-                }}
-                onClick={(event) => onPick(i, event.detail)}
-              >
-                <StationLogo
-                  logo={station.logo}
-                  frequency={isStation(station) ? formatFrequency(station.frequency) : undefined}
-                />
-              </button>
-            ))}
-          </div>
-
-          {/* What the pointer is on. Screen readers get the same from the radio labels. */}
-          <div className={styles.centre} aria-hidden="true">
-            <p className={styles.frequency}>
-              {isStation(entry) ? (
-                <>
-                  {formatFrequency(entry.frequency)}
-                  <span className={styles.band}>FM</span>
-                </>
-              ) : (
-                // An empty dial: no station.
-                <>
-                  --.-
-                  <span className={styles.band}>FM</span>
-                </>
+              ))}
+              {/* The station on air: its rim is lit, and breathes while it plays. */}
+              {WHEEL.map((station, i) =>
+                station.id === radio.tuned && isStation(station) ? (
+                  <path
+                    key={station.id}
+                    d={RIMS[i]}
+                    className={styles.rim}
+                    data-playing={radio.playing}
+                    style={{ "--wedge": `var(--va-radio-${station.accent})` } as CSSProperties}
+                  />
+                ) : null,
               )}
-            </p>
-            <p className={styles.name}>{isStation(entry) ? entry.name : dict.off}</p>
-            {isStation(entry) ? <p className={styles.tagline}>{dict.taglines[entry.id]}</p> : null}
-            {playing ? (
-              <p className={styles.track}>
-                <span className={styles.trackLabel}>{dict.nowPlaying}</span>
-                <span className={styles.trackTitle}>{playing.title}</span>
-                <span className={styles.trackArtist}>{playing.artist}</span>
+              <circle className={styles.ringInner} r={RING.inner - 3} />
+            </svg>
+
+            <div className={styles.needle} aria-hidden="true" />
+
+            <div role="radiogroup" aria-labelledby="radio-title" className={styles.stations}>
+              {WHEEL.map((station, i) => (
+                <button
+                  key={station.id}
+                  ref={(element) => {
+                    radios.current[i] = element;
+                  }}
+                  type="button"
+                  role="radio"
+                  aria-checked={station.id === radio.tuned}
+                  aria-label={stationLabel(station, dict, onAir(station))}
+                  tabIndex={i === selected ? 0 : -1}
+                  className={styles.station}
+                  data-selected={i === selected}
+                  data-current={station.id === radio.tuned}
+                  style={
+                    {
+                      "--angle": `${sectorCentre(i, COUNT)}deg`,
+                      "--station": `var(--va-radio-${station.accent})`,
+                    } as CSSProperties
+                  }
+                  onPointerEnter={onHover(i)}
+                  onFocus={() => {
+                    if (i !== getRadio().wheel?.selected) select(i);
+                  }}
+                  onClick={(event) => onPick(i, event.detail)}
+                >
+                  <StationLogo
+                    logo={station.logo}
+                    frequency={isStation(station) ? formatFrequency(station.frequency) : undefined}
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* What the pointer is on. Screen readers get the same from the radio labels. */}
+            <div className={styles.centre} aria-hidden="true">
+              <p className={styles.frequency}>
+                {isStation(entry) ? (
+                  <>
+                    {formatFrequency(entry.frequency)}
+                    <span className={styles.band}>FM</span>
+                  </>
+                ) : (
+                  // An empty dial: no station.
+                  <>
+                    --.-
+                    <span className={styles.band}>FM</span>
+                  </>
+                )}
               </p>
-            ) : null}
-            {isStation(entry) ? (
-              <p className={styles.status} data-live={live}>
-                {live ? dict.onAir : dict.tune}
-              </p>
-            ) : null}
+              <p className={styles.name}>{isStation(entry) ? entry.name : dict.off}</p>
+              {isStation(entry) ? <p className={styles.tagline}>{dict.taglines[entry.id]}</p> : null}
+              {playing ? (
+                <p className={styles.track}>
+                  <span className={styles.trackLabel}>{dict.nowPlaying}</span>
+                  <span className={styles.trackTitle}>{playing.title}</span>
+                  <span className={styles.trackArtist}>{playing.artist}</span>
+                </p>
+              ) : null}
+              {isStation(entry) ? (
+                <p className={styles.status} data-live={live}>
+                  {live ? dict.onAir : dict.tune}
+                </p>
+              ) : null}
+            </div>
           </div>
+
+          <p id="radio-hint" className={styles.hint}>
+            {hint}
+          </p>
+
+          <button ref={closeButton} type="button" className={styles.close} onClick={() => closeWheel()}>
+            <span aria-hidden="true" className={styles.closeIcon} />
+            <span className="sr-only">{dict.close}</span>
+          </button>
         </div>
-
-        <p id="radio-hint" className={styles.hint}>
-          {hint}
-        </p>
-
-        <button ref={closeButton} type="button" className={styles.close} onClick={() => closeWheel()}>
-          <span aria-hidden="true" className={styles.closeIcon} />
-          <span className="sr-only">{dict.close}</span>
-        </button>
       </div>
-    </div>
+    </>
   );
 }

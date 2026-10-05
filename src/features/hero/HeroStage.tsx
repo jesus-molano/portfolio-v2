@@ -6,13 +6,13 @@ import { useGSAP } from "@gsap/react";
 import { useLenis } from "lenis/react";
 import { Button } from "@/components/ui/Button";
 import { motion } from "@/design/tokens";
-import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { REDUCED_MOTION_QUERY, usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Dictionary } from "@/i18n/dictionaries";
 import styles from "./Hero.module.css";
 import { HeroCanvas } from "./HeroCanvas";
 import { HeroTitle } from "./HeroTitle";
 import { registerHeroEnd } from "./heroEnd";
-import { getSceneLoading } from "./sceneLoading";
+import { getSceneLoading, markQuiet, markSettled } from "./sceneLoading";
 import { titleIntro } from "./titleIntro";
 import { decay, ELASTIC, rubberBand, touchStretchMax } from "./scroll/elastic";
 import {
@@ -25,8 +25,13 @@ import {
   scrollInput,
   STATIC_PROGRESS,
 } from "./scroll/heroProgress";
+import { deepWait, type FeedbackInput, newFeedback, stepFeedback } from "./scroll/feedback";
+import { GATE, gateAction, lenisMissed, type PageReading, pageScroll } from "./scroll/gate";
 import {
+  activeWindow,
   buildWalls,
+  cardAt,
+  cardWall,
   frontier,
   frontierIndex,
   heroTimeline,
@@ -34,22 +39,26 @@ import {
   newStory,
   openAll,
   openUpTo,
+  playingBeat,
   readFill,
+  settleTitle,
   stepStory,
   type Story,
+  type StoryContext,
   STORY,
 } from "./scroll/story";
-import { easePace, fovKick, meterRate, paceTarget, THROTTLE } from "./scroll/throttle";
+import { fovKick, meterRate, THROTTLE } from "./scroll/throttle";
 import {
   CUE_LABELS,
-  driveWaits,
   FIGHT,
   fightLevel,
+  focusFromPointer,
   hintOpacity,
-  HOLD_NOTE,
+  isNotePush,
   isPictureTap,
   keyAction,
   PROMPT,
+  type Prompt,
   promptFor,
   type PromptInput,
   REMINDERS,
@@ -58,11 +67,10 @@ import {
   type TargetKind,
   TEASES,
   teaseOffset,
-  transportMode,
   type TransportMode,
 } from "./scroll/transport";
 import { drive } from "./scene/drive";
-import { SHOT_COUNT, shotIndexAt, stickyShot } from "./scene/shots";
+import { CUT_BAND, SHOT_COUNT, type ShotPick, shotIndexAt, stickyShot } from "./scene/shots";
 
 gsap.registerPlugin(useGSAP);
 
@@ -103,27 +111,44 @@ const KEY_GUARD_MS = 100;
 /** Glides of the line keys and Home, seconds. */
 const LINE_GLIDE = 0.6;
 const HOME_GLIDE = 0.8;
-/** Held pixels one overshoot may add to the pressure. */
-const OVERSHOOT_CAP = 400;
 /** The picture moving back more than this many pixels in a frame is going back. */
 const BACK_SLOP_PX = 1.5;
-/** A native jump past the wall is set back beyond this many pixels. */
-const SNAP_SLOP = 4;
-/** After the viewport changed and the film was put back in place (ms), the gate lets the page settle. */
+/** After the viewport changed and the film was put back in place (ms), a move of the page is not hers. */
 const RESEAT_MS = 250;
 /** The gate trimmed input this recently (ms): a wall is holding her. */
 const HOLDING_MS = 300;
-/** Focus that lands this soon after a pointer press (ms) came from the pointer, not the keyboard. */
-const POINTER_FOCUS_MS = 1000;
 /** Reminder lift of a read card and attract lift of the title (px), attract slide of the bars (%). */
 const REMINDER_LIFT = 8;
 const TEASE_LIFT = 12;
 const TEASE_BARS = 8;
+/** Once the first line has been read and she has rested this long (s), the radio may offer itself. */
+const SETTLE_IDLE = 1;
+/** Switched to the still hero mid-film: the line she was on sits this far down the viewport. */
+const STILL_PLACE = 0.3;
+/** The still hero settles (side hints may come) once she has scrolled this share of a viewport past the title. */
+const STILL_SETTLE = 0.6;
+/** Back from the still hero, the film keeps her place through this many ms of re-runs. */
+const RESUME_MS = 1500;
+/** Keys that scroll the still page: pressing one, she moves on in the running script. */
+const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
+/** A line asked for at the title (Space, a tap) plays once the name has formed, within this many ms. */
+const TITLE_QUEUE_MS = 6000;
+/** Longest real frame the feedback counts (s): a stall, not a frame. */
+const MAX_REAL_STEP = 2;
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
+}
+
+const round2 = (value: number) => Math.round(value * 100) / 100;
+const round3 = (value: number) => Math.round(value * 1000) / 1000;
+
+/** A card's text split so its last word and the marker after it never wrap apart. */
+function splitCard(card: string): { head: string; last: string } {
+  const cut = card.lastIndexOf(" ");
+  return cut < 0 ? { head: "", last: card } : { head: card.slice(0, cut + 1), last: card.slice(cut + 1) };
 }
 
 /**
@@ -170,10 +195,11 @@ function attrSetter() {
 
 /**
  * What has focus, for the key map. A control that took the focus from a
- * pointer press (`clicked`), directly or handed back by a dialog the press
- * closed, does not keep Space: after using the radio with the mouse, Space
- * plays the next line instead of opening the radio again. A control
- * reached with the keyboard keeps it.
+ * pointer (`clicked`, see focusFromPointer), directly or handed back by a
+ * dialog however it was closed (a click, Esc), does not keep Space: after
+ * opening the radio with the mouse, Space plays the next line instead of
+ * opening the radio again. A control reached with the keyboard (Tab) keeps
+ * it, even right after a click.
  */
 function targetKind(target: EventTarget | null, clicked: Element | null): TargetKind {
   if (!(target instanceof Element)) return "other";
@@ -202,8 +228,9 @@ type StageActions = {
  * world's pace and the readout; once she stops, the car slows to a crawl
  * and one prompt says what to do next. Shots change with clean hard cuts.
  *
- * The frame reads no layout: the scroll comes from Lenis, and the stage's
- * geometry is measured only when the viewport changes.
+ * The frame reads no element geometry: the page's scroll offset, after
+ * Lenis has written it (gate.ts), and the stage's geometry, measured only
+ * when the viewport changes. The page is never left past the frontier.
  */
 export function HeroStage({
   name,
@@ -226,6 +253,23 @@ export function HeroStage({
   const actions = useRef<StageActions | null>(null);
   /** The story outlives a re-run of the stage effect (a new Lenis, a hot reload). */
   const kept = useRef<{ key: string; story: Story } | null>(null);
+  /** Which hero the last effect ran: the film or the still (reduced motion), to keep her place across a switch. */
+  const ran = useRef<"film" | "still" | null>(null);
+  /** In the still hero, the card of the running script she has scrolled to (-1: the title, the card count: past it). */
+  const stillCard = useRef(-1);
+  /**
+   * The film position the still hero took over from mid-film. Until she
+   * scrolls the running script herself, the film comes back exactly there
+   * (the page's own adjustments, a re-layout or Lenis being rebuilt, are
+   * not her moving on).
+   */
+  const stillPlace = useRef<number | null>(null);
+  /**
+   * Back from the still hero, the film position she resumes at, kept for a
+   * moment: the effect runs again as Lenis is rebuilt for the new motion
+   * setting, and must not read the still page's scroll as a film position.
+   */
+  const resume = useRef<{ p: number; until: number } | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const lenis = useLenis();
   const [shot, setShot] = useState(0);
@@ -233,12 +277,14 @@ export function HeroStage({
   const timeline = useMemo(() => heroTimeline(lines), [lines]);
   const walls = useMemo(() => buildWalls(timeline), [timeline]);
   const cardTexts = useMemo(() => lines.flat(), [lines]);
+  const cardParts = useMemo(() => lines.map((cards) => cards.map(splitCard)), [lines]);
 
   useGSAP(
     () => {
       const root = stage.current;
       if (!root) return;
       const sticky = root.querySelector<HTMLElement>("[data-sticky]");
+      const cards = Array.from(root.querySelectorAll<HTMLElement>("[data-card]"));
 
       /**
        * Cuts to the end of the drive, like skipping a cutscene: the page
@@ -263,16 +309,99 @@ export function HeroStage({
       };
 
       if (reducedMotion) {
+        // The still hero: one frame, then the script as running text. If the
+        // film was playing (reduced motion switched on mid-film), she keeps
+        // her place: the line she was on, now in the running script.
+        const was = heroProgress.value;
+        const fromFilm = ran.current === "film";
+        ran.current = "still";
         heroProgress.value = heroProgress.target = STATIC_PROGRESS;
         scrollGate.maxScroll = Number.POSITIVE_INFINITY;
         setShot(shotIndexAt(STATIC_PROGRESS));
         actions.current = { skip: jumpToEnd, skipPointerDown: () => {} };
         const unregister = registerHeroEnd({ section: root.closest("section") ?? root, cut: jumpToEnd });
+        // Side hints wait for a quiet moment: once she has scrolled the
+        // still title away (nothing covers the name) and rests there.
+        let settle = 0;
+        const maybeSettle = () => {
+          const loading = getSceneLoading();
+          if (!loading.entered || loading.settled) return;
+          window.clearTimeout(settle);
+          if (window.scrollY >= STILL_SETTLE * window.innerHeight) settle = window.setTimeout(markSettled, SETTLE_IDLE * 1000);
+        };
+        const place = () => {
+          // Past the fade: where Skip lands, the hero's section just gone.
+          if (was >= STORY.fadeFrom) return (root.closest("section") ?? root).getBoundingClientRect().bottom + window.scrollY;
+          const card = was > STORY.titleOut ? cardAt(was, timeline) : -1;
+          if (card < 0) return 0;
+          return Math.max(0, cards[card].getBoundingClientRect().top + window.scrollY - STILL_PLACE * window.innerHeight);
+        };
+        const keepPlace = () => {
+          const y = place();
+          window.scrollTo({ top: y, behavior: "instant" });
+          lenis?.scrollTo(y, { immediate: true, force: true });
+        };
+        let settleFrame = 0;
+        // A re-run in the still hero (Lenis rebuilt) keeps the place it took over.
+        if (fromFilm) stillPlace.current = was > 0 ? was : null;
+        const movedOn = (event: Event) => {
+          if (event instanceof KeyboardEvent && !SCROLL_KEYS.has(event.key)) return;
+          stillPlace.current = null;
+        };
+        // A still asks for nothing: side hints may come once she has settled.
+        markQuiet(true);
+        if (fromFilm && was > 0) {
+          keepPlace();
+          // Lenis is rebuilt for reduced motion a moment later; put her back once it has.
+          settleFrame = window.requestAnimationFrame(() => {
+            settleFrame = window.requestAnimationFrame(keepPlace);
+          });
+        }
+        // Where she reads in the running script, should the film come back.
+        let readFrame = 0;
+        // The first card on the last text line that has reached the reading line: never past a line she has not read.
+        const track = () => {
+          readFrame = 0;
+          const line = STILL_PLACE * window.innerHeight + 1;
+          // Past the running script: the film comes back at its end.
+          if (root.getBoundingClientRect().bottom <= line) {
+            stillCard.current = cards.length;
+            return;
+          }
+          let card = -1;
+          let top = Number.NEGATIVE_INFINITY;
+          for (let i = 0; i < cards.length; i += 1) {
+            const at = cards[i].getBoundingClientRect().top;
+            if (at <= line && at > top + 1) {
+              card = i;
+              top = at;
+            }
+          }
+          stillCard.current = card;
+        };
+        const onScroll = () => {
+          if (!readFrame) readFrame = window.requestAnimationFrame(track);
+          maybeSettle();
+        };
+        window.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("wheel", movedOn, { passive: true });
+        window.addEventListener("touchmove", movedOn, { passive: true });
+        window.addEventListener("keydown", movedOn);
         return () => {
           unregister();
+          window.removeEventListener("wheel", movedOn);
+          window.removeEventListener("touchmove", movedOn);
+          window.removeEventListener("keydown", movedOn);
+          window.clearTimeout(settle);
+          window.cancelAnimationFrame(settleFrame);
+          window.cancelAnimationFrame(readFrame);
+          window.removeEventListener("scroll", onScroll);
           actions.current = null;
         };
       }
+
+      /** Reduced motion switched on: the CSS has already laid out the still hero; the film stops writing at once. */
+      const stillQuery = window.matchMedia(REDUCED_MOTION_QUERY);
 
       /**
        * The pinned stage on the page, measured when the viewport changes,
@@ -291,20 +420,63 @@ export function HeroStage({
       /** Scroll position (px) of a film position, and back. */
       const scrollFor = (p: number) => geom.top + p * geom.range;
       const progressFor = (y: number) => (y - geom.top) / geom.range;
-      /** Where the page is, without a layout read: Lenis tracks native scrolls too. */
-      const scrollNow = () => (lenis ? lenis.scroll : window.scrollY);
+      /**
+       * Where the page is (gate.ts): its own offset, read after Lenis wrote
+       * it this tick, drawn from Lenis' sub-pixel value while the two
+       * agree. If Lenis missed a native move of the page, it starts again
+       * from the page, so its next glide sets off from where she is.
+       */
+      const reading: PageReading = { page: 0, lenis: 0, gliding: false };
+      const readScroll = () => {
+        reading.page = window.scrollY;
+        if (!lenis) return reading.page;
+        reading.lenis = lenis.scroll;
+        reading.gliding = lenis.isScrolling === "smooth";
+        if (lenisMissed(reading)) lenis.animatedScroll = lenis.targetScroll = reading.page;
+        return pageScroll(reading);
+      };
 
       // Where the page already is: a re-run must never pull the visitor back
       // to the title, so the story is kept, or opened up to the scroll.
-      const pNow = clamp01(progressFor(window.scrollY));
+      // Back from the still hero, the film picks up at the line she had
+      // scrolled to in the running script.
+      const fromStill = ran.current === "still";
+      ran.current = "film";
+      if (fromStill) {
+        const card = stillCard.current;
+        const kept = stillPlace.current;
+        stillPlace.current = null;
+        resume.current = {
+          // Not scrolled since the film gave way: exactly where she was; else the line she reads, or the end.
+          p: kept !== null
+            ? kept
+            : card >= cards.length
+              ? 1
+              : card >= 0
+                ? activeWindow(timeline.beats[card]).from + STORY.wallInset
+                : 0,
+          until: performance.now() + RESUME_MS,
+        };
+      }
+      const resuming = resume.current !== null && performance.now() < resume.current.until;
+      const pNow = resuming && resume.current ? resume.current.p : clamp01(progressFor(window.scrollY));
       const key = walls.map((wall) => `${wall.kind}:${wall.from.toFixed(5)}:${wall.to.toFixed(5)}`).join("|");
       if (kept.current?.key !== key) {
         kept.current = { key, story: newStory(walls, timeline.beats.length) };
         if (pNow > 0) openUpTo(walls, kept.current.story, pNow);
+      } else if (resuming && pNow > 0) {
+        // She read the script as text up to there.
+        openUpTo(walls, kept.current.story, pNow);
       }
       const story = kept.current.story;
       resetInput();
       heroProgress.value = heroProgress.target = pNow;
+      if (resuming) {
+        // Lenis still has the still page's (shorter) limit: measure first, or it clamps the jump.
+        lenis?.resize();
+        window.scrollTo(0, scrollFor(pNow));
+        lenis?.scrollTo(scrollFor(pNow), { immediate: true, force: true });
+      }
 
       let reseatAt = Number.NEGATIVE_INFINITY;
       /**
@@ -314,7 +486,9 @@ export function HeroStage({
        * not take the move for a jump of hers.
        */
       const remeasure = () => {
-        const p = heroProgress.target;
+        if (stillQuery.matches) return;
+        // The film's place: the scroll, never past the frontier.
+        const p = Math.min(heroProgress.target, frontier(walls, story));
         const before = { top: geom.top, range: geom.range };
         measure();
         if (Math.abs(before.top - geom.top) < 0.5 && Math.abs(before.range - geom.range) < 0.5) return;
@@ -349,31 +523,74 @@ export function HeroStage({
         reel: Array.from(root.querySelectorAll<HTMLElement>("[data-reel-fill]")),
         skip: q("[data-skip]"),
         live: q("[data-live]"),
-        cards: Array.from(root.querySelectorAll<HTMLElement>("[data-card]")),
+        cards,
       };
       const { set, clear } = styleSetter();
       const { attr, clear: clearAttrs } = attrSetter();
 
+      // The frame's working state, allocated once: a frame allocates nothing
+      // but the strings of what changed.
+      const feedback = newFeedback();
+      const storyCtx: StoryContext = { rewinding: false, visible: true, introDone: false, introProgress: 0 };
+      const fbInput: FeedbackInput = {
+        started: false,
+        p: 0,
+        sinceInput: Number.POSITIVE_INFINITY,
+        sinceBackward: Number.POSITIVE_INFINITY,
+        pictureSpeed: 0,
+        pace: 1,
+        playing: false,
+        meterRate: 0,
+        sinceEntered: -1,
+        teasing: false,
+        sincePush: Number.POSITIVE_INFINITY,
+        held: 0,
+        touch: false,
+        unreadCard: -1,
+      };
+      const promptInput: PromptInput = {
+        started: false,
+        sinceStart: 0,
+        p: 0,
+        card: false,
+        rewinding: false,
+        idle: 0,
+        turn: false,
+      };
+      const pick: ShotPick = { shot: 0, p: 0 };
+      /** The last cards of the first two lines: once they are read, the radio may offer itself. */
+      const settleWalls = [0, 1].map((line) =>
+        cardWall(walls, Math.min(cards.length - 1, lines.slice(0, line + 1).reduce((n, l) => n + l.length, 0) - 1)),
+      );
+
       let currentShot = -1;
       let started = pNow > 0;
       let startedAt = Number.NEGATIVE_INFINITY;
+      /** When the title's beat finished (the name formed and held): "you have the wheel" counts from then. */
+      let titleDoneAt = story.done[0] ? Number.NEGATIVE_INFINITY : Number.NaN;
+      /** A line asked for at the title, and the input that asked: it plays once the name has formed. */
+      let queuedAt = Number.NaN;
+      let queuedInput = Number.NaN;
+      /** The title's own fade where she rests mid-dissolve (story.settleTitle). */
+      let titleSettle = 0;
+      /** The last push that counts for the hold note (transport.isNotePush), performance.now(). */
+      let notePushAt = Number.NEGATIVE_INFINITY;
+      let quiet = getSceneLoading().quiet;
       let lastP = pNow;
       /** performance.now() when the picture last moved back (a fling still coasting counts). */
       let backAt = Number.NEGATIVE_INFINITY;
       let pushFlash = 0;
       let lastPushedAt = scrollGate.pushedAt;
       let pressureAfter = 0;
-      let heldRecent = 0;
-      let pace = 1;
       let lastActive = -1;
       let readyCard = -1;
       let readyCount = 0;
-      let readyParity = 0;
+      let readyParity: "1" | "2" | null = null;
       let cueLabel = false;
+      let lastIdle = Number.POSITIVE_INFINITY;
       let reminderIdx = 0;
       let reminderAt = Number.NEGATIVE_INFINITY;
-      let holdShows = 0;
-      let holdWall = -1;
+      let remindParity: "1" | "2" | null = null;
       let fight = 0;
       const skipState = {
         visible: false,
@@ -385,13 +602,28 @@ export function HeroStage({
       };
       let teaseIdx = 0;
       let teaseAt = Number.NEGATIVE_INFINITY;
-      let blinkParity = 0;
+      let blinkParity: "1" | "2" | null = null;
       let mode: TransportMode = "hidden";
-      let pulseParity = 0;
+      let pulseParity: "1" | "2" | null = null;
+      let lastPrompt: Prompt | null = null;
+      let popParity: "1" | "2" | null = null;
       let shownSpeed = -1;
+      const flip = (parity: "1" | "2" | null) => (parity === "1" ? "2" : "1");
       /** What the last frame drew, so a resting card or reel segment costs nothing. */
       const drawnOpacity = el.cards.map(() => -1);
+      const drawnY = el.cards.map(() => Number.NaN);
       const drawnFill = el.reel.map(() => -1);
+      const drawn = {
+        titleO: Number.NaN,
+        titleY: Number.NaN,
+        titleLift: Number.NaN,
+        bars: Number.NaN,
+        hint: Number.NaN,
+        night: Number.NaN,
+        noteY: Number.NaN,
+        read: Number.NaN,
+        push: Number.NaN,
+      };
 
       /** Offers Skip ("in a hurry?") for a while. */
       const expandSkip = (now: number, force = false) => {
@@ -404,44 +636,61 @@ export function HeroStage({
       };
 
       /**
-       * Keeps the page scroll at the frontier. Wheel and touch moves are
-       * trimmed in SmoothScroll; touch inertia aimed past the wall glides
-       * into it here, and native jumps (scrollbar, find in page, anchors)
-       * are set back. Both count as pressure. `scroll` is this frame's
-       * scroll, read before anything was written.
+       * Keeps the page at the frontier (gate.ts). Her wheel, touch and keys
+       * are trimmed before they scroll (SmoothScroll, onKey), so they never
+       * pass it; a glide aimed past it turns into it; and a page that is
+       * past it, whatever moved it there (the scrollbar, find in page, an
+       * anchor, a programmatic scroll, an event the browser would not let
+       * the page cancel), goes back to it in this frame. A push or a jump
+       * of hers counts as pressure, and a jump of a viewport or more offers
+       * Skip at once. `scroll` is this frame's page scroll, read before
+       * anything was written.
        */
       const gate = (fr: number, now: number, scroll: number) => {
         scrollGate.maxScroll = Number.isFinite(fr) ? scrollFor(fr) : Number.POSITIVE_INFINITY;
-        if (!lenis || lenis.isStopped || !Number.isFinite(scrollGate.maxScroll)) return;
+        if (!lenis || lenis.isStopped) return;
         const max = scrollGate.maxScroll;
-        if (lenis.isScrolling === "smooth" && lenis.targetScroll > max + 1) {
-          scrollGate.pressure += Math.min(lenis.targetScroll - max, OVERSHOOT_CAP);
-          scrollGate.pushedAt = now;
+        const action = gateAction({ scroll, lenisTarget: lenis.targetScroll, gliding: lenis.isScrolling === "smooth", max });
+        if (action === "none") return;
+        // Just after the viewport changed and the film was put back in place, the page settling is not her.
+        const hers = now - reseatAt >= RESEAT_MS;
+        if (action === "into") {
+          if (hers) {
+            scrollGate.pressure += Math.min(lenis.targetScroll - max, GATE.overshootCap);
+            scrollGate.pushedAt = now;
+          }
           lenis.scrollTo(max, { programmatic: false, lerp: motion.touchLerp, force: true });
           return;
         }
-        // The viewport just changed and the film was put back in place: not a jump of hers.
-        if (now - reseatAt < RESEAT_MS) return;
         const over = scroll - max;
-        if (over > SNAP_SLOP) {
-          scrollGate.pressure += Math.min(over, OVERSHOOT_CAP);
+        if (hers) {
+          scrollGate.pressure += Math.min(over, GATE.overshootCap);
           scrollGate.pushedAt = now;
           // A jump of a whole viewport: she clearly wants to move on.
           if (over >= FIGHT.jumpVh * geom.vh) expandSkip(now, true);
-          lenis.scrollTo(max, { immediate: true, force: true });
         }
+        // Back to the wall now. Lenis first stands where the page is: its
+        // scrollTo returns early when asked for its own target, which may
+        // be the wall while the page is not (lenisContract.test.ts).
+        lenis.animatedScroll = lenis.targetScroll = scroll;
+        lenis.scrollTo(max, { immediate: true, force: true });
       };
 
       /** One frame of the story and everything drawn from it. Reads first, then writes. */
       const update = (deltaMs: number) => {
+        // Reduced motion just switched on: the CSS shows the still hero, and
+        // the film must not touch the page before React hands over to it.
+        if (stillQuery.matches) return;
         const now = performance.now();
-        const scroll = scrollNow();
-        let dt = Math.min(Math.max(0, deltaMs) / 1000, STORY.maxStep);
+        const scroll = readScroll();
+        // The story's reading clocks take at most STORY.maxStep a frame; the feedback runs on real time.
+        let realDt = Math.min(Math.max(0, deltaMs) / 1000, MAX_REAL_STEP);
         const visible = document.visibilityState === "visible";
         if (visible && wasHidden) {
           wasHidden = false;
-          dt = 0;
+          realDt = 0;
         }
+        const dt = Math.min(realDt, STORY.maxStep);
         const loading = getSceneLoading();
         const sinceEntered = loading.entered ? (now - loading.enteredAt) / 1000 : -1;
         const vh = geom.vh;
@@ -450,25 +699,27 @@ export function HeroStage({
         const fr = frontier(walls, story);
         const pStory = clamp01(Math.min(heroProgress.target, fr));
         // The picture keeps its shot within a hair of a cut, so a resting finger never strobes.
-        const picture = stickyShot(pStory, currentShot);
-        const p = picture.p;
+        stickyShot(pStory, currentShot, CUT_BAND, pick);
+        const p = pick.p;
         heroProgress.value = p;
         // Going back, by input or a fling still coasting: no card comes up.
         // A sub-pixel dip (the page put back in place after a rotation) is not going back.
-        if ((lastP - p) * geom.range > BACK_SLOP_PX) backAt = now;
+        const movedBack = (lastP - p) * geom.range > BACK_SLOP_PX;
+        if (movedBack) backAt = now;
         const lastBack = Math.max(scrollInput.backwardAt, backAt);
         const rewinding = now - lastBack < STORY.rewindHide * 1000;
-        const pictureSpeed = dt > 0 ? Math.abs(p - lastP) / dt : 0;
+        const pictureSpeed = realDt > 0 ? Math.abs(p - lastP) / realDt : 0;
         lastP = p;
 
-        const introDone = titleIntro.done || sinceEntered > INTRO_FAILSAFE;
-        const active = stepStory(walls, story, timeline, pStory, dt, {
-          rewinding,
-          visible,
-          introDone,
-          introProgress: titleIntro.progress(),
-        });
+        storyCtx.rewinding = rewinding;
+        storyCtx.visible = visible;
+        storyCtx.introDone = titleIntro.done || sinceEntered > INTRO_FAILSAFE;
+        storyCtx.introProgress = titleIntro.progress();
+        const active = stepStory(walls, story, timeline, pStory, dt, storyCtx);
         const k = frontierIndex(story);
+        // A line still playing at the picture: she waits for it, not it for her.
+        const beat = playingBeat(walls, story, pStory, active);
+        if (Number.isNaN(titleDoneAt) && story.done[0]) titleDoneAt = now;
 
         // The first forward input: the drive starts and the title hurries up.
         if (!started && loading.entered && scrollInput.forwardAt >= loading.enteredAt) {
@@ -476,7 +727,8 @@ export function HeroStage({
           startedAt = now;
           titleIntro.hurry();
         }
-        const sinceStart = (now - startedAt) / 1000;
+        // "You have the wheel" holds while the name forms and holds, then counts its own beat.
+        const sinceStart = started && story.done[0] ? (now - Math.max(startedAt, titleDoneAt)) / 1000 : 0;
 
         // Held input: a bounce under the wheel, a stretch under the finger.
         const touchMode = scrollGate.touching || scrollInput.source === "touch";
@@ -484,85 +736,113 @@ export function HeroStage({
         if (!scrollGate.touching) {
           scrollGate.pressure = decay(
             scrollGate.pressure,
-            dt,
+            realDt,
             scrollInput.source === "touch" ? ELASTIC.releaseTau : ELASTIC.wheelTau,
           );
           if (scrollGate.pressure < 0.05) scrollGate.pressure = 0;
         }
         pressureAfter = scrollGate.pressure;
-        heldRecent = decay(heldRecent, dt, HOLD_NOTE.tau) + added;
         if (scrollGate.pushedAt !== lastPushedAt) {
           lastPushedAt = scrollGate.pushedAt;
           pushFlash = 1;
         } else {
-          pushFlash = decay(pushFlash, dt, ELASTIC.pushTau);
+          pushFlash = decay(pushFlash, realDt, ELASTIC.pushTau);
         }
         const nudge = touchMode
           ? rubberBand(scrollGate.pressure, touchStretchMax(vh))
           : rubberBand(Math.max(0, scrollGate.pressure - ELASTIC.wheelDeadZone), ELASTIC.wheelMax);
 
-        // The readout, and the world: it surges with her push and, once she
-        // has stopped, slows to a crawl and waits for her (DriveClock reads
-        // the pace, CameraRig the kick).
         const idle = (now - scrollInput.at) / 1000;
-        const nextMode = transportMode({
-          started,
-          p,
-          sinceInput: idle,
-          sinceBackward: (now - lastBack) / 1000,
-          pictureSpeed,
-          pace,
-        });
         // The idle title screen teases the drive a few times: the car revs.
         if (!started && sinceEntered >= 0 && teaseIdx < TEASES.length && sinceEntered >= TEASES[teaseIdx]) {
           teaseIdx += 1;
           teaseAt = now;
-          blinkParity = blinkParity === 1 ? 2 : 1;
+          blinkParity = flip(blinkParity);
         }
-        if (sinceEntered >= BLINK_AT && blinkParity === 0) blinkParity = 1;
+        if (sinceEntered >= BLINK_AT && blinkParity === null) blinkParity = "1";
         const tease = teaseOffset((now - teaseAt) / 1000);
-        const waiting = driveWaits({ mode: nextMode, started, sinceEntered, teasing: tease > 0 });
-        pace = easePace(pace, paceTarget(meterRate(scrollInput.meter, now / 1000), waiting), dt);
+
+        // The readout, the pace and the hold note (scroll/feedback.ts): the
+        // world surges with her push, cruises while a line plays and, once
+        // it is her turn, brakes to a crawl and waits for her.
+        fbInput.started = started;
+        fbInput.p = p;
+        fbInput.sinceInput = idle;
+        fbInput.sinceBackward = (now - lastBack) / 1000;
+        fbInput.pictureSpeed = pictureSpeed;
+        fbInput.playing = beat !== null;
+        fbInput.meterRate = meterRate(scrollInput.meter, now / 1000);
+        fbInput.sinceEntered = sinceEntered;
+        fbInput.teasing = tease > 0;
+        // A frame pushes for the note only if the held input grew in it, fast enough: a fling's
+        // momentum tails off under that, and a thumb resting on the glass adds nothing.
+        if (isNotePush(added / vh, realDt)) notePushAt = scrollGate.pushedAt;
+        fbInput.sincePush = (now - notePushAt) / 1000;
+        fbInput.held = added / vh;
+        fbInput.touch = touchMode;
+        fbInput.unreadCard = beat === "card" ? active : -1;
+        stepFeedback(feedback, fbInput, realDt);
+        const nextMode = feedback.mode;
+        const pace = feedback.pace;
         heroFeedback.pace = pace;
         heroFeedback.fovKick = fovKick(pace);
+        const deep = deepWait(feedback);
+        // Her turn: the readout says WAITING, and only then do the marker and the cues ask for more.
+        const turn = nextMode === "waiting";
 
         // A read card that waits for her: the marker bobs, labelled at first.
         const fill = active >= 0 ? readFill(walls, story, active) : 0;
-        const ready = active >= 0 && fill >= 1 && idle >= STORY.readyIdle;
+        const ready = active >= 0 && fill >= 1 && turn;
         if (ready && readyCard !== active) {
           readyCard = active;
           readyCount += 1;
-          readyParity = readyParity === 1 ? 2 : 1;
-          reminderIdx = 0;
-          reminderAt = Number.NEGATIVE_INFINITY;
+          readyParity = flip(readyParity);
           cueLabel = readyCount <= CUE_LABELS;
         } else if (!ready) {
           readyCard = -1;
           cueLabel = false;
         }
-        if (ready && reminderIdx < REMINDERS.length && idle >= REMINDERS[reminderIdx]) {
+
+        // One prompt says what to do next wherever the picture rests.
+        promptInput.started = started;
+        promptInput.sinceStart = sinceStart;
+        promptInput.p = p;
+        promptInput.card = active >= 0;
+        promptInput.rewinding = rewinding;
+        promptInput.idle = idle;
+        promptInput.turn = turn;
+        const prompt = promptFor(promptInput);
+        const hint = hintOpacity(promptInput);
+        const hintPrompt =
+          (prompt === "hint" || prompt === "ack" || prompt === "onward") && (started || sinceEntered >= HINT_AT)
+            ? prompt
+            : null;
+        // She has the wheel but the name is still forming or holding: the answer says why nothing moves yet.
+        const naming = started && !story.done[0];
+        if (hintPrompt !== lastPrompt) {
+          if (hintPrompt) popParity = flip(popParity);
+          lastPrompt = hintPrompt;
+        }
+
+        // A long wait escalates gently: the marker or the cue asks again,
+        // the card lifts, and the car crawls lower (feedback.ts).
+        if (idle < lastIdle) reminderIdx = 0;
+        lastIdle = idle;
+        const restFor = turn ? feedback.waitingFor : prompt === "end" ? idle - STORY.endIdle : -1;
+        if (restFor >= 0 && reminderIdx < REMINDERS.length && restFor >= REMINDERS[reminderIdx]) {
           reminderIdx += 1;
           reminderAt = now;
-          readyParity = readyParity === 1 ? 2 : 1;
-          cueLabel = true;
+          remindParity = flip(remindParity);
+          if (ready) {
+            readyParity = flip(readyParity);
+            cueLabel = true;
+          }
         }
-        const reminderLift = REMINDER_LIFT * teaseOffset((now - reminderAt) / 1000);
+        const reminderLift = ready ? REMINDER_LIFT * teaseOffset((now - reminderAt) / 1000) : 0;
 
-        // Pushing into an unread card: the note says why at once, the first
-        // times; pushing at full throttle for long, Skip offers itself.
+        // Pushing at full throttle for long, Skip offers itself.
         const holding = scrollGate.pressure > 0 && now - scrollGate.pushedAt < HOLDING_MS;
-        const unreadCard = k >= 0 && walls[k].kind === "card" && active === walls[k].card;
-        if (
-          unreadCard &&
-          heldRecent >= HOLD_NOTE.share * vh &&
-          holdWall !== k &&
-          holdShows < HOLD_NOTE.maxShows
-        ) {
-          holdWall = k;
-          holdShows += 1;
-        }
-        const holdNote = holdWall >= 0 && holdWall === k && unreadCard;
-        fight = fightLevel(fight, pace >= THROTTLE.ff && holding && k >= 0, dt);
+        fight = fightLevel(fight, pace >= THROTTLE.ff && holding && k >= 0, realDt);
         if (fight >= FIGHT.expandAt) expandSkip(now);
 
         // Skip shows with the hint, so there is always a way out, until the fade.
@@ -571,53 +851,93 @@ export function HeroStage({
         skipState.visible = skipVisible;
         if (!skipVisible) skipState.until = Number.NEGATIVE_INFINITY;
         const skipExpanded = now < skipState.until;
-
-        // One prompt says what to do next wherever the picture rests.
-        const promptInput: PromptInput = { started, sinceStart, p, card: active >= 0, rewinding, idle };
-        const prompt = promptFor(promptInput);
-        const hint = hintOpacity(promptInput);
         const speed = speedKmh(pace, drive.speed);
 
-        // ---- draw: writes only from here on ----
-        const titleOut = clamp01(p / STORY.titleOut);
-        const titleNudge = k === 0 ? nudge : 0;
-        set(title.current, "opacity", (1 - titleOut).toFixed(3));
-        // The title lifts a little into the sky as it fades, and gives under a push.
-        set(
-          title.current,
-          "transform",
-          `translate3d(0, ${(-8 * titleOut).toFixed(2)}%, 0) translateY(${(-(titleNudge + TEASE_LIFT * tease)).toFixed(2)}px)`,
-        );
-        const bars = clamp01(p / STORY.barsOut + (TEASE_BARS / 100) * tease);
-        set(el.barTop, "transform", `translate3d(0, ${(-100 * bars).toFixed(2)}%, 0)`);
-        set(el.barBottom, "transform", `translate3d(0, ${(100 * bars).toFixed(2)}%, 0)`);
-        set(el.hint, "--bars", bars.toFixed(3));
-        set(el.hint, "opacity", hint.toFixed(3));
-        attr(el.hint, "data-on", started || sinceEntered >= HINT_AT);
-        attr(el.hint, "data-blink", blinkParity ? String(blinkParity) : null);
-        const night = clamp01((p - STORY.fadeFrom) / (1 - STORY.fadeFrom));
-        set(el.fade, "opacity", (night * night).toFixed(3));
+        // The first line read and a quiet moment (or the intro skipped): side hints may come.
+        if (
+          loading.entered &&
+          !loading.settled &&
+          (k < 0 || story.done[settleWalls[1]] || (story.done[settleWalls[0]] && idle >= SETTLE_IDLE))
+        ) {
+          markSettled();
+        }
 
-        el.cards.forEach((card, i) => {
-          const opacity = story.opacity[i];
-          if (opacity === 0 && drawnOpacity[i] === 0 && i !== active && i !== lastActive) return;
-          drawnOpacity[i] = opacity;
-          set(card, "opacity", opacity.toFixed(3));
-          if (opacity > 0 || i === active) {
-            // Rises in from below, drifts up on the way out; the active card gives under a push.
-            const y =
-              i === active
-                ? STORY.cardRise * (1 - opacity) - nudge - reminderLift
-                : -STORY.cardRise * (1 - opacity);
-            set(card, "transform", `translate3d(0, ${y.toFixed(2)}px, 0)`);
+        // Resting mid-dissolve, the title finishes its fade instead of hanging there as a ghost.
+        titleSettle = settleTitle(titleSettle, p, movedBack, turn, realDt);
+
+        // Nothing asks her for anything: side hints (the radio's) may show. Behind her, the hero asks nothing.
+        const asking =
+          hintPrompt !== null || prompt !== null || ready || feedback.hold.visible || skipExpanded || !started;
+        const nowQuiet = p >= 1 || !asking;
+        if (nowQuiet !== quiet) {
+          quiet = nowQuiet;
+          markQuiet(quiet);
+        }
+
+        // ---- draw: writes only from here on, and only what changed ----
+        const titleOut = clamp01(p / STORY.titleOut);
+        const titleO = round3((1 - titleOut) * (1 - titleSettle));
+        if (titleO !== drawn.titleO) {
+          drawn.titleO = titleO;
+          set(title.current, "opacity", titleO.toFixed(3));
+        }
+        // The title lifts a little into the sky as it fades, and gives under a push.
+        const titleY = round2(-8 * titleOut);
+        const titleLift = round2(-((k === 0 ? nudge : 0) + TEASE_LIFT * tease));
+        if (titleY !== drawn.titleY || titleLift !== drawn.titleLift) {
+          drawn.titleY = titleY;
+          drawn.titleLift = titleLift;
+          set(title.current, "transform", `translate3d(0, ${titleY.toFixed(2)}%, 0) translateY(${titleLift.toFixed(2)}px)`);
+        }
+        const bars = round3(clamp01(p / STORY.barsOut + (TEASE_BARS / 100) * tease));
+        if (bars !== drawn.bars) {
+          drawn.bars = bars;
+          set(el.barTop, "transform", `translate3d(0, ${(-100 * bars).toFixed(2)}%, 0)`);
+          set(el.barBottom, "transform", `translate3d(0, ${(100 * bars).toFixed(2)}%, 0)`);
+          set(el.hint, "--bars", bars.toFixed(3));
+        }
+        const hintO = round3(hint);
+        if (hintO !== drawn.hint) {
+          drawn.hint = hintO;
+          set(el.hint, "opacity", hintO.toFixed(3));
+        }
+        attr(el.hint, "data-prompt", hintPrompt);
+        attr(el.hint, "data-naming", naming);
+        attr(el.hint, "data-pop", hintPrompt ? popParity : null);
+        attr(el.hint, "data-blink", started ? null : blinkParity);
+        const night = clamp01((p - STORY.fadeFrom) / (1 - STORY.fadeFrom));
+        const nightO = round3(night * night);
+        if (nightO !== drawn.night) {
+          drawn.night = nightO;
+          set(el.fade, "opacity", nightO.toFixed(3));
+        }
+
+        for (let i = 0; i < el.cards.length; i += 1) {
+          const card = el.cards[i];
+          const isActive = i === active;
+          const opacity = round3(story.opacity[i]);
+          if (opacity !== drawnOpacity[i]) {
+            drawnOpacity[i] = opacity;
+            set(card, "opacity", opacity.toFixed(3));
           }
-          attr(card, "data-active", i === active);
-        });
+          if (opacity > 0 || isActive) {
+            // Rises in from below, drifts up on the way out; the active card gives under a push.
+            const y = round2(
+              isActive ? STORY.cardRise * (1 - opacity) - nudge - reminderLift : -STORY.cardRise * (1 - opacity),
+            );
+            if (y !== drawnY[i]) {
+              drawnY[i] = y;
+              set(card, "transform", `translate3d(0, ${y.toFixed(2)}px, 0)`);
+            }
+          }
+          attr(card, "data-active", isActive);
+        }
         if (active !== lastActive) {
           if (lastActive >= 0) {
             attr(el.cards[lastActive], "data-ready", null);
             attr(el.cards[lastActive], "data-cue-label", false);
           }
+          drawn.read = drawn.push = Number.NaN;
           if (active >= 0) {
             // One layout read per card change: the hold note sits above the card.
             set(el.holdNote, "--va-card-h", `${el.cards[active].offsetHeight}px`);
@@ -628,45 +948,66 @@ export function HeroStage({
         }
         if (active >= 0) {
           const card = el.cards[active];
-          set(card, "--read", (Math.round(fill * 50) / 50).toFixed(2));
-          set(card, "--push", pushFlash.toFixed(2));
-          attr(card, "data-ready", ready ? String(readyParity) : null);
+          const read = Math.round(fill * 50) / 50;
+          if (read !== drawn.read) {
+            drawn.read = read;
+            set(card, "--read", read.toFixed(2));
+          }
+          const push = round2(pushFlash);
+          if (push !== drawn.push) {
+            drawn.push = push;
+            set(card, "--push", push.toFixed(2));
+          }
+          attr(card, "data-ready", ready ? readyParity : null);
           attr(card, "data-cue-label", ready && cueLabel);
         }
         // Rewinding flicks through the cards: hide them instead.
         attr(el.captions, "data-rewinding", rewinding);
         attr(el.cue, "data-visible", prompt === "between");
-        attr(el.holdNote, "data-visible", holdNote);
+        // A card coming up takes the cue's place at once: never both on screen.
+        attr(el.cue, "data-gone", active >= 0);
+        attr(el.cue, "data-remind", prompt === "between" ? remindParity : null);
+        attr(el.holdNote, "data-visible", feedback.hold.visible);
         // The note rides on the card it talks about, stretch and all.
-        set(el.holdNote, "transform", `translate3d(-50%, ${(-(nudge + reminderLift)).toFixed(2)}px, 0)`);
+        const noteY = round2(-(nudge + reminderLift));
+        if (noteY !== drawn.noteY) {
+          drawn.noteY = noteY;
+          set(el.holdNote, "transform", `translate3d(-50%, ${noteY.toFixed(2)}px, 0)`);
+        }
         attr(el.endCue, "data-visible", prompt === "end");
 
         attr(el.osd, "data-mode", nextMode);
+        attr(el.osd, "data-deep", nextMode === "waiting" && deep);
         if (nextMode !== mode) {
           mode = nextMode;
-          pulseParity = pulseParity === 1 ? 2 : 1;
-          attr(el.osd, "data-pulse", String(pulseParity));
+          pulseParity = flip(pulseParity);
+          attr(el.osd, "data-pulse", pulseParity);
         }
         if (speed !== shownSpeed && el.speed) {
           shownSpeed = speed;
           el.speed.textContent = String(speed);
         }
-        el.reel.forEach((fillEl, i) => {
-          const fill = clamp01(p * SHOT_COUNT - i);
-          if (fill === drawnFill[i]) return;
-          drawnFill[i] = fill;
-          set(fillEl, "--fill", fill.toFixed(3));
-        });
+        for (let i = 0; i < el.reel.length; i += 1) {
+          const segment = round3(clamp01(p * SHOT_COUNT - i));
+          if (segment === drawnFill[i]) continue;
+          drawnFill[i] = segment;
+          set(el.reel[i], "--fill", segment.toFixed(3));
+        }
         attr(el.skip, "data-visible", skipVisible);
         attr(el.skip, "data-expanded", skipExpanded);
         attr(root, "data-started", started);
         attr(root, "data-hurry", skipExpanded);
-        const source: InputSource | null = scrollInput.source ?? (loading.enteredVia === "key" ? "key" : null);
-        attr(root, "data-input", source);
+        attr(root, "data-input", scrollInput.source ?? (loading.enteredVia === "key" ? "key" : null));
 
-        if (picture.shot !== currentShot) {
-          currentShot = picture.shot;
-          setShot(picture.shot);
+        if (pick.shot !== currentShot) {
+          currentShot = pick.shot;
+          setShot(pick.shot);
+        }
+
+        // A line she asked for at the title plays once the name has formed, unless she has driven on since.
+        if (!Number.isNaN(queuedAt) && story.done[0]) {
+          if (scrollInput.at === queuedInput && now - queuedAt < TITLE_QUEUE_MS) stepLine(1, null);
+          queuedAt = queuedInput = Number.NaN;
         }
 
         gate(frontier(walls, story), now, scroll);
@@ -681,9 +1022,15 @@ export function HeroStage({
               p,
               target: heroProgress.target,
               scroll,
+              // The page's own offset this frame, and where Lenis heads.
+              page: reading.page,
+              lenisTarget: lenis ? lenis.targetScroll : null,
+              lenisState: lenis ? String(lenis.isScrolling) : null,
+              maxScroll: Number.isFinite(scrollGate.maxScroll) ? scrollGate.maxScroll : null,
               frontier: Number.isFinite(fr) ? fr : null,
               wall: k,
               active,
+              beat,
               opacity: active >= 0 ? story.opacity[active] : 0,
               opacities: story.opacity.map((o) => o.toFixed(3)).join(","),
               read: fill,
@@ -692,45 +1039,65 @@ export function HeroStage({
               pressure: scrollGate.pressure,
               nudge,
               push: pushFlash,
-              waiting,
+              waiting: feedback.waitingFor,
+              deep,
+              rhythm: feedback.rhythm,
               mode: nextMode,
+              turnFor: feedback.turnFor,
+              titleSettle,
+              quiet,
               started,
               ready,
               cueLabel: ready && cueLabel,
               prompt,
+              hintPrompt,
+              naming,
               cue: prompt === "between",
-              holdNote,
+              holdNote: feedback.hold.visible,
+              holdSpan: feedback.hold.span,
+              holdHeld: feedback.hold.held,
               endCue: prompt === "end",
               skip: skipVisible,
               skipExpanded,
               hint,
-              hintOn: started || sinceEntered >= HINT_AT,
+              hintOn: hintPrompt !== null,
               tease,
               rewinding,
               source: scrollInput.source,
+              settled: loading.settled,
               inputAt: Number.isFinite(scrollInput.at) ? Math.round(scrollInput.at) : null,
             });
           }
         }
       };
 
-      const tick = (_time: number, deltaMs: number) => update(deltaMs);
-      gsap.ticker.add(tick);
-      update(0);
-
       const skipToEnd = () => {
         openAll(story);
         jumpToEnd();
       };
 
-      /** Next or previous line (Space, PageDown, Shift+Space, PageUp, a tap). */
-      const stepLine = (dir: 1 | -1, source: InputSource) => {
+      /**
+       * Next or previous line (Space, PageDown, Shift+Space, PageUp, a tap).
+       * `source` null replays a line she asked for at the title, once the
+       * name has formed: no new input, no knock.
+       */
+      const stepLine = (dir: 1 | -1, source: InputSource | null) => {
         const now = performance.now();
         const fr = frontier(walls, story);
         // From where a glide already heads, so quick presses step line after line.
         const from = Math.min(fr, Math.max(heroProgress.value, lenis ? progressFor(lenis.targetScroll) : 0));
         const target = lineStep(dir, from, timeline, fr);
+        if (source === null) {
+          if (target === null) return;
+          lenis?.scrollTo(scrollFor(target), { programmatic: false, duration: LINE_GLIDE, easing: easeOutCubic });
+          return;
+        }
         recordInput(dir * THROTTLE.keyStep * geom.vh, source, now, geom.vh);
+        // At the title the line waits for the name to form, then plays (update).
+        if (dir > 0 && frontierIndex(story) === 0) {
+          queuedAt = now;
+          queuedInput = scrollInput.at;
+        }
         if (dir > 0 && (target === null || target < (lineStep(dir, from, timeline, Number.POSITIVE_INFINITY) ?? 1))) {
           // The next line waits for an unread card: the press knocks on it
           // (a bounce and a flash of its bar) and the picture creeps to its wall.
@@ -741,12 +1108,17 @@ export function HeroStage({
         lenis?.scrollTo(scrollFor(target), { programmatic: false, duration: LINE_GLIDE, easing: easeOutCubic });
       };
 
+      // The frame runs from here on (stepLine above replays a line queued at the title).
+      const tick = (_time: number, deltaMs: number) => update(deltaMs);
+      gsap.ticker.add(tick);
+      update(0);
+
       const onKey = (event: KeyboardEvent) => {
         if (event.defaultPrevented) return;
         const loading = getSceneLoading();
         if (!loading.entered || event.timeStamp - loading.enteredAt < KEY_GUARD_MS) return;
-        if (!lenis || lenis.isStopped) return;
-        const scroll = scrollNow();
+        if (!lenis || lenis.isStopped || stillQuery.matches) return;
+        const scroll = window.scrollY;
         const pinned = scroll >= geom.top - 1 && scroll < geom.top + geom.range - 1;
         if (!pinned || heroProgress.value >= 1) return;
         const action = keyAction({
@@ -755,7 +1127,7 @@ export function HeroStage({
           ctrlKey: event.ctrlKey,
           altKey: event.altKey,
           metaKey: event.metaKey,
-          targetKind: targetKind(event.target, clickFocus.element),
+          targetKind: targetKind(event.target, modality.clicked),
         });
         if (!action) return;
         event.preventDefault();
@@ -818,7 +1190,8 @@ export function HeroStage({
           id: event.pointerId,
           x: event.clientX,
           y: event.clientY,
-          at: performance.now(),
+          // The events' own times: a slow frame that runs the handlers late never turns a tap into a hold.
+          at: event.timeStamp,
           button: event.button,
           type: event.pointerType,
           lastInput: scrollInput.at,
@@ -828,30 +1201,55 @@ export function HeroStage({
         if (!press || event.pointerId !== press.id) return;
         const down = press;
         press = null;
-        if (!getSceneLoading().entered || heroProgress.value >= 1) return;
+        if (!getSceneLoading().entered || heroProgress.value >= 1 || stillQuery.matches) return;
         const tap = isPictureTap({
           dx: event.clientX - down.x,
           dy: event.clientY - down.y,
-          ms: performance.now() - down.at,
+          ms: event.timeStamp - down.at,
           sinceScroll: down.at - down.lastInput,
           button: down.button,
         });
         if (tap) stepLine(1, down.type === "touch" ? "touch" : "wheel");
       };
 
-      /** The control the last pointer press focused (see targetKind). */
-      const clickFocus = { element: null as Element | null, at: Number.NEGATIVE_INFINITY };
-      const onAnyPointerDown = () => {
-        clickFocus.at = performance.now();
+      /**
+       * How the focus last moved, for targetKind: the control a pointer
+       * focused, directly or handed back to it later by a dialog (closed
+       * by a click or by Esc), is `clicked`. A key pressed since the last
+       * pointer press or release makes a new focus the keyboard's, and a
+       * Tab makes every control the keyboard's again (focusFromPointer).
+       */
+      const modality = {
+        pointerAt: Number.NEGATIVE_INFINITY,
+        keyAt: Number.NEGATIVE_INFINITY,
+        tabAt: Number.NEGATIVE_INFINITY,
+        clicked: null as Element | null,
+        /** When the pointer last focused each control: focus handed back to it stays the pointer's. */
+        owned: new WeakMap<Element, number>(),
+      };
+      const onAnyPointer = () => {
+        modality.pointerAt = performance.now();
+      };
+      const onAnyKey = (event: KeyboardEvent) => {
+        modality.keyAt = performance.now();
+        if (event.key === "Tab") modality.tabAt = modality.keyAt;
       };
 
       /** Focus moving past the hero (Tab into the next section) opens the walls instead of being pulled back. */
       const onFocusIn = (event: FocusEvent) => {
         const target = event.target;
-        // Focus that a pointer press moved, here or by closing a dialog
-        // (the radio wheel hands it back to its button), is not the keyboard's.
-        clickFocus.element =
-          target instanceof Element && performance.now() - clickFocus.at < POINTER_FOCUS_MS ? target : null;
+        const now = performance.now();
+        const pointer =
+          target instanceof Element &&
+          focusFromPointer({
+            focusAt: now,
+            pointerAt: modality.pointerAt,
+            keyAt: modality.keyAt,
+            tabAt: modality.tabAt,
+            ownedAt: modality.owned.get(target),
+          });
+        if (pointer) modality.owned.set(target, now);
+        modality.clicked = pointer ? target : null;
         if (!(target instanceof Node) || root.contains(target)) return;
         if (root.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING) {
           if (frontierIndex(story) >= 0) openAll(story);
@@ -889,7 +1287,9 @@ export function HeroStage({
       root.addEventListener("pointerdown", onPointerDown);
       root.addEventListener("pointerup", onPointerUp);
       document.addEventListener("focusin", onFocusIn);
-      document.addEventListener("pointerdown", onAnyPointerDown, true);
+      document.addEventListener("pointerdown", onAnyPointer, true);
+      document.addEventListener("pointerup", onAnyPointer, true);
+      document.addEventListener("keydown", onAnyKey, true);
 
       if (process.env.NODE_ENV !== "production") {
         // Dev only: jump the film (opening the story up to there), for
@@ -919,7 +1319,9 @@ export function HeroStage({
         root.removeEventListener("pointerdown", onPointerDown);
         root.removeEventListener("pointerup", onPointerUp);
         document.removeEventListener("focusin", onFocusIn);
-        document.removeEventListener("pointerdown", onAnyPointerDown, true);
+        document.removeEventListener("pointerdown", onAnyPointer, true);
+        document.removeEventListener("pointerup", onAnyPointer, true);
+        document.removeEventListener("keydown", onAnyKey, true);
         clear();
         clearAttrs();
         scrollGate.maxScroll = Number.POSITIVE_INFINITY;
@@ -972,14 +1374,21 @@ export function HeroStage({
               {cards.map((card, cardIndex) => (
                 <span key={`${lineIndex}-${cardIndex}`} className={styles.subtitle} data-card>
                   <span className={styles.subtitleText}>
-                    <span className={styles.speaker}>{speaker}:</span> {card}
-                    {/* The marker and its label never wrap apart. */}
-                    <span className={styles.cueTail} aria-hidden="true">
-                      <span className={styles.cueArrow} />
-                      <span className={styles.cueLabel}>
-                        <span className={styles.forWheel}>{intro.next}</span>
-                        <span className={styles.forTouch}>{intro.nextTouch}</span>
-                        <span className={styles.forKey}>{intro.nextKey}</span>
+                    <span className={styles.speaker}>{speaker}:</span> {cardParts[lineIndex][cardIndex].head}
+                    {/* The last word, the marker and its label never wrap apart: no line of their own. */}
+                    <span className={styles.cueGlue}>
+                      {cardParts[lineIndex][cardIndex].last}
+                      <span className={styles.cueTail} aria-hidden="true">
+                        {/* The way on in her input's direction: down for the wheel and keys, up for a swipe. */}
+                        <span className={styles.cueArrow}>
+                          <span className={`${styles.glyph} ${styles.notTouch}`} data-g="down" />
+                          <span className={`${styles.glyph} ${styles.forTouch}`} data-g="up" />
+                        </span>
+                        <span className={styles.cueLabel}>
+                          <span className={styles.forWheel}>{intro.next}</span>
+                          <span className={styles.forTouch}>{intro.nextTouch}</span>
+                          <span className={styles.forKey}>{intro.nextKey}</span>
+                        </span>
                       </span>
                     </span>
                   </span>
@@ -1008,11 +1417,21 @@ export function HeroStage({
               <span className={styles.forTouch}>{intro.hintTouch}</span>
               <span className={styles.forKey}>{intro.hintKey}</span>
               <span className={`${styles.glyph} ${styles.hintGlyph} ${styles.notTouch}`} data-g="down" />
-              <span className={`${styles.trail} ${styles.forTouch}`} />
+              <span className={`${styles.glyph} ${styles.hintGlyph} ${styles.forTouch}`} data-g="up" />
             </p>
             {/* Her first input answered in place: the drive is hers now. */}
             <p className={styles.hintAck}>{intro.ack}</p>
+            {/* Resting on the title once the wheel is hers: on, never "take the wheel" again. */}
+            <p className={styles.hintOnward}>
+              <span className={styles.forWheel}>{intro.keepGoing}</span>
+              <span className={styles.forTouch}>{intro.keepGoingTouch}</span>
+              <span className={styles.forKey}>{intro.keepGoingKey}</span>
+              <span className={`${styles.glyph} ${styles.hintGlyph} ${styles.notTouch}`} data-g="down" />
+              <span className={`${styles.glyph} ${styles.hintGlyph} ${styles.forTouch}`} data-g="up" />
+            </p>
             <p className={styles.hintLine2}>{intro.model}</p>
+            {/* Under "you have the wheel" while the name still forms and holds: why the road waits. */}
+            <p className={styles.hintArriving}>{intro.arriving}</p>
             <p className={styles.hintStill}>
               <span className={`${styles.glyph} ${styles.hintGlyph}`} data-g="down" />
               {intro.still}
@@ -1063,7 +1482,8 @@ export function HeroStage({
         <div className={styles.fade} data-fade aria-hidden="true" />
         {/* Over the fade, so it reads from the first frame of the night. */}
         <p className={styles.endCue} data-end-cue aria-hidden="true">
-          <span className={`${styles.glyph} ${styles.cueGlyph}`} data-g="down" />
+          <span className={`${styles.glyph} ${styles.cueGlyph} ${styles.notTouch}`} data-g="down" />
+          <span className={`${styles.glyph} ${styles.cueGlyph} ${styles.forTouch}`} data-g="up" />
           {intro.end}
         </p>
       </div>

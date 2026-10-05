@@ -49,10 +49,12 @@ export const STORY = {
   maxStep: 0.25,
   /** Cards hide while there was backward input this recently (seconds). */
   rewindHide: 0.25,
-  /** Idle seconds before a read card asks for more. */
-  readyIdle: 0.4,
-  /** Idle seconds before the between-card cue shows. */
-  cueIdle: 1,
+  /**
+   * Resting mid-dissolve, between the title wall and titleOut, the title
+   * finishes its fade on time over this long (s) instead of hanging over
+   * the sky as a ghost (settleTitle).
+   */
+  titleSettle: 0.6,
   /**
    * The end cue shows from the fade (where the between-card cue stops)
    * after endIdle seconds of idle, so no stretch of the film is silent.
@@ -265,9 +267,55 @@ export function stepStory(
   return active;
 }
 
+/**
+ * The beat playing at the picture, if any: the frontier beat while it runs
+ * where she can see it. An unread card that is up ("card"), the title's
+ * name forming and holding ("title"), the crane rising ("crane"). While one
+ * plays, the line is hers to wait for; otherwise the film waits for her.
+ * `active` is this frame's active card (stepStory).
+ */
+export function playingBeat(walls: readonly Wall[], story: Story, p: number, active: number): Wall["kind"] | null {
+  const k = frontierIndex(story);
+  if (k < 0) return null;
+  const wall = walls[k];
+  if (wall.kind === "card") return active === wall.card ? "card" : null;
+  if (wall.kind === "crane") return p >= STORY.craneFrom ? "crane" : null;
+  return "title";
+}
+
+/**
+ * The title's own fade, 0 (it follows the picture) to 1 (gone), for one
+ * frame of `dt` seconds. Where she rests between the title wall and
+ * `titleOut` the title would hang over the sky half dissolved, like a
+ * transition that got stuck: once it is her turn there (`resting`), it
+ * finishes fading on time. Going back toward the title (`back`) gives it
+ * back to the picture.
+ */
+export function settleTitle(settle: number, p: number, back: boolean, resting: boolean, dt: number): number {
+  const step = Math.max(0, dt) / STORY.titleSettle;
+  if (back || p <= STORY.titleWallTo) return Math.max(0, settle - 2 * step);
+  if (resting && p < STORY.titleOut) return Math.min(1, settle + step);
+  return settle;
+}
+
 /** Wall index of a card, or -1. */
 export function cardWall(walls: readonly Wall[], card: number): number {
-  return walls.findIndex((wall) => wall.kind === "card" && wall.card === card);
+  for (let k = 0; k < walls.length; k += 1) {
+    if (walls[k].kind === "card" && walls[k].card === card) return k;
+  }
+  return -1;
+}
+
+/**
+ * The card she has reached at film position `p`: the last one whose
+ * active window starts at or before it, or -1 on the title. The still
+ * hero (reduced motion) uses it to keep her place in the running script.
+ */
+export function cardAt(p: number, timeline: FilmTimeline): number {
+  const windows = activeWindows(timeline);
+  let card = -1;
+  for (let i = 0; i < windows.length; i += 1) if (windows[i].from <= p) card = i;
+  return card;
 }
 
 /** Seconds a card wall must be seen fully opaque: its reading time (at least 1.6 s) less the fade-in. */

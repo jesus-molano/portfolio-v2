@@ -8,12 +8,10 @@ import { ReactLenis, useLenis, type LenisRef } from "lenis/react";
 import { motion } from "@/design/tokens";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { getSceneLoading } from "../sceneLoading";
+import { GATE, liftFling } from "./gate";
 import { recordInput, scrollGate } from "./heroProgress";
 
 gsap.registerPlugin(ScrollTrigger);
-
-/** Lifting a finger with less room than this (viewport heights) before the wall drops its inertia. */
-const WALL_INERTIA_ROOM = 0.06;
 
 /**
  * Lenis smooth scroll driven by the GSAP ticker, with ScrollTrigger kept in
@@ -22,11 +20,14 @@ const WALL_INERTIA_ROOM = 0.06;
  * follows the native scroll position instantly (`lerp: 1`).
  *
  * Forward wheel and touch input is trimmed at `scrollGate.maxScroll`, the
- * hero story's frontier (see story.ts and HeroStage), and what is held
- * there becomes `scrollGate.pressure`, which the hero shows. Touch
+ * hero story's frontier (see story.ts, gate.ts and HeroStage), and what is
+ * held there becomes `scrollGate.pressure`, which the hero shows. Touch
  * scrolling is synced too (`syncTouch`), so phones get the same gate and no
- * native momentum runs past it. Every input is recorded (`recordInput`) for
- * the hero's feedback: the world's pace, the transport and the hints.
+ * native momentum runs past it; a finger's fling flies up to the wall and
+ * no further. The input this gate passes never goes past the frontier;
+ * whatever else moves the page there, HeroStage puts it back (gate.ts).
+ * Every input is recorded (`recordInput`) for the hero's feedback: the
+ * world's pace, the transport and the hints.
  */
 export function SmoothScroll({ children }: { children: ReactNode }) {
   const reducedMotion = usePrefersReducedMotion();
@@ -43,20 +44,33 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
    *    checks (onVirtualScroll), so pinch zoom is filtered here;
    * 2. Lenis reads the deltas from `data` after this callback, and zero
    *    deltas return early as for a tap;
-   * 3. touchend inertia is computed after this callback from Lenis' own
-   *    velocity, so it cannot be trimmed here: HeroStage.gate() retargets it.
+   * 3. touchend inertia, sign(delta)·|velocity|^touchInertiaExponent, is
+   *    computed after this callback from Lenis' own velocity: the gate
+   *    computes the same fling here and, when it would pass the wall, zeroes
+   *    the deltas (2) and glides into the wall itself.
+   * The room is measured from the page as well as from Lenis' target: if
+   * the page moved without Lenis (gate.ts), nothing passes the wall.
    */
   const gateInput = useCallback(
     (data: VirtualScrollData) => {
       const { event } = data;
       // Pinch zoom, sideways gestures and input before the visitor entered are not scrolling.
       if (reducedMotion || event.ctrlKey || !getSceneLoading().entered) return true;
+      const lenis = lenisRef.current?.lenis;
+      // Scroll held (the radio wheel is open): nothing reaches the hero, not
+      // even as feedback; Lenis drops the event itself after this callback.
+      if (lenis?.isStopped) {
+        if (event.type === "touchend") {
+          scrollGate.touching = false;
+          strokeMoved.current = false;
+        }
+        return true;
+      }
       if (event.type === "touchstart") {
         scrollGate.touching = true;
         strokeMoved.current = false;
         return true;
       }
-      const lenis = lenisRef.current?.lenis;
       const gated = Boolean(lenis) && Number.isFinite(scrollGate.maxScroll);
       const room =
         lenis && gated ? scrollGate.maxScroll - Math.max(lenis.targetScroll, lenis.actualScroll) : Infinity;
@@ -65,11 +79,24 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         scrollGate.touching = false;
         if (strokeMoved.current) scrollGate.touchEndAt = now;
         strokeMoved.current = false;
-        // Lifting near a wall: no inertia flies into it (internal 2: zero
-        // deltas return as a tap). A flick back keeps its inertia.
-        if (data.deltaY > 0 && room < WALL_INERTIA_ROOM * window.innerHeight) {
-          data.deltaX = 0;
-          data.deltaY = 0;
+        // A forward fling flies up to the wall and no further (gate.ts
+        // liftFling); near the wall it does not fly at all. A flick back
+        // keeps its inertia.
+        if (lenis && data.deltaY > 0 && Number.isFinite(room)) {
+          // Internal 3: the fling Lenis would add after this callback.
+          const fling = Math.abs(lenis.velocity) ** lenis.options.touchInertiaExponent;
+          const fly = liftFling(fling, room, window.innerHeight);
+          if (fly < fling) {
+            // Internal 2: zero deltas return as a tap, so Lenis flings nothing...
+            data.deltaX = 0;
+            data.deltaY = 0;
+            if (fly > 0) {
+              // ...and what fits glides into the wall the way Lenis' own fling would.
+              lenis.scrollTo(lenis.targetScroll + fly, { programmatic: false, lerp: motion.touchLerp });
+              scrollGate.pressure += Math.min(fling - fly, GATE.overshootCap);
+              scrollGate.pushedAt = now;
+            }
+          }
         }
         return true;
       }

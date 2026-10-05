@@ -5,6 +5,7 @@ import {
   activeCard,
   activeWindow,
   buildWalls,
+  cardAt,
   cardWall,
   frontier,
   frontierIndex,
@@ -13,7 +14,9 @@ import {
   newStory,
   openAll,
   openUpTo,
+  playingBeat,
   readFill,
+  settleTitle,
   stepStory,
   type Story,
   STORY,
@@ -298,6 +301,56 @@ describe("frontier, openAll, openUpTo", () => {
   });
 });
 
+describe("playingBeat", () => {
+  const timeline = heroTimeline(en.hero.lines);
+  const walls = buildWalls(timeline);
+
+  it("plays the title until its hold is done, then the first card while it is unread and up", () => {
+    const story = newStory(walls, timeline.beats.length);
+    expect(playingBeat(walls, story, 0, -1)).toBe("title");
+    story.done[0] = true;
+    const first = activeWindow(timeline.beats[0]).from;
+    // The first card's wall is the frontier, but the card is not up yet: her turn.
+    expect(playingBeat(walls, story, 0.05, -1)).toBeNull();
+    expect(playingBeat(walls, story, first, 0)).toBe("card");
+    story.done[cardWall(walls, 0)] = true;
+    expect(playingBeat(walls, story, first, 0)).toBeNull();
+  });
+
+  it("plays the crane only inside the crane shot, and nothing once every beat is done", () => {
+    const story = newStory(walls, timeline.beats.length);
+    const crane = walls.findIndex((wall) => wall.kind === "crane");
+    for (let k = 0; k < crane; k += 1) story.done[k] = true;
+    expect(playingBeat(walls, story, STORY.craneFrom - 0.01, -1)).toBeNull();
+    expect(playingBeat(walls, story, STORY.craneFrom, -1)).toBe("crane");
+    openAll(story);
+    expect(playingBeat(walls, story, 0.5, 3)).toBeNull();
+  });
+});
+
+describe("cardAt and cardWall", () => {
+  const timeline = heroTimeline(es.hero.lines);
+  const walls = buildWalls(timeline);
+
+  it("finds the card she has reached, or none on the title", () => {
+    expect(cardAt(0, timeline)).toBe(-1);
+    timeline.beats.forEach((beat, i) => {
+      const from = activeWindow(beat).from;
+      expect(cardAt(from, timeline)).toBe(i);
+      if (i > 0) expect(cardAt(from - 1e-6, timeline)).toBe(i - 1);
+    });
+    expect(cardAt(1, timeline)).toBe(timeline.beats.length - 1);
+  });
+
+  it("finds every card's wall, and none for a card that does not exist", () => {
+    timeline.beats.forEach((_, i) => {
+      const k = cardWall(walls, i);
+      expect(walls[k]).toMatchObject({ kind: "card", card: i });
+    });
+    expect(cardWall(walls, timeline.beats.length)).toBe(-1);
+  });
+});
+
 describe("readFill", () => {
   const timeline = heroTimeline(en.hero.lines);
   const walls = buildWalls(timeline);
@@ -317,6 +370,33 @@ describe("readFill", () => {
     expect(readFill(walls, story, 0)).toBe(1);
     expect(readFill(walls, story, 3)).toBe(0);
     expect(readFill(walls, story, 99)).toBe(0);
+  });
+});
+
+describe("settleTitle", () => {
+  const FRAME = 1 / 60;
+  const settle = (from: number, seconds: number, p: number, back: boolean, resting: boolean) => {
+    let value = from;
+    for (let t = 0; t < seconds - 1e-9; t += FRAME) value = settleTitle(value, p, back, resting, FRAME);
+    return value;
+  };
+
+  it("finishes the title's fade on time once she rests mid-dissolve", () => {
+    const mid = (STORY.titleWallTo + STORY.titleOut) / 2;
+    expect(settle(0, STORY.titleSettle / 2, mid, false, true)).toBeCloseTo(0.5, 1);
+    expect(settle(0, STORY.titleSettle + FRAME, mid, false, true)).toBe(1);
+    // Not while she drives, nor on the title itself, nor past the dissolve.
+    expect(settle(0, 2, mid, false, false)).toBe(0);
+    expect(settle(0, 2, STORY.titleWallTo, false, true)).toBe(0);
+    expect(settle(0, 2, STORY.titleOut, false, true)).toBe(0);
+  });
+
+  it("gives the title back to the picture when she goes back toward it", () => {
+    const mid = (STORY.titleWallTo + STORY.titleOut) / 2;
+    expect(settle(1, STORY.titleSettle / 2 + FRAME, mid, true, false)).toBe(0);
+    expect(settle(1, STORY.titleSettle / 2 + FRAME, STORY.titleWallTo / 2, false, false)).toBe(0);
+    // Driving on keeps it gone.
+    expect(settle(1, 2, mid + 0.01, false, false)).toBe(1);
   });
 });
 
@@ -378,7 +458,8 @@ describe("a visitor scrolling the hero", () => {
       it(`${locale}, ${label}: plays nothing on its own once she stops`, () => {
         for (const stopAt of [0.5, 1, 3, 5, 8, 12, 18, 24, 30, 36]) {
           const run = simulate(lines, source, { vh, stopAt, maxTime: stopAt + 6 });
-          // Only the glide of her own last input: never past where she scrolled...
+          // Only the glide of her own last input (or of the line she asked for
+          // with Space while the name formed): never past where she scrolled...
           expect(run.maxPAfterStop).toBeLessThanOrEqual(run.targetAtStop + 1e-9);
           // ...the picture is at rest (under 0.5 px a frame) within 0.6 s...
           expect(run.lastFastMove).toBeLessThanOrEqual(0.6);

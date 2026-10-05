@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { easePace, feedMeter, fovKick, type Meter, meterRate, paceFor, paceTarget, THROTTLE } from "./throttle";
+import {
+  clampPace,
+  easePace,
+  feedMeter,
+  fovKick,
+  type Meter,
+  meterRate,
+  paceFor,
+  paceTarget,
+  THROTTLE,
+  WAIT,
+  waitPace,
+} from "./throttle";
 
 const FRAME = 1 / 60;
 
@@ -76,42 +88,77 @@ describe("the throttle", () => {
     expect(meterRate(meter, 0)).toBeCloseTo(start, 10);
   });
 
-  it("never eases below the crawl or above x2", () => {
-    expect(easePace(1, 0.1, 10)).toBe(THROTTLE.crawl);
+  it("never eases below the deep crawl or above x2", () => {
+    expect(easePace(1, 0.1, 10)).toBe(THROTTLE.deepCrawl);
     expect(easePace(2, 5, 1)).toBe(2);
+    expect(clampPace(0)).toBe(THROTTLE.deepCrawl);
+    expect(clampPace(9)).toBe(1 + THROTTLE.gain);
   });
 });
 
 describe("waiting for her", () => {
-  it("heads for the crawl while she waits, for the meter otherwise", () => {
-    expect(paceTarget(0, true)).toBe(THROTTLE.crawl);
-    expect(paceTarget(3, true)).toBe(THROTTLE.crawl);
-    expect(paceTarget(0, false)).toBe(1);
-    expect(paceTarget(3, false)).toBe(paceFor(3));
+  it("heads for the wait's brake while she waits, for the meter otherwise", () => {
+    expect(paceTarget(0, 0)).toBe(1);
+    expect(paceTarget(3, 30)).toBeCloseTo(THROTTLE.deepCrawl, 10);
+    expect(paceTarget(0, null)).toBe(1);
+    expect(paceTarget(3, null)).toBe(paceFor(3));
   });
 
-  it("slows the car to a crawl gently, and surges back on her next notch", () => {
+  it("brakes only once the wait has lasted a moment, to the crawl, then lower after a long wait", () => {
+    expect(waitPace(0)).toBe(1);
+    expect(waitPace(WAIT.delay)).toBe(1);
+    expect(waitPace(WAIT.delay + WAIT.ramp)).toBeCloseTo(THROTTLE.crawl, 10);
+    expect(waitPace(WAIT.deepAfter)).toBeCloseTo(THROTTLE.crawl, 10);
+    expect(waitPace(WAIT.deepAfter + WAIT.deepRamp)).toBeCloseTo(THROTTLE.deepCrawl, 10);
+    expect(waitPace(600)).toBeCloseTo(THROTTLE.deepCrawl, 10);
+    let previous = 1;
+    for (let t = 0; t <= 10; t += 0.05) {
+      expect(waitPace(t)).toBeLessThanOrEqual(previous + 1e-12);
+      previous = waitPace(t);
+    }
+    // About 0.15 of the cruise after a long wait: 10 km/h.
+    expect(THROTTLE.deepCrawl).toBeGreaterThanOrEqual(0.12);
+    expect(THROTTLE.deepCrawl).toBeLessThan(THROTTLE.crawl);
+  });
+
+  it("slows the car to a crawl gently, and gets it going on her next notch", () => {
     let pace = 1;
     let t = 0;
-    while (pace > THROTTLE.crawl + 0.05 && t < 5) {
-      pace = easePace(pace, paceTarget(0, true), FRAME);
+    while (pace > THROTTLE.crawl + 0.05 && t < 6) {
+      pace = easePace(pace, paceTarget(0, t), FRAME, 0, true);
       t += FRAME;
     }
-    // A brake, not a stop: about a second and a half to the crawl, and never below it.
-    expect(t).toBeGreaterThan(1);
-    expect(t).toBeLessThan(2.5);
-    expect(pace).toBeGreaterThanOrEqual(THROTTLE.crawl);
-    // One notch: the car surges at once, three times its crawl within 0.1 s
-    // and back above the cruise within 0.2 s.
+    // A brake, not a stop: under three seconds to the crawl, and never below the deep crawl.
+    expect(t).toBeGreaterThan(1.5);
+    expect(t).toBeLessThan(3);
+    expect(pace).toBeGreaterThanOrEqual(THROTTLE.deepCrawl);
+    // One notch from the crawl: the car pulls away at once, like a car, not
+    // a jump; it doubles within 0.1 s and is back at the cruise within a second.
     const meter: Meter = { rate: 0, at: 0 };
     feedMeter(meter, 100 / 900, 0);
+    const from = pace;
     let s = 0;
     const until = (end: number) => {
-      for (; s < end - 1e-9; s += FRAME) pace = easePace(pace, paceTarget(meterRate(meter, s + FRAME), false), FRAME);
+      for (; s < end - 1e-9; s += FRAME) {
+        const rate = meterRate(meter, s + FRAME);
+        pace = easePace(pace, paceTarget(rate, null), FRAME, rate, true);
+      }
     };
     until(0.1);
-    expect(pace).toBeGreaterThan(3 * THROTTLE.crawl);
-    until(0.2);
+    expect(pace).toBeGreaterThan(1.5 * from);
+    expect(pace).toBeLessThan(0.75);
+    until(1);
+    expect(pace).toBeGreaterThan(0.95);
+  });
+
+  it("surges from the crawl at once under a hard push", () => {
+    const meter: Meter = { rate: 0, at: 0 };
+    let pace: number = THROTTLE.crawl;
+    for (let s = 0; s < 0.2 - 1e-9; s += FRAME) {
+      feedMeter(meter, 100 / 900, s);
+      const rate = meterRate(meter, s + FRAME);
+      pace = easePace(pace, paceTarget(rate, null), FRAME, rate, true);
+    }
     expect(pace).toBeGreaterThan(1);
   });
 

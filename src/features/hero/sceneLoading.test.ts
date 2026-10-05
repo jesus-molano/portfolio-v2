@@ -4,6 +4,8 @@ import {
   getServerSceneLoading,
   markEntered,
   markSceneReady,
+  markQuiet,
+  markSettled,
   reportSceneProgress,
   resetSceneLoading,
   subscribeSceneLoading,
@@ -19,9 +21,38 @@ describe("sceneLoading", () => {
       entered: false,
       enteredAt: Number.NEGATIVE_INFINITY,
       enteredVia: null,
+      settled: false,
+      quiet: true,
     };
     expect(getSceneLoading()).toEqual(empty);
     expect(getServerSceneLoading()).toEqual(empty);
+  });
+
+  it("tells its subscribers only when the hero's quiet changes", () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeSceneLoading(listener);
+    markQuiet(true);
+    expect(listener).not.toHaveBeenCalled();
+    markQuiet(false);
+    markQuiet(false);
+    expect(getSceneLoading().quiet).toBe(false);
+    markQuiet(true);
+    expect(listener).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+
+  it("settles only once she has entered, and tells its subscribers once", () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeSceneLoading(listener);
+    markSettled();
+    expect(getSceneLoading().settled).toBe(false);
+    markEntered("pointer", 10);
+    listener.mockClear();
+    markSettled();
+    markSettled();
+    expect(getSceneLoading().settled).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
   });
 
   it("records how and when the visitor entered, once", () => {

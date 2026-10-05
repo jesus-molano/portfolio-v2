@@ -10,10 +10,20 @@ import { describe, expect, it } from "vitest";
  * 2. Lenis reads deltaX and deltaY from the callback's `data` after it
  *    returns, so trimming them trims the scroll, and zero deltas return
  *    early as for a tap (no touchend inertia);
- * 3. touchend inertia, sign(delta) * |velocity|^1.7, is computed after the
- *    callback from Lenis' own velocity, so it cannot be trimmed there and
- *    HeroStage.gate() retargets it into the wall.
- * Upgrading Lenis fails this test until someone re-checks all three.
+ * 3. touchend inertia, sign(delta) * |velocity|^touchInertiaExponent, is
+ *    computed after the callback from Lenis' own velocity: the gate
+ *    computes the same fling and, when it would pass the wall, zeroes the
+ *    deltas (2) and glides into the wall itself.
+ * And HeroStage's frame (gate.ts) on two more:
+ * 4. Lenis can miss a native move of the page: it drops the scroll event
+ *    after its own landing (preventNextNativeScrollEvent, cleared on the
+ *    next frame) and ignores native scrolls while it glides. So the frame
+ *    reads the page's own offset and sets Lenis' `animatedScroll` and
+ *    `targetScroll` (public fields) to it when Lenis missed one;
+ * 5. `scrollTo` returns early, doing nothing, when asked for its own
+ *    `targetScroll`: before pulling the page back to the wall, the stage
+ *    sets both fields to where the page is, so the pull never is a no-op.
+ * Upgrading Lenis fails this test until someone re-checks all five.
  */
 describe("Lenis contract", () => {
   const root = new URL("../../../../node_modules/lenis/", import.meta.url);
@@ -38,5 +48,16 @@ describe("Lenis contract", () => {
     expect(ctrl).toBeGreaterThan(destructure);
     expect(tap).toBeGreaterThan(destructure);
     expect(inertia).toBeGreaterThan(tap);
+  });
+
+  it("can still miss a native scroll, and still ignores a scrollTo to its own target", () => {
+    const source = readFileSync(new URL("dist/lenis.mjs", root), "utf8");
+    const native = source.slice(source.indexOf("onNativeScroll = () => {"), source.indexOf("reset() {"));
+    expect(native).toContain("if (this._preventNextNativeScrollEvent) {");
+    expect(native).toContain('if (this.isScrolling === false || this.isScrolling === "native") {');
+    expect(native).toContain("this.animatedScroll = this.targetScroll = this.actualScroll;");
+    const scrollTo = source.slice(source.indexOf("scrollTo(_target, {"), source.indexOf("preventNextNativeScrollEvent() {"));
+    expect(scrollTo).toContain("if (target === this.targetScroll) {");
+    expect(scrollTo).toContain("this.animatedScroll = this.targetScroll = target;");
   });
 });

@@ -2,27 +2,45 @@ import { describe, expect, it } from "vitest";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
 import { activeCard, heroTimeline, STORY } from "./story";
-import { THROTTLE } from "./throttle";
+import { THROTTLE, WAIT } from "./throttle";
 import {
-  driveWaits,
   FIGHT,
   fightLevel,
+  focusFromPointer,
+  HOLD_NOTE,
+  type HoldNote,
   hintOpacity,
+  isNotePush,
   isPictureTap,
   keyAction,
   type KeyInput,
+  newHoldNote,
+  nextRhythm,
+  POINTER_FOCUS_MS,
   PROMPT,
   promptFor,
   type PromptInput,
+  REMINDERS,
   skipTapAllowed,
   speedKmh,
+  stepHoldNote,
   teaseOffset,
   TRANSPORT,
+  turnConditions,
   type TransportInput,
   transportMode,
+  waitIdleFor,
 } from "./transport";
 
-const PLAYING: TransportInput = { started: true, p: 0.3, sinceInput: 0.05, sinceBackward: 9, pictureSpeed: 0.02, pace: 1.2 };
+const PLAYING: TransportInput = {
+  started: true,
+  p: 0.3,
+  sinceInput: 0.05,
+  sinceBackward: 9,
+  pictureSpeed: 0.02,
+  pace: 1.2,
+  playing: false,
+};
 
 describe("transportMode", () => {
   it("hides before the first input and from the fade", () => {
@@ -41,37 +59,71 @@ describe("transportMode", () => {
     expect(transportMode({ ...PLAYING, sinceInput: idle + 1, pictureSpeed: 0.01 })).toBe("drive");
   });
 
+  it("waits a moment before her turn: a stalled frame or a card handing over is not WAITING", () => {
+    const rest = { ...PLAYING, sinceInput: 2, pictureSpeed: 0 };
+    expect(turnConditions(rest)).toBe(true);
+    expect(transportMode({ ...rest, turnFor: TRANSPORT.turnDwell - 0.01 })).toBe("drive");
+    expect(transportMode({ ...rest, turnFor: TRANSPORT.turnDwell })).toBe("waiting");
+    // Once on, it holds through a settling glide whatever the dwell.
+    expect(transportMode({ ...rest, pictureSpeed: 0.01, turnFor: 0 }, "waiting")).toBe("waiting");
+    expect(turnConditions({ ...rest, playing: true })).toBe(false);
+    expect(turnConditions({ ...rest, pictureSpeed: 0.01 })).toBe(false);
+    expect(turnConditions({ ...rest, sinceInput: 0.5 })).toBe(false);
+    expect(turnConditions({ ...rest, started: false })).toBe(false);
+  });
+
+  it("never reads WAITING while a line plays: she waits for the line, not the film for her", () => {
+    expect(transportMode({ ...PLAYING, sinceInput: 30, pictureSpeed: 0, playing: true })).toBe("drive");
+    expect(transportMode({ ...PLAYING, sinceInput: 30, pictureSpeed: 0, playing: true }, "waiting")).toBe("drive");
+  });
+
+  it("holds WAITING until she moves, even while a glide settles", () => {
+    const waiting = { ...PLAYING, sinceInput: 2, pictureSpeed: 0.01 };
+    expect(transportMode(waiting)).toBe("drive");
+    expect(transportMode(waiting, "waiting")).toBe("waiting");
+    expect(transportMode({ ...waiting, sinceInput: 0.1 }, "waiting")).toBe("drive");
+  });
+
+  it("gives a reader with a steady rhythm her own beat before WAITING", () => {
+    expect(transportMode({ ...PLAYING, sinceInput: 1.5, pictureSpeed: 0, waitIdle: waitIdleFor(2.5) })).toBe("drive");
+    expect(transportMode({ ...PLAYING, sinceInput: 3.2, pictureSpeed: 0, waitIdle: waitIdleFor(2.5) })).toBe("waiting");
+    // A notch every 3.5 or 5 s is still a beat she keeps: she is never told it is her turn between them.
+    for (const beat of [3.5, 4.5, 5]) {
+      expect(waitIdleFor(beat) + TRANSPORT.turnDwell, `${beat} s`).toBeGreaterThan(beat);
+    }
+  });
+
   it("waits longer than the gap between a calm scroller's notches", () => {
     // One notch a second: the readout never blinks WAITING between them.
     expect(TRANSPORT.waitIdle).toBeGreaterThanOrEqual(1);
   });
-});
 
-describe("driveWaits", () => {
-  const TITLE = { mode: "hidden" as const, started: false, sinceEntered: 0, teasing: false };
-
-  it("lets the car cruise under the loader, then waits on the title once the hint asks", () => {
-    expect(driveWaits({ ...TITLE, sinceEntered: -1 })).toBe(false);
-    expect(driveWaits({ ...TITLE, sinceEntered: PROMPT.hintAt - 0.01 })).toBe(false);
-    expect(driveWaits({ ...TITLE, sinceEntered: PROMPT.hintAt })).toBe(true);
-    expect(driveWaits({ ...TITLE, sinceEntered: 60 })).toBe(true);
-  });
-
-  it("revs the car with the attract tease", () => {
-    expect(driveWaits({ ...TITLE, sinceEntered: 6.1, teasing: true })).toBe(false);
-  });
-
-  it("waits once she drives only while the readout says WAITING", () => {
-    for (const mode of ["hidden", "reverse", "floored", "drive"] as const) {
-      expect(driveWaits({ ...TITLE, started: true, sinceEntered: 30, mode })).toBe(false);
-    }
-    expect(driveWaits({ ...TITLE, started: true, sinceEntered: 30, mode: "waiting" })).toBe(true);
-    expect(driveWaits({ ...TITLE, started: true, sinceEntered: 30, mode: "waiting", teasing: true })).toBe(true);
-  });
-
-  it("reads FLAT OUT at full throttle, YOU DRIVE otherwise", () => {
+  it("reads FLAT OUT at full throttle, YOU DRIVE otherwise, without flicker at the threshold", () => {
     expect(transportMode({ ...PLAYING, pace: 1.7 })).toBe("floored");
     expect(transportMode(PLAYING)).toBe("drive");
+    expect(transportMode({ ...PLAYING, pace: 1.5 })).toBe("drive");
+    expect(transportMode({ ...PLAYING, pace: 1.5 }, "floored")).toBe("floored");
+    expect(transportMode({ ...PLAYING, pace: THROTTLE.ffOff - 0.01 }, "floored")).toBe("drive");
+    // The feedback's own say (the pace held at full throttle) wins.
+    expect(transportMode({ ...PLAYING, pace: 1.7, flatOut: false })).toBe("drive");
+    expect(transportMode({ ...PLAYING, pace: 1.2, flatOut: true })).toBe("floored");
+  });
+});
+
+describe("her rhythm", () => {
+  it("smooths the gaps between her bursts, ignores bursts and forgets a long stop", () => {
+    expect(nextRhythm(0, 0.1)).toBe(0);
+    expect(nextRhythm(0, 2.5)).toBe(2.5);
+    expect(nextRhythm(2.5, 1.5)).toBeCloseTo(2.1, 10);
+    expect(nextRhythm(2.5, 0.2)).toBe(2.5);
+    expect(nextRhythm(2.5, TRANSPORT.rhythmMax + 1)).toBe(0);
+  });
+
+  it("stretches the wait before WAITING to a little more than her beat, within bounds", () => {
+    expect(waitIdleFor(0)).toBe(TRANSPORT.waitIdle);
+    expect(waitIdleFor(0.5)).toBe(TRANSPORT.waitIdle);
+    expect(waitIdleFor(2.5)).toBeGreaterThan(2.5);
+    expect(waitIdleFor(30)).toBe(TRANSPORT.maxWaitIdle);
   });
 });
 
@@ -86,7 +138,15 @@ describe("speedKmh", () => {
 });
 
 describe("promptFor and hintOpacity", () => {
-  const AT_REST: PromptInput = { started: true, sinceStart: 30, p: 0.3, card: false, rewinding: false, idle: 3 };
+  const AT_REST: PromptInput = {
+    started: true,
+    sinceStart: 30,
+    p: 0.3,
+    card: false,
+    rewinding: false,
+    idle: 3,
+    turn: true,
+  };
 
   it("asks for the first input with the hint, then answers it in place", () => {
     expect(promptFor({ ...AT_REST, started: false, p: 0, idle: 30 })).toBe("hint");
@@ -101,15 +161,44 @@ describe("promptFor and hintOpacity", () => {
       0.5,
       10,
     );
-    expect(hintOpacity({ ...AT_REST, sinceStart: 9, p: 0.01 })).toBe(0);
+    // Once its beat is over it goes while she drives, and comes back once it is her turn on the title.
+    expect(hintOpacity({ ...AT_REST, sinceStart: 9, p: 0.01, idle: 0.2, turn: false })).toBe(0);
+    expect(hintOpacity({ ...AT_REST, sinceStart: 9, p: 0.01, idle: 3 })).toBe(1);
   });
 
-  it("says nothing while she scrolls, rewinds, or a card is up", () => {
-    expect(promptFor({ ...AT_REST, idle: 0.2 })).toBeNull();
+  it("answers her first input for as long as the name forms (sinceStart stays 0), then a beat", () => {
+    for (const p of [0, 0.012, PROMPT.hintFrom]) {
+      expect(promptFor({ ...AT_REST, sinceStart: 0, p, turn: false })).toBe("ack");
+      expect(hintOpacity({ ...AT_REST, sinceStart: 0, p, turn: false })).toBe(1);
+    }
+    expect(promptFor({ ...AT_REST, sinceStart: PROMPT.ackHold + PROMPT.ackFade, p: 0.01, turn: false })).toBeNull();
+  });
+
+  it("says keep driving, in full, when she rests on the title with the wheel, never take the wheel again", () => {
+    const back: PromptInput = { ...AT_REST, p: 0, sinceStart: 30, idle: 3 };
+    expect(promptFor(back)).toBe("onward");
+    expect(hintOpacity(back)).toBe(1);
+    expect(promptFor({ ...back, p: PROMPT.titleRest - 0.001 })).toBe("onward");
+    expect(promptFor({ ...back, p: PROMPT.titleRest })).toBe("between");
+    // Right after "you have the wheel" (three flicks while the name formed, then a rest).
+    expect(promptFor({ ...back, p: 0.02, sinceStart: PROMPT.ackHold + PROMPT.ackFade })).toBe("onward");
+    for (let p = 0; p < 1; p += 0.001) {
+      for (const sinceStart of [0, 1, 3, 30]) {
+        for (const turn of [false, true]) expect(promptFor({ ...back, p, sinceStart, turn })).not.toBe("hint");
+      }
+    }
+    // Only once it is her turn (the readout says WAITING), never next to YOU DRIVE.
+    expect(promptFor({ ...back, turn: false })).toBeNull();
+    // The bars are at most 3/8 out there: the hint still sits in the bottom bar.
+    expect(PROMPT.titleRest / STORY.barsOut).toBeLessThanOrEqual(0.375);
+  });
+
+  it("asks for more only on her turn: never while she scrolls, rewinds, or a card is up", () => {
+    expect(promptFor({ ...AT_REST, idle: 0.2, turn: false })).toBeNull();
     expect(promptFor({ ...AT_REST, rewinding: true })).toBeNull();
     expect(promptFor({ ...AT_REST, card: true })).toBeNull();
-    expect(promptFor({ ...AT_REST, idle: STORY.cueIdle - 0.01 })).toBeNull();
-    expect(promptFor({ ...AT_REST, idle: STORY.cueIdle })).toBe("between");
+    expect(promptFor({ ...AT_REST, idle: 9, turn: false })).toBeNull();
+    expect(promptFor(AT_REST)).toBe("between");
   });
 
   it("points into the city from the fade", () => {
@@ -122,18 +211,18 @@ describe("promptFor and hintOpacity", () => {
     ["es", es.hero.lines],
   ] as const) {
     it(`${locale}: leaves no resting place of the film without a way on`, () => {
-      // Wherever she stops for 3 s, a card (with its marker) or a prompt is up.
+      // Wherever she stops, once it is her turn, a card (with its marker) or a prompt is up.
       const timeline = heroTimeline(lines);
       for (let p = 0; p < 1; p += 0.0005) {
         const card = activeCard(p, timeline) >= 0;
         for (const sinceStart of [3, 10, 60]) {
-          const prompt = promptFor({ started: true, sinceStart, p, card, rewinding: false, idle: 3 });
+          const prompt = promptFor({ started: true, sinceStart, p, card, rewinding: false, idle: 3, turn: true });
           expect(card || prompt !== null, `p ${p.toFixed(4)}`).toBe(true);
         }
       }
-      expect(promptFor({ started: false, sinceStart: Infinity, p: 0, card: false, rewinding: false, idle: 3 })).toBe(
-        "hint",
-      );
+      expect(
+        promptFor({ started: false, sinceStart: Infinity, p: 0, card: false, rewinding: false, idle: 3, turn: false }),
+      ).toBe("hint");
     });
   }
 });
@@ -151,6 +240,153 @@ describe("teaseOffset", () => {
       expect(teaseOffset(t)).toBeGreaterThanOrEqual(0);
       expect(teaseOffset(t)).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe("the hold note", () => {
+  const FRAME = 1 / 60;
+  /**
+   * Runs the note over `seconds` of frames `dt` long, pushing per `push(t)`
+   * (held viewport heights this frame; 0: no push).
+   */
+  function run(
+    note: HoldNote,
+    seconds: number,
+    push: (t: number) => number,
+    card = 2,
+    log?: boolean[],
+    dt = FRAME,
+    state = { sincePush: Number.POSITIVE_INFINITY },
+    gap: number = HOLD_NOTE.gap,
+  ) {
+    for (let t = 0; t < seconds - 1e-9; t += dt) {
+      const held = push(t);
+      state.sincePush = isNotePush(held, dt) ? 0 : state.sincePush + dt;
+      stepHoldNote(note, state.sincePush, held, card, dt, gap);
+      log?.push(note.visible);
+    }
+    return state;
+  }
+
+  it("never scolds a flick or two, however long", () => {
+    for (const gap of [0.25, 0.35, 0.6]) {
+      for (const stroke of [0.45, 0.65, 0.9]) {
+        const note = newHoldNote();
+        const log: boolean[] = [];
+        // Two strokes of 0.15 s, each throwing `stroke` viewports at the wall.
+        run(note, 3, (t) => (t % gap < 0.15 && t < gap * 2 ? stroke / 9 : 0), 2, log);
+        expect(log.some(Boolean), `gap ${gap}, ${stroke} vh`).toBe(false);
+      }
+    }
+  });
+
+  it("shows under sustained pushing, and goes the moment she stops", () => {
+    const note = newHoldNote();
+    const log: boolean[] = [];
+    // A frantic wheel: a 100 px notch every 1/15 s on a 900 px screen.
+    const state = run(note, 2, (t) => (Math.round(t * 60) % 4 === 0 ? 100 / 900 : 0), 2, log);
+    const on = log.indexOf(true) * FRAME;
+    expect(on).toBeGreaterThanOrEqual(HOLD_NOTE.sustain - FRAME);
+    expect(on).toBeLessThanOrEqual(HOLD_NOTE.sustain + 0.1);
+    expect(log.at(-1)).toBe(true);
+    const after: boolean[] = [];
+    run(note, 1, () => 0, 2, after, FRAME, state);
+    expect(after.indexOf(false) * FRAME).toBeLessThanOrEqual(HOLD_NOTE.gap);
+  });
+
+  it("runs on real time: a slow device neither scolds sooner nor keeps it up longer", () => {
+    for (const dt of [1 / 30, 1 / 4, 1 / 2]) {
+      const note = newHoldNote();
+      const log: boolean[] = [];
+      // Frantic input at 4 fps arrives as a few notches a frame.
+      const state = run(note, 3, () => (1.5 * dt), 2, log, dt);
+      const on = log.indexOf(true) * dt;
+      expect(on, `dt ${dt}`).toBeGreaterThanOrEqual(HOLD_NOTE.sustain - dt);
+      expect(on, `dt ${dt}`).toBeLessThanOrEqual(HOLD_NOTE.sustain + dt);
+      const after: boolean[] = [];
+      run(note, 2, () => 0, 2, after, dt, state);
+      expect(after.indexOf(false) * dt, `dt ${dt}`).toBeLessThanOrEqual(HOLD_NOTE.gap);
+    }
+  });
+
+  it("counts a frame as a push only when the held input grew in it, fast enough", () => {
+    expect(isNotePush(0, FRAME)).toBe(false);
+    expect(isNotePush(1, 0)).toBe(false);
+    // A thumb resting on the glass jitters a pixel a frame: no push.
+    expect(isNotePush(1 / 844, FRAME)).toBe(false);
+    expect(isNotePush(HOLD_NOTE.tail * FRAME * 1.01, FRAME)).toBe(true);
+  });
+
+  it("never takes a thumb resting on the glass for a push", () => {
+    for (const gap of [HOLD_NOTE.gap, HOLD_NOTE.touchGap]) {
+      const note = newHoldNote();
+      const log: boolean[] = [];
+      // Two quick flicks, the thumb left on the card, stretched: nothing new is held.
+      run(note, 0.45, (t) => (t % 0.3 < 0.12 ? 0.55 / 7 : 0), 2, log, FRAME, undefined, gap);
+      run(note, 3, () => 0, 2, log, FRAME, undefined, gap);
+      expect(log.some(Boolean), `gap ${gap}`).toBe(false);
+    }
+  });
+
+  it("on touch, bridges the lift between strokes: flicks that keep coming bring it, two never do", () => {
+    for (const every of [0.4, 0.6, 0.8]) {
+      const note = newHoldNote();
+      const log: boolean[] = [];
+      const state = run(note, 3, (t) => (t % every < 0.12 ? 0.45 / 7 : 0), 2, log, FRAME, undefined, HOLD_NOTE.touchGap);
+      expect(log.some(Boolean), `every ${every} s`).toBe(true);
+      const after: boolean[] = [];
+      run(note, 2, () => 0, 2, after, FRAME, state, HOLD_NOTE.touchGap);
+      expect(after.indexOf(false) * FRAME, `every ${every} s`).toBeLessThanOrEqual(HOLD_NOTE.touchGap);
+    }
+    for (const apart of [0.3, 0.5, HOLD_NOTE.touchGap + 0.1]) {
+      const note = newHoldNote();
+      const log: boolean[] = [];
+      run(note, 3, (t) => ((t < 0.15 || (t >= apart && t < apart + 0.15)) ? 0.9 / 9 : 0), 2, log, FRAME, undefined, HOLD_NOTE.touchGap);
+      expect(log.some(Boolean), `two flicks ${apart} s apart`).toBe(false);
+    }
+  });
+
+  it("only talks about an unread card, and on a few lines a visit", () => {
+    const note = newHoldNote();
+    const log: boolean[] = [];
+    run(note, 2, () => 0.1, -1, log);
+    expect(log.some(Boolean)).toBe(false);
+    for (let card = 0; card < 6; card += 1) {
+      const shown: boolean[] = [];
+      run(note, 2, () => 0.1, card, shown);
+      expect(shown.some(Boolean), `card ${card}`).toBe(card < HOLD_NOTE.maxShows);
+    }
+    expect(note.shows).toBe(HOLD_NOTE.maxShows);
+  });
+});
+
+describe("reminders", () => {
+  it("escalate a long wait first when the car crawls lower", () => {
+    expect(REMINDERS[0]).toBe(WAIT.deepAfter);
+    for (let i = 1; i < REMINDERS.length; i += 1) expect(REMINDERS[i]).toBeGreaterThan(REMINDERS[i - 1]);
+  });
+});
+
+describe("focusFromPointer", () => {
+  it("takes focus right after a click or a release for the pointer's", () => {
+    expect(focusFromPointer({ focusAt: 1500, pointerAt: 1000, keyAt: 0 })).toBe(true);
+    expect(focusFromPointer({ focusAt: 1000 + POINTER_FOCUS_MS, pointerAt: 1000, keyAt: 0 })).toBe(false);
+  });
+
+  it("gives a Tab right after a click to the keyboard", () => {
+    expect(focusFromPointer({ focusAt: 1200, pointerAt: 1000, keyAt: 1150 })).toBe(false);
+    expect(focusFromPointer({ focusAt: 1200, pointerAt: 1000, keyAt: 1000 })).toBe(false);
+  });
+
+  it("keeps a control the pointer focused the pointer's when a dialog hands the focus back, until a Tab", () => {
+    // The radio button clicked at 1000 (its focus then), its wheel closed with Esc at 4000.
+    const back = { focusAt: 4010, pointerAt: 1000, keyAt: 4000, ownedAt: 1005 };
+    expect(focusFromPointer(back)).toBe(true);
+    expect(focusFromPointer({ ...back, tabAt: 900 })).toBe(true);
+    // Tabbed away and back: the keyboard's.
+    expect(focusFromPointer({ ...back, tabAt: 3000 })).toBe(false);
+    // Never focused by the pointer: the keyboard's.
+    expect(focusFromPointer({ ...back, ownedAt: undefined })).toBe(false);
   });
 });
 

@@ -13,6 +13,7 @@
     "offState": "Radio: apagada",
     "gesture": "Mantén clic derecho o Q para la radio",
     "gestureTouch": "Mantén pulsada la escena para la radio",
+    "calloutTouch": "Toca aquí para la radio",
     "hintAim": "Apunta a una emisora y suelta para sintonizar",
     "hintAimKey": "Apunta con el ratón o las flechas y suelta la Q para sintonizar",
     "hintBrowse": "Flechas para elegir · Intro para sintonizar · Esc para cerrar",
@@ -33,13 +34,14 @@
   "hero": {
     "name": "Jesús Molano",
     "role": "Frontend Engineer",
-    "tagline": "Cualquier framework, cualquier carretera. El volante lo llevo yo.",
+    "tagline": "Cualquier framework, cualquier carretera. Me sé todos los atajos.",
     "intro": {
       "hint": "Haz scroll y toma el volante",
       "hintTouch": "Desliza arriba y toma el volante",
       "hintKey": "Pulsa Espacio y toma el volante",
       "ack": "El volante es tuyo",
       "model": "Tú conduces. La película te espera.",
+      "arriving": "Tranqui, el nombre aún está llegando.",
       "next": "Haz scroll",
       "nextTouch": "Desliza",
       "nextKey": "Espacio",

@@ -1,13 +1,14 @@
 /**
  * The driving vocabulary of the hero: what the dashboard readout says
  * (YOU DRIVE, WAITING, FLAT OUT, REVERSE) and its speedometer, which one
- * prompt tells her what to do next, the attract tease and the Skip
- * prompt's patience, plus the rules that decide which key, tap or Skip
- * activation counts. No tape-deck words: the hero must never read as a
- * video playing on its own. Pure functions; HeroStage applies them.
+ * prompt tells her what to do next, the attract tease, the "let the man
+ * finish" note and the Skip prompt's patience, plus the rules that decide
+ * which key, tap, focus or Skip activation counts. No tape-deck words: the
+ * hero must never read as a video playing on its own. Pure functions;
+ * feedback.ts and HeroStage apply them.
  */
 import { STORY } from "./story";
-import { THROTTLE } from "./throttle";
+import { THROTTLE, WAIT } from "./throttle";
 
 export type TransportMode = "hidden" | "reverse" | "waiting" | "floored" | "drive";
 
@@ -15,14 +16,40 @@ export const TRANSPORT = {
   /** Going back this recently (s) reads REVERSE. */
   reverseWindow: 0.25,
   /**
-   * Idle this long (s) with a still picture reads WAITING, and the car
-   * starts to slow down to its crawl (driveWaits). Long enough that a calm
-   * scroller, a notch a second, never sees it blink between her notches.
+   * Idle this long (s) with a still picture, and nothing playing, reads
+   * WAITING, and the car starts to brake to its crawl (feedback.ts). Long
+   * enough that a calm scroller, a notch a second, never sees it blink
+   * between her notches.
    */
   waitIdle: THROTTLE.crawlIdle,
+  /**
+   * ...and only once all that has held this long (s): a frame where the
+   * picture stalls between two moves of her finger, or the moment a read
+   * card hands over to the next one, is not her turn.
+   */
+  turnDwell: 0.3,
   /** Picture speed (progress per second) under which the picture counts as still. */
   stillSpeed: 0.002,
+  /** A steady rhythm of input stretches the wait before WAITING to this share of her beat... */
+  rhythmSlack: 1.2,
+  /** ...up to this many seconds. */
+  maxWaitIdle: 5,
+  /** Input this close together (s) is one burst: a flick, a notch's momentum, autorepeat. */
+  burstGap: 0.3,
+  /** A pause longer than this (s) ends her rhythm: she stopped. */
+  rhythmMax: 7,
 } as const;
+
+/**
+ * Her rhythm: the gap between her bursts of input, smoothed. `gap` is the
+ * idle time that just ended with a new input. Bursts (gaps under
+ * `burstGap`) do not count; a long stop (over `rhythmMax`) resets it.
+ */
+export function nextRhythm(rhythm: number, gap: number): number {
+  if (!(gap >= TRANSPORT.burstGap)) return rhythm;
+  if (gap > TRANSPORT.rhythmMax) return 0;
+  return rhythm > 0 ? 0.6 * rhythm + 0.4 * gap : gap;
+}
 
 export type TransportInput = {
   /** The visitor has given forward input since entering. */
@@ -36,27 +63,78 @@ export type TransportInput = {
   pictureSpeed: number;
   /** World pace (throttle.ts). */
   pace: number;
+  /**
+   * A beat at the picture is still playing: an unread card is up, the
+   * title's name is forming or holding, the crane is rising. The film is
+   * not waiting for her then; she is waiting for the line.
+   */
+  playing: boolean;
+  /** Idle seconds before WAITING; TRANSPORT.waitIdle unless her rhythm asks for longer (waitIdleFor). */
+  waitIdle?: number;
+  /**
+   * Seconds the conditions for WAITING (nothing playing, idle her wait, a
+   * still picture) have held (feedback.ts); WAITING needs TRANSPORT.turnDwell.
+   * Left out, they count as held long enough.
+   */
+  turnFor?: number;
+  /**
+   * She has held the pace at full throttle (feedback.ts: THROTTLE.ff for
+   * THROTTLE.ffHold seconds, until it falls under THROTTLE.ffOff). Without
+   * it, the pace alone decides, with the same hysteresis.
+   */
+  flatOut?: boolean;
 };
 
-/** What the readout says. The first rule that matches wins. */
-export function transportMode(input: TransportInput): TransportMode {
-  if (!input.started || input.p >= STORY.fadeFrom) return "hidden";
-  if (input.sinceBackward < TRANSPORT.reverseWindow) return "reverse";
-  if (input.sinceInput >= TRANSPORT.waitIdle && input.pictureSpeed < TRANSPORT.stillSpeed) return "waiting";
-  if (input.pace >= THROTTLE.ff) return "floored";
-  return "drive";
+/**
+ * How long to let her be still before the readout says WAITING, for a
+ * visitor whose input comes every `rhythm` seconds (0: no rhythm yet). A
+ * calm reader who scrolls a notch every 2.5 to 5 s is reading, not
+ * waiting: the readout gives her a little more than her own beat, up to
+ * `maxWaitIdle`.
+ */
+export function waitIdleFor(rhythm: number): number {
+  return Math.min(TRANSPORT.maxWaitIdle, Math.max(TRANSPORT.waitIdle, TRANSPORT.rhythmSlack * rhythm));
 }
 
 /**
- * Whether the car waits for her, slowing to its crawl (throttle.ts): on
- * the title from the moment the hint asks her to take the wheel, except
- * while the attract tease revs it; then whenever the readout says WAITING
- * (she has stopped, and the picture with her). A film that plays on its
- * own would keep its speed; this one waits for its driver.
+ * Whether her turn may start this frame: she has started, nothing plays at
+ * the picture, she has been idle for her wait and the picture is still.
+ * WAITING follows once this has held for TRANSPORT.turnDwell (feedback.ts).
  */
-export function driveWaits(input: { mode: TransportMode; started: boolean; sinceEntered: number; teasing: boolean }): boolean {
-  if (input.started) return input.mode === "waiting";
-  return input.sinceEntered >= PROMPT.hintAt && !input.teasing;
+export function turnConditions(input: TransportInput): boolean {
+  return (
+    input.started &&
+    !input.playing &&
+    input.sinceInput >= (input.waitIdle ?? TRANSPORT.waitIdle) &&
+    input.pictureSpeed < TRANSPORT.stillSpeed
+  );
+}
+
+/**
+ * What the readout says, given what it said last frame (`previous`). The
+ * first rule that matches wins. WAITING means "your turn": she has
+ * stopped, the picture with her, nothing is playing, and that has lasted
+ * a moment (`turnFor`); once on, it holds until she moves again, even if a
+ * glide is still settling. The marker, the cues and the brake all follow
+ * it, so the hero never says "your turn" in one place and "drive on" in
+ * another. FLAT OUT turns on at THROTTLE.ff and off only under
+ * THROTTLE.ffOff, so the readout never flickers at the threshold
+ * (feedback.ts also asks for the pace to hold there a moment: one hard
+ * swipe is a surge, not flat out).
+ */
+export function transportMode(input: TransportInput, previous: TransportMode = "hidden"): TransportMode {
+  if (!input.started || input.p >= STORY.fadeFrom) return "hidden";
+  if (input.sinceBackward < TRANSPORT.reverseWindow) return "reverse";
+  if (
+    !input.playing &&
+    input.sinceInput >= (input.waitIdle ?? TRANSPORT.waitIdle) &&
+    (previous === "waiting" ||
+      (input.pictureSpeed < TRANSPORT.stillSpeed && (input.turnFor ?? TRANSPORT.turnDwell) >= TRANSPORT.turnDwell))
+  ) {
+    return "waiting";
+  }
+  if (input.flatOut ?? input.pace >= (previous === "floored" ? THROTTLE.ffOff : THROTTLE.ff)) return "floored";
+  return "drive";
 }
 
 /** The speedometer, km/h: the cruise (18 m/s) reads 65, the pace scales it. */
@@ -64,7 +142,14 @@ export function speedKmh(pace: number, metresPerSecond = 18): number {
   return Math.max(0, Math.round(metresPerSecond * 3.6 * pace));
 }
 
-export type Prompt = "hint" | "ack" | "between" | "end";
+/**
+ * The prompts: the title hint that asks her to take the wheel ("hint",
+ * only before her first input), its answer ("ack": "you have the wheel"),
+ * the hint that brings her back on the road once she has the wheel and
+ * rests on the title ("onward": "keep driving", never "take the wheel"
+ * again), the between-card cue and the way into the city.
+ */
+export type Prompt = "hint" | "ack" | "onward" | "between" | "end";
 
 export const PROMPT = {
   /** Seconds after entering: the title hint pops in, Skip shows and the car starts to wait for her. */
@@ -75,16 +160,30 @@ export const PROMPT = {
    */
   hintFrom: STORY.titleWallTo,
   hintOut: 0.05,
-  /** After her first input the hint says "you have the wheel" this long (s)... */
+  /**
+   * After her first input the hint says "you have the wheel" while the
+   * name forms and holds, and this long (s) after...
+   */
   ackHold: 2,
   /** ...then fades out over this long. */
   ackFade: 0.4,
+  /**
+   * Resting on the title once she has the wheel (she rewound there, or
+   * stopped as the name formed): the hint slot says "keep driving",
+   * centred in the bottom bar, instead of the between-card cue, which
+   * would sit on the bar's edge while the bars are in. Up to here the bars
+   * are at most 3/8 out, so the hint still fits the bar.
+   */
+  titleRest: 0.06,
 } as const;
 
 export type PromptInput = {
   /** She has given forward input since entering. */
   started: boolean;
-  /** Seconds since that first input. */
+  /**
+   * Seconds the answer to her first input has been up on its own: 0 while
+   * the title still plays (the name forming and holding), then counting.
+   */
   sinceStart: number;
   /** Film position of the picture. */
   p: number;
@@ -94,26 +193,37 @@ export type PromptInput = {
   rewinding: boolean;
   /** Seconds since her last input. */
   idle: number;
+  /** Her turn: the readout says WAITING (transportMode). Cues ask for more only then. */
+  turn: boolean;
 };
 
 /**
  * The one prompt that says what to do next, or null when the picture
- * already says it (a card and its marker) or she is busy scrolling. Every
+ * already says it (a card and its marker) or it is not her turn. Every
  * resting position of the film gets one (tested): the title hint before
- * she starts, "you have the wheel" right after, the between-card cue
- * wherever no card is up, and the way into the city from the fade.
+ * she starts, "you have the wheel" from her first input until the name
+ * has formed and a beat after (HeroStage adds that the name is still
+ * arriving while it does), "keep driving" whenever she rests on the title
+ * after that, the between-card cue wherever else no card is up once it is
+ * her turn, and the way into the city from the fade. Once she has the
+ * wheel, nothing asks her to take it again.
  */
 export function promptFor(input: PromptInput): Prompt | null {
   if (input.p >= STORY.endFrom) return input.idle >= STORY.endIdle ? "end" : null;
   if (!input.started) return "hint";
   if (input.sinceStart < PROMPT.ackHold + PROMPT.ackFade && input.p < PROMPT.hintFrom + PROMPT.hintOut) return "ack";
-  if (input.card || input.rewinding) return null;
-  return input.idle >= STORY.cueIdle ? "between" : null;
+  if (input.card || input.rewinding || !input.turn) return null;
+  return input.p < PROMPT.titleRest ? "onward" : "between";
 }
 
-/** Opacity of the hint in the letterbox bar: it fades as the drive moves, and after the "you have the wheel" beat. */
+/**
+ * Opacity of the hint in the letterbox bar: before her first input it
+ * fades as the drive moves, "you have the wheel" fades after its beat, and
+ * "keep driving", resting on the title, shows in full.
+ */
 export function hintOpacity(input: PromptInput): number {
   const prompt = promptFor(input);
+  if (prompt === "onward") return 1;
   if (prompt !== "hint" && prompt !== "ack") return 0;
   const moved = 1 - Math.min(1, Math.max(0, (input.p - PROMPT.hintFrom) / PROMPT.hintOut));
   if (prompt === "hint") return moved;
@@ -152,18 +262,124 @@ export function fightLevel(level: number, pushing: boolean, dt: number): number 
 }
 
 /**
- * The "let the man finish" note, above an unread card the first `maxShows`
- * times a visit she pushes into it: as soon as the input held there,
- * decaying with `tau` seconds, reaches `share` of the viewport height (most
- * of one wheel notch, a short swipe), so her first push is answered at once.
+ * The "let the man finish" note, above an unread card, only under
+ * sustained pushing: a push episode (input held at a wall with no pause of
+ * `gap` seconds) whose pushes span `sustain` seconds and throw at least
+ * `held` viewport heights against the wall. A frame counts as a push only
+ * when the input held at the wall grew in it by more than `tail` viewports
+ * a second (isNotePush): a trackpad fling's momentum tails off under that,
+ * and a thumb resting on the glass, holding the card stretched, adds
+ * nothing. Two flicks, however long, span well under a second; so does
+ * one fling. They are answered by the card's bounce and the car's surge,
+ * not by a scolding. A finger lifts between strokes, so on touch the
+ * episode bridges a pause of up to `touchGap`: flicks that keep coming
+ * (up to about one every 0.8 s) for over a second, or a finger dragging on
+ * against the wall, bring the note; one swipe a second, a calm reader's
+ * pace, never does. The note goes the moment she stops (`gap` seconds
+ * after her last push, `touchGap` on touch) and shows on at most
+ * `maxShows` lines a visit. Everything runs on real time, so a slow device
+ * neither scolds sooner nor keeps the note up longer.
  */
-export const HOLD_NOTE = { share: 0.06, tau: 0.4, maxShows: 3 } as const;
+export const HOLD_NOTE = { sustain: 1.2, held: 1, gap: 0.32, touchGap: 0.7, tail: 0.4, maxShows: 3 } as const;
+
+/**
+ * Whether this frame is a push for the note: `held` viewport heights of
+ * input held at the wall arrived in it (the pressure grew by that much),
+ * over `dt` real seconds, faster than HOLD_NOTE.tail. Nothing new held,
+ * as under a resting thumb, is no push.
+ */
+export function isNotePush(held: number, dt: number): boolean {
+  return dt > 0 && held / dt > HOLD_NOTE.tail;
+}
+
+export type HoldNote = {
+  /** Seconds since the current push episode began (-1: none), and viewport heights it has held. */
+  age: number;
+  held: number;
+  /** Seconds the episode's pushes span so far: from its first to its latest. */
+  span: number;
+  /** The card the note was last shown on (-1: none yet). */
+  card: number;
+  shows: number;
+  visible: boolean;
+};
+
+export function newHoldNote(): HoldNote {
+  return { age: -1, held: 0, span: 0, card: -1, shows: 0, visible: false };
+}
+
+/**
+ * One frame of the note, `dt` real seconds. `sincePush`: seconds since
+ * the last push (isNotePush); `held`: viewport heights held this frame;
+ * `unreadCard`: the unread card up at the picture, its line playing, or
+ * -1; `gap`: the pause that ends an episode (HOLD_NOTE.touchGap when her
+ * input is a finger).
+ */
+export function stepHoldNote(
+  note: HoldNote,
+  sincePush: number,
+  held: number,
+  unreadCard: number,
+  dt: number,
+  gap: number = HOLD_NOTE.gap,
+): void {
+  const step = Math.max(0, dt);
+  if (!(sincePush < gap)) {
+    note.age = -1;
+    note.held = 0;
+    note.span = 0;
+  } else {
+    // A new episode began with the push `sincePush` seconds ago.
+    note.age = note.age < 0 ? sincePush : note.age + step;
+    note.held += Math.max(0, held);
+    note.span = Math.max(note.span, note.age - sincePush);
+  }
+  const wants = unreadCard >= 0 && note.age >= 0 && note.span >= HOLD_NOTE.sustain && note.held >= HOLD_NOTE.held;
+  if (wants && note.card !== unreadCard && note.shows < HOLD_NOTE.maxShows) {
+    note.card = unreadCard;
+    note.shows += 1;
+  }
+  note.visible = wants && note.card === unreadCard;
+}
 
 /** Attract teases on the idle title screen, seconds after entering. */
 export const TEASES = [6, 14, 22] as const;
 
-/** Reminders on a read card, seconds of idle. */
-export const REMINDERS = [10, 25] as const;
+/**
+ * Reminders while the film waits for her, in seconds of waiting (or, on
+ * the fade, of the end cue): the read card lifts and labels its marker
+ * again, the cue bobs again. The first comes with the deep crawl
+ * (WAIT.deepAfter): a gentle escalation of a long wait.
+ */
+export const REMINDERS = [WAIT.deepAfter, 14] as const;
+
+/**
+ * Focus that lands this soon (ms) after a pointer press or release, with
+ * no key pressed since, came from the pointer: the control does not keep
+ * Space (see HeroStage targetKind). A Tab after a click is the keyboard's.
+ */
+export const POINTER_FOCUS_MS = 1000;
+
+/**
+ * Whether a focus is the pointer's: it lands right after a press or
+ * release with no key since, or it comes back to a control the pointer
+ * had focused (`ownedAt`, performance.now() of that focus) with no Tab
+ * since. So the radio button, clicked open and handed the focus back when
+ * Esc closes its wheel, still does not keep Space; reached with Tab, it
+ * does.
+ */
+export function focusFromPointer(input: {
+  /** performance.now() of the focus, of the last pointer press or release, of the last key press and of the last Tab. */
+  focusAt: number;
+  pointerAt: number;
+  keyAt: number;
+  tabAt?: number;
+  /** When the pointer last focused this same control (undefined: never). */
+  ownedAt?: number;
+}): boolean {
+  if (input.pointerAt > input.keyAt && input.focusAt - input.pointerAt < POINTER_FOCUS_MS) return true;
+  return input.ownedAt !== undefined && input.ownedAt > (input.tabAt ?? Number.NEGATIVE_INFINITY);
+}
 
 export type KeyAction = "next" | "prev" | "down" | "up" | "home" | "skip";
 export type TargetKind = "text" | "button" | "link" | "other";
