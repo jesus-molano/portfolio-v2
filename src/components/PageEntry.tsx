@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { getHeroEnd } from "@/features/hero/heroEnd";
 import { getSceneLoading, subscribeSceneLoading } from "@/features/hero/sceneLoading";
 import { idFromHash } from "@/lib/hash";
+import { reveal } from "@/lib/reveal";
 
 /**
  * Where the page starts once she is in, after the loading screen has gone
@@ -13,8 +14,9 @@ import { idFromHash } from "@/lib/hash";
  *   there. The browser's own jump cannot: the loading screen starts the
  *   page at the top, and the hero holds the scroll for its film. The film
  *   is cut to its end (as Skip does), the page goes to the section and the
- *   section takes the focus. A later change of the fragment (an in-page
- *   link) does the same.
+ *   section takes the focus. A target in a closed tab (STATS's
+ *   #stats-sheet) opens its tab first. A later change of the fragment (an
+ *   in-page link) does the same.
  * - Otherwise the keyboard starts from the top of the page. The loading
  *   screen took the focus with it, and the browser would carry on from
  *   where it was, after the page controls: the first Tab went to the
@@ -31,8 +33,9 @@ export function PageEntry() {
       if (!target || !hero || hero.section.contains(target)) return false;
       if (!(hero.section.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
       hero.cut();
-      // The scroll-padding keeps it clear of the page controls.
-      target.scrollIntoView({ block: "start" });
+      // A target in a closed tab opens it first (lib/reveal.ts). The
+      // scroll-padding keeps it clear of the page controls.
+      reveal(target).scrollIntoView({ block: "start" });
       if (target.tabIndex < 0 && !target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
       target.focus({ preventScroll: true });
       return true;

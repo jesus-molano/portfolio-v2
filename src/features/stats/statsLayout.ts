@@ -276,10 +276,18 @@ export const HOME_STACK = { gap: 4, badge: 24, step: 34, liveTag: 40 };
 export const WIDE_FROM = 1000;
 /** Side by side with the panels from this width up; below it, the map spans the column. */
 export const SIDE_BY_SIDE_FROM = 1280;
-/** The screens stop growing at this width (Stats.module.css, .screen). */
+/** The menu's content stops growing at this width (Stats.module.css, .stats). */
 export const SCREEN_MAX = 1680;
 /** The wide map never gets narrower than this, however short the screen. */
 export const MAP_MIN = 740;
+/**
+ * Everything on the MAP tab's screen above and below the map, in CSS px
+ * (Stats.module.css): the section's top padding (64), the menu bar (46),
+ * the gap (24), the map's title (23), its source line (27), the gap (24),
+ * the button prompts (24) and the bottom padding (24). The map is never
+ * taller than the rest of the screen, so the whole tab fits on one.
+ */
+export const MAP_CHROME_PX = 256;
 
 /**
  * The map's rendered width in CSS pixels in a viewport (mirrors the CSS
@@ -290,7 +298,7 @@ export function mapWidthAt(viewport: number, viewportHeight = Infinity): number 
   const content = Math.min(viewport, SCREEN_MAX) - 2 * pad;
   const column =
     viewport >= SIDE_BY_SIDE_FROM ? content - 32 - Math.min(420, Math.max(300, viewport * 0.28)) : content;
-  const byHeight = Math.max(MAP_MIN, ((viewportHeight - 190) * 16) / 11);
+  const byHeight = Math.max(MAP_MIN, ((viewportHeight - MAP_CHROME_PX) * 16) / 11);
   return Math.min(column, byHeight);
 }
 

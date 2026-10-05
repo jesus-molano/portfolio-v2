@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { StatsIcon } from "./icons";
 import styles from "./Stats.module.css";
+import { StatsOtherTab, StatsPanel, StatsPortrait, StatsSection, StatsTabList } from "./StatsTabs";
 import {
   CAREER_CITY_ON_PAGE,
   FRAMES,
@@ -60,11 +61,12 @@ function years(from: number, to: number | null): string {
 }
 
 /**
- * STATS: the pause menu after the career city. Two screens of one menu,
+ * STATS: the pause menu after the career city, one screen with two tabs,
  * MAP and STATS. The map is Tenerife at night under parody names, with the
  * career as main missions and the favourites as side activities; the sheet
- * is the character: portrait, skills and records. A server component with
- * no client code: every word is DOM text, the map art is an <img>.
+ * is the character: portrait, skills and records. A server component:
+ * every word of both tabs is DOM text in the server HTML, the map art is an
+ * <img>. The tabs that switch them are the client part (StatsTabs.tsx).
  */
 export function Stats({ dict }: Props) {
   const { map, missions } = dict;
@@ -72,12 +74,13 @@ export function Stats({ dict }: Props) {
   const youAt = { ...placeAt(PLAYER.at), "--heading": `${PLAYER.heading}deg` } as CSSProperties;
 
   return (
-    <section id="stats" className={styles.stats} aria-labelledby="stats-title" data-loops>
-      {/* ── Screen 1: MAP ───────────────────────────────────────────── */}
-      <div className={styles.screen}>
-        <MenuBar dict={dict} active={0} titleId="stats-title" />
-        {/* After the heading, where heading navigation lands. */}
-        <p className="sr-only">{dict.description}</p>
+    <StatsSection className={styles.stats} labelledBy="stats-title">
+      <MenuBar dict={dict} />
+      {/* After the heading, where heading navigation lands. */}
+      <p className="sr-only">{dict.description}</p>
+
+      {/* ── Tab 1: MAP ──────────────────────────────────────────────── */}
+      <StatsPanel tab="map">
         <div className={styles.mapLayout}>
           <figure className={styles.map} aria-labelledby="stats-map-title">
             <h3 id="stats-map-title" className={styles.mapTitle}>
@@ -290,15 +293,13 @@ export function Stats({ dict }: Props) {
             </div>
           </div>
         </div>
-      </div>
+      </StatsPanel>
 
-      {/* ── Screen 2: STATS ─────────────────────────────────────────── */}
-      <div className={`${styles.screen} ${styles.sheetScreen}`} id="stats-sheet">
-        <MenuBar dict={dict} active={1} />
+      {/* ── Tab 2: STATS ────────────────────────────────────────────── */}
+      <StatsPanel tab="sheet">
         <div className={styles.sheet}>
           <figure className={styles.card}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG drawing */}
-            <img className={styles.portrait} src="/stats/portrait.svg" alt={dict.player.alt} width={360} height={480} loading="lazy" decoding="async" />
+            <StatsPortrait className={styles.portrait} src="/stats/portrait.svg" alt={dict.player.alt} width={360} height={480} />
             <span className={styles.player2} aria-hidden="true">
               {dict.player.player2}
             </span>
@@ -351,16 +352,20 @@ export function Stats({ dict }: Props) {
             </ul>
           </div>
         </div>
+      </StatsPanel>
+
+      {/* The button prompts: the other tab, and on down the page. */}
+      <div className={styles.foot}>
+        <StatsOtherTab names={dict.tabs} />
         <p className={styles.hint} aria-hidden="true">
           <span className={styles.hintArrow}>▼</span> {dict.hint}
         </p>
       </div>
-    </section>
+    </StatsSection>
   );
 }
 
-function MenuBar({ dict, active, titleId }: { dict: StatsDict; active: 0 | 1; titleId?: string }) {
-  const targets = ["#stats", "#stats-sheet"];
+function MenuBar({ dict }: { dict: StatsDict }) {
   return (
     <header className={styles.menu}>
       <div className={styles.who}>
@@ -369,34 +374,13 @@ function MenuBar({ dict, active, titleId }: { dict: StatsDict; active: 0 | 1; ti
           <i />
         </span>
         <div>
-          {titleId ? (
-            <h2 id={titleId} className={styles.title}>
-              {dict.title}
-            </h2>
-          ) : (
-            <p className={styles.title} aria-hidden="true">
-              {dict.title}
-            </p>
-          )}
-          <p className={styles.sub} aria-hidden={titleId ? undefined : true}>
-            {dict.sub}
-          </p>
+          <h2 id="stats-title" className={styles.title}>
+            {dict.title}
+          </h2>
+          <p className={styles.sub}>{dict.sub}</p>
         </div>
       </div>
-      {/* One menu per screen: each landmark needs its own name. */}
-      <nav className={styles.tabs} aria-label={`${dict.tabsLabel}: ${dict.tabs[active]}`}>
-        {dict.tabs.map((tab, i) =>
-          i === active ? (
-            <span key={tab} className={`${styles.tab} ${styles.tabOn}`} aria-current="true">
-              {tab}
-            </span>
-          ) : (
-            <a key={tab} className={styles.tab} href={targets[i]}>
-              {tab}
-            </a>
-          ),
-        )}
-      </nav>
+      <StatsTabList label={dict.tabsLabel} names={dict.tabs} />
       <p className={styles.clock} aria-hidden="true">
         {dict.clock}
       </p>

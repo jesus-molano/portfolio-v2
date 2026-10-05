@@ -305,8 +305,10 @@ also exists as real DOM for keyboard and screen-reader users.
     the Blender renders land, `node tools/art/suspects/placeholder.mjs`
     writes flat violet silhouettes under the same names.
 - `src/features/stats` — STATS (`#stats`), the static pause menu after the
-  career city: a server component, no client code, every word DOM text.
-  Screen 1 (MAP) is Tenerife at night under parody names (GTA-style: real
+  career city: one screen with two tabs, MAP and STATS. A server component
+  (`Stats.tsx`), every word of both tabs DOM text in the server HTML; the
+  tabs are its only client code (`StatsTabs.tsx`, below). Tab 1 (MAP,
+  `#stats`) is Tenerife at night under parody names (GTA-style: real
   places, renamed; Spanish in both locales, `stats.map.places`). The
   career is five main missions: the army in a Gran Canaria box ("enemy
   territory"), then the four jobs since, every one done from home, as
@@ -328,7 +330,7 @@ also exists as real DOM for keyboard and screen-reader users.
   (plain rows until the career city lands; turning on
   `CAREER_CITY_ON_PAGE` in `statsLayout.ts` makes them links to its
   `#work-*` stops) and the saved games (The Sopranos, Severance,
-  Succession). Screen 2 (STATS, `#stats-sheet`) is the character sheet:
+  Succession). Tab 2 (STATS, `#stats-sheet`) is the character sheet:
   the drawn portrait with Dante on his shoulder (`public/stats/portrait.svg`,
   no photo; a render may replace it), the joke bars (appetite breaks out of
   its panel into the gap beside it; under 1280 px, where the panel meets
@@ -342,6 +344,38 @@ also exists as real DOM for keyboard and screen-reader users.
   up). Below 1000 px the square crop shows keyed pins and the legend
   carries the words. Move a blip or change a caption, run the tests;
   place a name with the box model, not by eye.
+  - The tabs switch in place, like a game's pause menu: the tab bar (click,
+    the arrows, Home, End; the WAI-ARIA tabs pattern, selection following
+    focus, roving tabindex, the open panel focusable next), `[` and `]` as
+    shoulder buttons while STATS crosses the middle of the viewport or
+    holds the focus (never Q or E: Q is the radio's), and a prompt to the
+    other tab at the foot beside RESUME, which brings the tab bar back into
+    view (on a phone the map runs for screens). A switch writes the tab's
+    fragment with `replaceState` (no scroll, no hashchange): `#stats` is
+    MAP, `#stats-sheet` is STATS (`statsTabs.ts`, pure, tested: fragments
+    and keys). A deep link opens its tab before `PageEntry` lands, through
+    `lib/reveal.ts`, and lands the section's top with the panel focused.
+    The new panel slides in from its tab's side in 0.22 s (none under
+    reduced motion).
+  - One screen on a desktop: from 1000 px both panels share one grid cell
+    and the closed one is `visibility: hidden`, so the taller sets the
+    height and a switch moves nothing (the shorter centres in the part of
+    that cell the screen shows, not below the fold where the MAP tab runs
+    past a short screen); below 1000 px only the open one is
+    on the page (`display: none`), as tall as it needs. The map is never
+    taller than the screen less everything around it (`MAP_CHROME_PX`, the
+    paddings, menu bar, map title, source line and prompts, mirrored in
+    `Stats.module.css`), and beside the map (1280 px up) the missions and
+    saved games use tighter rows, so the MAP tab fits 1440 × 900. The
+    section lands at the viewport's top edge (a negative `scroll-margin-top`
+    cancels the html scroll-padding: its own 64 px top padding clears the
+    page controls).
+  - Without JS (the stacking only applies under `@media (scripting:
+    enabled)`) both panels stay on the page, one under the other, with two
+    plain links; the tab roles come with hydration (`statsMarkup.test.ts`
+    renders the server HTML). The map is a lazy `<img>`; the portrait is
+    lazy too until the section is within a screen of the viewport or its
+    tab opens (`StatsPortrait`).
 - `src/features/finale` — the last two stops, static (no canvas, no
   scroll-driven motion): The Afterglow, a beach-deco picture palace at
   night with the side projects (`Projects.tsx`), then the end credits at
@@ -388,7 +422,8 @@ also exists as real DOM for keyboard and screen-reader users.
 - `src/lib` — small shared helpers: `onScreen.ts` says what an
   IntersectionObserver counts as on screen (an edge that only touches the
   viewport does not, which is where Skip leaves the hero); `hash.ts` reads
-  the id a URL fragment names.
+  the id a URL fragment names; `reveal.ts` asks a deep link's target to
+  show itself before the page lands on it (STATS opens the tab it is in).
 - `tools/art/stats` — the STATS map. `extract.mjs` (run once, needs the
   network) turns the public-domain Terrain Tiles on AWS (zoom 8: SRTM,
   GMTED2010, ETOPO1 only; it refuses a tile with any other source) into
@@ -514,13 +549,16 @@ To add a track to a station:
   once the loading screen has given `<main>` back: a link to a section
   after the hero (`/en#contact`, or an in-page link) cuts the film the way
   Skip does (`hero/heroEnd.ts`, registered by `HeroStage`) and lands on
-  that section with the focus; otherwise the keyboard starts at the top of
-  the page (skip link, radio, languages, then Skip).
+  that section with the focus (a target in a closed tab opens it first,
+  `lib/reveal.ts`); otherwise the keyboard starts at the top of the page
+  (skip link, radio, languages, then Skip).
 - The page controls (RADIO, EN/ES) are fixed at the top right, so `html`
   has a `scroll-padding-top` (their inset, height and a 1rem gap,
   `globals.css`): a section reached by a link or by keyboard focus stops
   below them. Scripted scrolls (`scrollTo`, Lenis) ignore it; nothing
-  focusable may sit under the controls in the hero's pinned frame.
+  focusable may sit under the controls in the hero's pinned frame. STATS
+  cancels it with a negative `scroll-margin-top`: its own top padding
+  clears the controls, and its one screen shows whole.
 - Three.js runs client-side only: `HeroCanvas` loads `HeroScene` with
   `next/dynamic` and `ssr: false`, inside an error boundary. The page must stay
   readable without WebGL: real text in the DOM, CSS sky as fallback.

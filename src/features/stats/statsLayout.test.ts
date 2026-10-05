@@ -5,6 +5,7 @@ import es from "@/i18n/dictionaries/es.json";
 import {
   FRAMES,
   HQ,
+  MAP_CHROME_PX,
   MAP_MIN,
   MISSIONS,
   PLACES,
@@ -65,8 +66,20 @@ function textsOf(dict: typeof en): MapTexts {
   };
 }
 
-/** Map widths the wide layout really takes: 1000 px up to a 1920 px screen, short screens included. */
-const WIDTHS = [MAP_MIN, 768, 794, 841, 909, 980, mapWidthAt(1920, 1080)];
+/** Common screens from 1000 px wide up, short ones included. */
+const SCREENS: [number, number][] = [
+  [1024, 768],
+  [1280, 720],
+  [1280, 800],
+  [1366, 768],
+  [1440, 900],
+  [1536, 864],
+  [1600, 900],
+  [1920, 1080],
+];
+
+/** Map widths the wide layout really takes: the common screens, and steps between them. */
+const WIDTHS = [...new Set([MAP_MIN, 768, 794, 841, 909, 980, ...SCREENS.map(([w, h]) => mapWidthAt(w, h))])];
 
 describe("the map's geography", () => {
   const tenerife = coastOf(islands.tenerife);
@@ -149,7 +162,7 @@ describe("the page geometry", () => {
     // 1440 less the paddings (2 x 48), the gap (32) and the panels (28% of 1440).
     expect(mapWidthAt(1440, 900)).toBeCloseTo(908.8, 5);
     expect(mapWidthAt(SIDE_BY_SIDE_FROM - 1, 2000)).toBe(SIDE_BY_SIDE_FROM - 1 - 64);
-    expect(mapWidthAt(1024, 768)).toBeCloseTo(((768 - 190) * 16) / 11, 5);
+    expect(mapWidthAt(1024, 768)).toBeCloseTo(((768 - MAP_CHROME_PX) * 16) / 11, 5);
   });
 
   it("never shrinks the wide map below its minimum, however short the screen", () => {
