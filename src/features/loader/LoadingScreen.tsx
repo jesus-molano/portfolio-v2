@@ -30,6 +30,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { goTo } from "@/lib/navigate";
 import styles from "./LoadingScreen.module.css";
 import { canChoose, itemState, longestEm, MENU_ITEMS, type MenuItem, menuMove, moveSelection } from "./menu";
+import { smoothProgress } from "./smoothProgress";
 import { eligible, firstTip, isSlow, pad2, percentLabel, type TipViewer, tipDuration, tipOrder } from "./tips";
 
 type Props = {
@@ -137,6 +138,12 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
   const panel = useRef<HTMLDialogElement>(null);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const words = useRef<(HTMLSpanElement | null)[]>([]);
+  /** The load as drawn: it chases the reported one every frame (smoothProgress), so nothing jumps from step to step. */
+  const shownP = useRef(0);
+  /** What the per-frame drawing needs from the latest render. */
+  const frame = useRef({ target: 0, done: false, reduced: false, selected: 0, waiting: false, slabWidth: 0, wordWidth: 0 });
+  /** The first value of --p, written once by React (the server's paint); every frame writes it after. */
+  const [initialP] = useState(0);
 
   // Tips: her own order once the client knows her device and motion
   // setting; until then the server's first card, which CSS picks.
@@ -361,10 +368,48 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
   }, [tips]);
   const stillFirst = firstTip(tips, true);
 
+  // What each frame draws from: kept in a ref, so the drawing loop reads the latest render.
+  useEffect(() => {
+    const wordWidth = widths?.[selected] ?? 0;
+    frame.current = {
+      target: (loaded ? 100 : progress) / 100,
+      done: loaded || progress >= 100,
+      reduced: reducedMotion,
+      selected,
+      waiting: itemState(MENU_ITEMS[selected], loading) === "wait",
+      slabWidth: widths ? wordWidth + SLAB_BEFORE + SLAB_AFTER : 0,
+      wordWidth,
+    };
+  });
+
+  // Draw the load every frame from the smoothed value: the progress line, the percentage, the
+  // horizon (--p on the screen) and, while the selected item waits, the slab and its letters'
+  // fill (--fill on the word). Writes only custom properties: no layout, no shift.
+  useEffect(() => {
+    if (phase === "gone") return;
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const f = frame.current;
+      const dt = (now - last) / 1000;
+      last = now;
+      shownP.current = smoothProgress(shownP.current, f.target, dt, { done: f.done, reduced: f.reduced });
+      const shown = shownP.current;
+      root.current?.style.setProperty("--p", String(shown));
+      words.current.forEach((word, i) => {
+        if (!word) return;
+        const fill = i === f.selected && f.waiting ? Math.max(0, Math.min(f.wordWidth, shown * f.slabWidth - SLAB_BEFORE)) : 0;
+        word.style.setProperty("--fill", `${fill}px`);
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [phase]);
+
   if (phase === "gone") return null;
 
   const shownProgress = loaded ? 100 : progress;
-  const p = shownProgress / 100;
   const station = findStation(choice.station) ?? STATIONS[0];
   const stationLabel = `${station.name} ${formatFrequency(station.frequency)}`;
   const nextTip = (event: MouseEvent<HTMLButtonElement>) => {
@@ -377,7 +422,6 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
   const selectedItem = MENU_ITEMS[selected];
   const slabWidth = widths ? widths[selected] + SLAB_BEFORE + SLAB_AFTER : 0;
   const waitingHere = itemState(selectedItem, loading) === "wait";
-  const fillPx = waitingHere ? Math.max(0, Math.min(widths?.[selected] ?? 0, p * slabWidth - SLAB_BEFORE)) : null;
 
   const describe = (item: MenuItem): string => {
     const state = itemState(item, loading);
@@ -407,7 +451,7 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
       aria-labelledby="loader-title"
       aria-describedby="loader-state"
       tabIndex={-1}
-      style={{ "--p": p, "--longest": longestEm(MENU_ITEMS.map((item) => dict.menu[item])) } as CSSProperties}
+      style={{ "--p": initialP, "--longest": longestEm(MENU_ITEMS.map((item) => dict.menu[item])) } as CSSProperties}
     >
       <div className={styles.art} aria-hidden="true">
         {art}
@@ -480,7 +524,6 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
                         words.current[i] = word;
                       }}
                       className={styles.word}
-                      style={selected === i && fillPx !== null ? ({ "--fill": `${fillPx}px` } as CSSProperties) : undefined}
                     >
                       {dict.menu[item]}
                     </span>

@@ -539,12 +539,15 @@ a.lang:focus-visible {
     var(--va-color-amber) 100%
   );
   transform-origin: 0 50%;
-  transition: transform 400ms linear;
+  /* Filling to the end once the city is in. */
+  transition: transform 300ms ease;
 }
 
-/* While the selected item waits for the city, the slab fills with the load. */
+/* While the selected item waits for the city, the slab fills with the load, drawn every frame
+   from the smoothed value (smoothProgress.ts): no transition on top of it. */
 .slab[data-wait] .slabFill {
   transform: scaleX(var(--p, 0));
+  transition: none;
 }
 
 .slab[data-nudge] {
@@ -919,7 +922,6 @@ a.lang:focus-visible {
   transform: scaleX(var(--p, 0));
   background: linear-gradient(90deg, var(--va-color-magenta), var(--va-color-orange) 70%, var(--va-color-amber));
   box-shadow: 0 0 12px color-mix(in srgb, var(--va-color-magenta) 70%, transparent);
-  transition: transform 400ms ease;
 }
 
 /* ---------- SETTINGS: the pause menu's settings, in a modal dialog over the menu ---------- */
