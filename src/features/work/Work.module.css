@@ -1,0 +1,922 @@
+/*
+ * The work stage (#work): the career as a night drive. The same grammar as
+ * the hero (letterbox, subtitle cards, a reel, Skip), on night: the scene
+ * under it is the night canvas, and the five articles over it carry the
+ * text and the chips, placed at their stops along the scroll.
+ */
+
+.work {
+  position: relative;
+  background: var(--va-color-night);
+  color: var(--va-color-text);
+}
+
+.stage {
+  position: relative;
+  height: var(--stage-h, 600vh);
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.sceneLabel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Thin letterbox bars: the card and the super sit in the bottom one. */
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 9vh;
+  z-index: var(--va-z-ui);
+  background: var(--va-color-letterbox);
+  pointer-events: none;
+}
+
+.barTop {
+  top: 0;
+}
+
+.barBottom {
+  bottom: 0;
+}
+
+/* ---- the board under the pointer ---- */
+
+.hotspot {
+  position: absolute;
+  inset: 0;
+  z-index: var(--va-z-title);
+  pointer-events: none;
+  clip-path: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hotspot[data-live] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.reticle {
+  position: absolute;
+  inset: 0;
+  z-index: var(--va-z-title);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+}
+
+.reticle[data-visible] {
+  opacity: 1;
+}
+
+.reticle[data-hint]:not([data-visible]) {
+  opacity: 0.4;
+}
+
+.reticle span {
+  position: absolute;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 0 solid var(--va-color-cream);
+  filter: drop-shadow(0 0 1px var(--va-color-night)) drop-shadow(0 0 2px var(--va-color-night));
+}
+
+.reticle [data-corner="0"] {
+  left: var(--c0x);
+  top: var(--c0y);
+  border-width: 2px 0 0 2px;
+  transform: translate(-0.35rem, -0.35rem);
+}
+
+.reticle [data-corner="1"] {
+  left: var(--c1x);
+  top: var(--c1y);
+  border-width: 2px 2px 0 0;
+  transform: translate(calc(-100% + 0.35rem), -0.35rem);
+}
+
+.reticle [data-corner="2"] {
+  left: var(--c2x);
+  top: var(--c2y);
+  border-width: 0 2px 2px 0;
+  transform: translate(calc(-100% + 0.35rem), calc(-100% + 0.35rem));
+}
+
+.reticle [data-corner="3"] {
+  left: var(--c3x);
+  top: var(--c3y);
+  border-width: 0 0 2px 2px;
+  transform: translate(-0.35rem, calc(-100% + 0.35rem));
+}
+
+@media (forced-colors: active) {
+  .reticle span {
+    border-color: CanvasText;
+  }
+}
+
+/* ---- HUD, reel and supers ---- */
+
+.hud {
+  position: absolute;
+  top: calc(9vh + 0.9rem);
+  left: max(1.25rem, env(safe-area-inset-left));
+  z-index: var(--va-z-ui);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  font-family: var(--va-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--va-color-cream);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.hudTitle::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.6rem;
+  border: 1.5px solid var(--va-color-cream);
+  border-radius: 50%;
+}
+
+.reel {
+  position: absolute;
+  /* In the top bar, and never under the page controls. */
+  top: max(calc(9vh - 1.9rem), 3.4rem);
+  left: max(1rem, env(safe-area-inset-left));
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: var(--va-z-ui);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.stage[data-chrome] .reel {
+  pointer-events: auto;
+}
+
+/* A stop on the route: its name over its stretch of road, and a link to it. */
+.reelStop {
+  flex: 1;
+  display: grid;
+  gap: 0.35rem;
+  padding-block: 0.3rem;
+  color: color-mix(in srgb, var(--va-color-cream) 60%, transparent);
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+.reelStop:hover,
+.reelStop:focus-visible {
+  color: var(--va-color-cream);
+}
+
+.reelStop:focus-visible {
+  outline: 2px solid var(--va-color-cream);
+  outline-offset: 2px;
+}
+
+.reelLabel {
+  font-family: var(--va-font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.reelSegment {
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--va-color-cream) 22%, transparent);
+}
+
+.reelFill {
+  display: block;
+  height: 100%;
+  background: color-mix(in srgb, var(--va-color-cream) 92%, transparent);
+  transform: scaleX(var(--fill, 0));
+  transform-origin: left;
+}
+
+.stage[data-chrome] .hud,
+.stage[data-chrome] .reel,
+.stage[data-chrome] .super[data-active] {
+  opacity: 1;
+}
+
+.supers {
+  position: absolute;
+  left: max(1.25rem, env(safe-area-inset-left));
+  bottom: 0;
+  z-index: var(--va-z-ui);
+  height: 9vh;
+  display: grid;
+  align-items: center;
+  pointer-events: none;
+}
+
+.super {
+  grid-area: 1 / 1;
+  margin: 0;
+  font-family: var(--va-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--va-color-cream) 82%, transparent);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+/* What he did there, one line, while the car is stopped. */
+.superLine {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--va-color-cream) 62%, transparent);
+}
+
+.liveDot {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: var(--va-color-on-air);
+  vertical-align: 0.05em;
+}
+
+/* ---- subtitles ---- */
+
+.subtitles {
+  position: absolute;
+  left: 50%;
+  bottom: max(3.75rem, 6vh);
+  z-index: var(--va-z-ui);
+  display: grid;
+  width: min(44rem, calc(100% - 2rem));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.subtitles[data-rewinding] .subtitle {
+  visibility: hidden;
+}
+
+.subtitle {
+  position: relative;
+  display: block;
+  grid-area: 1 / 1;
+  align-self: end;
+  font-family: var(--va-font-body);
+  font-size: clamp(0.95rem, 1.35vw, 1.2rem);
+  font-weight: 500;
+  line-height: 1.75;
+  color: var(--va-color-cream);
+  opacity: 0;
+}
+
+.subtitleText {
+  padding: 0.2em 0.55em;
+  border-radius: 0.4em;
+  background: var(--va-color-osd);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
+}
+
+.speaker {
+  color: var(--va-color-pink);
+  font-weight: 700;
+}
+
+/* The line's reading time fills a short bar under the card. */
+.subtitle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.5rem;
+  width: 4rem;
+  height: calc(3px + 2px * var(--push, 0));
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--va-color-pink) calc(var(--read, 0) * 100%),
+    color-mix(in srgb, var(--va-color-cream) 25%, transparent) calc(var(--read, 0) * 100%)
+  );
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.subtitle[data-active]::after {
+  opacity: 1;
+}
+
+.subtitle[data-ready]::after {
+  opacity: 0;
+}
+
+.cueTail {
+  white-space: nowrap;
+}
+
+.cueArrow {
+  position: relative;
+  display: inline-block;
+  width: 0.8em;
+  height: 0.62em;
+  margin-left: 0.5em;
+  vertical-align: 0.05em;
+  opacity: 0;
+}
+
+.cueArrow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--va-color-pink);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.subtitle[data-ready] .cueArrow {
+  opacity: 1;
+  animation: work-bob 1.1s ease-in-out 5;
+}
+
+/* Always laid out, shown only when the card waits for her: its words appearing never move the card (no layout shift). */
+.cueLabel {
+  display: inline;
+  visibility: hidden;
+  margin-left: 0.45em;
+  font-family: var(--va-font-mono);
+  font-size: 0.74em;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-pink);
+}
+
+.subtitle[data-ready] .cueLabel {
+  visibility: visible;
+}
+
+/* Copy that depends on the input: wheel by default, touch on coarse pointers, then the last input (as in the hero). */
+.stage:not([data-input="key"]) .forKey,
+.stage:not([data-input="click"]) .forClick,
+.stage:not([data-input="pedal"]) .forPedal,
+.stage[data-input="touch"] .forWheel,
+.stage[data-input="key"] .forWheel,
+.stage[data-input="click"] .forWheel,
+.stage[data-input="pedal"] .forWheel,
+.stage[data-input="wheel"] .forTouch,
+.stage[data-input="key"] .forTouch,
+.stage[data-input="click"] .forTouch,
+.stage[data-input="pedal"] .forTouch {
+  display: none;
+}
+
+@media not (pointer: coarse) {
+  .stage:not([data-input]) .forTouch {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .stage:not([data-input]) .forWheel {
+    display: none;
+  }
+}
+
+.cue {
+  position: absolute;
+  left: 50%;
+  bottom: max(3.75rem, 6vh);
+  z-index: var(--va-z-ui);
+  margin: 0;
+  padding: 0.4em 0.8em;
+  border-radius: 0.4em;
+  background: var(--va-color-osd);
+  font-family: var(--va-font-mono);
+  font-size: clamp(0.76rem, 0.95vw, 0.86rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-cream);
+  transform: translateX(-50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.cue[data-visible] {
+  opacity: 1;
+}
+
+/* ---- Skip ---- */
+
+/* Skip beside the pedal, which has the bottom right corner; on a phone bottom left (the thumb's corner is the pedal's). */
+.skip {
+  position: absolute;
+  right: calc(max(1.25rem, env(safe-area-inset-right)) + 6rem);
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  z-index: var(--va-z-ui);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+
+.skip[data-visible],
+.skip:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.skip .skipButton {
+  background: var(--va-color-osd);
+  backdrop-filter: none;
+}
+
+.skipKey {
+  padding: 0.15em 0.35em;
+  border: 1px solid color-mix(in srgb, var(--va-color-cream) 40%, transparent);
+  border-radius: 0.2em;
+  font-family: var(--va-font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+
+/* ---- night cover: the title card, the wait for the scene, the iris ---- */
+
+.fade {
+  position: absolute;
+  inset: 0;
+  z-index: var(--va-z-fade);
+  display: grid;
+  place-items: center;
+  background: var(--va-color-night);
+  pointer-events: none;
+}
+
+/* The iris: night closes as a circle on the LIVE tally, the last light on screen. */
+.fade[data-iris] {
+  opacity: 1 !important;
+  -webkit-mask-image: radial-gradient(
+    circle at var(--ix, 50%) var(--iy, 30%),
+    transparent var(--ir, 150vmax),
+    #000 calc(var(--ir, 150vmax) + 1.5vmax)
+  );
+  mask-image: radial-gradient(
+    circle at var(--ix, 50%) var(--iy, 30%),
+    transparent var(--ir, 150vmax),
+    #000 calc(var(--ir, 150vmax) + 1.5vmax)
+  );
+}
+
+/*
+ * The chapter card (components/ChapterCard), the section's heading. In the
+ * film it sits over the night at the stage's top, one screen tall, above
+ * the pinned frame, and the film fades and lifts it as the first stop
+ * comes in (WorkStage, data-title); under reduced motion and without JS it
+ * is the plates' heading, in the flow.
+ */
+.chapterBand {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: calc(100 * var(--va-svh));
+  display: grid;
+  align-content: center;
+  pointer-events: none;
+}
+
+.waking {
+  grid-area: 1 / 1;
+  align-self: end;
+  margin: 0 0 18vh;
+  font-family: var(--va-font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--va-color-cream) 75%, transparent);
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.waking[data-visible] {
+  opacity: 1;
+  animation: work-breathe 1.6s ease-in-out infinite;
+}
+
+/* ---- the stops: real articles along the scroll ---- */
+
+.stops {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.stopItem {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--from) * (100% - calc(100 * var(--va-lvh))));
+  height: calc((var(--to) - var(--from)) * (100% - calc(100 * var(--va-lvh))) + calc(100 * var(--va-lvh)));
+}
+
+.stop {
+  position: relative;
+  height: 100%;
+}
+
+/* In the film the plate is text for screen readers, crawlers and find in page. */
+.plate {
+  position: absolute;
+  top: calc(50 * var(--va-lvh));
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The chip rides in a fixed slot while its stop is on screen. */
+.chipSlot {
+  position: sticky;
+  top: calc(calc(100 * var(--va-lvh)) - 9vh - 3.4rem);
+  left: 0;
+  display: flex;
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  height: 2.75rem;
+  align-items: center;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--va-color-cream) 55%, transparent);
+  border-radius: 999px;
+  background: var(--va-color-osd);
+  font: 600 0.72rem / 1 var(--va-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--va-color-cream);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 300ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.stage[data-chrome] .stop[data-active] .chip,
+.chip:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chip:focus-visible,
+.stage[data-armed] .stop[data-active] .chip {
+  background: var(--va-color-cream);
+  color: var(--va-color-night);
+}
+
+@media (hover: hover) {
+  .chip:hover {
+    background: var(--va-color-cream);
+    color: var(--va-color-night);
+  }
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--va-color-pink);
+  outline-offset: 3px;
+}
+
+/* ---- the army's service record ---- */
+
+.record {
+  width: min(26rem, calc(100vw - 2rem));
+  margin: auto;
+  padding: 1.6rem 1.6rem 1.3rem;
+  border: 0;
+  border-radius: 0.2rem;
+  background: #efe3c4;
+  box-shadow:
+    0 0 0 1px #c9b98f inset,
+    0 30px 80px rgba(0, 0, 0, 0.55);
+  color: var(--va-color-ink);
+  font-family: var(--va-font-mono);
+}
+
+.record::backdrop {
+  background: color-mix(in srgb, var(--va-color-night) 70%, transparent);
+}
+
+.recordTitle {
+  margin: 0 0 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 2px solid var(--va-color-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+}
+
+.recordRows {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 0 1.2rem;
+}
+
+.recordRow {
+  display: grid;
+  grid-template-columns: minmax(7rem, 38%) 1fr;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.recordRow dt {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  opacity: 0.7;
+}
+
+.recordRow dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.recordClose {
+  min-height: 2.75rem;
+  padding: 0 1.2rem;
+  border: 1.5px solid var(--va-color-ink);
+  border-radius: 999px;
+  background: transparent;
+  font: 600 0.72rem / 1 var(--va-font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-ink);
+  cursor: pointer;
+}
+
+.recordClose:focus-visible {
+  outline: 2px solid var(--va-color-magenta);
+  outline-offset: 3px;
+}
+
+/* ---- the dash (hero/Dash.tsx), on every screen but a phone's ---- */
+
+/*
+ * The hero's dash in the city's own corner: bottom left on every layout
+ * (the reel and the HUD have the top), mirroring the pedal and Skip bottom
+ * right. The stop's super moves up under the HUD to leave it the corner,
+ * and the subtitles stand clear of it: between it and the pedal on a wide
+ * window, above it elsewhere.
+ */
+.sticky .cityDash {
+  left: max(1.25rem, env(safe-area-inset-left));
+  top: auto;
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  translate: none;
+}
+
+.supers {
+  top: calc(max(9vh, 4.4rem) + 2rem);
+  bottom: auto;
+  height: auto;
+}
+
+@media (min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px) {
+  .subtitles {
+    width: min(44rem, calc(100% - 2 * (19 * 15px + 2rem)));
+  }
+}
+
+/* The chip clears the dash's top edge on a wide window. */
+@media (min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px) {
+  .chipSlot {
+    top: calc(100 * var(--va-lvh) - 9vh - 4.6rem);
+  }
+}
+
+@media not ((min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px)) {
+  .subtitles,
+  .cue {
+    bottom: calc(max(1.1rem, env(safe-area-inset-bottom)) + 6.5 * 15px + 0.75rem);
+  }
+
+  /* Centred, 6.6rem over the subtitles, which stand over the dash. */
+  .chipSlot {
+    top: calc(100 * var(--va-lvh) - max(1.1rem, env(safe-area-inset-bottom)) - 6.5 * 15px - 0.75rem - 6.6rem);
+    justify-content: center;
+    padding-left: 0;
+  }
+}
+
+/* ---- phones ---- */
+
+@media (max-width: 767px) {
+  .bar {
+    height: 7vh;
+  }
+
+  .reel {
+    /* Under the page controls: nothing focusable sits beneath them. */
+    top: 3.6rem;
+  }
+
+  .hud {
+    top: 5.8rem;
+  }
+
+  /* The super under the reel, the chip above the card, Skip at the bottom. */
+  .supers {
+    top: 7.6rem;
+    bottom: auto;
+    height: auto;
+  }
+
+  .super {
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+  }
+
+  /* Over the pedal's plate (16 px em, 5.25 em tall, 1.25rem off the bottom), never beside it. */
+  .subtitles {
+    bottom: calc(1.25rem + 5.25 * 16px + 0.75rem);
+  }
+
+  .cue {
+    bottom: calc(1.25rem + 5.25 * 16px + 0.75rem);
+  }
+
+  .chipSlot {
+    /* 6.6rem over the subtitles' band, which stands over the pedal. */
+    top: calc(calc(100 * var(--va-lvh)) - 2rem - 5.25 * 16px - 6.6rem);
+    justify-content: center;
+    padding-left: 0;
+  }
+
+  .chip {
+    min-height: 2.75rem;
+  }
+
+  .skip {
+    right: auto;
+    left: max(1rem, env(safe-area-inset-left));
+  }
+}
+
+/* ---- reduced motion: no pinned film, one plate per stop ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .stage {
+    height: auto;
+    padding: 6rem 0 4rem;
+  }
+
+  .sticky {
+    display: none;
+  }
+
+  .stops {
+    position: static;
+    display: grid;
+    gap: 3rem;
+    width: min(46rem, calc(100% - 2.5rem));
+    margin: 0 auto;
+    pointer-events: auto;
+  }
+
+  .stopItem {
+    position: static;
+    height: auto;
+  }
+
+  .plate {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+
+  .chipSlot {
+    position: static;
+    height: auto;
+    margin-top: 1rem;
+    padding: 0;
+  }
+
+  .chip {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .stop {
+    scroll-margin-top: 5rem;
+  }
+
+  .chapterBand {
+    position: static;
+    height: auto;
+    margin: 0 0 3rem;
+  }
+}
+
+.plateIndex {
+  margin: 0 0 0.4rem;
+  font-family: var(--va-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
+  color: var(--va-color-pink);
+}
+
+.stopHeading {
+  margin: 0 0 0.3rem;
+  font-family: var(--va-font-display);
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
+  font-weight: 800;
+  color: var(--va-color-cream);
+}
+
+.plateSuper {
+  margin: 0 0 0.9rem;
+  font-family: var(--va-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  color: var(--va-color-amber);
+}
+
+.mirror {
+  margin: 0 0 0.8rem;
+  line-height: 1.6;
+}
+
+.transcript {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.6;
+  color: var(--va-color-text-muted);
+}
+
+.plateSpeaker {
+  color: var(--va-color-pink);
+  font-weight: 700;
+}
+
+@keyframes work-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+@keyframes work-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}

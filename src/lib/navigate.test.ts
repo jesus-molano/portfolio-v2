@@ -3,6 +3,8 @@ import {
   fragmentTarget,
   getPassage,
   goTo,
+  INPUT_WINDOW_MS,
+  isNavigation,
   landingY,
   landsPast,
   PLACE,
@@ -93,6 +95,25 @@ describe("the registries", () => {
     unregisterFresh();
     expect(getPassage()).toBeNull();
   });
+
+  it("keep one passage per key: the hero and the career city both hold", () => {
+    const hero = { section: {} as HTMLElement, open: () => {} };
+    const work = { key: "work", section: {} as HTMLElement, open: () => {} };
+    const offHero = registerPassage(hero);
+    const offWork = registerPassage(work);
+    expect(getPassage()).toBe(hero);
+    expect(getPassage("work")).toBe(work);
+    offHero();
+    offWork();
+  });
+});
+
+describe("isNavigation", () => {
+  it("counts a move with no wheel, touch or key just before it as navigation", () => {
+    expect(isNavigation(1000, 1000 + INPUT_WINDOW_MS - 1)).toBe(false);
+    expect(isNavigation(1000, 1000 + INPUT_WINDOW_MS)).toBe(true);
+    expect(isNavigation(Number.NEGATIVE_INFINITY, 0)).toBe(true);
+  });
 });
 
 describe("goTo", () => {
@@ -156,6 +177,24 @@ describe("goTo", () => {
       },
     };
   }
+
+  it("opens a stage up to a position inside it, and all of it for a position past it", () => {
+    const p = page(0);
+    const landed: string[] = [];
+    const work = {
+      isConnected: true,
+      getBoundingClientRect: () => ({ top: 6000 - window.scrollY, bottom: 9000 - window.scrollY }),
+      contains: () => false,
+      compareDocumentPosition: () => 2,
+    } as unknown as HTMLElement;
+    const off = registerPassage({ key: "work", section: work, open: () => landed.push("all"), openTo: (y) => landed.push(`to ${y}`) });
+    goTo(7000);
+    goTo(9500);
+    goTo(3000);
+    expect(landed).toEqual(["to 7000", "all"]);
+    off();
+    p.done();
+  });
 
   it("opens the hero, then moves the page with Lenis standing where it lands, then focuses", () => {
     const p = page(6300);

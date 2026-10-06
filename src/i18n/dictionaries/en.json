@@ -43,20 +43,6 @@
       "ack": "You have the wheel",
       "model": "You drive. The film waits for you.",
       "arriving": "Easy, the name's still pulling in.",
-      "next": "Scroll",
-      "nextTouch": "Swipe up",
-      "nextKey": "Space",
-      "nextClick": "Click",
-      "nextPedal": "Hold",
-      "keepGoing": "Scroll to keep driving",
-      "keepGoingTouch": "Swipe up to keep driving",
-      "keepGoingKey": "Press Space to keep driving",
-      "keepGoingClick": "Click to keep driving",
-      "keepGoingPedal": "Hold the pedal to keep driving",
-      "hold": "Whoa. Let the man finish.",
-      "end": "Down to the crew",
-      "endClick": "Click: the crew",
-      "endPedal": "Hold: the crew",
       "still": "The script is below",
       "help": "This intro is a short film that moves as you scroll, swipe or hold the pedal, and stops when you stop. Each line stays until it has been read. Space, a click or tap on the picture, or a press of the pedal brings the next line; holding Space, W or the pedal keeps driving after it. Shift and Space goes back, S or the up arrow backs up, and Escape skips the intro. The full script follows as text.",
       "helpStill": "This intro is a still from a short film. Its full script follows as text."
@@ -74,7 +60,6 @@
       "tag": "Hold",
       "help": "Press it for the next line, or hold it to keep driving. Space and W do the same."
     },
-    "skip": "Skip",
     "skipLabel": "Skip the intro",
     "skipHurry": "In a hurry?",
     "sceneLabel": "Sunset drive over a causeway toward a city skyline and an art-deco tower at the end of the avenue, palm trees on both sides",
@@ -230,7 +215,7 @@
       {
         "kind": "trivia",
         "when": [],
-        "text": "Every palm on the causeway is made in code, frond by frond."
+        "text": "At night the road reaches the city: every company he has worked for has its own sign, and every sign is a link."
       },
       {
         "kind": "trivia",
@@ -251,6 +236,186 @@
     "withMusic": "Enter with music",
     "withoutMusic": "Without music",
     "hint": "or press any key"
+  },
+  "work": {
+    "chapter": {
+      "word": "Night shift",
+      "ribbon": "The work · 2018 — LIVE"
+    },
+    "eyebrow": "The work",
+    "bridge": "Someone has to pay for the bowls. I'm off to work.",
+    "live": "LIVE",
+    "sceneLabel": "A night drive through the city, where five signs tell the career: a roadside poster, a hotel's neon blade, a rotating billboard, a wall of torn posters and an art-deco tower that is on air",
+    "help": "This section drives like the intro. Escape skips the drive, and every stop is also written out below with its link: the company's site or, for the army, its service record.",
+    "helpStill": "This section tells the career in five stops, each with its link: the company's site or, for the army, its service record.",
+    "waking": "The city is waking up",
+    "skipLabel": "Skip the drive",
+    "stop": "STOP",
+    "reel": "Stops on the drive",
+    "speaker": "Jesús",
+    "transcript": "What he says",
+    "record": {
+      "title": "SERVICE RECORD",
+      "close": "Close",
+      "rows": [
+        {
+          "label": "Army",
+          "value": "Ejército de Tierra (Spanish Army)"
+        },
+        {
+          "label": "Rank and trade",
+          "value": "Private, combat engineer"
+        }
+      ]
+    },
+    "stops": {
+      "army": {
+        "h3": "Spanish Army (Ejército de Tierra)",
+        "line": "SPANISH ARMY · COMBAT ENGINEER",
+        "mirror": "Spanish Army (Ejército de Tierra), 2018–2021. Combat engineer in the Batallón de Zapadores XVI, in Las Palmas de Gran Canaria.",
+        "cards": [
+          "Sappers go in first, so that everyone else can follow.",
+          "No wonder I ended up in the front end."
+        ],
+        "chip": "Service record ▸",
+        "chipName": "Service record: Spanish Army, combat engineer, 2018 to 2021",
+        "board": {
+          "kicker": "BATALLÓN DE ZAPADORES XVI",
+          "headline": [
+            "FIRST,",
+            "OPEN THE",
+            "ROAD."
+          ],
+          "foot": [
+            "JOIN THE SAPPERS",
+            "LAS PALMAS DE GRAN CANARIA · 2018–2021"
+          ],
+          "crate": "XVI"
+        }
+      },
+      "pwc": {
+        "h3": "PwC España",
+        "line": "REACT · NEXT.JS · TYPESCRIPT · ZOD · KEYCLOAK · DOCKER",
+        "mirror": "PwC España, 2023–2024. Frontend Developer on Bono Cultural 2023 (React, Next.js, Tailwind CSS, TypeScript, Zod, React Hook Form, Material UI) and B Accelerator Tower (Next.js, Keycloak, Veracode, Docker), in a Scrum team working with Git and pull-request reviews.",
+        "cards": [
+          "At PwC I built the forms for the Bono Cultural, field by field.",
+          "Zod doesn't take bribes, so no field got through unchecked."
+        ],
+        "chip": "pwc.es ↗",
+        "chipName": "pwc.es: PwC España, Frontend Developer, 2023 to 2024",
+        "board": {
+          "blade": [
+            "P",
+            "W",
+            "C"
+          ],
+          "crossbar": [
+            "Frontend",
+            "DEVELOPER"
+          ],
+          "plaques": [
+            "BONO CULTURAL 2023",
+            "B ACCELERATOR TOWER"
+          ],
+          "amenities": "SCRUM · GIT · PR REVIEWS",
+          "door": "CHECK-IN 2023 · CHECK-OUT 2024",
+          "lobby": "RECEPTION"
+        }
+      },
+      "cloud-district": {
+        "h3": "Cloud District",
+        "line": "NATURGY · PANGEA · TELPARK · NEXT.JS · REACT · STRAPI",
+        "mirror": "Cloud District, 2024–2025, a consultancy. Frontend Developer on client projects: Naturgy, the energy supplier (Monitor and Omega, with Next.js and React), Pangea, the travel agency (its main website, with Next.js, Atomic Design, Strapi and Storybook) and Telpark (parking reservations).",
+        "cards": [
+          "At Cloud District, clients rotated like that board's faces.",
+          "After three laps of the block, that's worth more than the car."
+        ],
+        "chip": "clouddistrict.com ↗",
+        "chipName": "clouddistrict.com: Cloud District, Frontend Developer, 2024 to 2025",
+        "board": {
+          "nameplate": "CLOUD DISTRICT · FRONTEND DEVELOPER · 2024–2025",
+          "faces": [
+            {
+              "title": "NATURGY",
+              "lines": [
+                "MONITOR & OMEGA",
+                "NEXT · REACT"
+              ]
+            },
+            {
+              "title": "PANGEA",
+              "lines": [
+                "The whole world in one store.",
+                "ATOMIC DESIGN · NEXT · STRAPI · STORYBOOK"
+              ]
+            },
+            {
+              "title": "TELPARK",
+              "lines": [
+                "Your space, booked before you leave home.",
+                "PARKING RESERVATIONS"
+              ]
+            }
+          ],
+          "pieces": [
+            "Europe",
+            "America",
+            "Africa",
+            "Asia",
+            "Oceania"
+          ],
+          "hold": "PANGEA. The whole world in one store.",
+          "cafe": "Cafetería"
+        }
+      },
+      "logixs": {
+        "h3": "Logixs",
+        "line": "BYTETRAVEL · RETECH · FULL STACK DEVELOPER",
+        "mirror": "Logixs, 2025–2026. Full Stack Developer on Bytetravel, a TravelTech offering ancillary services for leisure and business travellers (visas, eSIMs, VIP lounges) through travel agencies and airlines, and on the official portal of Retech, a startup acceleration programme.",
+        "cards": [
+          "Then came Logixs, where I went full stack.",
+          "So these days I watch my back, too."
+        ],
+        "chip": "logixsdigital.com ↗",
+        "chipName": "logixsdigital.com: Logixs, Full Stack Developer, 2025 to 2026",
+        "board": {
+          "snipe": "LOGIXS · FULL STACK DEVELOPER · 2025–2026",
+          "ban": "PROHIBIDO FIJAR CARTELES",
+          "bytetravel": [
+            "BYTETRAVEL",
+            "BUSINESS OR PLEASURE?",
+            "EVERYTHING BUT THE TICKET.",
+            "VISAS · eSIM · VIP LOUNGES"
+          ],
+          "retech": [
+            "RETECH",
+            "THE OFFICIAL PORTAL",
+            "STARTUP ACCELERATION PROGRAMME"
+          ],
+          "printer": "PRINTED BY LOGIXS",
+          "fragments": [
+            "OPEN THE ROAD",
+            "BONO CULTURAL 2023",
+            "PANGEA"
+          ]
+        }
+      },
+      "heuristik": {
+        "h3": "Heuristik",
+        "line": "FRONTEND ENGINEER",
+        "mirror": "Current role: Frontend Engineer at Heuristik, since 2026.",
+        "cards": [
+          "And this is the shift I'm on.",
+          "No spoilers, though. This season is still airing."
+        ],
+        "chip": "heuristik.com ↗",
+        "chipName": "heuristik.com: Heuristik, Frontend Engineer, since 2026",
+        "board": {
+          "name": "HEURISTIK",
+          "ticker": "FRONTEND ENGINEER ◆ SINCE 2026 ◆"
+        }
+      }
+    }
   },
   "stats": {
     "chapter": {
@@ -412,7 +577,24 @@
     "hintTarget": "side projects"
   },
   "common": {
-    "newTab": "(opens in a new tab)"
+    "newTab": "(opens in a new tab)",
+    "cues": {
+      "next": "Scroll",
+      "nextTouch": "Swipe up",
+      "nextKey": "Space",
+      "nextClick": "Click",
+      "nextPedal": "Hold",
+      "keepGoing": "Scroll to keep driving",
+      "keepGoingTouch": "Swipe up to keep driving",
+      "keepGoingKey": "Press Space to keep driving",
+      "keepGoingClick": "Click to keep driving",
+      "keepGoingPedal": "Hold the pedal to keep driving",
+      "hold": "Whoa. Let the man finish.",
+      "end": "Down to the crew",
+      "endClick": "Click: the crew",
+      "endPedal": "Hold: the crew",
+      "skip": "Skip"
+    }
   },
   "projects": {
     "chapter": {
@@ -529,7 +711,7 @@
     "type": {
       "title": "TYPE",
       "site": "Titles, text, labels",
-      "radio": "Radio, marquee, tickets",
+      "radio": "Radio, marquee, tickets, city billboards",
       "posters": "Posters",
       "licences": "Licences",
       "apache": "Yellowtail and Special Elite: Apache License 2.0"

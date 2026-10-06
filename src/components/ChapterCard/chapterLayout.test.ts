@@ -53,6 +53,8 @@ const MEASURED_WORDS: Record<string, { advance: number; left: number; right: num
   "The late show": { advance: 4.77, left: -0.079, right: 4.859, ascent: 0.672, descent: 0.047 },
   "¡Y corten!": { advance: 4.5, left: -0.063, right: 4.717, ascent: 0.704, descent: 0.391 },
   "That’s a wrap": { advance: 4.821, left: -0.079, right: 4.854, ascent: 0.688, descent: 0.344 },
+  "Turno de noche": { advance: 5.406, left: -0.079, right: 5.636, ascent: 0.672, descent: 0.047 },
+  "Night shift": { advance: 3.882, left: -0.375, right: 4.257, ascent: 0.672, descent: 0.391 },
 };
 const MEASURED_RIBBONS: Record<string, number> = {
   "SOSPECHOSOS HABITUALES": 9.795,
@@ -63,6 +65,8 @@ const MEASURED_RIBBONS: Record<string, number> = {
   "SIDE PROJECTS": 5.509,
   "CRÉDITOS Y CONTACTO": 8.143,
   "CREDITS AND CONTACT": 8.22,
+  "EL TRABAJO · 2018 — LIVE": 9.567,
+  "THE WORK · 2018 — LIVE": 9.07,
 };
 
 describe("Chapter Script, the word's face", () => {
@@ -128,7 +132,8 @@ describe("the banner's capitals", () => {
     for (const [ribbon, measured] of Object.entries(MEASURED_RIBBONS)) {
       expect(Math.abs(capsRun(ribbon).length - measured), ribbon).toBeLessThan(0.004);
     }
-    expect(missingCaps("2018 · LIVE")).toEqual(["2", "0", "1", "8", "·"]);
+    expect(missingCaps("2018 · LIVE")).toEqual([]);
+    expect(missingCaps("Nº 1 #")).toEqual(["º", "#"]);
   });
 
   it("stand at least 11 px tall on a 360 px phone's card (328 px)", () => {
@@ -278,7 +283,7 @@ describe("chapterLayout", () => {
   });
 
   it("refuses a ribbon with a capital it cannot measure", () => {
-    expect(() => chapterLayout("Turno de noche", "EL TRABAJO · 2018")).toThrow(/·/);
+    expect(() => chapterLayout("Turno de noche", "EL TRABAJO #1")).toThrow(/#/);
   });
 });
 

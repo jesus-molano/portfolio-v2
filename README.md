@@ -18,7 +18,10 @@ and Spanish (`/es`).
    RADIO button.
 3. **The Usual Suspects.** A police line-up of his four cats against a
    height chart, and one complaint.
-4. **The career city** (coming next): the night drive through every job.
+4. **The career city.** Night shift: the car drives on through the island
+   at night, and every job has its own sign (a war-propaganda billboard, a
+   hotel's neon blade, a rotating trivision, torn wheat-paste posters and
+   an art-deco tower on air), each one a link.
 5. **STATS.** A pause menu: Tenerife at night under parody names, with his
    career and his pastimes on the map, and a character sheet.
 6. **The Afterglow.** A beach-deco cinema at night, his side projects on the

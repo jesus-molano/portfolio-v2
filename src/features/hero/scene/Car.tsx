@@ -281,7 +281,7 @@ function carMaterial(source: MeshStandardMaterial, rim: RimUniforms, paint: Pain
  * GLTF scene outlives remounts (the Canvas remounts on a tier change), so
  * the swap and the rims' blur uniforms are stored on the scene itself.
  */
-function prepareCar(scene: Group): RimUniforms {
+export function prepareCar(scene: Group): RimUniforms {
   const stored = scene.userData.vaRim as RimUniforms | undefined;
   if (stored) return stored;
   const rim: RimUniforms = { uBlurMap: { value: null }, uRim: { value: new Vector4() }, uBlur: { value: 0 } };

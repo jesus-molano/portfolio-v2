@@ -43,20 +43,6 @@
       "ack": "El volante es tuyo",
       "model": "Tú conduces. La película te espera.",
       "arriving": "Tranqui, el nombre aún está llegando.",
-      "next": "Haz scroll",
-      "nextTouch": "Desliza",
-      "nextKey": "Espacio",
-      "nextClick": "Haz clic",
-      "nextPedal": "Pisa",
-      "keepGoing": "Haz scroll para seguir",
-      "keepGoingTouch": "Desliza arriba para seguir",
-      "keepGoingKey": "Pulsa Espacio para seguir",
-      "keepGoingClick": "Haz clic para seguir",
-      "keepGoingPedal": "Pisa el pedal para seguir",
-      "hold": "Para el carro. Déjale terminar.",
-      "end": "Baja a la banda",
-      "endClick": "Clic: a la banda",
-      "endPedal": "Pisa: a la banda",
       "still": "El guion, aquí abajo",
       "help": "Esta intro es un corto que avanza al hacer scroll, deslizar o pisar el pedal, y se detiene cuando paras. Cada frase espera a que se haya leído. Espacio, un clic o un toque en la imagen, o pisar el pedal, pasa a la siguiente; si mantienes Espacio, W o el pedal, sigues conduciendo. Mayúsculas y Espacio vuelve atrás, S o la flecha arriba retroceden, y Escape salta la intro. Debajo está el guion completo.",
       "helpStill": "Esta intro es un fotograma de un corto. Debajo está su guion completo."
@@ -74,7 +60,6 @@
       "tag": "Pisa",
       "help": "Púlsalo para la siguiente frase o mantenlo para seguir conduciendo. Espacio y W hacen lo mismo."
     },
-    "skip": "Saltar",
     "skipLabel": "Saltar la intro",
     "skipHurry": "¿Con prisa?",
     "sceneLabel": "Conduciendo al atardecer por una autopista sobre el agua hacia el skyline de una ciudad y una torre art déco al final de la avenida, con palmeras a ambos lados",
@@ -230,7 +215,7 @@
       {
         "kind": "trivia",
         "when": [],
-        "text": "Cada palmera de la carretera está hecha con código, hoja a hoja."
+        "text": "De noche la carretera entra en la ciudad: cada empresa en la que ha trabajado tiene su rótulo, y cada uno es un enlace."
       },
       {
         "kind": "trivia",
@@ -251,6 +236,186 @@
     "withMusic": "Entrar con música",
     "withoutMusic": "Sin música",
     "hint": "o pulsa cualquier tecla"
+  },
+  "work": {
+    "chapter": {
+      "word": "Turno de noche",
+      "ribbon": "El trabajo · 2018 — LIVE"
+    },
+    "eyebrow": "El trabajo",
+    "bridge": "Alguien tiene que pagar los cuencos. Me voy a trabajar.",
+    "live": "LIVE",
+    "sceneLabel": "Un trayecto nocturno por la ciudad en el que cinco carteles cuentan la carrera: un cartel de carretera, el rótulo de neón de un hotel, una valla giratoria, una pared de carteles arrancados y una torre art déco en antena",
+    "help": "Esta sección se conduce como la intro. Escape salta el trayecto, y cada parada está también escrita debajo, con su enlace: la web de la empresa o, en el ejército, su hoja de servicios.",
+    "helpStill": "Esta sección cuenta la carrera en cinco paradas, cada una con su enlace: la web de la empresa o, en el ejército, su hoja de servicios.",
+    "waking": "La ciudad se despierta",
+    "skipLabel": "Saltar el trayecto",
+    "stop": "PARADA",
+    "reel": "Paradas del trayecto",
+    "speaker": "Jesús",
+    "transcript": "Lo que cuenta",
+    "record": {
+      "title": "HOJA DE SERVICIOS",
+      "close": "Cerrar",
+      "rows": [
+        {
+          "label": "Ejército",
+          "value": "Ejército de Tierra"
+        },
+        {
+          "label": "Empleo",
+          "value": "Soldado zapador"
+        }
+      ]
+    },
+    "stops": {
+      "army": {
+        "h3": "Ejército de Tierra",
+        "line": "EJÉRCITO DE TIERRA · ZAPADOR",
+        "mirror": "Ejército de Tierra, 2018–2021. Zapador en el Batallón de Zapadores XVI, en Las Palmas de Gran Canaria.",
+        "cards": [
+          "Los zapadores van delante, para que puedan pasar los demás.",
+          "Normal que luego acabara en el front."
+        ],
+        "chip": "Hoja de servicios ▸",
+        "chipName": "Hoja de servicios: Ejército de Tierra, zapador, de 2018 a 2021",
+        "board": {
+          "kicker": "BATALLÓN DE ZAPADORES XVI",
+          "headline": [
+            "PRIMERO,",
+            "ABRIR",
+            "CAMINO."
+          ],
+          "foot": [
+            "ALÍSTATE EN LOS ZAPADORES",
+            "LAS PALMAS DE GRAN CANARIA · 2018–2021"
+          ],
+          "crate": "XVI"
+        }
+      },
+      "pwc": {
+        "h3": "PwC España",
+        "line": "REACT · NEXT.JS · TYPESCRIPT · ZOD · KEYCLOAK · DOCKER",
+        "mirror": "PwC España, 2023–2024. Frontend Developer en Bono Cultural 2023 (React, Next.js, Tailwind CSS, TypeScript, Zod, React Hook Form, Material UI) y B Accelerator Tower (Next.js, Keycloak, Veracode, Docker), en un equipo Scrum con Git y revisión de pull requests.",
+        "cards": [
+          "En PwC hice los formularios del Bono Cultural, campo a campo.",
+          "Zod no acepta sobornos, y ningún campo se coló sin validar."
+        ],
+        "chip": "pwc.es ↗",
+        "chipName": "pwc.es: PwC España, Frontend Developer, de 2023 a 2024",
+        "board": {
+          "blade": [
+            "P",
+            "W",
+            "C"
+          ],
+          "crossbar": [
+            "Frontend",
+            "DEVELOPER"
+          ],
+          "plaques": [
+            "BONO CULTURAL 2023",
+            "B ACCELERATOR TOWER"
+          ],
+          "amenities": "SCRUM · GIT · REVISIÓN DE PR",
+          "door": "ENTRADA 2023 · SALIDA 2024",
+          "lobby": "RECEPCIÓN"
+        }
+      },
+      "cloud-district": {
+        "h3": "Cloud District",
+        "line": "NATURGY · PANGEA · TELPARK · NEXT.JS · REACT · STRAPI",
+        "mirror": "Cloud District, 2024–2025, una consultora. Frontend Developer en proyectos para clientes: Naturgy, la energética (Monitor y Omega, con Next.js y React), Pangea, la agencia de viajes (su web principal, con Next.js, Atomic Design, Strapi y Storybook) y Telpark (reservas de aparcamiento).",
+        "cards": [
+          "En Cloud District cambiaba de cliente como esa valla de cara.",
+          "Tras tres vueltas a la manzana, eso vale más que el coche."
+        ],
+        "chip": "clouddistrict.com ↗",
+        "chipName": "clouddistrict.com: Cloud District, Frontend Developer, de 2024 a 2025",
+        "board": {
+          "nameplate": "CLOUD DISTRICT · FRONTEND DEVELOPER · 2024–2025",
+          "faces": [
+            {
+              "title": "NATURGY",
+              "lines": [
+                "MONITOR & OMEGA",
+                "NEXT · REACT"
+              ]
+            },
+            {
+              "title": "PANGEA",
+              "lines": [
+                "El mundo entero en una tienda.",
+                "ATOMIC DESIGN · NEXT · STRAPI · STORYBOOK"
+              ]
+            },
+            {
+              "title": "TELPARK",
+              "lines": [
+                "Tu plaza, reservada antes de salir de casa.",
+                "RESERVA DE APARCAMIENTO"
+              ]
+            }
+          ],
+          "pieces": [
+            "Europa",
+            "América",
+            "África",
+            "Asia",
+            "Oceanía"
+          ],
+          "hold": "PANGEA. El mundo entero en una tienda.",
+          "cafe": "Cafetería"
+        }
+      },
+      "logixs": {
+        "h3": "Logixs",
+        "line": "BYTETRAVEL · RETECH · FULL STACK DEVELOPER",
+        "mirror": "Logixs, 2025–2026. Full Stack Developer en Bytetravel, una TravelTech de servicios complementarios para viajeros de ocio y de negocios (visados, eSIM, salas VIP) que trabaja con agencias de viajes y aerolíneas, y en el portal oficial de Retech, un programa de aceleración de startups.",
+        "cards": [
+          "Luego llegó Logixs, donde me pasé al full stack.",
+          "Así que ahora también me cubro las espaldas."
+        ],
+        "chip": "logixsdigital.com ↗",
+        "chipName": "logixsdigital.com: Logixs, Full Stack Developer, de 2025 a 2026",
+        "board": {
+          "snipe": "LOGIXS · FULL STACK DEVELOPER · 2025–2026",
+          "ban": "PROHIBIDO FIJAR CARTELES",
+          "bytetravel": [
+            "BYTETRAVEL",
+            "¿NEGOCIOS O PLACER?",
+            "TODO MENOS EL BILLETE.",
+            "VISADOS · eSIM · SALAS VIP"
+          ],
+          "retech": [
+            "RETECH",
+            "PORTAL OFICIAL",
+            "PROGRAMA DE ACELERACIÓN DE STARTUPS"
+          ],
+          "printer": "IMP. LOGIXS",
+          "fragments": [
+            "ABRIR CAMINO",
+            "BONO CULTURAL 2023",
+            "PANGEA"
+          ]
+        }
+      },
+      "heuristik": {
+        "h3": "Heuristik",
+        "line": "FRONTEND ENGINEER",
+        "mirror": "Puesto actual: Frontend Engineer en Heuristik, desde 2026.",
+        "cards": [
+          "Y este es el turno que me toca.",
+          "Sin spoilers, que esta temporada aún se está emitiendo."
+        ],
+        "chip": "heuristik.com ↗",
+        "chipName": "heuristik.com: Heuristik, Frontend Engineer, desde 2026",
+        "board": {
+          "name": "HEURISTIK",
+          "ticker": "FRONTEND ENGINEER ◆ DESDE 2026 ◆"
+        }
+      }
+    }
   },
   "stats": {
     "chapter": {
@@ -412,7 +577,24 @@
     "hintTarget": "proyectos personales"
   },
   "common": {
-    "newTab": "(se abre en una pestaña nueva)"
+    "newTab": "(se abre en una pestaña nueva)",
+    "cues": {
+      "next": "Haz scroll",
+      "nextTouch": "Desliza",
+      "nextKey": "Espacio",
+      "nextClick": "Haz clic",
+      "nextPedal": "Pisa",
+      "keepGoing": "Haz scroll para seguir",
+      "keepGoingTouch": "Desliza arriba para seguir",
+      "keepGoingKey": "Pulsa Espacio para seguir",
+      "keepGoingClick": "Haz clic para seguir",
+      "keepGoingPedal": "Pisa el pedal para seguir",
+      "hold": "Para el carro. Déjale terminar.",
+      "end": "Baja a la banda",
+      "endClick": "Clic: a la banda",
+      "endPedal": "Pisa: a la banda",
+      "skip": "Saltar"
+    }
   },
   "projects": {
     "chapter": {
@@ -529,7 +711,7 @@
     "type": {
       "title": "TIPOGRAFÍA",
       "site": "Títulos, texto, rótulos",
-      "radio": "Radio, marquesina, entradas",
+      "radio": "Radio, marquesina, entradas, vallas de la ciudad",
       "posters": "Carteles",
       "licences": "Licencias",
       "apache": "Yellowtail y Special Elite: Apache License 2.0"

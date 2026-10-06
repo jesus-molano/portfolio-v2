@@ -253,7 +253,7 @@ export type Mission = {
  * in src/app/[lang]/anchors.test.ts fails on a dead in-page link). The
  * career city turns this on when it adds those sections.
  */
-export const CAREER_CITY_ON_PAGE = false;
+export const CAREER_CITY_ON_PAGE = true;
 
 /**
  * Where each mission sits on the map. The army in Las Palmas (in the box),

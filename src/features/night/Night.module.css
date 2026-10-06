@@ -1,0 +1,15 @@
+/* The night canvas keeps the large-viewport height, like the hero's: no resize flash when the address bar moves. */
+.canvas {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 100vh;
+  height: 100lvh;
+  z-index: var(--va-z-canvas);
+  background: var(--va-color-night);
+}
+
+.canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

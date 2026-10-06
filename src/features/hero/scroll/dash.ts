@@ -193,3 +193,165 @@ export function speedCells(kmh: number): [string, string, string] {
 export function statusEm(text: string): number {
   return Array.from(text).length * (0.6 + 0.16) * 0.8125;
 }
+
+type Parity = "1" | "2" | null;
+const flip = (parity: Parity): "1" | "2" => (parity === "1" ? "2" : "1");
+
+/** The dash's own state between frames (one per stage that shows a dash). */
+export type DashState = {
+  /** The strip's revs (her throttle, eased) and the flare of her last input (1, decaying). */
+  revs: number;
+  kick: number;
+  /** The wall of the unread line the limiter holds for; -1 when none. */
+  limitWall: number;
+  /** ALL CLEAR shows until then, and its warm sweep plays until then (performance.now()). */
+  clearUntil: number;
+  sweepUntil: number;
+  releaseParity: Parity;
+  /** When the ignition self-test ends; NaN until the dash first shows. */
+  bootUntil: number;
+  show: DashShow;
+  showParity: Parity;
+  /** The last forward step and the last push held at a wall, as last seen. */
+  lastStepAt: number;
+  lastKnockAt: number;
+};
+
+export function newDashState(stepAt = Number.NEGATIVE_INFINITY, knockAt = Number.NEGATIVE_INFINITY): DashState {
+  return {
+    revs: 0,
+    kick: 0,
+    limitWall: -1,
+    clearUntil: Number.NEGATIVE_INFINITY,
+    sweepUntil: Number.NEGATIVE_INFINITY,
+    releaseParity: null,
+    bootUntil: Number.NaN,
+    show: "hidden",
+    showParity: null,
+    lastStepAt: stepAt,
+    lastKnockAt: knockAt,
+  };
+}
+
+export type LimiterInput = {
+  /** performance.now(). */
+  now: number;
+  /** An unread line is up, the frontier's wall index, and whether a wall has been read (story.done). */
+  unreadCard: boolean;
+  wall: number;
+  wallDone: (wall: number) => boolean;
+  /** A push of hers held at the wall just now, and seconds since her last input. */
+  holding: boolean;
+  sinceInput: number;
+};
+
+export type LimiterFrame = {
+  limiter: Limiter;
+  clearing: boolean;
+  /** A line's wall opened this frame (the pedal buzzes). */
+  released: boolean;
+};
+
+/**
+ * The pit limiter's frame, first (the pace and the feedback read it): an
+ * unread line holds it armed and a push of hers at the wall hits it; the
+ * frame its wall opens, ALL CLEAR for DASH.clearHold and the warm sweep.
+ * A rewind never opens a wall.
+ */
+export function stepLimiter(state: DashState, input: LimiterInput): LimiterFrame {
+  let released = false;
+  if (input.unreadCard) {
+    state.limitWall = input.wall;
+  } else if (state.limitWall >= 0 && input.wallDone(state.limitWall)) {
+    state.limitWall = -1;
+    state.clearUntil = input.now + DASH.clearHold * 1000;
+    state.sweepUntil = input.now + DASH.releaseSweep * 1000;
+    state.releaseParity = flip(state.releaseParity);
+    released = true;
+  }
+  return {
+    limiter: limiterState({ unreadCard: input.unreadCard, holding: input.holding, sinceInput: input.sinceInput }),
+    clearing: input.now < state.clearUntil,
+    released,
+  };
+}
+
+export type DashInput = {
+  /** performance.now(), and the frame in real seconds. */
+  now: number;
+  realDt: number;
+  layout: DashLayout;
+  started: boolean;
+  sinceEntered: number;
+  /** How far the title has gone (0..1), and the film position. */
+  titleOut: number;
+  p: number;
+  mode: TransportMode;
+  /** Her input's rate (viewport heights a second) and her foot on the pedal as its plate shows it (0 when suspended). */
+  rate: number;
+  foot: number;
+  /** The title's tease (0..1) before her first input. */
+  tease: number;
+  /** scrollInput.stepAt and scrollGate.pushedAt. */
+  stepAt: number;
+  pushedAt: number;
+};
+
+export type DashFrame = {
+  vis: DashVis;
+  show: DashShow;
+  /** The limiter as shown (off unless the dash says LIMITER). */
+  lim: Limiter;
+  lit: number;
+  kick: number;
+  boot: boolean;
+  release: Parity;
+  pulse: Parity;
+};
+
+/**
+ * One frame of the dash, pure, after the limiter's (`stepLimiter`): what it
+ * shows and where, her throttle on the strip (her input's or her foot's,
+ * whichever is further down; a tease blips it before her first input) and
+ * the flare of every input of hers. HeroStage and the career city's stage
+ * step it and draw it with Dash.tsx.
+ */
+export function stepDash(state: DashState, limiter: LimiterFrame, input: DashInput): DashFrame {
+  const vis = dashVisibility({
+    layout: input.layout,
+    started: input.started,
+    sinceEntered: input.sinceEntered,
+    titleOut: input.titleOut,
+    p: input.p,
+  });
+  const show = dashShow({ p: input.p, started: input.started, mode: input.mode, limiter: limiter.limiter, clearing: limiter.clearing });
+  const lim = show === "limiter" ? limiter.limiter : "off";
+  state.revs = easeRevs(
+    state.revs,
+    Math.min(1, stripThrottle(input.rate, input.foot) + (input.started ? 0 : DASH.teaseRevs * input.tease)),
+    input.realDt,
+  );
+  const lit = show === "reverse" ? 0 : lim === "hit" ? DASH.limiterLeds : litLeds(state.revs, lim !== "off");
+  if (input.stepAt !== state.lastStepAt || input.pushedAt !== state.lastKnockAt) {
+    state.lastStepAt = input.stepAt;
+    state.lastKnockAt = input.pushedAt;
+    state.kick = 1;
+  } else {
+    state.kick = state.kick * Math.exp(-Math.max(0, input.realDt) / DASH.kickTau);
+  }
+  if (vis !== "off" && Number.isNaN(state.bootUntil)) state.bootUntil = input.now + DASH.boot * 1000;
+  if (show !== state.show) {
+    state.show = show;
+    state.showParity = flip(state.showParity);
+  }
+  return {
+    vis,
+    show,
+    lim,
+    lit,
+    kick: state.kick,
+    boot: input.now < state.bootUntil,
+    release: input.now < state.sweepUntil ? state.releaseParity : null,
+    pulse: state.showParity,
+  };
+}

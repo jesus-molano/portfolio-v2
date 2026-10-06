@@ -6,6 +6,7 @@ import { Projects } from "@/features/finale/Projects";
 import { Hero } from "@/features/hero/Hero";
 import { Stats } from "@/features/stats/Stats";
 import { Suspects } from "@/features/suspects/Suspects";
+import { Work } from "@/features/work/Work";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 
@@ -17,18 +18,9 @@ import type { Dictionary } from "@/i18n/dictionaries";
 export function HomeMain({ dict, lang }: { dict: Dictionary; lang: Locale }) {
   return (
     <main id="main">
-      <Hero dict={dict.hero} />
+      <Hero dict={dict.hero} cues={dict.common.cues} />
       <Suspects dict={dict.suspects} lang={lang} />
-      {/*
-       * The career city (#work-army ... #work-heuristik) goes here when it
-       * lands; then turn on CAREER_CITY_ON_PAGE (stats/statsLayout.ts) so
-       * the STATS missions link to it. It opens on its own chapter card
-       * (ChapterCard, its copy in a `chapter` key of its dictionary): the
-       * owner's call is TURNO DE NOCHE / NIGHT SHIFT, ribbon "El trabajo ·
-       * 2018 — LIVE" (the banner's capitals table, capsFace.ts, then needs
-       * the digits, the middle dot and the dash). Re-read the whole chain
-       * then: LA BANDA, TURNO DE NOCHE, JUGADOR UNO, SESIÓN GOLFA, ¡Y CORTEN!
-       */}
+      <Work work={dict.work} common={dict.common} pedal={dict.hero.pedal} osd={dict.hero.osd} locale={lang} />
       <Stats dict={dict.stats} lang={lang} />
       <Projects dict={dict.projects} newTab={dict.common.newTab} locale={lang} />
       <EndCredits dict={dict.credits} newTab={dict.common.newTab} locale={lang} />

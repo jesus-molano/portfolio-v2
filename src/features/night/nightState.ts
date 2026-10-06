@@ -1,0 +1,55 @@
+/**
+ * Shared state between the work stage (DOM, GSAP ticker) and the night
+ * scene (R3F frame loop). Plain mutable objects: nothing here goes through
+ * React state on a frame.
+ * - The stage writes the picture (`p`), the beat it plays and how armed
+ *   the active board is.
+ * - The scene writes back where the active board and the LIVE tally land
+ *   on screen, so the stage can draw the hotspot, the reticle and the iris.
+ */
+export type NdcQuad = [[number, number], [number, number], [number, number], [number, number]];
+
+export const night = {
+  /** The picture, 0..1 along the work stage. */
+  p: 0,
+  /** Index of the stop on screen (0..4). */
+  stop: 0,
+  /** The board's armed level: `armTarget` is 0 or 1, `armed` eases toward it. */
+  armTarget: 0,
+  armed: 0,
+  /** Pointer across the active board, 0..1 from its left edge (NaN when away). */
+  pointerU: Number.NaN,
+  /** The active board's corners in NDC (y up), its facing (cosine) and whether it is on screen. */
+  quad: [
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+  ] as NdcQuad,
+  facing: 0,
+  quadOnScreen: false,
+  /** Where the LIVE tally lands on screen (NDC) and whether it is lit. */
+  tally: [0, 0.5] as [number, number],
+  live: false,
+};
+
+type Readiness = "waiting" | "ready" | "failed";
+
+let readiness: Readiness = "waiting";
+const listeners = new Set<() => void>();
+
+/** The night scene has rendered its first settled frames, or it failed (no WebGL). */
+export function getNightReadiness(): Readiness {
+  return readiness;
+}
+
+export function setNightReadiness(next: Readiness): void {
+  if (readiness === next) return;
+  readiness = next;
+  for (const listener of listeners) listener();
+}
+
+export function subscribeNightReadiness(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}

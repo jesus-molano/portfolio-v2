@@ -403,6 +403,21 @@
   display: none;
 }
 
+/* A dash that carries her last input itself (the career city's, whose stage is not this one). */
+.dash[data-input]:not([data-input="key"]) .forKey,
+.dash[data-input]:not([data-input="click"]) .forClick,
+.dash[data-input]:not([data-input="pedal"]) .forPedal,
+.dash[data-input="touch"] .forWheel,
+.dash[data-input="key"] .forWheel,
+.dash[data-input="click"] .forWheel,
+.dash[data-input="pedal"] .forWheel,
+.dash[data-input="wheel"] .forTouch,
+.dash[data-input="key"] .forTouch,
+.dash[data-input="click"] .forTouch,
+.dash[data-input="pedal"] .forTouch {
+  display: none;
+}
+
 @media not (pointer: coarse) {
   .stage:not([data-input]) .forTouch {
     display: none;

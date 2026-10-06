@@ -80,10 +80,9 @@ also exists as real DOM for keyboard and screen-reader users.
 
 - `src/app/[lang]` — root layout and pages. Every route lives under the locale.
   The home page runs, in order: the hero, THE USUAL SUSPECTS (`#suspects`),
-  the career city (still to come: a comment in `HomeMain.tsx` marks its
-  place), STATS (`#stats`), the finale's cinema (`#projects`) and the end
+  the career city (`#work`), STATS (`#stats`), the finale's cinema (`#projects`) and the end
   credits (`#credits`, with `#contact` before their fine print), each
-  static section headed by its chapter card (`src/components/ChapterCard`).
+  section after the hero headed by its chapter card (`src/components/ChapterCard`).
   `HomeMain.tsx` renders them, so `anchors.test.ts` can render the page in
   both locales: every
   `href="#..."` must reach an element id that exists (no dead links). Any
@@ -550,6 +549,76 @@ also exists as real DOM for keyboard and screen-reader users.
     first card, then her tips in authored order alternating with shuffled
     trivia) and times them (`tipDuration`: reading time plus 1.5 s, at
     least 5 s); hover or focus holds a tip, Next skips it.
+- `src/features/work` — the career as a night drive (`#work`). A pinned stage like
+  the hero's: the scroll is the picture, `workTimeline.ts` lays the beats
+  out (a share of the film per natural second, cards timed by
+  `readingSeconds`), `workStory.ts` holds them with the hero's walls
+  (title, holds, cards). The stage writes its wall to `stageGate` and
+  SmoothScroll trims input to the smaller of it and the hero's. A jump
+  past the wall with no input (anchor, find in page, scrollbar, a screen
+  reader) is navigation (`isNavigation` in `lib/navigate.ts`, shared with
+  the hero): it opens the walls up to where it landed, never snaps back;
+  the stage registers itself as a passage (key `work`), so `goTo` opens
+  it up to a stop it lands on, or all of it on the way past. Every stop
+  is a real article (`#work-army` ... `#work-heuristik`) placed at its
+  stretch of the scroll, with heading, years, the mirror text, the
+  transcript and one chip: the employer's site (`stops.ts`, per locale;
+  ids, order, anchors and years come from `features/career/career.ts`)
+  or, for the army, the `#service-record` popover. Under reduced motion
+  and without JS the stage is plates. Boards arm before they open
+  (`hotspot.ts`): a real pointer move, a first tap, or focus on the chip;
+  the hotspot is a DOM element clipped to the board's projected quad.
+  The film opens on the chapter card "Night shift" / «Turno de noche»
+  (ribbon «El trabajo · 2018 — LIVE»), after a bridge card from the cats.
+  The route at the top is one link per stop («PARADA 1…5»), never a video
+  scrubber. While the car is stopped, the super shows «PARADA 0X/05 ·
+  company» and, under it, the stop's one `line` (clients and stack); the
+  years live on the board. The cues (scroll, swipe, click, pedal, Space,
+  Skip) are the hero's own words, `common.cues`, shared by both stages.
+  The city drives with the hero's pedal (`Pedal.tsx`, the same button,
+  bottom right, Skip beside it, or bottom left on a phone): a press plays
+  the next line, holding drives on through the same gate and walls, and W
+  or Space held is the pedal too. The glue between the pedal's state and a
+  stage is `hero/scroll/pedalDriver.ts` (`driveFrame` pure and tested,
+  `createPedalDriver` for pointer capture, held keys, the watchdog and the
+  push on the scroll's ticker through `addDriveStep`); the hero still
+  carries its own copy of that glue until it adopts the driver. The
+  stage's length is in the stable screen units (`--va-lvh`,
+  `lib/screen.ts`) and its film is the stage less one stable screen, so a
+  phone's bars coming and going never move it (scrollux `citybars`, at
+  every stop with its walls closed ahead, and `statics`).
+  - The city owns the career, told once and in full: company, role,
+    years, clients, stack, link, and the army's battalion and Las Palmas.
+    STATS only indexes it; the end credits carry no career. The
+    Tenerife-versus-Gran-Canaria joke is the hero's. No visible text in
+    the city repeats its own board (the service record, Heuristik's
+    first card).
+  - Copy rules (tested): roles in English in both languages (Frontend
+    Developer, Full Stack Developer, Frontend Engineer; the army is
+    «Zapador», «Soldado zapador» on the record, "Combat engineer"); no
+    city next to a civilian job (no Santa Cruz, no Comunidad de Madrid,
+    never Madrid), the client is «Retech»; no "remote"; LIVE in English
+    in both locales and only for Heuristik, whose stop shows role and
+    dates only.
+- `src/features/night` — the night canvas under `#work`: mounted only near
+  the stage, rendering only while it is on screen. Five sets (`sets/`),
+  one per stop, all at the origin and only the active one visible; the
+  street, sky, car, lights and post are shared and switch per stop (two
+  point lights whose count never changes, so no recompile at a cut). Set
+  frame: the car's stop point is the origin, the street runs along +x,
+  the board stands at z < 0 and the camera at z > 0. It is one island at
+  night at every stop (stars, a thin moon, one fog, palms along the kerb):
+  he never moved, so no stop may read as another city. Lit windows are
+  painted interiors (`parts/Windows.tsx`, `sets/art/windows.ts`), never
+  flat blocks. The car moves only in
+  the arrival and leave beats and only with the scroll (`carPath.ts`).
+  Shots are keys on the film (`frame.ts`); on a portrait screen `fitPose`
+  dollies back, then widens the lens (at most 70 degrees), then pans and
+  tilts to the board. Board art is painted once per stop into canvases in
+  the site's fonts (`sets/art/`). `palette.onAir` is the LIVE tally's red
+  and nothing else's. Night shaders never call `pow()` (tested). Dev
+  hooks: `window.__vaStage(at)` (a film position or a beat id, `id@t`)
+  and `window.__vaArm(on)`; `tools/capture/capture-work.mjs` shoots them.
 - `src/features/suspects` — THE USUAL SUSPECTS (`#suspects`), right after
   the hero: a police line-up of his four cats against a centimetre height
   chart, a server component with no canvas and no looping animation; its
@@ -647,9 +716,8 @@ also exists as real DOM for keyboard and screen-reader users.
   own words, the visible "Answer to continue" then an unseen ": side
   projects", never an `aria-label` that drops the words she can see
   (label in name, tested). The main missions are the career
-  index (plain rows until the career city lands; turning on
-  `CAREER_CITY_ON_PAGE` in `statsLayout.ts` makes them links to its
-  `#work-*` stops), first in the page: from 1280 px a column beside the
+  index (with `CAREER_CITY_ON_PAGE` on in `statsLayout.ts`, links to the
+  city's `#work-*` stops), first in the page: from 1280 px a column beside the
   map's frame, as tall as it (a subgrid), the badges on one route; from
   700 to 1279 px a row of five above the map, each under its segment of
   the progress line; on a phone a column before the map, so the content
@@ -1128,7 +1196,7 @@ What each section is for, and what it owns:
   army story with the Gran Canaria joke.
 - THE USUAL SUSPECTS — him at home: the four cats, the complaint and Dante
   as the culprit.
-- The career city (still to come) — the career, once and whole: the five
+- The career city (`#work`) — the career, once and whole: the five
   jobs (employer, role, years, clients, stack, a link) and the army's
   facts (the unit, Las Palmas).
 - STATS — him off the clock: the hobbies (the map's winks, the sheet, the

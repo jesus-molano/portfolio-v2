@@ -68,6 +68,14 @@ export const palette = {
    * only red, so it always reads as "this one is running now".
    */
   onAir: "#ff2b3a",
+  /** Night fog over the island at every stop (src/features/night). */
+  nightFog: "#241a4a",
+  /** Cool white LED, the newest light in the city. */
+  led: "#eef4ff",
+  /** The thin moon over the island. */
+  moon: "#f3eeff",
+  /** Sodium street light at night, deeper than the daytime trim. */
+  sodiumNight: "#ffb347",
 } as const;
 
 export type PaletteKey = keyof typeof palette;

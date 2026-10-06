@@ -4,6 +4,8 @@ import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
 import {
   DASH,
+  type DashInput,
+  type LimiterInput,
   DASH_MEDIA,
   dashLayout,
   dashShow,
@@ -11,8 +13,11 @@ import {
   easeRevs,
   limiterState,
   litLeds,
+  newDashState,
   speedCells,
   statusEm,
+  stepDash,
+  stepLimiter,
   stripThrottle,
   throttleOf,
 } from "./dash";
@@ -302,10 +307,11 @@ describe("the dash's words", () => {
   const inStatus = (em: number) => em * 0.8125;
 
   for (const [locale, dict] of [
-    ["en", en.hero],
-    ["es", es.hero],
+    ["en", { ...en.hero, intro: { ...en.hero.intro, ...en.common.cues } }],
+    ["es", { ...es.hero, intro: { ...es.hero.intro, ...es.common.cues } }],
   ] as const) {
     it(`${locale}: every word fits its slot, LIMITER beside its sign`, () => {
+      // The cues live in common.cues (shared with the career city); the hero takes them as part of its intro.
       const { osd, intro } = dict;
       for (const word of [osd.drive, osd.floored, osd.reverse, osd.clear]) {
         expect(statusEm(word), word).toBeLessThanOrEqual(DASH.slotEm);
@@ -323,4 +329,61 @@ describe("the dash's words", () => {
       for (const width of prompts) expect(width).toBeLessThanOrEqual(DASH.slotEm);
     });
   }
+});
+
+describe("stepLimiter and stepDash", () => {
+  const dash = (over: Partial<DashInput> = {}): DashInput => ({
+    now: 1000,
+    realDt: 1 / 60,
+    layout: "wide",
+    started: true,
+    sinceEntered: 10,
+    titleOut: 1,
+    p: 0.3,
+    mode: "drive",
+    rate: 0,
+    foot: 0,
+    tease: 0,
+    stepAt: 0,
+    pushedAt: 0,
+    ...over,
+  });
+  const lim = (over: Partial<LimiterInput> = {}): LimiterInput => ({
+    now: 1000,
+    unreadCard: false,
+    wall: -1,
+    wallDone: () => false,
+    holding: false,
+    sinceInput: 0,
+    ...over,
+  });
+
+  it("holds the limiter for an unread line, and says ALL CLEAR the frame its wall opens", () => {
+    const state = newDashState(0, 0);
+    const held = stepLimiter(state, lim({ unreadCard: true, wall: 3 }));
+    expect(stepDash(state, held, dash()).show).toBe("limiter");
+    expect(held.limiter).toBe("armed");
+    const open = stepLimiter(state, lim({ now: 1100, wallDone: (w) => w === 3 }));
+    expect(open.released).toBe(true);
+    const shown = stepDash(state, open, dash({ now: 1100 }));
+    expect(shown.show).toBe("clear");
+    expect(shown.release).not.toBeNull();
+    const later = stepLimiter(state, lim({ now: 1100 + DASH.clearHold * 1000 + 1 }));
+    expect(later.clearing).toBe(false);
+  });
+
+  it("flares the strip on every input of hers, and lets it decay", () => {
+    const state = newDashState(0, 0);
+    const off = stepLimiter(state, lim());
+    expect(stepDash(state, off, dash({ stepAt: 5 })).kick).toBe(1);
+    expect(stepDash(state, off, dash({ stepAt: 5, realDt: 0.12 })).kick).toBeLessThan(0.5);
+  });
+
+  it("is off on a phone, and boots the first time it shows", () => {
+    const state = newDashState();
+    const off = stepLimiter(state, lim());
+    expect(stepDash(newDashState(), off, dash({ layout: "phone" })).vis).toBe("off");
+    expect(stepDash(state, off, dash()).boot).toBe(true);
+    expect(stepDash(state, off, dash({ now: 1000 + DASH.boot * 1000 + 1 })).boot).toBe(false);
+  });
 });

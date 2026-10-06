@@ -14,9 +14,13 @@
  *   took her to the cinema, the page flew back up to the hero's end. So
  *   Lenis is re-measured and stopped, the page moved, and Lenis stood
  *   where the page landed, in the same task.
- * - A page sent past a passage (the hero, whose walls hold the scroll for
- *   its film) opens it first, as the focus moving past it does: a link to
- *   a later section is her moving on, not a jump the hero pulls back.
+ * - A page sent past a passage (the hero or the career city, whose walls
+ *   hold the scroll for their films) opens it first, as the focus moving
+ *   past it does: a link to a later section is her moving on, not a jump
+ *   a wall pulls back. A page sent into one opens it up to where it lands.
+ * - Any other move of the page with no wheel, touch or key just before it
+ *   (the scrollbar, find in page, a screen reader's cursor) is navigation
+ *   too (`isNavigation`): the stage it lands in opens up to there.
  *
  * History: an in-page link adds an entry as the browser's jump would
  * (`pushFragment`), the entry she leaves remembering where the page was,
@@ -40,10 +44,25 @@ export type Scroller = Pick<Lenis, "scrollTo" | "resize" | "animatedScroll" | "t
  * A section whose scroll is held until it opens (the hero film's walls,
  * HeroStage): a page sent past it opens it first, without moving.
  */
-export type Passage = { section: HTMLElement; open: () => void };
+export type Passage = {
+  section: HTMLElement;
+  open: () => void;
+  /** Opens the walls up to a page position inside the section (a link to one of its stops). */
+  openTo?: (y: number) => void;
+  /** Which passage this is; one per key, the newest wins. */
+  key?: string;
+};
+
+/** A move with wheel, touch or a handled key this recent (ms) is her scrolling; any other is navigation. */
+export const INPUT_WINDOW_MS = 250;
+
+/** Whether a move of the page at `now` is navigation: no scrolling input in the window before it. */
+export function isNavigation(lastInputAt: number, now: number): boolean {
+  return now - lastInputAt >= INPUT_WINDOW_MS;
+}
 
 let scroller: Scroller | null = null;
-let passage: Passage | null = null;
+const passages = new Map<string, Passage>();
 
 /** SmoothScroll registers its Lenis while it lives; the newest one wins. */
 export function registerScroller(next: Scroller): () => void {
@@ -53,16 +72,17 @@ export function registerScroller(next: Scroller): () => void {
   };
 }
 
-/** HeroStage registers its section and how it opens while it is mounted; the newest one wins. */
+/** HeroStage and WorkStage register their section and how it opens while mounted; the newest one per key wins. */
 export function registerPassage(next: Passage): () => void {
-  passage = next;
+  const key = next.key ?? "hero";
+  passages.set(key, next);
   return () => {
-    if (passage === next) passage = null;
+    if (passages.get(key) === next) passages.delete(key);
   };
 }
 
-export function getPassage(): Passage | null {
-  return passage;
+export function getPassage(key = "hero"): Passage | null {
+  return passages.get(key) ?? null;
 }
 
 /**
@@ -206,15 +226,18 @@ export function goTo(to: HTMLElement | number, options: GoToOptions = {}): void 
     y = Math.min(Math.max(0, pageLimit()), Math.max(0, to as number));
   }
 
-  const held = passage;
-  if (held?.section.isConnected) {
-    const end = held.section.getBoundingClientRect().bottom + window.scrollY;
+  for (const held of passages.values()) {
+    if (!held.section.isConnected) continue;
+    const box = held.section.getBoundingClientRect();
+    const start = box.top + window.scrollY;
+    const end = box.bottom + window.scrollY;
     // An element is past it if it comes after it (not inside it, not around it); a position, by where it is.
     const follows = element
       ? !held.section.contains(element) &&
         Boolean(held.section.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING)
       : null;
     if (landsPast({ y, follows }, end)) held.open();
+    else if (held.openTo && y >= start - 1 && (element ? held.section.contains(element) : true)) held.openTo(y);
   }
 
   const focus = options.focus === undefined ? element : options.focus;

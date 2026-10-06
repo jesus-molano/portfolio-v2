@@ -70,14 +70,27 @@ export const scrollInput = {
   pedal: 0,
 };
 
+export type DriveStep = (deltaMs: number, lenis: Lenis) => void;
+
 /**
- * The pedal's hook into the scroll: HeroStage sets `step`, and SmoothScroll
- * calls it on the ticker right before `lenis.raf`, so a held pedal moves
- * the picture, the dash and the car in the same frame, as a wheel notch does.
+ * The pedal's hook into the scroll: HeroStage sets `step`, the career
+ * city adds its own (`addDriveStep`), and SmoothScroll calls them on the
+ * ticker right before `lenis.raf`, so a held pedal moves the picture, the
+ * dash and the car in the same frame, as a wheel notch does. Each stage's
+ * step does nothing unless its own pedal is down.
  */
 export const scrollDrive = {
-  step: null as null | ((deltaMs: number, lenis: Lenis) => void),
+  step: null as null | DriveStep,
+  steps: new Set<DriveStep>(),
 };
+
+/** Adds a stage's pedal step to the scroll's frame; returns its removal. */
+export function addDriveStep(step: DriveStep): () => void {
+  scrollDrive.steps.add(step);
+  return () => {
+    scrollDrive.steps.delete(step);
+  };
+}
 
 /** Written by HeroStage, read by DriveClock (pace, from the crawl to x2) and CameraRig (FOV kick, degrees). */
 export const heroFeedback = { pace: 1, fovKick: 0 };

@@ -58,7 +58,8 @@
  * reduced motion there is none), pedallayout (the pedal and its hit area,
  * Skip expanded, the longest card, the dash, the hint and the radio button
  * never overlap, 360 x 640 to 1440 x 900; a phone has no dash, a tablet
- * keeps it), statics (after Skip, the static
+ * keeps it), citybars (a phone's bars coming and going at each stop of the
+ * career city, its walls closed ahead: nothing moves), statics (after Skip, the static
  * page follows wheel notches, trackpad bursts and keys on a desktop, and
  * swipes on a phone whose bars hide going down and come back going up,
  * the viewport and every viewport unit with them, under both motion modes:
@@ -258,7 +259,7 @@ async function reachCard(s, device, card) {
  * frame is hers), and every layout shift.
  */
 function recordStatics() {
-  const SECTIONS = ["suspects", "stats", "projects", "credits", "contact"];
+  const SECTIONS = ["suspects", "work", "stats", "projects", "credits", "contact"];
   const rec = { on: false, frames: [], inputs: [], writes: [], shifts: [] };
   const where = () => (new Error().stack ?? "").split("\n").slice(2, 7).map((line) => line.trim().replace(/\(.*\//, "(")).join(" < ");
   const own = (stack) => /Lenis\.setScroll|Animate\.advance/.test(stack);
@@ -2067,6 +2068,12 @@ const CHECKS = {
         await s.page.evaluate(() => window.scrollTo(0, document.getElementById("suspects").getBoundingClientRect().top + scrollY));
       } else {
         await s.page.keyboard.press("End");
+        // Past the career city once (a link to STATS opens its walls on the way past), so its stretch
+        // scrolls like the rest of the static page: the city's own walls are the citybars check's.
+        await sleep(800);
+        await s.page.evaluate(() => {
+          location.hash = "stats";
+        });
       }
       await sleep(1500);
       const start = await s.page.evaluate(() => ({
@@ -2135,6 +2142,40 @@ const CHECKS = {
         verdict.ok && s.errors.length === 0,
         { ...verdict.detail, errors: s.errors.slice(0, 3) },
       );
+      await s.close();
+    }
+  },
+
+  async citybars(device, lang) {
+    // The career city at each of its stops, its walls closed ahead (a deep link opens them up to the
+    // stop), while a phone's bars come and go with no input: the page, the city and every section
+    // stay where they are (the stage's length is in the stable screen units, lib/screen.ts).
+    if (device !== "mobile") return;
+    const W = DEVICES[device].viewport.width;
+    const H = DEVICES[device].viewport.height;
+    for (const stop of ["army", "pwc", "cloud-district", "logixs", "heuristik"]) {
+      const s = await session(device, lang, { hash: `#work-${stop}` });
+      await sleep(2500);
+      const read = () =>
+        s.page.evaluate(() => ({
+          y: Math.round(scrollY),
+          h: document.documentElement.scrollHeight,
+          work: Math.round(document.getElementById("work").getBoundingClientRect().top + scrollY),
+          stats: Math.round(document.getElementById("stats").getBoundingClientRect().top + scrollY),
+        }));
+      const before = await read();
+      const seen = [];
+      for (const height of [H - 74, H, H - 56, H, H - 74, H]) {
+        await s.page.setViewportSize({ width: W, height });
+        await sleep(450);
+        seen.push(await read());
+      }
+      const still = seen.every((r) => r.y === before.y && r.h === before.h && r.work === before.work && r.stats === before.stats);
+      report(`${device} ${lang} citybars: at the ${stop} stop the page and the city stay put while the bars come and go`, still && s.errors.length === 0, {
+        before,
+        seen: seen.filter((r) => r.y !== before.y || r.h !== before.h || r.work !== before.work).slice(0, 3),
+        errors: s.errors.slice(0, 3),
+      });
       await s.close();
     }
   },

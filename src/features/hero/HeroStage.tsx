@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  type CSSProperties,
   useEffect,
   useMemo,
   useRef,
@@ -23,6 +22,8 @@ import { stableScreen } from "@/lib/screen";
 import styles from "./Hero.module.css";
 import { HeroCanvas } from "./HeroCanvas";
 import { HeroTitle } from "./HeroTitle";
+import { createDashPainter, Dash } from "./Dash";
+import { createPedalDriver } from "./scroll/pedalDriver";
 import { Pedal } from "./Pedal";
 import { fitWidth } from "./cardFit";
 import { getSceneLoading, markOnScreen, markOnStage, markQuiet, markSettled } from "./sceneLoading";
@@ -33,43 +34,15 @@ import {
   heroProgress,
   type InputSource,
   recordInput,
-  recordPedal,
   resetInput,
-  scrollDrive,
   scrollGate,
   scrollInput,
   STATIC_PROGRESS,
 } from "./scroll/heroProgress";
-import {
-  DASH,
-  dashLayout,
-  type DashShow,
-  dashShow,
-  dashVisibility,
-  easeRevs,
-  limiterState,
-  litLeds,
-  speedCells,
-  stripThrottle,
-} from "./scroll/dash";
+import { dashLayout, newDashState, stepDash, stepLimiter } from "./scroll/dash";
 import { deepWait, type FeedbackInput, newFeedback, stepFeedback } from "./scroll/feedback";
 import { GATE, gateAction, lenisMissed, type PageReading, pageScroll } from "./scroll/gate";
-import {
-  keyLost,
-  newPedal,
-  PEDAL,
-  type PedalVia,
-  pedalPush,
-  pedalRate,
-  pedalRibs,
-  pedalSpeed,
-  pedalVisibility,
-  pressPedal,
-  releasePedal,
-  stepPedal,
-  suspendPedal,
-  teachDip,
-} from "./scroll/pedal";
+import { type PedalVia, pedalRibs, pedalVisibility, teachDip } from "./scroll/pedal";
 import {
   activeWindow,
   buildWalls,
@@ -90,7 +63,7 @@ import {
   type StoryContext,
   STORY,
 } from "./scroll/story";
-import { fovKick, LIMITER, meterRate, paceFor, THROTTLE } from "./scroll/throttle";
+import { fovKick, meterRate, paceFor, THROTTLE } from "./scroll/throttle";
 import {
   CUE_LABELS,
   FIGHT,
@@ -125,7 +98,7 @@ type Props = {
   role: string;
   tagline: string;
   /** Hints, cues and the screen-reader help for the scrubbed film. */
-  intro: HeroCopy["intro"];
+  intro: HeroCopy["intro"] & Dictionary["common"]["cues"];
   /** Words of the dash. */
   osd: HeroCopy["osd"];
   /** The pedal's name, its tag and what it does. */
@@ -197,10 +170,6 @@ const TITLE_QUEUE_MS = 6000;
 const MAX_REAL_STEP = 2;
 /** The pedal's knock flash (ms), as long as the dash's "pushing on the limiter". */
 const KNOCK_MS = 300;
-/** A pedal held by a pointer that has sent nothing this long (ms) is checked: still captured, or let go. */
-const PEDAL_WATCHDOG_MS = 10_000;
-/** A click on the pedal this long (ms) after a pointer pressed it is that press's own click, not a tap. */
-const PEDAL_CLICK_MS = 1000;
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 
@@ -737,51 +706,51 @@ export function HeroStage({
         down: null as null | { type: string; x: number; y: number; at: number },
       };
       // The pedal (scroll/pedal.ts): her foot, who holds it down, and the line step it waits for.
-      const pedal = newPedal();
-      /** The words her prompts speak while it is down: the button's ("pedal"), or the keyboard's for W and Space. */
-      let pedalSource: InputSource = "pedal";
-      /** A line step's glide in flight: a press is that glide, and the pedal pushes once it has landed. */
-      let stepGlide: { to: number; until: number } | null = null;
-      /** The key holding it (W or Space) and its autorepeat, the heartbeat that says the keyup was not lost. */
-      let keyHold: { code: string; key: string; at: number; repeating: boolean } | null = null;
+      // The pedal (scroll/pedal.ts), held by a pointer, W or Space and pushed on the scroll's ticker by
+      // the shared driver (scroll/pedalDriver.ts), the same as in the career city.
+      const driver = createPedalDriver({
+        button: () => el.pedal,
+        // Below the hero the pedal has gone with it: a click left on it (Space on a focused pedal) does nothing.
+        canPress: () =>
+          !stillQuery.matches && getSceneLoading().entered && lenis !== undefined && !lenis.isStopped && !getRadio().wheel && !pastHero(),
+        step: (source) => {
+          if (heroProgress.value >= 0.999) {
+            goOn(source);
+            return false;
+          }
+          return stepLine(1, source);
+        },
+        goOn: (source) => goOn(source),
+        frame: () => ({
+          maxStep: STORY.maxStep,
+          end: scrollFor(1),
+          wall: scrollGate.maxScroll,
+          wallIndex: frontierIndex(story),
+          vh: geom.vh,
+          atEnd: heroProgress.value >= 0.999,
+          backAt,
+          frozen: stillQuery.matches,
+        }),
+        readScroll: () => {
+          readScroll();
+        },
+      });
+      const pedal = driver.pedal;
       /**
        * A key still held when the drive went on into the next section: its autorepeat is swallowed
        * until it comes up, so a Space held to the end never scrolls on past the line-up.
        */
       let spentKey: string | null = null;
-      /** The pointer holding it, and when it last sent anything (the watchdog). */
-      let pointerHold: number | null = null;
-      let pointerHoldAt = Number.NEGATIVE_INFINITY;
-      /** The last pointer press or release on the pedal: a click right after it is that pointer's own. */
-      let pedalPointerAt = Number.NEGATIVE_INFINITY;
-      /** Her last backward input the pedal has seen: a newer one suspends its push (pedal.ts suspendPedal). */
-      let pressBackAt = Number.NEGATIVE_INFINITY;
-      /** Seconds the held pedal has rested at the very end of the drive (PEDAL.endHold). */
-      let endHold = 0;
       const drawnPedal = { lv: Number.NaN };
       let teaseIdx = 0;
       let teaseAt = Number.NEGATIVE_INFINITY;
       let blinkParity: "1" | "2" | null = null;
       let lastPrompt: Prompt | null = null;
       let popParity: "1" | "2" | null = null;
-      let shownSpeed = -1;
-      // The dash (scroll/dash.ts).
-      /** The strip's revs (her throttle, eased), and the flare of her last input (1, decaying). */
-      let revs = 0;
-      let kick = 0;
-      let lastStepAt = scrollInput.stepAt;
-      let lastKnockAt = scrollGate.pushedAt;
-      /** The wall of the unread line the limiter holds for; -1 when none. */
-      let limitWall = -1;
-      /** ALL CLEAR shows until then, and its warm sweep plays until then (performance.now()). */
-      let clearUntil = Number.NEGATIVE_INFINITY;
-      let sweepUntil = Number.NEGATIVE_INFINITY;
-      let releaseParity: "1" | "2" | null = null;
-      let bootUntil = Number.NaN;
-      let show: DashShow = "hidden";
-      let showParity: "1" | "2" | null = null;
+      // The dash (scroll/dash.ts, drawn by Dash.tsx): its state between frames, and its painter.
+      const dashState = newDashState(scrollInput.stepAt, scrollGate.pushedAt);
+      const dashPainter = createDashPainter(el.dash);
       let onStage = getSceneLoading().onStage;
-      const drawnCells = ["", "", ""];
       const flip = (parity: "1" | "2" | null) => (parity === "1" ? "2" : "1");
       /** What the last frame drew, so a resting card or reel segment costs nothing. */
       const drawnOpacity = el.cards.map(() => -1);
@@ -854,14 +823,7 @@ export function HeroStage({
       };
 
       /** Lets go of the pedal: its push stops at once, and the plate springs back. */
-      const letGo = (at = performance.now()) => {
-        releasePedal(pedal, at);
-        const id = pointerHold;
-        keyHold = null;
-        pointerHold = null;
-        scrollInput.pedal = 0;
-        if (id !== null && el.pedal?.hasPointerCapture(id)) el.pedal.releasePointerCapture(id);
-      };
+      const letGo = (at = performance.now()) => driver.letGo(at);
 
       /** A buzz under the thumb (Android; iOS has no web haptics), only once she has interacted with the page. */
       const buzz = (pattern: number | number[]) => {
@@ -891,13 +853,7 @@ export function HeroStage({
         // The pedal lets go whenever its holder may be gone: the radio wheel opened (it holds the
         // scroll), a key whose autorepeat went silent (its keyup was lost), a pointer silent for long
         // that is no longer captured.
-        if (pedal.down) {
-          if (wheelOpen || !lenis || lenis.isStopped) letGo(now);
-          else if (keyHold && keyLost({ repeating: keyHold.repeating, sinceKeyMs: now - keyHold.at })) letGo(now);
-          else if (pointerHold !== null && now - pointerHoldAt > PEDAL_WATCHDOG_MS && !el.pedal?.hasPointerCapture(pointerHold)) {
-            letGo(now);
-          }
-        }
+        driver.watch(now, wheelOpen || !lenis || lenis.isStopped);
 
         heroProgress.target = clamp01(progressFor(scroll));
         const fr = frontier(walls, story);
@@ -976,17 +932,16 @@ export function HeroStage({
         const foot = pedal.down ? scrollInput.pedal : 0;
         const holding = scrollGate.pressure > 0 && now - scrollGate.pushedAt < HOLDING_MS;
         const unreadCard = beat === "card";
-        if (unreadCard) {
-          limitWall = k;
-        } else if (limitWall >= 0 && story.done[limitWall]) {
-          limitWall = -1;
-          clearUntil = now + DASH.clearHold * 1000;
-          sweepUntil = now + DASH.releaseSweep * 1000;
-          releaseParity = flip(releaseParity);
-          if (pedal.down) buzz([6, 40, 6]);
-        }
-        const clearing = now < clearUntil;
-        const limiter = limiterState({ unreadCard, holding, sinceInput: idle });
+        const limiterFrame = stepLimiter(dashState, {
+          now,
+          unreadCard,
+          wall: k,
+          wallDone: (wall) => story.done[wall],
+          holding,
+          sinceInput: idle,
+        });
+        if (limiterFrame.released && pedal.down) buzz([6, 40, 6]);
+        const { clearing } = limiterFrame;
 
         // The dash, the pace and the hold note (scroll/feedback.ts): the
         // world surges with her push, cruises while a line plays (capped by
@@ -1083,25 +1038,25 @@ export function HeroStage({
 
         // The dash: what it shows, where, and her throttle on the strip.
         const titleOut = clamp01(p / STORY.titleOut);
-        const vis = dashVisibility({ layout, started, sinceEntered, titleOut, p });
-        const nextShow = dashShow({ p, started, mode: nextMode, limiter, clearing });
-        const lim = nextShow === "limiter" ? limiter : "off";
-        // Before her first input the strip blips with each tease, as the car revs.
-        // Her throttle: her input's, or her foot on the pedal, whichever is further down.
-        // A push suspended by going back is no throttle: the strip shows her foot only while it drives.
-        const shownFoot = pedal.suspended ? 0 : pedal.shown;
-        revs = easeRevs(revs, Math.min(1, stripThrottle(rate, shownFoot) + (started ? 0 : DASH.teaseRevs * tease)), realDt);
-        const lit = nextShow === "reverse" ? 0 : lim === "hit" ? DASH.limiterLeds : litLeds(revs, lim !== "off");
-        // Every input of hers flares the strip in the next frame: a forward event (a held pedal is
-        // one, its press), and a push held at a wall.
-        if (scrollInput.stepAt !== lastStepAt || scrollGate.pushedAt !== lastKnockAt) {
-          lastStepAt = scrollInput.stepAt;
-          lastKnockAt = scrollGate.pushedAt;
-          kick = 1;
-        } else {
-          kick = decay(kick, realDt, DASH.kickTau);
-        }
-        if (vis !== "off" && Number.isNaN(bootUntil)) bootUntil = now + DASH.boot * 1000;
+        // Her throttle: her input's, or her foot on the pedal, whichever is further down. A push
+        // suspended by going back is no throttle: the strip shows her foot only while it drives.
+        const dashFrame = stepDash(dashState, limiterFrame, {
+          now,
+          realDt,
+          layout,
+          started,
+          sinceEntered,
+          titleOut,
+          p,
+          mode: nextMode,
+          rate,
+          foot: pedal.suspended ? 0 : pedal.shown,
+          tease,
+          stepAt: scrollInput.stepAt,
+          pushedAt: scrollGate.pushedAt,
+        });
+        const { vis, lim, lit } = dashFrame;
+        const nextShow = dashFrame.show;
         const nowOnStage = p < 1;
         if (nowOnStage !== onStage) {
           onStage = nowOnStage;
@@ -1238,47 +1193,8 @@ export function HeroStage({
 
         // The transport's own mode, for tools/capture/scrollux.mjs (what the dash shows is its data-show).
         attr(root, "data-mode", nextMode);
-        const dash = el.dash;
-        attr(dash, "data-vis", vis);
         // A phone has no dash (dash.ts DASH_MEDIA.phone): nothing to draw there.
-        if (layout !== "phone") {
-          attr(dash, "data-show", nextShow);
-          if (nextShow !== show) {
-            show = nextShow;
-            showParity = flip(showParity);
-          }
-          attr(dash, "data-pulse", showParity);
-          attr(dash, "data-lim", lim === "off" ? null : lim);
-          attr(dash, "data-release", now < sweepUntil ? releaseParity : null);
-          attr(dash, "data-boot", now < bootUntil);
-          attr(dash, "data-remind", nextShow === "prompt" && turn ? remindParity : null);
-          if (lit !== drawn.lit) {
-            drawn.lit = lit;
-            set(el.strip, "--lit", String(lit));
-          }
-          const kickStep = Math.round(kick * 20) / 20;
-          if (kickStep !== drawn.kick) {
-            drawn.kick = kickStep;
-            set(el.strip, "--kick", kickStep.toFixed(2));
-          }
-          // The limit sign's ring is the line's reading bar, drawn from the same value.
-          if (lim !== "off") {
-            const ring = readStep(fill);
-            if (ring !== drawn.lim) {
-              drawn.lim = ring;
-              set(dash, "--lim", ring.toFixed(2));
-            }
-          }
-          if (speed !== shownSpeed) {
-            shownSpeed = speed;
-            const cells = speedCells(speed);
-            for (let i = 0; i < el.cells.length; i += 1) {
-              if (cells[i] === drawnCells[i]) continue;
-              drawnCells[i] = cells[i];
-              el.cells[i].textContent = cells[i];
-            }
-          }
-        }
+        dashPainter.paint(dashFrame, { ring: readStep(fill), speed, turn, remind: remindParity }, layout === "phone", attr, set);
         for (let i = 0; i < el.reel.length; i += 1) {
           const segment = round3(clamp01(p * SHOT_COUNT - i));
           if (segment === drawnFill[i]) continue;
@@ -1363,13 +1279,13 @@ export function HeroStage({
               mode: nextMode,
               // The dash.
               demand,
-              revs,
+              revs: dashState.revs,
               lit,
               lim,
               show: nextShow,
               vis,
               layout,
-              kick,
+              kick: dashState.kick,
               clearing,
               limited: fbInput.limited === true,
               turnFor: feedback.turnFor,
@@ -1436,7 +1352,7 @@ export function HeroStage({
       /** A line step's glide: the pedal waits for it to land before it pushes on. */
       const glideTo = (target: number) => {
         const to = scrollFor(target);
-        stepGlide = { to, until: performance.now() + LINE_GLIDE * 1000 };
+        driver.glide(to, LINE_GLIDE);
         lenis?.scrollTo(to, { programmatic: false, duration: LINE_GLIDE, easing: easeOutCubic });
       };
 
@@ -1488,9 +1404,9 @@ export function HeroStage({
       const goOn = (source: InputSource) => {
         if (!lenis || lenis.isStopped) return;
         recordInput(THROTTLE.keyStep * geom.vh, source, performance.now(), geom.vh);
-        if (keyHold) spentKey = keyHold.code;
+        const held = driver.heldKey();
+        if (held) spentKey = held;
         if (pedal.down) letGo();
-        endHold = 0;
         // Through the page's one way of moving (lib/navigate.ts), like Skip:
         // Lenis starts from where the page is, the walls open on the way past.
         goTo(section.getBoundingClientRect().bottom + window.scrollY, { glide: END_GLIDE, easing: easeOutCubic, focus: null });
@@ -1506,90 +1422,7 @@ export function HeroStage({
        * without knocking again); at the end it glides on. A regrip just
        * carries on. Returns false when the film is not taking input.
        */
-      const pressGas = (via: PedalVia, at: number): boolean => {
-        if (stillQuery.matches || !getSceneLoading().entered || !lenis || lenis.isStopped || getRadio().wheel) return false;
-        // Below the hero the pedal has gone with it: a click left on it (Space on a focused pedal) does nothing.
-        if (pastHero()) return false;
-        // Lenis steps on from the page, even after a native move it has not heard of yet (gate.ts).
-        readScroll();
-        const kind = pressPedal(pedal, via, at);
-        if (kind === null) return true;
-        pedalSource = via === "key" ? "key" : "pedal";
-        pressBackAt = scrollInput.backwardAt;
-        buzz(6);
-        if (kind === "regrip") return true;
-        if (heroProgress.value >= 0.999) goOn(pedalSource);
-        else if (stepLine(1, pedalSource)) {
-          // The press's knock is the arrival's: resting on that wall, the push does not knock again.
-          pedal.contact = true;
-          pedal.wall = frontierIndex(story);
-        }
-        return true;
-      };
-
-      /** Whether the glide of a line step is still in flight (another input took over if Lenis heads elsewhere). */
-      const stepping = (now: number) =>
-        stepGlide !== null && now < stepGlide.until && lenis !== undefined && Math.abs(lenis.targetScroll - stepGlide.to) < 1;
-
-      /**
-       * The pedal's frame, run by SmoothScroll right before lenis.raf: her
-       * foot spools up, is input (so it is never her turn while it is down)
-       * and, once the press's glide has landed, pushes the scroll on at up
-       * to PEDAL.vFull screens a second, trimmed at the wall and at the end
-       * of the hero. It knocks once when it meets the wall and then rests
-       * there: resting is not pushing (no pressure, no note, no Skip offer).
-       * Going back suspends the push (suspendPedal) and her foot is no
-       * input meanwhile: the car coasts and, if the push waits for a new
-       * press, her turn comes. Resting at the very end of the drive is no
-       * input either: the way on comes up while she holds, and once it has
-       * been read (PEDAL.endHold) the pedal still held goes on with it.
-       */
-      scrollDrive.step = (deltaMs, lenisNow) => {
-        const now = performance.now();
-        // A frame counts at most what the story's clocks count: after a stall the picture does not leap.
-        const dt = Math.min(Math.max(0, deltaMs) / 1000, STORY.maxStep);
-        const level = stepPedal(pedal, dt);
-        if (!pedal.down) {
-          endHold = 0;
-          return;
-        }
-        const back = scrollInput.backwardAt > pressBackAt;
-        if (back) pressBackAt = scrollInput.backwardAt;
-        const sinceBack = (now - Math.max(pressBackAt, backAt)) / 1000;
-        if (suspendPedal(pedal, { back, sinceBack })) {
-          scrollInput.pedal = 0;
-          endHold = 0;
-          return;
-        }
-        if (lenisNow.isStopped || stillQuery.matches) return;
-        const end = scrollFor(1);
-        if (heroProgress.value >= 0.999 && lenisNow.targetScroll >= end - 0.5 && !stepping(now)) {
-          scrollInput.pedal = 0;
-          endHold += dt;
-          if (endHold >= PEDAL.endHold) goOn(pedalSource);
-          return;
-        }
-        endHold = 0;
-        recordPedal(pedalRate(level), pedalSource, now);
-        if (stepping(now)) return;
-        // Her foot pushes on from the page, not from where Lenis last left it: a native move it missed
-        // (the scrollbar, find in page) would otherwise send the page back there (gate.ts lenisMissed).
-        readScroll();
-        const wall = Math.min(scrollGate.maxScroll, end);
-        const { dest, knock } = pedalPush(pedal, {
-          target: lenisNow.targetScroll,
-          push: pedalSpeed(level) * geom.vh * dt,
-          max: wall,
-          dt,
-          wall: frontierIndex(story),
-        });
-        // A knock is on a line's wall; the end of the hero is not a wall, the pedal just rests there.
-        if (knock && scrollGate.maxScroll < end) {
-          scrollGate.pressure += ELASTIC.knock * geom.vh;
-          scrollGate.pushedAt = now;
-        }
-        if (dest > lenisNow.targetScroll + 0.01) lenisNow.scrollTo(dest, { programmatic: false, lerp: PEDAL.lerp });
-      };
+      const pressGas = (via: PedalVia, at: number): boolean => driver.press(via, at);
 
       // The frame runs from here on (stepLine above replays a line queued at the title).
       const tick = (_time: number, deltaMs: number) => update(deltaMs);
@@ -1649,10 +1482,7 @@ export function HeroStage({
         const gas = action === "gas" || (action === "next" && (event.key === " " || event.key === "Spacebar"));
         if (gas && event.repeat) {
           event.preventDefault();
-          if (keyHold && keyHold.code === event.code) {
-            keyHold.at = performance.now();
-            keyHold.repeating = true;
-          }
+          driver.holdKey(event);
           return;
         }
         if (atEnd && action !== "gas" && action !== "next") return;
@@ -1660,9 +1490,7 @@ export function HeroStage({
         // Lenis steps on from the page, even after a native move it has not heard of yet (gate.ts).
         readScroll();
         if (gas) {
-          if (pressGas("key", event.timeStamp) && pedal.via === "key") {
-            keyHold = { code: event.code, key: event.key, at: performance.now(), repeating: false };
-          } else if (atEnd) {
+          if (!driver.holdKey(event) && atEnd) {
             // The press went on into the next section: held on, the key's autorepeat must not scroll past it.
             spentKey = event.code;
           }
@@ -1716,20 +1544,9 @@ export function HeroStage({
         }
       };
 
-      /** W or Space up: she lets go. (Space up on the focused pedal must not click it as well.) */
+      /** A key spent into the next section comes up (the driver lets go of a held one itself). */
       const onKeyUp = (event: KeyboardEvent) => {
         if (event.code === spentKey) spentKey = null;
-        if (!keyHold) return;
-        if (event.code !== keyHold.code && event.key !== keyHold.key) return;
-        if (event.key === " " || event.key === "Spacebar") event.preventDefault();
-        letGo(event.timeStamp);
-      };
-      /** The window lost the keyboard or the page went away: a held pedal's release would never come. */
-      const onWindowBlur = () => {
-        if (pedal.down) letGo();
-      };
-      const onPageHide = () => {
-        if (pedal.down) letGo();
       };
 
       /**
@@ -1807,44 +1624,6 @@ export function HeroStage({
         goOn(source);
       };
 
-      /**
-       * The pedal under a finger or the mouse: down presses it (primary
-       * button only), and it stays down, captured, wherever the pointer
-       * slides, until up, a cancel (the home indicator, an alert) or a lost
-       * capture. The mouse never focuses it, so Space is not "kept" on it.
-       */
-      const onPedalDown = (event: PointerEvent) => {
-        pedalPointerAt = performance.now();
-        if (event.pointerType === "mouse" && event.button !== 0) return;
-        if (pedal.down) return;
-        if (!pressGas(event.pointerType === "mouse" ? "mouse" : "touch", event.timeStamp) || !pedal.down) return;
-        pointerHold = event.pointerId;
-        pointerHoldAt = performance.now();
-        try {
-          el.pedal?.setPointerCapture(event.pointerId);
-        } catch {
-          // The pointer is already gone: its up or cancel lets go.
-        }
-      };
-      const onPedalMove = (event: PointerEvent) => {
-        if (event.pointerId === pointerHold) pointerHoldAt = performance.now();
-      };
-      const onPedalUp = (event: PointerEvent) => {
-        pedalPointerAt = performance.now();
-        if (event.pointerId === pointerHold) letGo(event.timeStamp);
-      };
-      const onPedalMouseDown = (event: Event) => event.preventDefault();
-      const onPedalMenu = (event: Event) => event.preventDefault();
-      /**
-       * A click no pointer pressed (VoiceOver, Voice Control, Switch Control): a tap on the pedal. The
-       * click that ends a press or a hold of the mouse comes right after its pointerup, and is not one.
-       */
-      const onPedalClick = (event: globalThis.MouseEvent) => {
-        if (event.detail !== 0 && performance.now() - pedalPointerAt < PEDAL_CLICK_MS) return;
-        if (pedal.down) return;
-        const at = performance.now();
-        if (pressGas("mouse", at)) letGo(at);
-      };
 
       /**
        * How the focus last moved, for targetKind: the control a pointer
@@ -1935,8 +1714,6 @@ export function HeroStage({
       const unregisterPassage = registerPassage({ section, open: openWalls });
       window.addEventListener("keydown", onKey);
       window.addEventListener("keyup", onKeyUp);
-      window.addEventListener("blur", onWindowBlur);
-      window.addEventListener("pagehide", onPageHide);
       window.addEventListener("resize", remeasure);
       document.addEventListener("visibilitychange", onVisibility);
       root.addEventListener("pointerdown", onFinger, true);
@@ -1944,15 +1721,6 @@ export function HeroStage({
       root.addEventListener("pointercancel", onFinger, true);
       root.addEventListener("pointerdown", onPointerDown);
       root.addEventListener("pointerup", onPointerUp);
-      const pedalEl = el.pedal;
-      pedalEl?.addEventListener("pointerdown", onPedalDown);
-      pedalEl?.addEventListener("pointermove", onPedalMove);
-      pedalEl?.addEventListener("pointerup", onPedalUp);
-      pedalEl?.addEventListener("pointercancel", onPedalUp);
-      pedalEl?.addEventListener("lostpointercapture", onPedalUp);
-      pedalEl?.addEventListener("mousedown", onPedalMouseDown);
-      pedalEl?.addEventListener("contextmenu", onPedalMenu);
-      pedalEl?.addEventListener("click", onPedalClick);
       // The W keycaps show the layout's own letter at W's place (Z on AZERTY), where the browser says.
       const keyboard = (navigator as Navigator & { keyboard?: { getLayoutMap?: () => Promise<Map<string, string>> } })
         .keyboard;
@@ -1992,12 +1760,9 @@ export function HeroStage({
         for (const text of cardText) text?.style.removeProperty("--fit");
         unregisterPassage();
         gsap.ticker.remove(tick);
-        letGo();
-        scrollDrive.step = null;
+        driver.dispose();
         window.removeEventListener("keydown", onKey);
         window.removeEventListener("keyup", onKeyUp);
-        window.removeEventListener("blur", onWindowBlur);
-        window.removeEventListener("pagehide", onPageHide);
         window.removeEventListener("resize", remeasure);
         document.removeEventListener("visibilitychange", onVisibility);
         resizeObserver?.disconnect();
@@ -2006,14 +1771,6 @@ export function HeroStage({
         root.removeEventListener("pointercancel", onFinger, true);
         root.removeEventListener("pointerdown", onPointerDown);
         root.removeEventListener("pointerup", onPointerUp);
-        pedalEl?.removeEventListener("pointerdown", onPedalDown);
-        pedalEl?.removeEventListener("pointermove", onPedalMove);
-        pedalEl?.removeEventListener("pointerup", onPedalUp);
-        pedalEl?.removeEventListener("pointercancel", onPedalUp);
-        pedalEl?.removeEventListener("lostpointercapture", onPedalUp);
-        pedalEl?.removeEventListener("mousedown", onPedalMouseDown);
-        pedalEl?.removeEventListener("contextmenu", onPedalMenu);
-        pedalEl?.removeEventListener("click", onPedalClick);
         for (const cap of el.keyCaps) cap.textContent = "W";
         document.removeEventListener("focusin", onFocusIn);
         document.removeEventListener("pointerdown", onAnyPointer, true);
@@ -2148,55 +1905,7 @@ export function HeroStage({
           </div>
         </div>
 
-        {/* The dash (scroll/dash.ts), an F1 wheel display, not a tape deck: fifteen shift lights for her
-            throttle, the car's speed, one word for what the car does, and the pit limiter's 80 sign while an
-            unread line holds it. Decorative: the screen-reader help says the same in text. No gear letter: a
-            "D" read as the WASD key to gamers. */}
-        <div className={styles.dash} data-osd data-vis="off" data-show="hidden" aria-hidden="true">
-          <div className={styles.strip} data-strip>
-            {[0, 1, 2].map((group) => (
-              <span key={group} className={styles.group}>
-                {[0, 1, 2, 3, 4].map((light) => (
-                  <i key={light} className={styles.led} style={{ "--i": group * 5 + light } as CSSProperties} />
-                ))}
-              </span>
-            ))}
-            <span className={styles.flare} />
-          </div>
-          <span className={styles.speed} data-speed>
-            <b className={styles.digit} />
-            <b className={styles.digit} />
-            <b className={styles.digit} />
-          </span>
-          <span className={styles.side}>
-            <span className={styles.unit}>{osd.unit}</span>
-            <span className={styles.status}>
-              <span data-w="drive">{osd.drive}</span>
-              <span data-w="floored">{osd.floored}</span>
-              <span data-w="reverse">{osd.reverse}</span>
-              <span data-w="limiter">{osd.limiter}</span>
-              <span data-w="clear">{osd.clear}</span>
-              {/* The car waits for her: the way on, in her last input's words. */}
-              <span data-w="prompt">
-                <span className={`${styles.glyph} ${styles.forTouch}`} data-g="up" />
-                <span className={`${styles.mouse} ${styles.forWheel}`} data-g="wheel" />
-                <span className={`${styles.mouse} ${styles.forClick}`} data-g="click" />
-                <span className={`${styles.pg} ${styles.forPedal}`} data-g="pedal" />
-                <span className={styles.forWheel}>{intro.next}</span>
-                <span className={styles.forTouch}>{intro.nextTouch}</span>
-                <span className={styles.forClick}>{intro.nextClick}</span>
-                <span className={styles.forPedal}>{intro.nextPedal}</span>
-                <kbd className={`${styles.keycap} ${styles.forKey}`} data-pedal-key>
-                  W
-                </kbd>
-                <kbd className={`${styles.keycap} ${styles.forKey}`}>{intro.nextKey}</kbd>
-              </span>
-            </span>
-            <span className={styles.sign}>
-              <span>{LIMITER.kmh}</span>
-            </span>
-          </span>
-        </div>
+        <Dash osd={osd} cues={intro} />
 
         {/* Before the pedal, which stays over it: at the end the way on still names it. */}
         <div className={styles.fade} data-fade aria-hidden="true" />

@@ -10,6 +10,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { registerScroller, type Scroller } from "@/lib/navigate";
 import { stableScreen } from "@/lib/screen";
 import { getSceneLoading } from "../sceneLoading";
+import { stageGate } from "@/features/work/stageGate";
 import {
   browserStroke,
   GATE,
@@ -188,9 +189,10 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         }
         data.deltaY = move;
       }
-      const gated = Boolean(lenis) && Number.isFinite(scrollGate.maxScroll);
-      const room =
-        lenis && gated ? scrollGate.maxScroll - Math.max(lenis.targetScroll, lenis.actualScroll) : Infinity;
+      // The first unread line on the page binds: the hero's wall or a later stage's.
+      const maxScroll = Math.min(scrollGate.maxScroll, stageGate.maxScroll);
+      const gated = Boolean(lenis) && Number.isFinite(maxScroll);
+      const room = lenis && gated ? maxScroll - Math.max(lenis.targetScroll, lenis.actualScroll) : Infinity;
       const now = performance.now();
       if (event.type === "touchend") {
         scrollGate.touching = false;
@@ -312,6 +314,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       if (!lenis) return;
       // A held pedal pushes the scroll first, so this very frame moves with it.
       scrollDrive.step?.(deltaMs, lenis);
+      for (const step of scrollDrive.steps) step(deltaMs, lenis);
       lenis.raf(time * 1000);
     };
     // First on the ticker: the hero then draws this frame's scroll, not the last one's.

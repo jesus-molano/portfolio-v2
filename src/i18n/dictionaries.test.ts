@@ -10,10 +10,10 @@ const CAPS: [RegExp, number][] = [
   [/^intro\.ack$/, 34],
   [/^intro\.model$/, 40],
   [/^intro\.arriving$/, 40],
-  [/^intro\.keepGoing/, 30],
-  [/^intro\.hold$/, 32],
-  [/^intro\.next/, 12],
-  [/^intro\.end/, 16],
+  [/^cues\.keepGoing/, 30],
+  [/^cues\.hold$/, 32],
+  [/^cues\.next/, 12],
+  [/^cues\.end/, 16],
   [/^osd\./, 9],
   // The pedal's name and its tag beside it on a long wait.
   [/^pedal\.label$/, 20],
@@ -38,13 +38,14 @@ function flatten(value: unknown, prefix = ""): Record<string, string> {
 
 describe("hero UI copy", () => {
   const dicts = [
-    ["en", en.hero],
-    ["es", es.hero],
+    ["en", en.hero, en.common.cues],
+    ["es", es.hero, es.common.cues],
   ] as const;
 
   it("has the same intro and transport keys in both languages", () => {
     expect(Object.keys(es.hero.intro).sort()).toEqual(Object.keys(en.hero.intro).sort());
     expect(Object.keys(es.hero.osd).sort()).toEqual(Object.keys(en.hero.osd).sort());
+    expect(Object.keys(es.common.cues).sort()).toEqual(Object.keys(en.common.cues).sort());
     expect(Object.keys(es.hero.pedal).sort()).toEqual(Object.keys(en.hero.pedal).sort());
   });
 
@@ -63,10 +64,11 @@ describe("hero UI copy", () => {
     }
   });
 
-  for (const [locale, hero] of dicts) {
+  for (const [locale, hero, cues] of dicts) {
     it(`${locale}: keeps every hint, cue and label short enough for its chip`, () => {
       const copy = flatten({
         intro: hero.intro,
+        cues,
         osd: hero.osd,
         pedal: hero.pedal,
         skipLabel: hero.skipLabel,
@@ -85,12 +87,12 @@ describe("hero UI copy", () => {
     });
 
     it(`${locale}: Skip's accessible name contains its visible label`, () => {
-      expect(hero.skipLabel.toLowerCase()).toContain(hero.skip.toLowerCase());
+      expect(hero.skipLabel.toLowerCase()).toContain(cues.skip.toLowerCase());
     });
 
     it(`${locale}: the pedal's accessible name starts with the word its tag shows, and its prompts name it`, () => {
       expect(hero.pedal.label.toLowerCase().startsWith(hero.pedal.tag.toLowerCase())).toBe(true);
-      expect(hero.intro.nextPedal).toBe(hero.pedal.tag);
+      expect(cues.nextPedal).toBe(hero.pedal.tag);
       // Phones learn both ways to drive on the title; after that every prompt speaks her last input.
       expect(hero.intro.hintTouch).toMatch(/pedal/i);
       expect(hero.intro.hintKey).toMatch(/\bW\b/);
@@ -98,7 +100,7 @@ describe("hero UI copy", () => {
 
     it(`${locale}: the hero never sounds like a video player`, () => {
       const words = /\b(play|plays|pause|rewind|fast.?forward|reproduc\w*|pausa|rebobin\w*)\b/i;
-      const copy = flatten({ intro: hero.intro, osd: hero.osd, pedal: hero.pedal, skip: hero.skip, skipHurry: hero.skipHurry });
+      const copy = flatten({ intro: hero.intro, osd: hero.osd, pedal: hero.pedal, cues, skipHurry: hero.skipHurry });
       for (const [key, text] of Object.entries(copy)) expect(text, key).not.toMatch(words);
     });
   }
@@ -178,8 +180,8 @@ describe("loading screen copy", () => {
 
     it(`${locale}: gives away no later section, and promises nothing that is not on the page yet`, () => {
       // The cats and their complaint, STATS (its bars, its map and his favourites), the
-      // cinema and the credits keep their own jokes. The career city's tip comes back
-      // with the city.
+      // cinema and the credits keep their own jokes. The career city's tip names no
+      // employer: the city tells them.
       const later =
         /(?<!\p{L})(cats?|gatos?|line-?up|rueda de reconocimiento|suspects?|sospechosos?|culprit|culpable|appetite|apetito|stats|estadísticas|Metal Gear|cardboard|cartón|Godfather|Padrino|Sopranos?|Breaking Bad|Gladiator|Matrix|Skyrim|cinema|cine|posters?|carteles?|credits|créditos|employers?|currículum|CV)(?!\p{L})/iu;
       for (const tip of tips) expect(tip.text).not.toMatch(later);
