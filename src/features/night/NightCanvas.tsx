@@ -18,7 +18,8 @@ type Props = { timeline: StageTimeline; work: Dictionary["work"]; locale: Locale
  * Mounts the night scene on the client only, and only near the work stage:
  * it mounts when the stage is within about a viewport and a half, renders
  * only while the stage is on screen, and unmounts again when the visitor is
- * far away, so a phone never keeps two scenes busy. A failed scene (no
+ * far away (six screens), so a phone
+ * never keeps two scenes busy. A failed scene (no
  * WebGL) marks the night as failed and the stage shows its text.
  */
 export function NightCanvas({ timeline, work, locale }: Props) {
@@ -37,8 +38,10 @@ export function NightCanvas({ timeline, work, locale }: Props) {
     const mount = new IntersectionObserver(([entry]) => entry.isIntersecting && setNear(true), {
       rootMargin: "150% 0px 150% 0px",
     });
+    // Released only far away (six screens): a pass back up into the hero's end and down again keeps
+    // the scene, or the night came back under its cover, compiling, over the first stops.
     const release = new IntersectionObserver(([entry]) => !entry.isIntersecting && setNear(false), {
-      rootMargin: "300% 0px 300% 0px",
+      rootMargin: "600% 0px 600% 0px",
     });
     const view = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting));
     mount.observe(element);

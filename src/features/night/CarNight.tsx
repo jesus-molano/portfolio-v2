@@ -6,13 +6,20 @@ import { useMemo, useRef } from "react";
 import { AdditiveBlending, Color, type Group, type Object3D, Quaternion, UniformsLib, UniformsUtils, Vector3 } from "three";
 import { CAR_URL, prepareCar } from "@/features/hero/scene/Car";
 import { CAR_MODEL, WHEEL_RADIUS } from "@/features/hero/scene/carModel";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { StageTimeline } from "@/features/work/workTimeline";
-import { carAt, type CarState, HEADLIGHT } from "./carPath";
+import { stepCarMotion } from "./carMotion";
+import { HEADLIGHT } from "./carPath";
 import { cloneBare } from "./cloneBare";
 import { night } from "./nightState";
 import { NightDriver } from "./NightDriver";
 import { type Glow, type GlowHandle, Glows } from "./parts/Glows";
 import { beamFragmentShader, beamVertexShader } from "./shaders/beam";
+
+type ProbeWindow = Window & {
+  /** Set to [] to log the car every frame (tools that measure its motion): time, picture, x, pace, pitch, stop, brake lights. */
+  __vaCarProbe?: { t: number; p: number; x: number; pace: number; pitch: number; stop: number; brake: number }[];
+};
 
 const WHEEL_NAMES = ["wheel_front_l", "wheel_front_r", "wheel_rear_l", "wheel_rear_r"];
 
@@ -32,20 +39,38 @@ const TAILS = [2, 3];
 /** The headlights' beams in the night haze: a cone from each lamp, ahead and a little down. */
 const BEAM = { length: 11, radius: 1.5, dip: 0.07, level: 0.32 } as const;
 
-/**
- * How the body sits on its springs: it dives as it brakes, squats as it
- * pulls away and rocks once as it stops (a damped spring on the pitch).
- */
-const SPRING = { gain: 0.0042, max: 0.04, omega: 9, damping: 0.42 } as const;
+/** A frame this long (s) is the loop resuming, not a frame of the drive. */
+const RESUMED = 0.5;
 
 /**
- * The hero's convertible at night: it drives with the scroll (carPath.ts),
- * rolling into every stop and pulling away from it, wheels turning with the
- * distance, the body pitching on its springs, the headlights' beams
+ * Steps the car toward the picture once a frame (carMotion.ts), before the
+ * camera (NightRig, priority -1), which pans with it, and before the street
+ * and the car's own drawing, which read it. Mounted outside the car's
+ * Suspense, so the camera follows the drive while the model loads.
+ */
+export function CarDrive({ timeline }: { timeline: StageTimeline }) {
+  const still = usePrefersReducedMotion();
+  useFrame((_, delta) => {
+    // A dev jump, or the loop waking (the stage back on screen): the car lands on the picture.
+    stepCarMotion(night.car, timeline, night.p, delta, { snap: night.snap || delta > RESUMED, still });
+    if (process.env.NODE_ENV !== "production") {
+      const probe = (window as ProbeWindow).__vaCarProbe;
+      const m = night.car;
+      if (probe) probe.push({ t: performance.now(), p: night.p, x: m.car.x, pace: m.pace, pitch: m.pitch, stop: m.car.stop, brake: m.car.brake });
+    }
+  }, -2);
+  return null;
+}
+
+/**
+ * The hero's convertible at night: it drives as carMotion.ts steps it,
+ * chasing the picture like a car driven smoothly, rolling into every stop
+ * and pulling away from it, wheels turning with the distance, the body on
+ * its springs (the designed dive, squat and settle), the headlights' beams
  * sweeping the street ahead and the brake lights on at every stop line.
  * Faces +x, the street's direction.
  */
-export function CarNight({ timeline }: { timeline: StageTimeline }) {
+export function CarNight() {
   const { scene } = useGLTF(CAR_URL);
   const group = useRef<Group>(null);
   const body = useRef<Group>(null);
@@ -73,39 +98,22 @@ export function CarNight({ timeline }: { timeline: StageTimeline }) {
       uniforms: UniformsUtils.merge([UniformsLib.fog, { uColor: { value: new Color(HEADLIGHT) }, uLevel: { value: BEAM.level } }]),
     };
   }, []);
-  const motion = useRef({ x: 0, stop: -1, spin: 0, speed: 0, accel: 0, pitch: 0, pitchVel: 0, car: { x: 0, brake: 1, stop: 0 } as CarState });
+  const wheel = useRef({ x: 0, stop: -1, spin: 0 });
 
   // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
-  useFrame(({ camera }, delta) => {
-    const m = motion.current;
-    const car = carAt(timeline, night.p, m.car);
+  useFrame(({ camera }) => {
+    const { car } = night.car;
     const x = car.x;
-    const dt = Math.min(Math.max(delta, 1e-3), 0.1);
-    // A cut to the next stop puts the car back up the road: no spin, no lurch across it.
-    const cut = car.stop !== m.stop;
-    m.stop = car.stop;
-    const dx = cut ? 0 : x - m.x;
-    m.x = x;
-    m.spin += dx / WHEEL_RADIUS;
+    const w = wheel.current;
+    // A cut to the next stop puts the car back up the road: no spin across it.
+    const dx = car.stop === w.stop ? x - w.x : 0;
+    w.stop = car.stop;
+    w.x = x;
+    w.spin += dx / WHEEL_RADIUS;
     // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
-    for (const wheel of wheels) wheel.rotation.x = m.spin;
+    for (const wheelObject of wheels) wheelObject.rotation.x = w.spin;
     if (group.current) group.current.position.x = x;
-
-    // The springs: the speed and its change, smoothed over a few frames, pitch the body.
-    const speed = cut ? 0 : dx / dt;
-    const lastSpeed = m.speed;
-    m.speed += (speed - m.speed) * (1 - Math.exp(-dt / 0.09));
-    const accel = cut ? 0 : (m.speed - lastSpeed) / dt;
-    m.accel += (accel - m.accel) * (1 - Math.exp(-dt / 0.12));
-    const want = Math.min(SPRING.max, Math.max(-SPRING.max, m.accel * SPRING.gain));
-    const force = SPRING.omega * SPRING.omega * (want - m.pitch) - 2 * SPRING.damping * SPRING.omega * m.pitchVel;
-    m.pitchVel += force * dt;
-    m.pitch += m.pitchVel * dt;
-    if (cut) {
-      m.pitch = 0;
-      m.pitchVel = 0;
-    }
-    if (body.current) body.current.rotation.z = m.pitch;
+    if (body.current) body.current.rotation.z = night.car.pitch;
 
     // A lamp glows toward where it points: headlights only seen from ahead,
     // tail lights only from behind, so no glare shows through the body.

@@ -633,6 +633,11 @@
  * the pinned frame, and the film fades and lifts it as the first stop
  * comes in (WorkStage, data-title); under reduced motion and without JS it
  * is the plates' heading, in the flow.
+ *
+ * Its own layer: the film writes its opacity and rise every frame as the
+ * bridge line plays, and without one each write repainted the whole sign
+ * (the haze, the strokes, the shades' copies), 100 to 400 ms a frame on a
+ * slow device every time she drove through the top of the city.
  */
 .chapterBand {
   position: absolute;
@@ -642,6 +647,7 @@
   display: grid;
   align-content: center;
   pointer-events: none;
+  will-change: opacity, transform;
 }
 
 .waking {

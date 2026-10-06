@@ -282,9 +282,19 @@
 }
 
 .hudShot {
+  display: inline-grid;
   padding-left: 0.6rem;
   border-left: 1px solid color-mix(in srgb, var(--va-color-cream) 40%, transparent);
   color: var(--va-color-amber);
+}
+
+.hudShotLabel {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+
+.hudShotLabel[data-current] {
+  visibility: visible;
 }
 
 

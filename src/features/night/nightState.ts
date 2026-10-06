@@ -4,9 +4,13 @@
  * React state on a frame.
  * - The stage writes the picture (`p`), the beat it plays and how armed
  *   the active board is.
+ * - The scene steps the car toward the picture (`car`, carMotion.ts) once
+ *   a frame, before the camera, which pans with it.
  * - The scene writes back where the active board and the LIVE tally land
  *   on screen, so the stage can draw the hotspot, the reticle and the iris.
  */
+import { type CarMotion, newCarMotion } from "./carMotion";
+
 export type NdcQuad = [[number, number], [number, number], [number, number], [number, number]];
 
 export const night = {
@@ -14,6 +18,8 @@ export const night = {
   p: 0,
   /** Index of the stop on screen (0..4). */
   stop: 0,
+  /** The car, chasing the picture like a car driven smoothly (carMotion.ts): its x, lights, stop and springs. */
+  car: newCarMotion() as CarMotion,
   /** A jump the camera must not glide through (a capture's or a deep link's): NightRig cuts to its pose once. */
   snap: false,
   /** The board's armed level: `armTarget` is 0 or 1, `armed` eases toward it. */

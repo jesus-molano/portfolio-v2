@@ -15,7 +15,7 @@ import { ChapterCard } from "@/components/ChapterCard/ChapterCard";
 import { Button } from "@/components/ui/Button";
 import { motion } from "@/design/tokens";
 import { decay, ELASTIC, rubberBand, touchStretchMax } from "@/features/hero/scroll/elastic";
-import { lenisMissed, type PageReading } from "@/features/hero/scroll/gate";
+import { lenisMissed, type PageReading, pageScroll } from "@/features/hero/scroll/gate";
 import { type InputSource, recordInput, scrollGate, scrollInput } from "@/features/hero/scroll/heroProgress";
 import { createPedalDriver } from "@/features/hero/scroll/pedalDriver";
 import { STORY } from "@/features/hero/scroll/story";
@@ -87,6 +87,8 @@ const HOLDING_MS = 220;
 const HOTSPOT_MS = 100;
 /** The pedal's knock flash (ms), as in the hero. */
 const KNOCK_MS = 300;
+/** How long a push held at a drive's wall rides it on (ms; see the ride in update). */
+const RIDE_MS = 600;
 /** Seconds the held pedal glides on into the next section at the end. */
 const PEDAL_GOON_GLIDE = 0.9;
 
@@ -149,6 +151,8 @@ type DevWindow = Window & {
   __vaArm?: (on?: boolean) => void;
   /** The stage's wall, read by tools/capture/scrollux.mjs (cityswipe). */
   __vaStageGate?: typeof stageGate;
+  /** Set to [] to log the picture every frame (time, film position, stop): tools that measure the car's motion read it. */
+  __vaStageProbe?: { t: number; p: number; stop: number }[];
 };
 
 /**
@@ -196,6 +200,9 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         // The film's length is the stage less one stable screen, so the bars never re-measure it.
         geom.range = Math.max(1, rect.height - large);
         geom.vh = large;
+        // Where the film is pinned: a finger landing there is Lenis' stroke, as in the hero (gate.ts browserStroke).
+        stageGate.pinFrom = geom.top;
+        stageGate.pinTo = geom.top + geom.range;
       };
       measure();
       let fontsWaiting = true;
@@ -204,16 +211,19 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       });
       const scrollFor = (p: number) => geom.top + p * geom.range;
       const progressFor = (y: number) => (y - geom.top) / geom.range;
-      const scrollNow = () => (lenis ? lenis.scroll : window.scrollY);
-      // Lenis steps on from the page, even after a native move it has not heard of yet (gate.ts).
+      // Where the page is, as the hero reads it (gate.ts): its own offset, drawn from Lenis' sub-pixel
+      // value while the two agree, and Lenis started again from the page when it missed a native move,
+      // so the picture is the page even under the browser's own fling.
       const reading: PageReading = { page: 0, lenis: 0, gliding: false };
       const readScroll = () => {
-        if (!lenis) return;
         reading.page = window.scrollY;
+        if (!lenis) return reading.page;
         reading.lenis = lenis.scroll;
         reading.gliding = lenis.isScrolling === "smooth";
         if (lenisMissed(reading)) lenis.animatedScroll = lenis.targetScroll = reading.page;
+        return pageScroll(reading);
       };
+      const scrollNow = readScroll;
 
       const key = walls.map((w) => `${w.kind}:${w.from.toFixed(5)}`).join("|");
       if (kept.current?.key !== key) {
@@ -357,9 +367,12 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         const rewinding = now - Math.max(scrollInput.backwardAt, backAt) < STORY.rewindHide * 1000;
         lastP = p;
         const inStage = target > -0.02 && target < 1.02;
+        // Where the page is heading: a hold's wall plays only while her drive heads for it (workStory.ts).
+        const reach = lenis ? progressFor(Math.max(lenis.targetScroll, scroll)) : target;
         const active = stepStageStory(walls, story, timeline, p, dt, {
           rewinding,
           running: visible && ready && inStage,
+          reach,
         });
         const k = stageFrontierIndex(story);
         const beatIndex = beatIndexAt(timeline, p);
@@ -369,6 +382,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         stepDipView(view, timeline, p, Math.max(0, beat.stop), ready ? dt : 0);
         const stop = view.stop;
         night.p = view.p;
+        if (process.env.NODE_ENV !== "production") (window as DevWindow).__vaStageProbe?.push({ t: now, p: view.p, stop: view.stop });
         if (stop !== night.stop || lastStop < 0) {
           night.stop = stop;
           fire({ type: "stopChanged" });
@@ -575,6 +589,29 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
             const want = scrollFor(Math.min(carry.to, frontierNow));
             if (want > lenis.targetScroll + 0.5) lenis.scrollTo(want, { programmatic: false, lerp: motion.scrollLerp });
           }
+        }
+
+        // A push held at a drive between two stops (a held beat, not a line) rides it: for RIDE_MS after
+        // her last input trimmed at its wall, the page follows the wall as it creeps, so notches or a
+        // flick a moment apart drive the beat at its own pace instead of nudging it a step at a time.
+        // Wheel and swipes only (a press has its carry; the pedal pushes for itself and stops as she lets
+        // go), not under a finger (it holds the page where it is) nor going back.
+        const front = k >= 0 ? walls[k] : undefined;
+        if (
+          front?.kind === "hold" &&
+          (scrollInput.source === "wheel" || scrollInput.source === "touch") &&
+          !driver?.pedal.down &&
+          !carry &&
+          inStage &&
+          lenis &&
+          !lenis.isStopped &&
+          !scrollGate.touching &&
+          !rewinding &&
+          now - scrollGate.pushedAt < RIDE_MS &&
+          scrollInput.at <= scrollGate.pushedAt + 1
+        ) {
+          const want = scrollFor(Math.min(1, stageFrontier(walls, story)));
+          if (want > lenis.targetScroll + 0.5) lenis.scrollTo(want, { programmatic: false, lerp: motion.scrollLerp });
         }
 
         gate(stageFrontier(walls, story), scroll, now);
@@ -899,6 +936,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         document.removeEventListener("focusout", onFocusOut);
         if (hotspot) hotspot.style.clipPath = "none";
         stageGate.maxScroll = Number.POSITIVE_INFINITY;
+        stageGate.pinFrom = Number.POSITIVE_INFINITY;
+        stageGate.pinTo = Number.NEGATIVE_INFINITY;
         actions.current = null;
         delete (window as DevWindow).__vaStage;
         delete (window as DevWindow).__vaArm;

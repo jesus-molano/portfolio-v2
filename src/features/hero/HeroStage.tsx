@@ -1793,7 +1793,15 @@ export function HeroStage({
         {/* Decoration, like the dash: the screen-reader help says what the film is. */}
         <p className={styles.hudCamera} data-hud aria-hidden="true">
           {camera} {String(shot + 1).padStart(2, "0")}/{String(SHOT_COUNT).padStart(2, "0")}
-          <span className={styles.hudShot}>{shotLabel}</span>
+          {/* Every label in one cell, the current one shown: the readout keeps the widest's width, so
+              anchored right it never moves at a cut (a layout shift at every shot change). */}
+          <span className={styles.hudShot}>
+            {shots.map((label) => (
+              <span key={label} className={styles.hudShotLabel} data-current={label === shotLabel ? "" : undefined}>
+                {label}
+              </span>
+            ))}
+          </span>
         </p>
 
         {/* Where she is in the five shots: a reel, not a buffer bar. */}

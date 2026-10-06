@@ -11,7 +11,7 @@ import type { QualityTier } from "@/features/hero/useQualityTier";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { StageTimeline } from "@/features/work/workTimeline";
-import { CarNight } from "./CarNight";
+import { CarDrive, CarNight } from "./CarNight";
 import { NightEffects } from "./NightEffects";
 import { NightRig } from "./NightRig";
 import { NightSky } from "./NightSky";
@@ -191,6 +191,8 @@ export function NightScene({ tier, active, timeline, work, locale }: Props) {
       <fog attach="fog" args={[palette.nightFog, FOG.near, FOG.far]} />
       {WATCH_FRAME_RATE && active && !slow ? <PerformanceMonitor onDecline={() => setSlow(true)} /> : null}
       <SetSwitch groups={groups} />
+      {/* Steps the car toward the picture before the camera, which pans with it, and the street, which it lights. */}
+      <CarDrive timeline={timeline} />
       <NightRig timeline={timeline} sets={SETS} parallax={tier === "high"} />
       <NightSky />
       <StopLights sets={SETS} />
@@ -202,10 +204,10 @@ export function NightScene({ tier, active, timeline, work, locale }: Props) {
         <Lightformer form="rect" intensity={1.2} color={palette.cyan} position={[12, 5, 4]} scale={[5, 0.6, 1]} />
         <Lightformer form="rect" intensity={0.6} color={palette.violet} position={[0, 20, 0]} rotation-x={Math.PI / 2} scale={[40, 40, 1]} />
       </Environment>
-      <Street sets={SETS} timeline={timeline} />
+      <Street sets={SETS} />
       <SceneErrorBoundary name="Night car">
         <Suspense fallback={null}>
-          <CarNight timeline={timeline} />
+          <CarNight />
         </Suspense>
       </SceneErrorBoundary>
       {SETS.map((set, i) => (

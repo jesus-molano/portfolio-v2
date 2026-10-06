@@ -222,9 +222,34 @@ export function liftFling(fling: number, room: number, vh: number): number {
  * scrolling owns the bars and its momentum. In the hero, Lenis drives
  * every stroke as ever (a native fling back up into it is fine: the walls
  * are open, and the frame reads the page).
+ *
+ * The career city's film (`pinned`, its pinned stretch of the page) is
+ * the hero's kind of page: a stroke that starts there is Lenis' too, its
+ * walls open or not. Its picture is drawn from the page in the same frame
+ * Lenis moves it, so the film follows the finger 1:1, where the browser's
+ * own scrolling ran ahead of it on the compositor (a phone's picture
+ * stepping at every other frame) and boosted flick after flick into
+ * thousands of pixels a frame. The bars stay as they are under a stroke
+ * Lenis drives, as in the hero.
+ *
+ * With every wall open, a finger landing on the browser's own fling
+ * (`native`: Lenis saw the page scroll natively in the last 0.4 s, a
+ * fling flown in from STATS into the city, or from THE USUAL SUSPECTS
+ * into the hero's end) stays the browser's, wherever it lands: its touch
+ * stops its own fling. Taken over by Lenis, the fling ran on under the
+ * stroke and the two moved the page by turns, against her finger.
  */
-export function browserStroke(page: number, heroEnd: number, maxScroll: number): boolean {
-  return !Number.isFinite(maxScroll) && Number.isFinite(heroEnd) && page >= heroEnd - 0.5;
+export function browserStroke(
+  page: number,
+  heroEnd: number,
+  maxScroll: number,
+  pinned: { from: number; to: number } = { from: Number.POSITIVE_INFINITY, to: Number.NEGATIVE_INFINITY },
+  native = false,
+): boolean {
+  const open = !Number.isFinite(maxScroll) && Number.isFinite(heroEnd);
+  if (open && native) return true;
+  if (page >= pinned.from - 0.5 && page <= pinned.to + 0.5) return false;
+  return open && page >= heroEnd - 0.5;
 }
 
 /** The keys whose default action scrolls the page (with or without modifiers: Ctrl+End, Cmd+Down). */

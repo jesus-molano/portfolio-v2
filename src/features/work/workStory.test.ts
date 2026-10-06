@@ -4,6 +4,7 @@ import en from "@/i18n/dictionaries/en.json";
 import { workTimeline } from "./workTimeline";
 import {
   activeCardAt,
+  HOLD_LEAD,
   newStageStory,
   openAllWalls,
   openWallsUpTo,
@@ -70,6 +71,32 @@ describe("work story", () => {
     for (let i = 0; i < 300; i += 1) stepStageStory(walls, story, timeline, 0, 1 / 60, { rewinding: false, running: false });
     expect(stageFrontierIndex(story)).toBe(0);
     expect(story.clock[0]).toBe(0);
+  });
+
+  it("plays a held beat only while she drives into it: a rest leaves at most HOLD_LEAD of it ahead", () => {
+    const dt = 1 / 60;
+    const k = walls.findIndex((w) => w.kind === "hold" && timeline.beats[w.beat].id.endsWith(".open"));
+    const wall = walls[k];
+    const story = newStageStory(walls, timeline.cards.length);
+    openWallsUpTo(walls, story, wall.from - 1e-4);
+    // She arrives at the cut and stops there, under the night, for five seconds.
+    const p = wall.from;
+    for (let t = 0; t < 5; t += dt) stepStageStory(walls, story, timeline, p, dt, { ...running, reach: p });
+    expect(story.done[k]).toBe(false);
+    const ahead = stageFrontier(walls, story) - p;
+    const lead = (HOLD_LEAD * (wall.to - wall.from)) / wall.hold;
+    expect(ahead).toBeGreaterThan(lead * 0.9);
+    expect(ahead).toBeLessThan(lead + 0.0001);
+    // Driving on (the page heading for the wall), the rest of the beat plays at its own pace.
+    let q = p;
+    let t = 0;
+    while (!story.done[k] && t < 10) {
+      stepStageStory(walls, story, timeline, q, dt, { ...running, reach: stageFrontier(walls, story) });
+      q = Math.min(stageFrontier(walls, story), wall.to);
+      t += dt;
+    }
+    expect(story.done[k]).toBe(true);
+    expect(t).toBeGreaterThan(wall.hold - HOLD_LEAD - 0.1);
   });
 
   it("opens the walls for navigation and for Skip", () => {

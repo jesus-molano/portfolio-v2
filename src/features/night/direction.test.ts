@@ -72,7 +72,7 @@ describe("the camera's direction", () => {
   ] as const) {
     const timeline = workTimeline(dict.work);
     const keys = rigKeys(timeline, SETS.length);
-    const poseAt = (stop: number, p: number, aspect: number) => rigPose(timeline, SETS[stop], keys[stop], p, aspect, { x: 0, brake: 1, stop });
+    const poseAt = (stop: number, p: number, aspect: number) => rigPose(timeline, SETS[stop], keys[stop], p, aspect, carAt(timeline, p).x);
 
     it(`keys every stop in film order, inside the stop (${name})`, () => {
       DIRECTION.forEach((direction, stop) => {

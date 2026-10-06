@@ -41,7 +41,8 @@ gsap.registerPlugin(ScrollTrigger);
  * Lenis or by the gate, so the browser never takes a stroke over. Below
  * the hero, with every wall open (the hero's and the career city's), a
  * stroke is the browser's own from its first move (gate.ts
- * browserStroke): nothing to gate there, and the
+ * browserStroke), but for one that starts in the career city's film,
+ * which Lenis drives as it drives the hero's: nothing to gate there, and the
  * browser, not Lenis, owns a phone's bars coming and going. A
  * finger moves the page once past its slop, so a resting thumb that
  * trembles is still, and its fling flies up to the wall and no further.
@@ -66,6 +67,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
   const pinch = useRef(false);
   /** The current touch stroke started below the hero: the browser scrolls it (gate.ts browserStroke). */
   const browserOwns = useRef(false);
+  /** The career city's pinned film (px), read at each finger's landing. */
+  const pinned = useRef({ from: Number.POSITIVE_INFINITY, to: Number.NEGATIVE_INFINITY });
 
   /*
    * Gate for wheel and touch input, run by Lenis before it scrolls. It
@@ -154,10 +157,15 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         // Below the hero with every wall open, the stroke is the browser's (gate.ts browserStroke). A
         // closed wall of the career city's binds as the hero's does: a native stroke there ran past it
         // on every move, and the stage pulled the page back a frame later.
+        // The career city's film is the hero's kind of page: a stroke there is Lenis' as in the hero.
+        pinned.current.from = stageGate.pinFrom;
+        pinned.current.to = stageGate.pinTo;
         browserOwns.current = browserStroke(
           window.scrollY,
           scrollGate.heroEnd,
           Math.min(scrollGate.maxScroll, stageGate.maxScroll),
+          pinned.current,
+          lenis?.isScrolling === "native",
         );
         // A second finger landing beside a held pedal: Lenis would take it for a tap that stops the
         // scroll (reset), dropping the pedal's glide. Its strokes still scroll as ever. Otherwise

@@ -3,8 +3,14 @@
  * the stage's own beats. The picture is `min(scroll, frontier)`; the wall
  * of the first unfinished beat creeps through that beat at its own pace.
  * A card holds until it has been on screen, fully opaque, for its reading
- * time; a hold (the title, the arrival, the flips, the crane) holds for its
- * seconds once the picture has reached it. Nothing plays without input.
+ * time; a hold (the title, the arrival, the flips, the crane) plays for its
+ * seconds while she drives into it: its wall creeps at the beat's own pace
+ * only while the page is heading for it (her input, the pedal, a press's
+ * ride), and runs no more than HOLD_LEAD seconds of the beat ahead of a
+ * picture she has stopped. A wall that ran on while she rested (under the
+ * night of a cut, say) left the whole beat open, and her next flick played
+ * the arrival in a frame, the car jumping across the street. Nothing plays
+ * without input.
  *
  * Pure functions on a small mutable state, stepped by WorkStage.
  */
@@ -20,10 +26,27 @@ export type StageContext = {
   rewinding: boolean;
   /** The tab is visible and the night is ready: clocks run. */
   running: boolean;
+  /**
+   * Where the page is heading (film progress): the scroll target of her
+   * input, a ride or the pedal, at least the picture. A hold's wall creeps
+   * only while it is less than HOLD_LEAD seconds of its beat ahead of this.
+   * Defaults to the picture.
+   */
+  reach?: number;
 };
 
 /** A hold wall starts counting once the picture is this close to its start (film progress). */
 const HOLD_REACH = 0.0005;
+
+/**
+ * Seconds of its beat a hold's wall may run ahead of where the page is
+ * heading. While she drives, the page heads for the wall itself (her
+ * input trimmed there, WorkStage's ride after a push, the pedal), so the
+ * beat plays at its pace; once she stops, the wall stops this far ahead,
+ * so her next flick plays at most this much of the beat in one go (an
+ * arrival's car some 5 m at its cruise).
+ */
+export const HOLD_LEAD = 0.25;
 
 /** Card windows (where a card is fully up), per timeline, so a frame allocates nothing. */
 const windowsOf = new WeakMap<StageTimeline, { from: number; to: number }[]>();
@@ -131,7 +154,12 @@ export function stepStageStory(
   }
   if (!wall || !ctx.running) return active;
   if (wall.kind === "hold") {
-    if (p >= wall.from - HOLD_REACH) story.clock[k] += step;
+    const span = Math.max(1e-9, wall.to - wall.from);
+    const front = wall.from + span * story.creep[k];
+    const reach = Math.max(p, ctx.reach ?? p);
+    // Seconds of the beat the wall may still run before it is HOLD_LEAD ahead of where the page heads.
+    const room = HOLD_LEAD - ((front - reach) / span) * wall.hold;
+    if (p >= wall.from - HOLD_REACH && room > 0) story.clock[k] += Math.min(step, room);
     story.creep[k] = Math.max(story.creep[k], Math.min(1, story.clock[k] / wall.hold));
   } else if (active === wall.card) {
     story.clock[k] += step;

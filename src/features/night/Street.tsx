@@ -4,8 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { Color, type Mesh, UniformsLib, UniformsUtils, Vector3 } from "three";
 import { palette } from "@/design/tokens";
-import type { StageTimeline } from "@/features/work/workTimeline";
-import { carAt, type CarState, HEADLIGHT } from "./carPath";
+import { HEADLIGHT } from "./carPath";
 import { night } from "./nightState";
 import type { NightSet } from "./sets/types";
 import { WET_ROAD_LIGHTS, wetRoadFragmentShader, wetRoadVertexShader } from "./shaders/wetRoad";
@@ -21,11 +20,10 @@ const KERB = { h: 0.16, d: 0.35 } as const;
  * car's headlights on the asphalt ahead of it. Its uniforms switch with the
  * stop, so one draw serves the whole drive.
  */
-export function Street({ sets, timeline }: { sets: readonly NightSet[]; timeline: StageTimeline }) {
+export function Street({ sets }: { sets: readonly NightSet[] }) {
   const near = useRef<Mesh>(null);
   const far = useRef<Mesh>(null);
   const lastStop = useRef(-1);
-  const car = useRef<CarState>({ x: 0, brake: 1, stop: 0 });
   const uniforms = useMemo(
     () =>
       UniformsUtils.merge([
@@ -50,7 +48,7 @@ export function Street({ sets, timeline }: { sets: readonly NightSet[]; timeline
   // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
   useFrame(() => {
     // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
-    uniforms.uCarX.value = carAt(timeline, night.p, car.current).x;
+    uniforms.uCarX.value = night.car.car.x;
     if (night.stop === lastStop.current) return;
     lastStop.current = night.stop;
     const set = sets[night.stop];

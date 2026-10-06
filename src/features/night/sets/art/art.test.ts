@@ -127,10 +127,12 @@ describe("the boards' copy at Logixs and Cloud District", () => {
       expect(telpark.search).toHaveLength(3);
       for (const field of telpark.search ?? []) expect(field).toHaveLength(2);
       expect(telpark.spot?.price).toMatch(/9[.,]90/);
-      // The mirror says what Omega and Monitor are; the first card says the clients rotated.
+      // The mirror says what Omega and Monitor are; the cards say what the place was to him:
+      // several projects in a year, and the pizzas at the annual meetings (the owner's words).
       expect(stop.mirror).toMatch(/Omega/);
       expect(stop.mirror).toMatch(/Monitor/);
-      expect(stop.cards[0]).toMatch(/rota/i);
+      expect(stop.cards[0]).toMatch(/proyectos|projects/i);
+      expect(stop.cards[1]).toMatch(/pizzas/i);
     });
 
     it(`names the café after the consultancy (${locale})`, () => {

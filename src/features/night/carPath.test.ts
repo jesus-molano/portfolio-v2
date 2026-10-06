@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
 import { workTimeline } from "@/features/work/workTimeline";
-import { arriveX, CAR_PATH, carAt, carLegs, leaveX, stopAt } from "./carPath";
+import { arriveLean, arriveX, CAR_PATH, carAt, carLegs, leaveLean, leaveX, stopAt } from "./carPath";
 
 describe("the car's legs", () => {
   it("cruises in, then brakes to the stop line without a jump in its speed", () => {
@@ -27,8 +27,39 @@ describe("the car's legs", () => {
 
   it("pulls away from rest", () => {
     expect(leaveX(18, 0)).toBe(0);
-    expect(leaveX(18, 1)).toBe(18);
+    expect(leaveX(18, 1)).toBeCloseTo(18, 9);
     expect(leaveX(18, 0.1)).toBeLessThan(leaveX(18, 1) * 0.1);
+  });
+
+  it("brakes and pulls away without a jolt: the pedal goes down and comes off smoothly", () => {
+    // The deceleration (second difference) starts and ends at zero, and never jumps.
+    const steps = 2000;
+    const x = (u: number) => arriveX(30, 0.6, u);
+    const accel = (u: number) => (x(u + 1 / steps) - 2 * x(u) + x(u - 1 / steps)) * steps * steps;
+    let last = accel(1 / steps);
+    for (let i = 2; i < steps - 1; i += 1) {
+      const now = accel(i / steps);
+      expect(Math.abs(now - last)).toBeLessThan(2);
+      last = now;
+    }
+    expect(Math.abs(accel(0.4 + 1 / steps))).toBeLessThan(0.5);
+    expect(Math.abs(accel(1 - 2 / steps))).toBeLessThan(0.5);
+    expect(Math.abs((leaveX(18, 2 / steps) - 2 * leaveX(18, 1 / steps)) * steps * steps)).toBeLessThan(0.5);
+  });
+
+  it("leans as the drive is designed: a dive only while braking, a squat only while pulling away", () => {
+    for (let i = 0; i <= 100; i += 1) {
+      const u = i / 100;
+      const lean = arriveLean(0.6, u);
+      if (u <= 0.4 || u >= 1) expect(lean).toBe(0);
+      else expect(lean).toBeLessThanOrEqual(0);
+      expect(lean).toBeGreaterThanOrEqual(-1);
+      expect(leaveLean(u)).toBeGreaterThanOrEqual(0);
+      expect(leaveLean(u)).toBeLessThanOrEqual(1);
+    }
+    expect(arriveLean(0.6, 0.75)).toBe(-1);
+    expect(leaveLean(0)).toBe(0);
+    expect(leaveLean(0.5)).toBe(1);
   });
 });
 

@@ -5,10 +5,17 @@
  * direction's tests walk the very poses NightRig follows.
  */
 import type { StageTimeline } from "@/features/work/workTimeline";
-import { carAt, type CarState } from "./carPath";
 import { DIRECTION } from "./direction";
 import { CAR_HALF, carBox, fitPose, type Key, mixPose, type Pose, poseAt, SAFE, type Vec3 } from "./frame";
 import type { NightSet } from "./sets/types";
+
+/**
+ * How fast the camera eases (1/s), as in the hero's rig: a jump of the car
+ * (snapped onto the picture within a stop) and the pointer's parallax glide
+ * in, and settle within a fraction of a second. A cut (a new stop, under
+ * the dip) takes the camera at once.
+ */
+export const FOLLOW = 5.5;
 
 /** Lowest eye height a fitted camera may take (m). */
 export const MIN_EYE = 0.7;
@@ -30,17 +37,18 @@ export function rigKeys(timeline: StageTimeline, count: number): StopKeys[] {
   });
 }
 
-/** Where the car's cabin is at film position p, for a tracking look. */
-export function carAim(timeline: StageTimeline, p: number, car: CarState): Vec3 {
-  const at = carAt(timeline, p, car);
-  return [at.x + CAR_AIM.lead, CAR_AIM.y, 0];
+/** Where the cabin of a car at `carX` is, for a tracking look. */
+export function carAim(carX: number): Vec3 {
+  return [carX + CAR_AIM.lead, CAR_AIM.y, 0];
 }
 
 /**
  * The pose the rig follows at film position p on a screen of `aspect`:
  * the keyed pose; on a portrait screen fitted to the stop's subject (as
  * much as the key's `fit` asks); its look panned toward the car as much as
- * the key's `track` asks; never under MIN_EYE.
+ * the key's `track` asks; never under MIN_EYE. `carX` is where the car is
+ * drawn (carMotion.ts: it chases the picture, a glide behind it at most),
+ * so a tracking look stays on the car itself.
  */
 export function rigPose(
   timeline: StageTimeline,
@@ -48,7 +56,7 @@ export function rigPose(
   keys: StopKeys,
   p: number,
   aspect: number,
-  car: CarState,
+  carX: number,
 ): Pose {
   const portrait = aspect < 1;
   const key = poseAt(portrait ? keys.portrait : keys.landscape, p);
@@ -63,7 +71,7 @@ export function rigPose(
   }
   const track = key.track ?? 0;
   if (track > 0) {
-    const aim = carAim(timeline, p, car);
+    const aim = carAim(carX);
     const look = pose.look;
     pose = {
       ...pose,
@@ -79,4 +87,30 @@ export function rigPose(
     };
   }
   return pose;
+}
+
+/** The film time the camera shoots at, and how far it still trails a jump of the car's (natural film, 0..1). */
+export type ShotClock = { at: number; offset: number };
+
+export function newShotClock(): ShotClock {
+  return { at: Number.NaN, offset: 0 };
+}
+
+/**
+ * Steps the camera's film time toward `target`, the car's own moment of the
+ * drive (carMotion.ts framedAt): the keys describe the car's drive, so the
+ * camera shoots exactly the moment the car is drawn at, and the car never
+ * leaves a shot that frames it, however far it trails a fling (a phone's
+ * frame is a third of a desktop's). The car's moment is already smooth (its
+ * pace has bounded acceleration and jerk), so nothing lags it. A jump of
+ * the car's (`jumped`) is eased in at FOLLOW, never shown as a jump of the
+ * camera; a cut takes it at once.
+ */
+export function stepShotClock(clock: ShotClock, target: number, delta: number, opts: { cut: boolean; jumped: boolean }): number {
+  if (opts.cut || !Number.isFinite(clock.at)) clock.offset = 0;
+  else if (opts.jumped) clock.offset = clock.at - target;
+  clock.offset *= Math.exp(-Math.min(Math.max(delta, 0), 0.1) * FOLLOW);
+  if (Math.abs(clock.offset) < 1e-7) clock.offset = 0;
+  clock.at = target + clock.offset;
+  return clock.at;
 }

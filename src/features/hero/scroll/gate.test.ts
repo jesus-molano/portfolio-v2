@@ -181,6 +181,27 @@ describe("a finger below the hero", () => {
     expect(browserStroke(heroEnd + 10, heroEnd, 1200)).toBe(false);
   });
 
+  it("stays Lenis' inside the career city's film, its walls open or not", () => {
+    const pinned = { from: heroEnd + 2000, to: heroEnd + 9000 };
+    expect(browserStroke(heroEnd + 2000, heroEnd, Number.POSITIVE_INFINITY, pinned)).toBe(false);
+    expect(browserStroke(heroEnd + 5000, heroEnd, Number.POSITIVE_INFINITY, pinned)).toBe(false);
+    expect(browserStroke(heroEnd + 9000, heroEnd, Number.POSITIVE_INFINITY, pinned)).toBe(false);
+    // Above it (THE USUAL SUSPECTS) and below it (STATS) the browser's, as ever.
+    expect(browserStroke(heroEnd + 1000, heroEnd, Number.POSITIVE_INFINITY, pinned)).toBe(true);
+    expect(browserStroke(heroEnd + 9100, heroEnd, Number.POSITIVE_INFINITY, pinned)).toBe(true);
+    // Landing on the browser's own fling (flown in from STATS): the browser's, which stops it.
+    expect(browserStroke(heroEnd + 5000, heroEnd, Number.POSITIVE_INFINITY, pinned, true)).toBe(true);
+    // With a wall closed, never.
+    expect(browserStroke(heroEnd + 5000, heroEnd, heroEnd + 6000, pinned, true)).toBe(false);
+  });
+
+  it("leaves the browser's own fling to the browser in the hero too, its walls open", () => {
+    // Flown up from THE USUAL SUSPECTS into the hero's end: the finger that lands on it stops it.
+    expect(browserStroke(heroEnd - 300, heroEnd, Number.POSITIVE_INFINITY, undefined, true)).toBe(true);
+    expect(browserStroke(heroEnd - 300, heroEnd, 900, undefined, true)).toBe(false);
+    expect(browserStroke(0, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, undefined, true)).toBe(false);
+  });
+
   it("stays Lenis' with no film measured (no hero on the page, or the still hero)", () => {
     expect(browserStroke(9000, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY)).toBe(false);
   });

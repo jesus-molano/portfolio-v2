@@ -7,7 +7,7 @@
  *
  *   node tools/capture/scrollux.mjs [--url http://localhost:3000]
  *     [--lang en|es|both] [--device desktop|mobile|both] [--only a,b,...]
- *     [--webgl]
+ *     [--webgl] [--out .captures/cityloop] [--replay <dir>]
  *
  * Checks: swipe (a thumb resting before a swipe never opens the radio; a
  * still long-press does; a thumb resting for a while, or beside a thumb
@@ -62,6 +62,21 @@
  * career city, its walls closed ahead: nothing moves), cityswipe (a phone's
  * swipes and flings in the career city, its walls closed ahead: every move
  * gated, no scroll past the wall, no wall opened by a fling's momentum),
+ * cityloop (a visitor drives the whole career city from THE USUAL SUSPECTS
+ * to STATS with every input in turn, its walls closed ahead: notches,
+ * trackpad flings, PageDown and Space, the pedal held, and on a phone
+ * swipes and flicks while the bars come and go; then, the city complete,
+ * back up into the hero's end and down to STATS twice and fast both ways;
+ * and the same back and forth over the hero alone as the reference of the
+ * run. Every frame is read against the city's own timeline, walls, cuts
+ * and car path (loaded from src/ by Node): never against her input, no
+ * jump out of a glide, no layout shift, every card up for its reading
+ * time, every held beat at a drive's pace, the car never jumping in sight,
+ * the set changing only under night, the walls staying open and the
+ * picture the scroll once complete; it reports how long input is held
+ * with nothing moving, frame timing, long tasks and stalls, city against
+ * hero; `--out` takes the traces and frames, default .captures/cityloop, and
+ * `--replay <dir>` scores the traces of an earlier run without driving),
  * statics (after Skip, the static
  * page follows wheel notches, trackpad bursts and keys on a desktop, and
  * swipes on a phone whose bars hide going down and come back going up,
@@ -82,6 +97,8 @@ const { values } = parseArgs({
     device: { type: "string", default: "both" },
     only: { type: "string", default: "" },
     webgl: { type: "boolean", default: false },
+    out: { type: "string", default: ".captures/cityloop" },
+    replay: { type: "string", default: "" },
   },
 });
 
@@ -388,6 +405,580 @@ function staticsVerdict(log, floor) {
       shifts: shifts.slice(0, 3),
     },
   };
+}
+
+/**
+ * The cityloop check's model of the career city: its timeline, walls, cuts
+ * and car path for a locale, from the app's own modules (Node strips their
+ * types; a resolve hook maps `@/` to `src/` and finds extensionless files),
+ * so the verdict reads the film exactly as WorkStage lays it out.
+ */
+let cityModules = null;
+async function cityModel(lang) {
+  if (!cityModules) {
+    const { register } = await import("node:module");
+    const path = await import("node:path");
+    const { fileURLToPath, pathToFileURL } = await import("node:url");
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+    const src = pathToFileURL(path.join(root, "src") + "/").href;
+    const hook = `
+      import fs from "node:fs";
+      import { fileURLToPath } from "node:url";
+      const SRC = ${JSON.stringify(src)};
+      export async function resolve(spec, ctx, next) {
+        let s = spec;
+        if (s.startsWith("@/")) s = new URL(s.slice(2), SRC).href;
+        if ((s.startsWith("file:") || s.startsWith(".")) && !/\\.[a-z]+$/.test(s)) {
+          const base = new URL(s, ctx.parentURL);
+          for (const ext of [".ts", ".tsx", "/index.ts"]) {
+            const u = new URL(base.href + ext);
+            if (fs.existsSync(fileURLToPath(u))) return next(u.href, ctx);
+          }
+        }
+        return next(s, ctx);
+      }`;
+    register(`data:text/javascript,${encodeURIComponent(hook)}`, import.meta.url);
+    const load = (file) => import(pathToFileURL(path.join(root, file)).href);
+    const fs = await import("node:fs");
+    cityModules = {
+      ...(await load("src/features/work/workTimeline.ts")),
+      ...(await load("src/features/work/workStory.ts")),
+      ...(await load("src/features/work/dip.ts")),
+      ...(await load("src/features/night/carPath.ts")),
+      STORY: (await load("src/features/hero/scroll/story.ts")).STORY,
+      dict: (l) => JSON.parse(fs.readFileSync(path.join(root, `src/i18n/dictionaries/${l}.json`), "utf8")),
+    };
+  }
+  const m = cityModules;
+  const timeline = m.workTimeline(m.dict(lang).work);
+  return { m, timeline, walls: m.stageWalls(timeline), cuts: m.stageCuts(timeline) };
+}
+
+/**
+ * The cityloop check's recorder (an init script): every frame's page scroll,
+ * the career city's stage (its place, its film length in stable screens, its
+ * wall from `__vaStageGate`), what it draws (the route's fills, the stop's
+ * super, every card's opacity and rise, the dip, the night cover, the
+ * chapter card, the iris, the pedal), the hero's wall from its probe, the
+ * section tops; her inputs, scroll events, scripted scrolls, long tasks and
+ * layout shifts. Phase marks split the run.
+ */
+function recordCity() {
+  const SECTIONS = ["suspects", "work", "stats", "projects"];
+  const rec = { on: false, frames: [], inputs: [], marks: [], shifts: [], longtasks: [], writes: [] };
+  let scrolls = 0;
+  addEventListener("scroll", () => rec.on && (scrolls += 1), { passive: true, capture: true });
+  const where = () => (new Error().stack ?? "").split("\n").slice(2, 7).map((line) => line.trim().replace(/\(.*\//, "(")).join(" < ");
+  const own = (stack) => /Lenis\.setScroll|Animate\.advance/.test(stack);
+  for (const [owner, name, label] of [
+    [window, "scrollTo", "window.scrollTo"],
+    [window, "scrollBy", "window.scrollBy"],
+    [Element.prototype, "scrollTo", "element.scrollTo"],
+    [Element.prototype, "scrollIntoView", "element.scrollIntoView"],
+  ]) {
+    const original = owner[name];
+    owner[name] = function (...args) {
+      if (rec.on) {
+        const stack = where();
+        if (!own(stack)) rec.writes.push({ t: performance.now(), fn: label, y: window.scrollY, stack });
+      }
+      return original.apply(this, args);
+    };
+  }
+  try {
+    new PerformanceObserver((list) => {
+      if (!rec.on) return;
+      const name = (node) => (node ? String(node.id || node.getAttribute?.("class") || node.nodeName).slice(0, 60) : null);
+      const box = (r) => (r ? [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] : null);
+      for (const e of list.getEntries()) {
+        rec.shifts.push({
+          t: e.startTime,
+          value: e.value,
+          y: scrollY,
+          sources: (e.sources ?? []).map((s) => ({
+            node: name(s.node),
+            parent: name(s.node?.parentElement),
+            text: s.node?.nodeType === 3 ? s.node.textContent.slice(0, 40) : undefined,
+            from: box(s.previousRect),
+            to: box(s.currentRect),
+          })),
+        });
+      }
+    }).observe({ type: "layout-shift" });
+  } catch {}
+  try {
+    new PerformanceObserver((list) => {
+      if (rec.on) for (const e of list.getEntries()) rec.longtasks.push({ t: e.startTime, ms: e.duration });
+    }).observe({ type: "longtask" });
+  } catch {}
+  const KEY_DIR = { PageDown: 1, ArrowDown: 1, " ": 1, w: 1, W: 1, PageUp: -1, ArrowUp: -1 };
+  const onPedal = (e) => e.target instanceof Element && Boolean(e.target.closest("[data-pedal]"));
+  addEventListener("wheel", (e) => rec.on && e.deltaY !== 0 && rec.inputs.push({ t: performance.now(), dir: Math.sign(e.deltaY), d: e.deltaY, kind: "wheel" }), { capture: true, passive: true });
+  addEventListener("keydown", (e) => {
+    const dir = (KEY_DIR[e.key] ?? 0) * (e.key === " " && e.shiftKey ? -1 : 1);
+    if (rec.on && dir) rec.inputs.push({ t: performance.now(), dir, kind: "key", key: e.key });
+  }, { capture: true });
+  let fingerY = null;
+  addEventListener("touchstart", (e) => {
+    fingerY = e.touches[0]?.clientY ?? null;
+    if (rec.on) rec.inputs.push({ t: performance.now(), dir: 0, kind: onPedal(e) ? "pedal" : "touchstart" });
+  }, { capture: true, passive: true });
+  addEventListener("touchmove", (e) => {
+    const now = e.touches[0]?.clientY;
+    if (rec.on && !onPedal(e) && fingerY !== null && now !== undefined && now !== fingerY) rec.inputs.push({ t: performance.now(), dir: now < fingerY ? 1 : -1, d: fingerY - now, kind: "touch" });
+    fingerY = now ?? fingerY;
+  }, { capture: true, passive: true });
+  addEventListener("touchend", () => rec.on && rec.inputs.push({ t: performance.now(), dir: 0, kind: "touchend" }), { capture: true, passive: true });
+  addEventListener("pointerdown", (e) => rec.on && onPedal(e) && e.pointerType === "mouse" && rec.inputs.push({ t: performance.now(), dir: 0, kind: "pedal" }), { capture: true });
+  let lvh = 0;
+  const readLvh = () => {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue("--va-lvh").trim();
+    lvh = raw.endsWith("px") ? Number.parseFloat(raw) : innerHeight / 100;
+  };
+  addEventListener("resize", () => {
+    readLvh();
+    if (rec.on) rec.inputs.push({ t: performance.now(), dir: 0, kind: "resize", h: innerHeight });
+  });
+  const num = (v, fallback) => (v === "" || v === undefined || v === null ? fallback : Number(v));
+  const ty = (el) => {
+    const m = /translate3d\([^,]+,\s*(-?[\d.]+)px/.exec(el?.style.transform ?? "");
+    return m ? Number(m[1]) : 0;
+  };
+  let els = null;
+  let lastProbe = null;
+  const find = () => {
+    const stage = document.querySelector("[data-work-stage]");
+    if (!stage) return null;
+    return {
+      stage,
+      reel: [...stage.querySelectorAll("[data-reel-fill]")],
+      supers: [...stage.querySelectorAll("[data-super]")],
+      cards: [...stage.querySelectorAll("[data-card]")],
+      dip: stage.querySelector("[data-dip]"),
+      fade: stage.querySelector("[data-fade]"),
+      title: stage.querySelector("[data-title]"),
+      pedal: stage.querySelector("[data-pedal]"),
+      heroPedal: document.querySelector("[data-pedal]:not([data-work-stage] [data-pedal])"),
+    };
+  };
+  const state = () => {
+    els ??= find();
+    if (!els) return null;
+    if (!lvh) readLvh();
+    const r = els.stage.getBoundingClientRect();
+    const top = r.top + scrollY;
+    const range = Math.max(1, r.height - 100 * lvh);
+    const gate = window.__vaStageGate?.maxScroll;
+    const wall = Number.isFinite(gate) ? gate : null;
+    const target = (scrollY - top) / range;
+    const wallP = wall === null ? Number.POSITIVE_INFINITY : (wall - top) / range;
+    const tops = SECTIONS.map((id) => {
+      const el = document.getElementById(id);
+      return el ? Math.round((el.getBoundingClientRect().top + scrollY) * 10) / 10 : null;
+    });
+    return { top, range, wall, target, p: Math.min(1, Math.max(0, Math.min(target, wallP))), tops };
+  };
+  const tick = () => {
+    if (rec.on) {
+      const s = state();
+      // The hero's probe grows every frame: its last entry is kept, the rest dropped.
+      const probe = (Array.isArray(window.__vaProbe) ? window.__vaProbe.at(-1) : null) ?? lastProbe;
+      lastProbe = probe;
+      if (Array.isArray(window.__vaProbe)) window.__vaProbe.length = 0;
+      if (s) {
+        const cards = [];
+        els.cards.forEach((card, i) => {
+          const op = num(card.style.opacity, 0);
+          if (op > 0 || card.hasAttribute("data-active")) cards.push([i, op, Math.round(ty(card) * 10) / 10, card.hasAttribute("data-active") ? 1 : 0]);
+        });
+        rec.frames.push({
+          t: performance.now(),
+          y: scrollY,
+          ih: innerHeight,
+          h: document.documentElement.scrollHeight,
+          top: s.top,
+          range: s.range,
+          wall: s.wall,
+          tops: s.tops,
+          reel: els.reel.map((el) => num(el.style.getPropertyValue("--fill"), 0)),
+          sup: els.supers.findIndex((el) => el.hasAttribute("data-active")),
+          cards,
+          dip: num(els.dip?.style.opacity, 0),
+          fade: num(els.fade?.style.opacity, 1),
+          title: num(els.title?.style.opacity, 1),
+          titleY: ty(els.title),
+          iris: els.fade?.hasAttribute("data-iris") ? 1 : 0,
+          ready: els.stage.getAttribute("data-ready"),
+          ped: els.pedal?.hasAttribute("data-down") || els.heroPedal?.hasAttribute("data-down") ? 1 : 0,
+          sc: scrolls,
+          hp: probe ? probe.p : null,
+          htarget: probe ? probe.target : null,
+          hmax: probe ? probe.maxScroll : null,
+          hfr: probe ? probe.frontier : null,
+          hop: probe ? probe.opacity : null,
+        });
+      }
+      scrolls = 0;
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  window.__city = {
+    start() {
+      rec.on = true;
+    },
+    mark(name) {
+      rec.marks.push({ t: performance.now(), name });
+    },
+    stop() {
+      rec.on = false;
+      return rec;
+    },
+    /** Where the page and the city are now, for the driver. */
+    now() {
+      const s = state();
+      const probe = (Array.isArray(window.__vaProbe) ? window.__vaProbe.at(-1) : null) ?? lastProbe;
+      const at = (id) => document.getElementById(id).getBoundingClientRect().top + scrollY;
+      return {
+        y: scrollY,
+        ih: innerHeight,
+        max: document.documentElement.scrollHeight - innerHeight,
+        suspects: at("suspects"),
+        stats: at("stats"),
+        hp: probe?.p ?? null,
+        ...(s ?? {}),
+      };
+    },
+  };
+}
+
+/** Seconds between two frames, as the story counts them (capped at its step). */
+const frameDt = (a, b, cap = 0.25) => Math.min(cap, Math.max(0, (b.t - a.t) / 1000));
+
+/** Percentile of a list of numbers (0..1). */
+function pct(values, q) {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+}
+const r1 = (v) => Math.round(v * 10) / 10;
+const r3 = (v) => Math.round(v * 1000) / 1000;
+
+/** The frames, inputs and events of each phase of a recording. */
+function phasesOf(rec) {
+  const marks = [...rec.marks, { t: Number.POSITIVE_INFINITY, name: "(end)" }];
+  return marks.slice(0, -1).map((mark, i) => {
+    const from = mark.t;
+    const to = marks[i + 1].t;
+    const within = (e) => e.t >= from && e.t < to;
+    return {
+      name: mark.name,
+      from,
+      to,
+      frames: rec.frames.filter(within),
+      inputs: rec.inputs.filter(within),
+      shifts: rec.shifts.filter(within),
+      longtasks: rec.longtasks.filter(within),
+      writes: rec.writes.filter(within),
+    };
+  });
+}
+
+/**
+ * What every recording is held to, city or hero: frames against her input
+ * (the page moving away from every input of the moment, two frames of
+ * grace at a turn; a held pedal is forward input), leaps (over 0.6 of a
+ * screen in one frame), spikes (a frame over a quarter screen and three
+ * times both neighbours: a jump inside a glide), section tops or the page
+ * height moving, scripted scrolls, layout shift, scrolls with no input
+ * for 2 s, stalls (a frame standing still between two moving ones while
+ * the page glides), and the frame timing and long tasks for smoothness.
+ */
+function motionVerdict(phase, inputsAll, heroToo = false) {
+  const { frames } = phase;
+  const against = [];
+  const leaps = [];
+  const spikes = [];
+  const moved = [];
+  const unasked = [];
+  let stalls = 0;
+  let movingFrames = 0;
+  let fastest = 0;
+  const catchups = [];
+  const intervals = [];
+  for (let i = 1; i < frames.length; i += 1) {
+    const a = frames[i - 1];
+    const b = frames[i];
+    intervals.push(b.t - a.t);
+    if (a.h !== b.h && a.ih === b.ih) moved.push({ t: Math.round(b.t), height: [a.h, b.h] });
+    b.tops.forEach((top, n) => {
+      if (top !== null && a.tops[n] !== null && Math.abs(top - a.tops[n]) > 0.5) moved.push({ t: Math.round(b.t), section: n, top: [a.tops[n], top] });
+    });
+    const dy = b.y - a.y;
+    // Her travel in this frame: a finger the page follows 1:1 (a flick's moves can land in one frame).
+    const travel = inputsAll.filter((e) => e.t > a.t - 34 && e.t <= b.t && (e.kind === "wheel" || e.kind === "touch")).reduce((sum, e) => sum + Math.abs(e.d ?? 0), 0);
+    fastest = Math.max(fastest, Math.abs(dy));
+    if (Math.abs(dy) > 0.6 * b.ih && Math.abs(dy) > travel + 0.25 * b.ih) leaps.push({ t: Math.round(b.t), dy: Math.round(dy), travel: Math.round(travel), y: Math.round(b.y) });
+    const prev = i >= 2 ? Math.abs(a.y - frames[i - 2].y) : 0;
+    const next = i + 1 < frames.length ? Math.abs(frames[i + 1].y - b.y) : 0;
+    if (Math.abs(dy) > 0.25 * b.ih && Math.abs(dy) > 3 * Math.max(prev, next, 8) && Math.abs(dy) > travel + 0.1 * b.ih) {
+      // After a stalled frame the page catches up with a glide (Lenis' is timed) or the compositor's own
+      // scroll: a jump the stall made, not the scroll (reported as a catch-up, with the stall).
+      const stall = Math.max(b.t - a.t, i >= 2 ? a.t - frames[i - 2].t : 0, i >= 3 ? frames[i - 2].t - frames[i - 3].t : 0);
+      (stall > 50 ? catchups : spikes).push({ t: Math.round(b.t), dy: Math.round(dy), prev: Math.round(prev), next: Math.round(next), travel: Math.round(travel), stallMs: Math.round(stall), y: Math.round(b.y) });
+    }
+    if (Math.abs(dy) > 0.5) movingFrames += 1;
+    if (Math.abs(dy) <= 0.5 && prev > 2 && next > 2) stalls += 1;
+    if (Math.abs(dy) <= 2) continue;
+    const recent = inputsAll.filter((e) => e.dir !== 0 && e.t <= b.t && e.t > a.t - 34);
+    const before = inputsAll.filter((e) => e.dir !== 0 && e.t <= a.t - 34).at(-1);
+    const dirs = new Set([...recent, ...(before ? [before] : [])].map((e) => e.dir));
+    if (a.ped || b.ped) dirs.add(1);
+    if (dirs.size === 0 || !dirs.has(Math.sign(dy))) against.push({ t: Math.round(b.t), dy: Math.round(dy), y: Math.round(b.y), dirs: [...dirs] });
+    const lastInput = inputsAll.filter((e) => e.t <= b.t && e.kind !== "resize").at(-1);
+    // A press rides a drive to its next line (a key), up to a crane's seconds; a swipe's fling glides on.
+    // A frame that comes over a second late shows a move made long before (a stalled machine), not one of its own.
+    if (!a.ped && !b.ped && b.t - a.t < 1000 && (!lastInput || b.t - lastInput.t > (lastInput.kind === "key" ? 6000 : 2000))) unasked.push({ t: Math.round(b.t), dy: Math.round(dy), y: Math.round(b.y) });
+  }
+  // A phone's bars coming and going (the viewport resized, statics' technique) move what is pinned to
+  // the visible area out of the flow (dvh, by design: AGENTS.md); every other shift counts. Chrome lays
+  // the resize out as the stroke that brought it ends, with no sources.
+  const resizes = inputsAll.filter((e) => e.kind === "resize");
+  const strokeEnd = (r) => inputsAll.find((e) => e.kind === "touchend" && e.t >= r.t)?.t ?? r.t + 1500;
+  const byBars = (e) => resizes.some((r) => e.t >= r.t - 20 && e.t <= Math.max(r.t + 400, strokeEnd(r) + 300));
+  // In the career city's verdict the hero's own shifts (a pass back into its end) are the hero's, reported apart.
+  const heroOwn = (e) => !heroToo && e.sources.length > 0 && e.sources.every((x) => /^Hero-module/.test(x.node ?? "") || /^Hero-module/.test(x.parent ?? ""));
+  const counted = (e) => !byBars(e) && !heroOwn(e);
+  const shift = phase.shifts.filter(counted).reduce((sum, e) => sum + e.value, 0);
+  const heroShift = phase.shifts.filter((e) => !byBars(e) && heroOwn(e)).reduce((sum, e) => sum + e.value, 0);
+  const barShift = phase.shifts.filter(byBars).reduce((sum, e) => sum + e.value, 0);
+  const seconds = frames.length > 1 ? (frames.at(-1).t - frames[0].t) / 1000 : 0;
+  const longMs = phase.longtasks.reduce((sum, e) => sum + e.ms, 0);
+  return {
+    // A leap (over 0.6 of a screen in a frame beyond her travel) is a hard fling's speed with the walls
+    // open; it fails only where a wall holds (the first pass). A spike, a jump out of a glide, fails anywhere.
+    ok: against.length === 0 && spikes.length === 0 && moved.length === 0 && phase.writes.length === 0 && shift === 0 && unasked.length === 0,
+    fastestPx: Math.round(fastest),
+    catchups: catchups.slice(0, 4),
+    catchupCount: catchups.length,
+    barShift: Number(barShift.toPrecision(3)),
+    frames: frames.length,
+    seconds: r1(seconds),
+    fps: seconds > 0 ? r1(frames.length / seconds) : 0,
+    frameMs: { p50: r1(pct(intervals, 0.5)), p95: r1(pct(intervals, 0.95)), max: r1(Math.max(0, ...intervals)) },
+    longTasks: { count: phase.longtasks.length, msPerS: seconds > 0 ? r1(longMs / seconds) : 0, max: r1(Math.max(0, ...phase.longtasks.map((e) => e.ms))) },
+    stallShare: movingFrames > 0 ? r3(stalls / movingFrames) : 0,
+    travelled: frames.length > 1 ? Math.round(frames.at(-1).y - frames[0].y) : 0,
+    against: against.slice(0, 4),
+    againstCount: against.length,
+    leaps: leaps.slice(0, 4),
+    spikes: spikes.slice(0, 4),
+    moved: moved.slice(0, 4),
+    writes: phase.writes.slice(0, 3),
+    unasked: unasked.slice(0, 4),
+    shift: Number(shift.toPrecision(3)),
+    shifts: phase.shifts.filter(counted).slice(0, 3),
+    heroShift: Number(heroShift.toPrecision(3)),
+  };
+}
+
+/** The picture each frame drew, from the route's fills (null where they cannot say: before the first stop). */
+function reelPicture(frame, stops) {
+  const fills = frame.reel;
+  const inside = fills.findIndex((f) => f > 0 && f < 1);
+  if (inside >= 0) return stops[inside].from + fills[inside] * (stops[inside].to - stops[inside].from);
+  if (fills.every((f) => f >= 1)) return 1;
+  const first = fills.findIndex((f) => f <= 0);
+  return first > 0 && fills[first - 1] >= 1 ? stops[first].from : null;
+}
+
+/**
+ * The career city's own verdict on a recording's phases: the picture, the
+ * walls, the cards, the cuts and the car, read against the model.
+ */
+function cityVerdict(phases, inputsAll, model) {
+  const { m, timeline, walls, cuts } = model;
+  const { stops } = timeline;
+  const beatOf = (p) => timeline.beats[m.beatIndexAt(timeline, p)];
+  const stopOfBeat = (p) => Math.max(0, beatOf(p).stop);
+  const frames = phases.flatMap((phase) => phase.frames.map((f) => ({ ...f, phase: phase.name })));
+  const pic = (f) => Math.min(1, Math.max(0, Math.min((f.y - f.top) / f.range, f.wall === null ? Number.POSITIVE_INFINITY : (f.wall - f.top) / f.range)));
+  const inCity = (f) => {
+    const target = (f.y - f.top) / f.range;
+    return target > -0.02 && target < 1.02;
+  };
+  const inputAt = (t, window = 150) => inputsAll.some((e) => e.t <= t && e.t > t - window && (e.dir !== 0 || e.kind === "pedal"));
+  /** The car as the scene draws it: on the stop the super shows (the old one until the dip is at night). */
+  const car = (f) => {
+    const p = pic(f);
+    const sup = f.sup >= 0 ? f.sup : stopOfBeat(p);
+    let viewP = p;
+    if (sup !== stopOfBeat(p)) {
+      const range = stops[sup];
+      viewP = Math.min(range.to - 1e-6, Math.max(sup === 0 ? 0 : range.from, p));
+    }
+    return { x: m.carAt(timeline, viewP).x, sup };
+  };
+  const out = {};
+  for (const phase of phases) {
+    const fs = phase.frames.filter(inCity);
+    if (fs.length < 2) continue;
+    const res = { frames: fs.length, wallFrames: fs.filter((f) => f.wall !== null).length, heroWallFrames: phase.frames.filter((f) => f.hmax !== null).length };
+    // The picture follows the scroll: the route's fills against the scroll and the wall, in px of film.
+    // The recorder reads the page before the stage's tick in each frame, so the fills are one frame
+    // behind the scroll it reads: late is a picture matching none of the last three frames' scrolls.
+    const follow = [];
+    for (let i = 3; i < fs.length; i += 1) {
+      const rp = reelPicture(fs[i], stops);
+      if (rp === null) continue;
+      const err = Math.abs(rp - pic(fs[i])) * fs[i].range;
+      const late = [0, 1, 2, 3].every((k) => Math.abs(rp - pic(fs[i - k])) * fs[i].range > 2.5);
+      follow.push({ err, late });
+    }
+    res.followPx = { p95: r1(pct(follow.map((e) => e.err), 0.95)), max: r1(Math.max(0, ...follow.map((e) => e.err))), late: follow.filter((e) => e.late).length };
+    // Past the wall: a scroll the gate let through.
+    res.pastWall = fs.filter((f) => f.wall !== null && f.y > f.wall + 4).length;
+    // The set changes only under night (the dip or the cover).
+    const visibleCuts = [];
+    const cars = fs.map(car);
+    let maxStep = 0;
+    let maxSpeed = 0;
+    const teleports = [];
+    for (let i = 1; i < fs.length; i += 1) {
+      const a = fs[i - 1];
+      const b = fs[i];
+      if (a.sup >= 0 && b.sup >= 0 && a.sup !== b.sup && Math.max(a.dip, b.dip) < 0.98 && Math.max(a.fade, b.fade) < 0.98) visibleCuts.push({ t: Math.round(b.t), from: a.sup, to: b.sup, dip: r3(Math.max(a.dip, b.dip)) });
+      if (cars[i].sup !== cars[i - 1].sup) continue;
+      const shown = Math.max(a.dip, b.dip) < 0.5 && Math.max(a.fade, b.fade) < 0.5;
+      const dx = Math.abs(cars[i].x - cars[i - 1].x);
+      const dt = Math.max(1 / 120, (b.t - a.t) / 1000);
+      if (!shown || dx === 0) continue;
+      maxStep = Math.max(maxStep, dx);
+      maxSpeed = Math.max(maxSpeed, dx / dt);
+      if (dx > Math.max(6, 40 * dt)) teleports.push({ t: Math.round(b.t), dx: r1(dx), dt: r3(dt), stop: b.sup, p: r3(pic(b)) });
+    }
+    res.visibleCuts = visibleCuts.slice(0, 4);
+    res.visibleCutCount = visibleCuts.length;
+    res.car = { maxStepM: r1(maxStep), maxSpeedMs: r1(maxSpeed), teleports: teleports.slice(0, 4), teleportCount: teleports.length };
+    // Settled frames (the picture still for 0.5 s): the dip and the stop are the film's at that picture.
+    const unsettledDip = [];
+    let stillSince = fs[0].t;
+    for (let i = 1; i < fs.length; i += 1) {
+      if (Math.abs(fs[i].y - fs[i - 1].y) > 0.5 || fs[i].wall !== fs[i - 1].wall) stillSince = fs[i].t;
+      else if (fs[i].t - stillSince > 600) {
+        const p = pic(fs[i]);
+        const want = m.dipAt(timeline, p);
+        if (Math.abs(fs[i].dip - want) > 0.02 || (fs[i].sup >= 0 && fs[i].sup !== stopOfBeat(p))) unsettledDip.push({ t: Math.round(fs[i].t), p: r3(p), dip: fs[i].dip, want: r3(want), sup: fs[i].sup, stop: stopOfBeat(p) });
+      }
+    }
+    res.settledDipOff = unsettledDip.slice(0, 3);
+    res.settledDipOffCount = unsettledDip.length;
+    // Cards while she goes back: hidden (the hero's rule).
+    const back = fs.filter((f) => inputsAll.some((e) => e.dir < 0 && e.t <= f.t && e.t > f.t - 250));
+    res.cardUpGoingBack = back.filter((f) => f.cards.some(([, op, , act]) => act && op > 0.5)).length;
+    // Input held with no visible change, and with the picture still (by beat).
+    const stuck = [];
+    const held = [];
+    let stuckFrom = null;
+    let heldFrom = null;
+    /** Picture px, dip, cover, title, title rise, then each card's index-and-opacity and rise. */
+    const tolerance = (n) => (n === 0 ? 0.5 : n === 4 || (n >= 5 && (n - 5) % 2 === 1) ? 0.3 : 0.005);
+    const visual = (f) => [pic(f) * f.range, f.dip, f.fade, f.title, f.titleY, ...f.cards.flatMap(([i, op, y]) => [i * 1000 + op, y])];
+    for (let i = 1; i < fs.length; i += 1) {
+      const a = fs[i - 1];
+      const b = fs[i];
+      const pushing = inputAt(b.t) || b.ped === 1;
+      const va = visual(a);
+      const vb = visual(b);
+      const pictureStill = Math.abs(vb[0] - va[0]) <= 0.5;
+      const nothing = pictureStill && va.length === vb.length && va.every((v, n) => Math.abs(v - vb[n]) <= tolerance(n));
+      const beat = beatOf(pic(b));
+      const label = `${beat.id}`;
+      if (pushing && nothing) stuckFrom ??= { t: a.t, beat: label, kind: beat.kind };
+      else if (stuckFrom) {
+        stuck.push({ ...stuckFrom, ms: Math.round(b.t - stuckFrom.t) });
+        stuckFrom = null;
+      }
+      if (pushing && pictureStill) heldFrom ??= { t: a.t, beat: label, kind: beat.kind, ready: b.ready };
+      else if (heldFrom) {
+        held.push({ ...heldFrom, ms: Math.round(b.t - heldFrom.t) });
+        heldFrom = null;
+      }
+    }
+    const longest = (list, kind) => list.filter((e) => !kind || e.kind === kind).sort((x, y) => y.ms - x.ms).slice(0, 3).map((e) => ({ beat: e.beat, ms: e.ms, ...(e.ready && e.ready !== "ready" ? { night: e.ready } : {}) }));
+    res.stuck = { longest: longest(stuck), totalMs: stuck.reduce((s, e) => s + e.ms, 0) };
+    res.pictureHeld = {
+      hold: longest(held, "hold"),
+      title: longest(held, "title"),
+      card: longest(held, "card"),
+      totalMs: held.reduce((s, e) => s + e.ms, 0),
+    };
+    // How long each held beat took to pass on screen, and how far the page went in it.
+    res.beats = {};
+    for (const beat of timeline.beats) {
+      if (beat.kind === "card") continue;
+      const inside = fs.filter((f) => {
+        const p = pic(f);
+        return p >= beat.start && p < beat.end;
+      });
+      if (inside.length < 2) continue;
+      res.beats[beat.id] = { s: r1((inside.at(-1).t - inside[0].t) / 1000), natural: r1(beat.seconds) };
+    }
+    res.notReadyFrames = fs.filter((f) => f.ready !== "ready").length;
+    // Frames standing still between two moving ones, inside the city only (the whole phase's is motionVerdict's).
+    let stalls = 0;
+    let moving = 0;
+    for (let i = 2; i < fs.length - 1; i += 1) {
+      const dy = Math.abs(fs[i].y - fs[i - 1].y);
+      if (dy > 0.5) moving += 1;
+      if (dy <= 0.5 && Math.abs(fs[i - 1].y - fs[i - 2].y) > 2 && Math.abs(fs[i + 1].y - fs[i].y) > 2) stalls += 1;
+    }
+    res.stallShare = moving > 0 ? r3(stalls / moving) : 0;
+    // Time spent at rest on a picture dipped to night (a cut she stopped at): it reads as a black screen.
+    let night = 0;
+    for (let i = 1; i < fs.length; i += 1) if (Math.max(fs[i].dip, fs[i].fade) > 0.9 && !inputAt(fs[i].t, 300) && fs[i].ped !== 1) night += fs[i].t - fs[i - 1].t;
+    res.restAtNightMs = Math.round(night);
+    out[phase.name] = res;
+  }
+  // Every card fully up for its reading time before the picture first passes it (the first pass).
+  const reads = [];
+  for (const wall of walls.filter((w) => w.kind === "card")) {
+    const need = wall.hold - m.STORY.cardFadeIn;
+    let seen = 0;
+    let passed = false;
+    let shown = false;
+    for (let i = 1; i < frames.length && !passed; i += 1) {
+      const f = frames[i];
+      if (!inCity(f)) continue;
+      if (pic(f) > wall.to + 0.002) {
+        passed = true;
+        break;
+      }
+      const card = f.cards.find(([n]) => n === wall.card);
+      if (card && card[1] >= 0.999) {
+        shown = true;
+        seen += frameDt(frames[i - 1], f);
+      }
+    }
+    reads.push({ card: timeline.cards[wall.card].id, need: r1(need), seen: r1(seen), ok: shown && seen >= need - 0.1 });
+  }
+  // How fast each held beat played on the first pass: the shortest time in which the picture went through
+  // 80% of it (time resting inside it does not count; a beat that waited in the dark and then flashed by does).
+  const first = frames.filter((f) => f.phase.startsWith("p1-") && inCity(f));
+  const pace = [];
+  for (const beat of timeline.beats) {
+    if (beat.kind === "card" || beat.kind === "title") continue;
+    const need = 0.8 * (beat.end - beat.start);
+    const inside = first.filter((f) => pic(f) >= beat.start - 1e-4 && pic(f) <= beat.end + 1e-4);
+    let best = Number.POSITIVE_INFINITY;
+    for (let i = 0, j = 0; i < inside.length; i += 1) {
+      j = Math.max(j, i);
+      while (j < inside.length && pic(inside[j]) - pic(inside[i]) < need) j += 1;
+      if (j < inside.length) best = Math.min(best, inside[j].t - inside[i].t);
+    }
+    if (Number.isFinite(best)) pace.push({ id: beat.id, s: r1(best / 1000), natural: r1(0.8 * beat.seconds) });
+  }
+  return { phases: out, reads, pace, cuts: cuts.map((c) => r3(c.at)) };
 }
 
 const CHECKS = {
@@ -2228,6 +2819,342 @@ const CHECKS = {
     const ok = result.moves > 20 && result.uncancelable === 0 && result.unprevented === 0 && result.past.length === 0 && Number.isFinite(result.wall) && result.y <= result.wall + 4;
     report(`${device} ${lang} cityswipe: swipes and flings in the city stay gated at its wall, every move cancelled, no wall opened`, ok && s.errors.length === 0, { ...result, errors: s.errors.slice(0, 3) });
     await s.close();
+  },
+
+  async cityloop(device, lang) {
+    // A real visitor through the whole career city: from THE USUAL SUSPECTS (after the hero's
+    // Skip) to STATS with each input in turn, its walls closed ahead (1); then, the city complete,
+    // back up through it into the hero's end and down to STATS again, twice, and fast both ways
+    // (2); and the same back and forth over the hero alone, the smoothness reference of this run
+    // (3). Every frame is recorded (recordCity) and read against the city's own model (cityModel).
+    const model = await cityModel(lang);
+    const { stops } = model.timeline;
+    const W = DEVICES[device].viewport.width;
+    const H = DEVICES[device].viewport.height;
+    const SHOWN = H - 74;
+    const mobile = device === "mobile";
+    const fsys = await import("node:fs");
+    fsys.mkdirSync(values.out, { recursive: true });
+    const tag = `${device} ${lang} cityloop`;
+    const file = (name) => `${values.out}/${device}-${lang}-${name}`;
+
+    const open = async () => {
+      const s = await session(device, lang, { init: recordCity, enter: !mobile });
+      if (mobile) {
+        await s.page.waitForSelector('[data-loader][data-phase="ready"], [data-loader][data-slow]', { timeout: 240_000 });
+        await s.page.locator('[data-loader] [data-enter="silent"]').tap();
+        await s.page.waitForSelector("[data-loader]", { state: "detached", timeout: 20_000 });
+        await s.page.evaluate(() => (window.__vaProbe = []));
+      }
+      await sleep(1200);
+      if (!mobile) await s.page.mouse.move(W / 2, H / 2);
+      await s.page.evaluate(() => window.__city.start());
+      return s;
+    };
+    const tools = (s) => {
+      const now = () => s.page.evaluate(() => window.__city.now());
+      const shot = (name) => s.page.screenshot({ path: file(`${name}.jpg`), type: "jpeg", quality: 45, scale: "css" }).catch(() => {});
+      const reached = {};
+      /** A phase: `step` until `until`, then a pause for the last glide to land in it. */
+      const drive = async (name, until, step, maxMs = 150_000) => {
+        await s.page.evaluate((n) => window.__city.mark(n), name);
+        const start = Date.now();
+        let ok = false;
+        for (let i = 0; Date.now() - start < maxMs; i += 1) {
+          const st = await now();
+          if (until(st)) {
+            ok = true;
+            break;
+          }
+          await step(i, st);
+        }
+        await sleep(1500);
+        reached[name] = ok;
+        await shot(name);
+        return ok;
+      };
+      let bars = "hidden";
+      /** The bars follow her direction on a phone: hidden going down, shown going up. */
+      const barsFor = async (dir) => {
+        if (!mobile) return;
+        const want = dir > 0 ? "hidden" : "shown";
+        if (want === bars) return;
+        bars = want;
+        await s.page.setViewportSize({ width: W, height: want === "hidden" ? H : SHOWN });
+      };
+      /** A swipe whose bars change once the page moves the new way, mid-stroke. */
+      const swipe = async (dy, ms) => {
+        const steps = Math.max(3, Math.round(ms / 16));
+        const y0 = dy > 0 ? Math.round(SHOWN * 0.78) : Math.round(SHOWN * 0.22);
+        await s.cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: W / 2, y: y0 }] });
+        for (let i = 1; i <= steps; i += 1) {
+          await s.cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: W / 2, y: y0 - (dy * i) / steps }] });
+          if (i === 2) await barsFor(Math.sign(dy));
+          await sleep(ms / steps);
+        }
+        await s.cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      };
+      /** A flick on its own clock (touchStrokes): a slow page cannot stretch it into a drag. */
+      const flick = async (dy, ms = 90) => {
+        await barsFor(Math.sign(dy));
+        await touchStrokes(s.cdp, [{ at: 0, dy, ms }], { x: W / 2, y0: dy > 0 ? Math.round(SHOWN * 0.8) : Math.round(SHOWN * 0.2) });
+      };
+      const notches = async (dir, n = 1, gap = 90) => {
+        for (let k = 0; k < n; k += 1) {
+          await s.page.mouse.wheel(0, dir * 100);
+          if (k < n - 1) await sleep(gap);
+        }
+      };
+      /** A trackpad's fling: many small deltas, fast. */
+      const trackpad = async (dir, n = 24, scale = 1) => {
+        for (let k = 0; k < n; k += 1) {
+          await s.page.mouse.wheel(0, dir * scale * (4 + (k % 5) * 3));
+          await sleep(10);
+        }
+      };
+      /** The city's pedal held (the mouse or a thumb) until `until`, at most `maxMs`. */
+      const holdPedal = async (name, until, maxMs = 120_000) => {
+        await s.page.evaluate((n) => window.__city.mark(n), name);
+        const pedal = s.page.locator("[data-work-stage] [data-pedal]");
+        await s.page.waitForFunction(() => document.querySelector("[data-work-stage] [data-pedal]")?.getAttribute("data-vis") === "shown", null, { timeout: 10_000 }).catch(() => {});
+        const box = await pedal.boundingBox();
+        let ok = false;
+        if (box) {
+          const x = box.x + box.width / 2;
+          const y = box.y + box.height / 2;
+          if (mobile) await s.cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+          else {
+            await s.page.mouse.move(x, y);
+            await s.page.mouse.down();
+          }
+          const start = Date.now();
+          while (Date.now() - start < maxMs) {
+            if (until(await now())) {
+              ok = true;
+              break;
+            }
+            await sleep(250);
+          }
+          if (mobile) await s.cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+          else {
+            await s.page.mouse.up();
+            await s.page.mouse.move(W / 2, H / 2);
+          }
+        }
+        await sleep(1500);
+        reached[name] = ok;
+        await shot(name);
+        return ok;
+      };
+      return { now, shot, drive, swipe, flick, notches, trackpad, holdPedal, reached, barsFor };
+    };
+    /** One of her inputs on a back-and-forth pass, by turns: notches or a swipe, a trackpad or a flick. */
+    const passInput = (t) => async (dir, i) => {
+      if (mobile) {
+        if (i % 2 === 0) await t.swipe(dir * 260, 200);
+        else await t.flick(dir * 420, 100);
+        await sleep(450);
+      } else if (i % 2 === 0) {
+        await t.notches(dir, 4, 70);
+        await sleep(260);
+      } else {
+        await t.trackpad(dir);
+        await sleep(300);
+      }
+    };
+    const fastInput = (t) => async (dir) => {
+      if (mobile) {
+        await t.flick(dir * 600, 70);
+        await sleep(350);
+      } else {
+        await t.trackpad(dir, 40, 3.2);
+        await sleep(380);
+      }
+    };
+    const into = (stop) => (st) => st.p >= stops[stop].from + 0.004;
+
+    /** Drives the city, then the hero, and returns what they recorded. */
+    const drive = async () => {
+      // ---- 1 and 2: the career city ----
+      const s = await open();
+      const t = tools(s);
+      await s.page.keyboard.press("End");
+      await sleep(1500);
+      await t.drive("p1-approach", (st) => st.target >= 0, async () => {
+        if (mobile) await t.swipe(220, 160);
+        else await t.notches(1);
+        await sleep(mobile ? 500 : 260);
+      });
+      if (mobile) {
+        // Swipes at a reading pace, a little one back now and then (the bars come back with it).
+        await t.drive("p1-swipe", into(1), async (i) => {
+          await t.swipe(i % 4 === 3 ? -120 : 220, 160);
+          await sleep(900);
+        });
+        await t.drive("p1-fling", into(2), async () => {
+          await t.flick(500, 90);
+          await sleep(800);
+        });
+        await t.holdPedal("p1-pedal", into(3));
+        await t.drive("p1-swipe-bars", into(4), async (i) => {
+          await t.swipe(i % 3 === 2 ? -140 : 240, i % 2 ? 120 : 220);
+          await sleep(800);
+        });
+        await t.drive("p1-to-stats", (st) => st.y >= st.stats - 2, async (i) => {
+          if (i % 2) await t.flick(450, 100);
+          else await t.swipe(240, 180);
+          await sleep(700);
+        });
+      } else {
+        await t.drive("p1-wheel", into(1), async () => {
+          await t.notches(1);
+          await sleep(700);
+        });
+        await t.drive("p1-trackpad", into(2), async () => {
+          await t.trackpad(1);
+          await sleep(900);
+        });
+        await t.drive("p1-keys", into(3), async (i) => {
+          await s.page.keyboard.press(i % 2 ? "Space" : "PageDown");
+          await sleep(1300);
+        });
+        await t.holdPedal("p1-pedal", into(4));
+        await t.drive("p1-to-stats", (st) => st.y >= st.stats - 2, async () => {
+          await t.notches(1);
+          await sleep(600);
+        });
+      }
+      // ---- 2: back up into the hero's end and down to STATS, twice, then fast ----
+      const pass = passInput(t);
+      const fast = fastInput(t);
+      const upToHero = (st) => (st.hp !== null && st.hp < 0.97) || st.y <= 1;
+      const downToStats = (st) => st.y >= st.stats + 0.3 * st.ih || st.y >= st.max - 1;
+      for (const round of [1, 2]) {
+        await t.drive(`p2-up${round}`, upToHero, (i) => pass(-1, i));
+        await t.drive(`p2-down${round}`, downToStats, (i) => pass(1, i));
+      }
+      await t.drive("p2-fast-up", upToHero, () => fast(-1));
+      await t.drive("p2-fast-down", downToStats, () => fast(1));
+      const rec = await s.page.evaluate(() => window.__city.stop());
+      const cityErrors = s.errors.slice(0, 3);
+      await s.close();
+      // The raw trace first: a run cut short still leaves the city's frames.
+      fsys.writeFileSync(file("cityloop.json"), JSON.stringify({ device, lang, reached: { ...t.reached }, errors: cityErrors, rec }));
+
+      // ---- 3: the hero alone, the reference ----
+      const h = await open();
+      const th = tools(h);
+      const passH = passInput(th);
+      const fastH = fastInput(th);
+      await h.page.keyboard.press("End");
+      await sleep(1500);
+      const toTop = (st) => (st.hp !== null && st.hp <= 0.03) || st.y <= 1;
+      const toSuspects = (st) => st.y >= st.suspects + 0.3 * st.ih;
+      for (const round of [1, 2]) {
+        await th.drive(`h-up${round}`, toTop, (i) => passH(-1, i));
+        await th.drive(`h-down${round}`, toSuspects, (i) => passH(1, i));
+      }
+      await th.drive("h-fast-up", toTop, () => fastH(-1));
+      await th.drive("h-fast-down", toSuspects, () => fastH(1));
+      const hrec = await h.page.evaluate(() => window.__city.stop());
+      const heroErrors = h.errors.slice(0, 3);
+      await h.close();
+      return { rec, hrec, reached: { ...t.reached }, hreached: { ...th.reached }, cityErrors, heroErrors };
+    };
+    // `--replay <dir>` scores the traces a run left there (cityloop.json, heroloop.json) instead of driving.
+    let run;
+    if (values.replay) {
+      const read = (name) => JSON.parse(fsys.readFileSync(`${values.replay}/${device}-${lang}-${name}`, "utf8"));
+      const city = read("cityloop.json");
+      const hero = read("heroloop.json");
+      run = { rec: city.rec, hrec: hero.rec, reached: city.reached, hreached: hero.reached, cityErrors: city.errors ?? [], heroErrors: hero.errors ?? [] };
+    } else run = await drive();
+    const { rec, hrec, reached, hreached, cityErrors, heroErrors } = run;
+    // Every wall open once she reached STATS: the stage's wall on the last frame before the passes back.
+    const back = rec.marks.find((mark) => mark.name === "p2-up1");
+    const openedWall = (back ? rec.frames.filter((f) => f.t < back.t).at(-1)?.wall : rec.frames.at(-1)?.wall) ?? null;
+
+    // ---- verdicts ----
+    const phases = phasesOf(rec);
+    const motion = Object.fromEntries(phases.map((phase) => [phase.name, motionVerdict(phase, rec.inputs)]));
+    const city = cityVerdict(phases, rec.inputs, model);
+    const hphases = phasesOf(hrec);
+    const hmotion = Object.fromEntries(hphases.map((phase) => [phase.name, motionVerdict(phase, hrec.inputs, true)]));
+    /** How much of her wheel or finger travel the page went (trimmed walls show under 1). */
+    const ratio = (phase) => {
+      const travel = phase.inputs.filter((e) => e.kind === (mobile ? "touch" : "wheel")).reduce((sum, e) => sum + Math.abs(e.d ?? 0), 0);
+      const moved = phase.frames.length > 1 ? Math.abs(phase.frames.at(-1).y - phase.frames[0].y) : 0;
+      return travel > 0 ? r3(moved / travel) : null;
+    };
+    const p1 = phases.filter((phase) => phase.name.startsWith("p1-"));
+    const p2 = phases.filter((phase) => phase.name.startsWith("p2-"));
+    const pick = (list, fn) => Object.fromEntries(list.map((phase) => [phase.name, fn(phase)]));
+    const sum = (list, fn) => list.reduce((acc, phase) => acc + fn(phase), 0);
+    const cityOf = (phase) => city.phases[phase.name] ?? null;
+
+    fsys.writeFileSync(file("cityloop.json"), JSON.stringify({ device, lang, reached, errors: cityErrors, motion, city, ratios: pick(phases, ratio), rec }));
+    fsys.writeFileSync(file("heroloop.json"), JSON.stringify({ device, lang, reached: hreached, errors: heroErrors, motion: hmotion, ratios: pick(hphases, ratio), rec: hrec }));
+
+    // 1. The first pass.
+    report(`${tag} 1 first pass reaches STATS by her driving alone, every wall opened`, Object.entries(reached).filter(([n]) => n.startsWith("p1-")).every(([, ok]) => ok) && openedWall === null, { reached, wallAfter: openedWall });
+    report(`${tag} 1 first pass never moves against her input, no leap or spike, nothing moves by itself, no scripted scroll, no layout shift`, p1.every((phase) => motion[phase.name].ok && motion[phase.name].leaps.length === 0), pick(p1, (phase) => {
+      const v = motion[phase.name];
+      return { against: v.againstCount, firstAgainst: v.against[0], leaps: v.leaps, spikes: v.spikes, moved: v.moved[0], unasked: v.unasked[0], writes: v.writes[0], shift: v.shift, firstShift: v.shifts[0] };
+    }));
+    report(`${tag} 1 first pass: no scroll past the wall, the picture is the scroll (the route's fills)`, p1.every((phase) => !cityOf(phase) || (cityOf(phase).pastWall === 0 && cityOf(phase).followPx.late === 0)), pick(p1, (phase) => cityOf(phase) && { pastWall: cityOf(phase).pastWall, followPx: cityOf(phase).followPx }));
+    report(`${tag} 1 every card is up for its reading time`, city.reads.every((read) => read.ok), city.reads.filter((read) => !read.ok));
+    report(`${tag} 1 the car never teleports inside a stop, the set never changes in sight`, p1.every((phase) => !cityOf(phase) || (cityOf(phase).car.teleportCount === 0 && cityOf(phase).visibleCutCount === 0)), pick(p1, (phase) => cityOf(phase) && { car: cityOf(phase).car, cuts: cityOf(phase).visibleCuts }));
+    // The drive between two stops and every held beat play at a drive's pace (workTimeline.ts BEAT_SECONDS):
+    // on the first pass none may flash by in under half its natural seconds.
+    const rushed = city.pace.filter((beat) => beat.s < beat.natural / 2);
+    report(`${tag} 1 every held beat (arrivals, leaves, flips, crane, iris) plays 80% of itself in at least half its natural time on the first pass`, rushed.length === 0, rushed);
+    console.log(`INFO ${tag} 1 held beats, 80% played in (s / natural s):`, city.pace.map((beat) => `${beat.id} ${beat.s}/${beat.natural}`).join(", "));
+    const stuckMax = Math.max(0, ...p1.map((phase) => cityOf(phase)?.stuck.longest[0]?.ms ?? 0));
+    report(`${tag} 1 held input always shows something within 0.5 s (no frozen picture under her input)`, stuckMax <= 500, pick(p1, (phase) => cityOf(phase)?.stuck));
+    console.log(`INFO ${tag} 1 picture held under her input (ms, longest by beat kind):`, JSON.stringify(pick(p1, (phase) => cityOf(phase) && { ...cityOf(phase).pictureHeld, notReadyFrames: cityOf(phase).notReadyFrames, restAtNightMs: cityOf(phase).restAtNightMs })));
+    console.log(`INFO ${tag} 1 reads (s seen / needed):`, city.reads.map((read) => `${read.card} ${read.seen}/${read.need}`).join(", "));
+    console.log(`INFO ${tag} 1 share of her travel the page went:`, JSON.stringify(pick(p1, ratio)));
+
+    // 2. Back and forth once the city is complete.
+    report(`${tag} 2 after completion the walls stay open and the hero never re-locks`, p2.every((phase) => phase.frames.every((f) => f.wall === null && f.hmax === null)), pick(p2, (phase) => ({
+      wallFrames: phase.frames.filter((f) => f.wall !== null).length,
+      heroWallFrames: phase.frames.filter((f) => f.hmax !== null).length,
+    })));
+    const ratios2 = pick(p2, ratio);
+    report(`${tag} 2 the picture follows the scroll 1:1 and nothing trims her input`, p2.every((phase) => (!cityOf(phase) || cityOf(phase).followPx.late === 0) && (ratios2[phase.name] === null || (mobile ? ratios2[phase.name] >= 0.9 : Math.abs(ratios2[phase.name] - 1) <= 0.05))), pick(p2, (phase) => ({ followPx: cityOf(phase)?.followPx, ratio: ratios2[phase.name] })));
+    report(`${tag} 2 back and forth: never against her input, no snap-back, no leap or spike at a cut or seam, no section moves, no layout shift`, p2.every((phase) => motion[phase.name].ok), pick(p2, (phase) => {
+      const v = motion[phase.name];
+      return { against: v.againstCount, firstAgainst: v.against[0], leaps: v.leaps, spikes: v.spikes, moved: v.moved[0], unasked: v.unasked[0], writes: v.writes[0], shift: v.shift, firstShift: v.shifts[0] };
+    }));
+    // With the walls open the car is wherever the film is: a fling drives it as fast as the page goes (reported).
+    report(`${tag} 2 the cuts in reverse and on a second pass: the set changes only under night, the dip settles on the film's`, p2.every((phase) => !cityOf(phase) || (cityOf(phase).visibleCutCount === 0 && cityOf(phase).settledDipOffCount === 0)), pick(p2, (phase) => cityOf(phase) && { cuts: cityOf(phase).visibleCuts, dip: cityOf(phase).settledDipOff }));
+    console.log(`INFO ${tag} 2 car, fastest page frame (px), leaps over 0.6 screen beyond her travel, shift from the bars:`, JSON.stringify(pick(p2, (phase) => ({ carMaxStepM: cityOf(phase)?.car.maxStepM, carMaxSpeedMs: cityOf(phase)?.car.maxSpeedMs, fastestPx: motion[phase.name].fastestPx, leaps: motion[phase.name].leaps.length, barShift: motion[phase.name].barShift }))));
+    console.log(`INFO ${tag} 2 held beats on screen per pass (s):`, JSON.stringify(pick(p2, (phase) => cityOf(phase)?.beats)));
+    console.log(`INFO ${tag} 2 picture held under her input (ms):`, JSON.stringify(pick(p2, (phase) => cityOf(phase)?.pictureHeld.totalMs ?? 0)), "cards up while going back (frames):", JSON.stringify(pick(p2, (phase) => cityOf(phase)?.cardUpGoingBack ?? 0)));
+
+    // 3. The hero alone, and the comparison.
+    // The hero's picture is its scroll, but for a shot held across a cut by up to CUT_BAND (0.002, shots.ts stickyShot).
+    const heroOff = (f) => f.hp !== null && f.htarget !== null && Math.abs(f.hp - f.htarget) > 0.0021;
+    report(`${tag} 3 hero back and forth: never against her input, no leap or spike, no shift, its walls open, its picture the scroll`, hphases.every((phase) => hmotion[phase.name].ok && phase.frames.every((f) => f.hmax === null && !heroOff(f))), pick(hphases, (phase) => {
+      const v = hmotion[phase.name];
+      return { against: v.againstCount, firstAgainst: v.against[0], leaps: v.leaps, spikes: v.spikes, moved: v.moved[0], unasked: v.unasked[0], writes: v.writes[0], shift: v.shift, firstShift: v.shifts[0], walls: phase.frames.filter((f) => f.hmax !== null).length, off: phase.frames.filter(heroOff).length };
+    }));
+    const smooth = (list, verdicts) => {
+      const n = list.length || 1;
+      return {
+        fps: r1(sum(list, (phase) => verdicts[phase.name].fps) / n),
+        frameP95: r1(sum(list, (phase) => verdicts[phase.name].frameMs.p95) / n),
+        frameMax: Math.max(0, ...list.map((phase) => verdicts[phase.name].frameMs.max)),
+        longMsPerS: r1(sum(list, (phase) => verdicts[phase.name].longTasks.msPerS) / n),
+        stallShare: r3(sum(list, (phase) => verdicts[phase.name].stallShare) / n),
+      };
+    };
+    console.log(`INFO ${tag} [fastest page frame px, shift from the bars, the hero's own shift, catch-ups after a stalled frame], city:`, JSON.stringify(pick(phases, (phase) => [motion[phase.name].fastestPx, motion[phase.name].barShift, motion[phase.name].heroShift, motion[phase.name].catchupCount])), "hero:", JSON.stringify(pick(hphases, (phase) => [hmotion[phase.name].fastestPx, hmotion[phase.name].barShift, hmotion[phase.name].catchupCount])));
+    console.log(`INFO ${tag} catch-ups after a stalled frame (first of each phase):`, JSON.stringify(pick([...phases, ...hphases], (phase) => (phase.name.startsWith("h-") ? hmotion : motion)[phase.name].catchups[0] ?? null)));
+    console.log(`INFO ${tag} stall share inside the city (frames still between moving ones):`, JSON.stringify(pick(phases, (phase) => cityOf(phase)?.stallShare ?? null)));
+    console.log(`INFO ${tag} smoothness, city first pass:`, JSON.stringify(smooth(p1, motion)), "city back and forth:", JSON.stringify(smooth(p2, motion)), "hero back and forth:", JSON.stringify(smooth(hphases, hmotion)));
+    report(`${tag} no page errors`, cityErrors.length === 0 && heroErrors.length === 0, { cityErrors, heroErrors });
+    console.log(`INFO ${tag} traces: ${file("cityloop.json")}, ${file("heroloop.json")}; frames: ${file("*.jpg")}`);
   },
 
   async loader(device, lang) {

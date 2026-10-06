@@ -55,7 +55,18 @@ also exists as real DOM for keyboard and screen-reader users.
   held, two fingers, blur, a lost keyup, Q, the end, reduced motion) and
   its layout from 360 x 640 to 1440 x 900, a phone's swipes and flings
   in the career city at a closed wall (every move gated, nothing past
-  it, no wall opened), and the static page after
+  it, no wall opened), `cityloop` (a visitor drives the whole career
+  city from THE USUAL SUSPECTS to STATS with every input in turn, its
+  walls closed ahead, then, the city complete, back up into the hero's
+  end and down again twice and fast both ways, with the hero's own back
+  and forth as the run's reference: every frame read against the city's
+  timeline, walls, cuts and car path loaded from `src/`; every card up
+  for its reading time, every held beat at no less than half its pace,
+  the car never jumping in sight, the set changing only under night, the
+  walls staying open and the picture the scroll once complete; it also
+  reports frame timing, long tasks and stalls, city against hero;
+  `--out` keeps the traces, `--replay <dir>` re-scores them), and the
+  static page after
   Skip (wheel, trackpad and keys; swipes while a phone's bars come and
   go, in both motion modes: no section moves, nothing against her input,
   no scroll by script, no layout shift), on desktop and a phone in both
@@ -149,7 +160,13 @@ also exists as real DOM for keyboard and screen-reader users.
     of the lift is still hers, never navigation), a stroke is the
     browser's own from its first move, `gate.ts` browserStroke: nothing
     to gate there, and
-    the browser, not Lenis, owns a phone's bars and its momentum; a key
+    the browser, not Lenis, owns a phone's bars and its momentum, but
+    for a stroke that starts in the career city's pinned film, which
+    Lenis drives as it drives the hero's, its walls open or not, so the
+    film follows the finger in the frame that draws it; and with every
+    wall open, a finger landing on the browser's own fling stays the
+    browser's wherever it lands, or the fling ran on under Lenis' stroke
+    and moved the page against her finger; a key
     that scrolls the page there stops a wheel's glide, `keyScrollsPage`,
     or Lenis swallowed it or yanked the page back),
     and whatever else moves the page there (the scrollbar,
@@ -214,7 +231,9 @@ also exists as real DOM for keyboard and screen-reader users.
     replaces it (`acceptance.test.ts` runs phone visitors with
     `layout: "phone"`). Tablets and desktops keep it. Under reduced
     motion and forced colours it is not shown (its meaning is in text),
-    and the camera readout is `aria-hidden` decoration like it.
+    and the camera readout is `aria-hidden` decoration like it (it
+    keeps its widest shot label's width, every label in one cell, so
+    anchored right it never shifts at a cut).
     The tick only writes attributes and custom properties, and only what
     changed; Skip's patience reads her demand (`pushingHard`), not the
     capped pace, so "In a hurry?" still comes at a line. No gear letter (a
@@ -617,14 +636,35 @@ also exists as real DOM for keyboard and screen-reader users.
   stage's length is in the stable screen units (`--va-lvh`,
   `lib/screen.ts`) and its film is the stage less one stable screen, so a
   phone's bars coming and going never move it (scrollux `citybars`, at
-  every stop with its walls closed ahead, and `statics`).
+  every stop with its walls closed ahead, and `statics`). Its frame reads
+  the page as the hero's does (`pageScroll`), and a finger that lands in
+  its film is Lenis' stroke even once its walls are open (`stageGate`
+  `pinFrom`/`pinTo`, `gate.ts` browserStroke): the browser's own
+  scrolling ran ahead of the picture on a phone and boosted flick after
+  flick. Once complete (every wall open) the film is a free scrub both
+  ways, 1:1: no wall, no held beat, no ride slows it; only the dip keeps
+  its minimum fade times over a cut (below). The chapter card has a
+  layer of its own (`will-change`), since its fade and rise as the bridge
+  line plays repainted the whole sign every frame (100 to 400 ms frames
+  on a slow device at every pass through the top of the city).
   - Pacing and continuity, as polished as the hero: every drive between
     two stops is held (`workTimeline.ts` BEAT_SECONDS: each stop's
     `open` is its arrival, each `leave` its departure, both `hold` beats;
     no `travel` beat is left, since at the scroll's density one was less
-    than a wheel's notch and a stop changed in one frame). The car's x is
-    one continuous function of the film inside every stop
-    (`night/carPath.ts` `carAt`, tested): on the first stop it rolls in
+    than a wheel's notch and a stop changed in one frame). A held beat
+    plays only while she drives into it (`workStory.ts`, tested): its
+    wall creeps at the beat's pace while the page heads for it (her input
+    trimmed there, the pedal, a press's carry), and stops `HOLD_LEAD`
+    (0.25 s of the beat) ahead of a picture she has stopped; a wall that
+    ran on while she rested at a cut, under the night, left the whole
+    arrival open, and her next flick played it in a frame, the car
+    jumping 10 m. A push trimmed at a held beat's wall rides it for 0.6 s
+    (`RIDE_MS` in WorkStage, not under a finger): the page follows the
+    wall as it creeps, so notches or flicks a moment apart drive the beat
+    at its own pace instead of a step at a time. The car's mark
+    is one continuous function of the film inside every stop
+    (`night/carPath.ts` `carAt`, tested; the car chases it smoothly,
+    `night/carMotion.ts`): on the first stop it rolls in
     under the bridge line as the night fades in, never stands at the
     board before it gets there; at every stop it cruises in, brakes to
     the line, waits with the brake lights on and pulls away. The stop
@@ -655,7 +695,10 @@ also exists as real DOM for keyboard and screen-reader users.
     in both locales and only for Heuristik, whose stop shows role and
     dates only.
 - `src/features/night` — the night canvas under `#work`: mounted only near
-  the stage, rendering only while it is on screen. Five sets (`sets/`),
+  the stage (within 1.5 screens) and released only far from it (six
+  screens: a pass back up into the hero's end keeps it, or the night came
+  back under its cover, compiling, over the first stops), rendering only
+  while it is on screen. Five sets (`sets/`),
   one per stop, all at the origin and only the active one visible; the
   street, sky, car, lights and post are shared and switch per stop (two
   point lights whose count never changes, so no recompile at a cut). Set
@@ -670,10 +713,55 @@ also exists as real DOM for keyboard and screen-reader users.
   and one reader in an armchair is the atlas' only person. A lobby is one
   room painted across its panes (`LOBBY`, the hotel's; `ATRIUM`, the
   landmark's), never a framed copy per pane.
-  The car moves only with the scroll (`carPath.ts`), its
-  wheels turning with the distance, its body pitching on its springs as
-  it brakes and pulls away, its headlights' beams in the haze and their
-  fans on the wet road sweeping the street ahead (`Street.tsx`). The
+  The car moves only with the scroll, but never step for step: `carAt`
+  (`carPath.ts`) is its mark on the film, and the car chases that mark
+  like a car driven smoothly (`carMotion.ts`, pure and tested; `CarDrive`
+  steps it into `night.car` once a frame, before the camera, the street
+  and the car read it). Read 1:1, every wheel notch, swipe or pause
+  started and stopped the car, and its springs, fed that speed, dived and
+  squatted the nose on every one. Its pace (natural seconds of the film
+  a second; 1 is the beat's own pace) eases toward the speed from which
+  it can still brake onto the mark (`sqrt(2 * brake * gap)`, planned from
+  where its pace will have answered, on how fast car and mark close, with
+  the curve's own braking fed forward), with bounded acceleration,
+  braking and jerk: notches at a reading pace keep it rolling, it comes
+  to rest on the mark rather than past it (never past the line: the path
+  caps x at 0), a glide behind at most (the pedal's steady push about
+  0.3 s, a thrown page about a second), on the line within a second of
+  the picture. It starts backing up only once the film has run back more
+  than 0.04 natural seconds (a wall's one-pixel trim under the pedal is
+  not her turning back); a car backing up when she turns forward eases
+  out of it onto its mark (never a dead stop, never parked past the
+  line), and against her turn it brakes twice as hard. A long frame is
+  integrated in 1/60 s steps (up to 0.25 s), so a slow device keeps real
+  time. A cut (under the dip) is a cut on action: the car comes in at the
+  pace it and the picture shared, the beat's own at most, a chase's lag
+  behind the picture (`chaseLag`), so a fling never carries its speed
+  into the next shot. A jump (`night.snap`), the frame loop waking (the
+  stage back on screen) or a gap of 10 natural seconds put it on the
+  picture at once; reduced motion keeps it there. Its body never reads that
+  motion: it leans from the path's designed `lean` (the brake pedal goes
+  down over the first 30 % of the braking and comes off over its last
+  15 %, the throttle opens over the first 30 % of a leave), a dive of
+  1.1 degrees where an arrival brakes to the line, a squat of 0.7 where a
+  leave pulls away, one settle as it stops on the line, through a
+  critically damped spring (no bounce of its own), shown only while the
+  car drives forward at a pace (a slow mean: a pause of a breath changes
+  nothing; a pause, a resting thumb or the film running backwards lean
+  nothing) and still moves (a car standing still leans nothing, and a
+  car that crept onto the line has no settle). The tests hold it:
+  notches, a fling, the pedal and its one-pixel trims, a resting thumb, a
+  pause, standing between notches, a rewind, a reversal mid-beat, a
+  fling into the next stop, the cut, 4 to 60 frames a second, reduced
+  motion. The camera shoots the car's own moment of the drive
+  (`carMotion.ts` `framedAt`, `rig.ts` `stepShotClock`): the keys
+  describe the car's drive, so camera and car never part, however far the
+  car trails a fling (a damped pose of the picture's moment left the car
+  up to 1.5 screen widths off a phone's frame); its tracking looks aim at
+  the car as drawn (`rigPose`'s `carX`); `shot.test.ts` holds it on
+  phones. The
+  wheels turn with its distance, and its headlights' beams in the haze
+  and their fans on the wet road sweep the street ahead (`Street.tsx`). The
   camera's direction is `direction.ts`: per stop, keys on the film,
   eased with a smoothstep (`frame.ts`; a `pass` key is curved through,
   not stopped at), so every change of framing is a camera move; the sets
@@ -684,10 +772,12 @@ also exists as real DOM for keyboard and screen-reader users.
   (the board and the car at its line, never the moving car, so no fit
   breathes) inside `SAFE.portrait` (under the route and the super, over
   the subtitles), as much as the key's `fit` asks (a stop's own close
-  framing is `fit: 0`; fits blend, never switch). `NightRig` follows the
-  pose damped like the hero's rig, with its hand-held life (and the
-  pointer's parallax on the high tier), snapping only at a cut, under the
-  dip, or on a dev jump (`night.snap`). `direction.test.ts` holds it on a
+  framing is `fit: 0`; fits blend, never switch). `NightRig` takes the
+  pose at the car's moment as it is (that moment already moves like a
+  car), with the hero's hand-held life (and the pointer's parallax on the
+  high tier, eased in like the hero's rig); a jump of the car's eases in
+  at FOLLOW, and it cuts only at a cut, under the dip, or on a dev jump
+  (`night.snap`). `direction.test.ts` holds it on a
   desktop, a phone and a small phone: no step of the film whips (0.5 m,
   2 degrees), a line moves the camera 3 m and 5 degrees at most (the
   framing lands before it), the car is on screen for most of every
@@ -705,6 +795,11 @@ also exists as real DOM for keyboard and screen-reader users.
   and nothing else's. Night shaders never call `pow()` (tested). Dev
   hooks: `window.__vaStage(at)` (a film position or a beat id, `id@t`)
   and `window.__vaArm(on)`; `tools/capture/capture-work.mjs` shoots them.
+  `window.__vaCarProbe = []` logs the car every frame (picture, x, pace,
+  pitch, stop, brake lights) and `window.__vaStageProbe = []` the picture
+  every stage tick (with no WebGL the frame loop runs at the display's
+  pace: replay that trace through `stepCarMotion` to measure the car).
+  Delete them after use: they grow forever.
 - `src/features/suspects` — THE USUAL SUSPECTS (`#suspects`), right after
   the hero: a police line-up of his four cats against a centimetre height
   chart, a server component with no canvas and no looping animation; its
