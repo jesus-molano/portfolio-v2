@@ -1,23 +1,31 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import canaries from "../../../tools/art/stats/canaries.json";
+import { cardWidth, chapterLayout, inkRise, ribbonCaps, STRADDLE } from "@/components/ChapterCard/chapterLayout";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
 import {
+  FOOT_PX,
   FRAMES,
   HQ,
   MAP_CHROME_PX,
   MAP_MIN,
   MISSIONS,
+  PHONE_MENU,
   PLACES,
   PLAYER,
   SIDE_BLIPS,
   SIDE_BY_SIDE_FROM,
   TEIDE,
+  WIDE_FROM,
   blipPoint,
   captionBox,
   collisions,
   mapWidthAt,
+  monoWidth,
   overlaps,
+  phoneMenuRows,
   project,
   projectInset,
   toPercent,
@@ -167,6 +175,69 @@ describe("the page geometry", () => {
 
   it("never shrinks the wide map below its minimum, however short the screen", () => {
     expect(mapWidthAt(1100, 500)).toBe(MAP_MIN);
+  });
+
+  it("keeps THE LATE SHOW's word under the prompts row where it straddles the cut, clear of the MAP tab's last line", () => {
+    for (const [lang, dict] of [
+      ["en", en],
+      ["es", es],
+    ] as const) {
+      const { word, ribbon } = dict.projects.chapter;
+      const layout = chapterLayout(word, ribbonCaps(ribbon, lang));
+      for (const viewport of [WIDE_FROM, 1024, SIDE_BY_SIDE_FROM, 1366, 1440, 1536, 1920, 2560]) {
+        // The widest card: a screen tall enough not to cap it.
+        const rise = inkRise(layout, STRADDLE.projects) * cardWidth(viewport);
+        // The word does straddle: its top shows over the edge.
+        expect(rise, `${lang} ${viewport}`).toBeGreaterThan(16);
+        // 8 px under the prompts' top, so 32 px under the map's source line, which ends a row gap over them
+        // (and 59 px under the main missions beside the map, which end with the map's frame, a source line higher).
+        expect(rise, `${lang} ${viewport}`).toBeLessThanOrEqual(FOOT_PX - 8);
+      }
+    }
+  });
+
+  it("lets STATS's prompts keep their clicks under THE LATE SHOW's box where it straddles, its text still selectable", () => {
+    // The ink stays under their row (above), but from 1000 px, where the card straddles the cut, its box can reach
+    // their 44 px targets (in Spanish up to about 1125 px, wider with a larger text size), and the cinema paints on top.
+    const css = readFileSync(path.join(process.cwd(), "src/features/finale/Projects.module.css"), "utf8");
+    expect(css).toMatch(/@media \(max-width: 999\.98px\) \{\s*\.projects \{\s*--chapter-straddle: 0;/);
+    expect(css).toMatch(
+      /@media \(min-width: 1000px\) \{\s*\.chapter \{\s*pointer-events: none;\s*\}\s*\.chapter text \{\s*pointer-events: auto;/,
+    );
+  });
+});
+
+describe("the menu bar on a phone", () => {
+  const menuOf = (dict: typeof en) => ({ title: dict.stats.title, tabs: dict.stats.tabs, clock: dict.stats.clock });
+
+  it("measures the mono words as Chromium does", () => {
+    // Measured at 360 px: ESTADÍSTICAS's tab 149.69 px, MAP's 62.92, the clock 88.92; PAUSED 117.28 (the model errs wide).
+    expect(monoWidth("ESTADÍSTICAS", 12, 0.22) + PHONE_MENU.tab.inset).toBeCloseTo(149.69, 1);
+    expect(monoWidth("MAP", 12, 0.22) + PHONE_MENU.tab.inset).toBeCloseTo(62.92, 1);
+    expect(monoWidth("DOM 23:47", 12, 0.24)).toBeCloseTo(88.92, 1);
+    expect(Array.from("PAUSED").length * PHONE_MENU.title.fontPx * PHONE_MENU.title.em).toBeGreaterThan(117.28);
+  });
+
+  it("fits every row from 360 to 699 px in both languages: the clock beside the title under 390 px", () => {
+    for (const dict of [en, es]) {
+      for (let viewport = 360; viewport < 700; viewport += 1) {
+        const { room, rows } = phoneMenuRows(viewport, menuOf(dict));
+        for (const row of rows) expect(row, `${dict.stats.title} at ${viewport} px`).toBeLessThanOrEqual(room);
+      }
+    }
+  });
+
+  it("needs the clock up there: in Spanish at 360 px the tabs, the gap and the clock overrun the row", () => {
+    const { pad, gap, tab, clock } = PHONE_MENU;
+    const tabs = es.stats.tabs.reduce<number>((sum, name) => sum + monoWidth(name, tab.fontPx, tab.tracking) + tab.inset, tab.gap);
+    expect(tabs + gap + monoWidth(es.stats.clock, clock.fontPx, clock.tracking)).toBeGreaterThan(360 - 2 * pad);
+  });
+
+  it("moves the clock at the stylesheet's breakpoint", () => {
+    const css = readFileSync(path.join(process.cwd(), "src/features/stats/Stats.module.css"), "utf8");
+    expect(css).toMatch(
+      new RegExp(`@media \\(max-width: ${PHONE_MENU.clockUpBelow - 1}\\.98px\\) \\{[^@]*\\.clock \\{\\s*grid-row: 1;`),
+    );
   });
 });
 

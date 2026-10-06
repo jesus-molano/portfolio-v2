@@ -1,3 +1,4 @@
+import { ChapterCard, chapterVars } from "@/components/ChapterCard/ChapterCard";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { cq, PLATES, rectCq } from "./finaleLayout";
 import { FEATURES } from "./links";
@@ -38,6 +39,10 @@ type Props = {
  * office is a link too, a plain one to the contact in the end credits.
  * Static: no canvas, no scroll-driven motion, only hover and focus
  * effects.
+ *
+ * Its chapter card, THE LATE SHOW (the pause clock says Sunday 23:47),
+ * straddles the cut from STATS and stands in the night over the cinema,
+ * clear of the AFTERGLOW sign.
  */
 export function Projects({ dict, newTab, locale }: Props) {
   const titles = FEATURES.map((feature) => dict.posters[feature.id].title);
@@ -54,10 +59,14 @@ export function Projects({ dict, newTab, locale }: Props) {
   const lineStyle: Vars = { "--line-y": cq(wide, 676) };
 
   return (
-    <section id="projects" className={styles.projects} aria-labelledby="projects-title" data-loops>
-      <h2 id="projects-title" className="sr-only">
-        {dict.title}
-      </h2>
+    <section
+      id="projects"
+      className={styles.projects}
+      style={chapterVars(dict.chapter, locale)}
+      aria-labelledby="projects-title"
+      data-loops
+    >
+      <ChapterCard id="projects-title" chapter={dict.chapter} lang={locale} className={styles.chapter} />
       <div className={styles.cinema}>
         <PlatePicture mood="night" locale={locale} className={styles.plate} />
         <ProjectsMarquee

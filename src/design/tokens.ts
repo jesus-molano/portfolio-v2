@@ -148,6 +148,14 @@ export const typography = {
   mono: "var(--font-mono), ui-monospace, 'JetBrains Mono', monospace",
   /** The cinema's changeable letters and the ticket stubs (src/features/finale): a condensed poster face. */
   marquee: "var(--font-marquee), 'Bebas Neue', 'Arial Narrow', Impact, sans-serif",
+  /**
+   * The chapter cards (src/components/ChapterCard): the word in Chapter
+   * Script, our subset of Mr Dafoe, a sign-painter's brush script; the
+   * banner's capitals in Big Shoulders Display Black, a condensed face from
+   * 1930s Chicago signage, kin to the deco hotels and the cinema.
+   */
+  chapterScript: "var(--font-chapter-script), 'Brush Script MT', cursive",
+  chapterCaps: "var(--font-chapter-caps), 'Bebas Neue', 'Arial Narrow', Impact, sans-serif",
   /** Fluid sizes. */
   heroName: "clamp(2.7rem, 9.4vw, 10.5rem)",
   heroRole: "clamp(0.72rem, 1.05vw, 0.95rem)",
@@ -198,6 +206,8 @@ export const motion = {
   revealDuration: 1.6,
   revealStagger: 0.06,
   ease: "power3.out",
+  /** The same ease for CSS transitions (the chapter cards' entrance). */
+  easeCss: "cubic-bezier(0.215, 0.61, 0.355, 1)",
   /** Lenis interpolation factor. */
   scrollLerp: 0.09,
   /** Lenis touch inertia interpolation (syncTouch). */
@@ -262,6 +272,61 @@ export const finale = {
   card: "rgba(11, 6, 25, 0.72)",
 } as const;
 
+/** A colour `t` of the way from `a` to `b` (both #rrggbb), for the tokens derived below. */
+export function mixHex(a: string, b: string, t: number): string {
+  const channel = (hex: string, i: number) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
+  return `#${[0, 1, 2]
+    .map((i) => Math.round(channel(a, i) + (channel(b, i) - channel(a, i)) * t).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+/** The back of the banner's ribbon: a tail is the band turned from the light, toward magenta and a little ink. */
+export function tailOf(colour: string): string {
+  return mixHex(mixHex(colour, palette.magenta, 0.3), palette.ink, 0.105);
+}
+
+/**
+ * The chapter cards (src/components/ChapterCard): a sign-painter's word
+ * over a scroll banner. The word's fill from its top to its foot, the ink
+ * keyline round every piece, the magenta split shade and the dusk-to-ink
+ * block shade; the band's fill from left to right (the tails a shade
+ * deeper), the fold where the ribbon turns over, the cream pinstripe and
+ * the capitals on the band; the night haze under the card. Emitted as
+ * `--va-chapter-*`.
+ */
+export const chapterCard = {
+  wordTop: palette.cream,
+  wordMid: palette.amber,
+  /** A warm peach the word's descenders end in. */
+  wordFoot: "#ffb894",
+  keyline: palette.ink,
+  split: palette.magenta,
+  block: palette.dusk,
+  blockDeep: palette.ink,
+  bandStart: palette.orange,
+  /** Peach, between the low sun's orange and the pink. */
+  bandMid: "#ffa48c",
+  bandEnd: palette.pink,
+  tailStart: tailOf(palette.orange),
+  tailMid: tailOf("#ffa48c"),
+  tailEnd: tailOf(palette.pink),
+  fold: mixHex(palette.magenta, palette.ink, 0.5),
+  pin: palette.cream,
+  caps: palette.night,
+  haze: palette.night,
+} as const;
+
+/**
+ * The chapter cards' width (ChapterCard.module.css): their band less 2rem,
+ * at most `rem` rem, emitted with the cap below as --va-chapter-span. In
+ * rem, not in viewport widths, so a card grows with the text size and the
+ * browser's zoom like any other heading, until the window stops it. Never
+ * wider than `perHeight` times the screen's height either: that only binds
+ * under 512 px of height (a phone on its side), where a card would
+ * otherwise fill the screen.
+ */
+export const chapterSpan = { rem: 48, perHeight: 1.5 } as const;
+
 export const layers = {
   canvas: 0,
   haze: 1,
@@ -292,6 +357,8 @@ export function tokensToCssVariables(): string {
   entries.push(`--va-font-body: ${typography.body};`);
   entries.push(`--va-font-mono: ${typography.mono};`);
   entries.push(`--va-font-marquee: ${typography.marquee};`);
+  entries.push(`--va-font-chapter-script: ${typography.chapterScript};`);
+  entries.push(`--va-font-chapter-caps: ${typography.chapterCaps};`);
   for (const [key, value] of Object.entries(radioFonts)) {
     entries.push(`--va-font-radio-${kebab(key)}: ${value};`);
   }
@@ -299,6 +366,7 @@ export function tokensToCssVariables(): string {
   entries.push(`--va-size-hero-role: ${typography.heroRole};`);
   entries.push(`--va-size-body: ${typography.bodySize};`);
   entries.push(`--va-motion-reveal: ${motion.revealDuration}s;`);
+  entries.push(`--va-motion-ease: ${motion.easeCss};`);
   entries.push(`--va-hero-scroll: ${motion.heroScrollVh}vh;`);
   for (const [key, value] of Object.entries(radio)) {
     entries.push(`--va-radio-${kebab(key)}: ${value};`);
@@ -309,6 +377,10 @@ export function tokensToCssVariables(): string {
   for (const [key, value] of Object.entries(finale)) {
     entries.push(`--va-finale-${kebab(key)}: ${value};`);
   }
+  for (const [key, value] of Object.entries(chapterCard)) {
+    entries.push(`--va-chapter-${kebab(key)}: ${value};`);
+  }
+  entries.push(`--va-chapter-span: min(${chapterSpan.rem}rem, ${chapterSpan.perHeight * 100}svh);`);
   for (const [key, value] of Object.entries(controls)) {
     entries.push(`--va-control-${kebab(key)}: ${value};`);
   }

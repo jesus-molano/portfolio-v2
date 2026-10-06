@@ -224,3 +224,67 @@ describe("finale copy (projects, credits)", () => {
     });
   }
 });
+
+describe("chapter cards (each static section's heading)", () => {
+  /** The static sections, in the film's order; the career city adds its own when it lands. */
+  const SECTIONS = ["suspects", "stats", "projects", "credits"] as const;
+  const graphemes = (text: string) => [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].length;
+
+  it("has a chapter, with a word and a ribbon, for every static section in both languages", () => {
+    for (const dict of [en, es]) {
+      for (const section of SECTIONS) {
+        expect(Object.keys(dict[section].chapter).sort(), section).toEqual(["ribbon", "word"]);
+      }
+    }
+  });
+
+  for (const [locale, dict] of [
+    ["en", en],
+    ["es", es],
+  ] as const) {
+    it(`${locale}: keeps the word to 13 letters and the ribbon to one line of 22`, () => {
+      for (const section of SECTIONS) {
+        const { word, ribbon } = dict[section].chapter;
+        // THE LATE SHOW and THAT'S A WRAP are 13; SOSPECHOSOS HABITUALES is 22.
+        expect(graphemes(word), word).toBeLessThanOrEqual(13);
+        expect(Array.from(ribbon).length, ribbon).toBeLessThanOrEqual(22);
+        // Stored as read (the card sets the capitals), with the typographic apostrophe.
+        expect(word).not.toBe(word.toUpperCase());
+        expect(`${word} ${ribbon}`).not.toContain("'");
+      }
+    });
+
+    it(`${locale}: opens a Spanish exclamation only to close it`, () => {
+      for (const section of SECTIONS) {
+        const { word } = dict[section].chapter;
+        expect(word.includes("¡"), word).toBe(word.includes("!"));
+      }
+    });
+  }
+
+  it("says what the owner chose: a word in the film's voice, the section plainly on the ribbon", () => {
+    const cards = (dict: typeof en) => SECTIONS.map((section) => [dict[section].chapter.word, dict[section].chapter.ribbon]);
+    expect(cards(es)).toEqual([
+      ["La banda", "Sospechosos habituales"],
+      ["Jugador uno", "Fuera de horario"],
+      ["Sesión golfa", "Proyectos personales"],
+      ["¡Y corten!", "Créditos y contacto"],
+    ]);
+    expect(cards(en)).toEqual([
+      ["The crew", "The usual suspects"],
+      ["Player one", "Off the clock"],
+      ["The late show", "Side projects"],
+      ["That’s a wrap", "Credits and contact"],
+    ]);
+    // "El conductor" / "The driver" is his role in the credits' cast, not a ribbon.
+    expect(es.credits.cast.driver).toBe("El conductor");
+    expect(en.credits.cast.driver).toBe("The driver");
+  });
+
+  it("pays off the hero's last line: the crew it promised", () => {
+    expect(en.suspects.chapter.word).toBe("The crew");
+    expect(es.suspects.chapter.word).toBe("La banda");
+    expect(en.hero.lines.flat().at(-1)).toMatch(/meet the crew/i);
+    expect(es.hero.lines.flat().at(-1)).toMatch(/la banda/i);
+  });
+});

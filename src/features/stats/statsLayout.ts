@@ -296,20 +296,31 @@ export const WIDE_FROM = 1000;
  * frame; below it they run above the map and the map spans the column.
  */
 export const SIDE_BY_SIDE_FROM = 1280;
-/** The menu's content stops growing at this width (Stats.module.css, .stats). */
+/** The screen's content stops growing at this width (Stats.module.css, .screen). */
 export const SCREEN_MAX = 1680;
 /** The wide map never gets narrower than this, however short the screen. */
 export const MAP_MIN = 740;
 /**
  * Everything on the MAP tab's screen above and below the map, in CSS px
- * (Stats.module.css): the section's top padding (64), the menu bar (46),
- * the gap (24), the map's title (23), its source line (27), the gap (24),
- * the button prompts (24) and the bottom padding (24). The map is never
- * taller than the rest of the screen, so from 1280 px, where the missions
- * stand beside it, the whole tab fits on one. Below that the missions run
- * above the map and the tab scrolls on.
+ * (Stats.module.css): the screen's top padding (64, .screen), the menu
+ * bar (46), the gap (24), the map's title (23), its source line (27), the
+ * gap (24), the button prompts (24) and the bottom padding (24). The map
+ * is never taller than the rest of the screen, so from 1280 px, where the
+ * missions stand beside it, the whole tab fits on one. Below that the
+ * missions run above the map and the tab scrolls on.
  */
 export const MAP_CHROME_PX = 256;
+
+/**
+ * The button prompts' row (24) and the screen's bottom padding (24) in CSS
+ * px (Stats.module.css .foot, .screen): the prompts' top stands this far
+ * over STATS's bottom edge. The MAP tab's last line, the map's source line,
+ * ends a row gap (24) higher; beside the map (from 1280 px) the main
+ * missions end with the map's frame, a source line (27) higher still.
+ * THE LATE SHOW's word rises over that edge between the prompts, never
+ * above their row.
+ */
+export const FOOT_PX = 48;
 
 /**
  * The map's rendered width in CSS pixels in a viewport (mirrors the CSS
@@ -322,6 +333,50 @@ export function mapWidthAt(viewport: number, viewportHeight = Infinity): number 
     viewport >= SIDE_BY_SIDE_FROM ? content - 32 - Math.min(420, Math.max(300, viewport * 0.28)) : content;
   const byHeight = Math.max(MAP_MIN, ((viewportHeight - MAP_CHROME_PX) * 16) / 11);
   return Math.min(column, byHeight);
+}
+
+/**
+ * STATS's menu bar on a phone (Stats.module.css, under 700 px): the title
+ * (the pause bars, their gap and the word) on its own row and, under it,
+ * the tabs and the clock, at least `gap` apart; under `clockUpBelow` px the
+ * clock goes up beside the title instead (in Spanish ESTADÍSTICAS ran into
+ * it at 360 px). Widths as Chromium measures them: the tabs and the clock
+ * are JetBrains Mono, 7 px a character at 12 px plus the letter spacing
+ * after each one, a tab adds its padding and border (34); the title is
+ * Unbounded ExtraBold, under 0.9 em a capital with its tracking.
+ */
+export const PHONE_MENU = {
+  pad: 16,
+  gap: 24,
+  clockUpBelow: 390,
+  monoEm: 7 / 12,
+  tab: { fontPx: 12, tracking: 0.22, inset: 34, gap: 8 },
+  clock: { fontPx: 12, tracking: 0.24 },
+  title: { fontPx: 22, em: 0.9, bars: 38 },
+} as const;
+
+/** A line of JetBrains Mono, in CSS px: `tracking` in ems after every character. */
+export function monoWidth(text: string, fontPx: number, tracking: number): number {
+  return Array.from(text).length * fontPx * (PHONE_MENU.monoEm + tracking);
+}
+
+/**
+ * The phone menu's rows at a viewport width: what each row needs (the
+ * title's, then the tabs'; the clock in whichever it shares) and the room
+ * the screen's paddings leave them.
+ */
+export function phoneMenuRows(
+  viewport: number,
+  menu: { title: string; tabs: readonly string[]; clock: string },
+): { room: number; rows: number[] } {
+  const { pad, gap, clockUpBelow, tab, clock, title } = PHONE_MENU;
+  const who = title.bars + Array.from(menu.title).length * title.fontPx * title.em;
+  const tabs =
+    menu.tabs.reduce((sum, name) => sum + monoWidth(name, tab.fontPx, tab.tracking) + tab.inset, 0) +
+    tab.gap * (menu.tabs.length - 1);
+  const time = gap + monoWidth(menu.clock, clock.fontPx, clock.tracking);
+  const up = viewport < clockUpBelow;
+  return { room: viewport - 2 * pad, rows: [who + (up ? time : 0), tabs + (up ? 0 : time)] };
 }
 
 /** Caption font size on the wide map: 1.6% of the map width, between 12 and 13.5 px. */

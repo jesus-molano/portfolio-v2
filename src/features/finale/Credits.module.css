@@ -9,6 +9,8 @@
 .credits {
   /* Wide enough from about 990 px that the fine print runs in two columns. */
   --roll-w: clamp(23rem, 40vw, 34rem);
+  /* Its width, as wide as the frame's: the roll's chapter card finds the marquee in it (cqw). */
+  container-type: inline-size;
   position: relative;
   z-index: var(--va-z-title);
   background: var(--va-color-night);
@@ -150,9 +152,46 @@
   background: linear-gradient(var(--va-color-night), color-mix(in srgb, var(--va-color-night) 0%, transparent));
 }
 
-/* The fades take no room (negative margins); these margins collapse with theirs. */
-.roll > .eyebrow {
-  margin-top: 58svh;
+/*
+ * The fades take no room (negative margins); these margins collapse with
+ * theirs. On a short wide screen (a phone on its side) the lead-in grows
+ * so that at rest the card's top (the roll's width times the card's height
+ * share, --chapter-h, set on the slot) stays below the top fade (6rem).
+ */
+.roll > .chapterSlot {
+  margin-top: max(58svh, calc(6rem + var(--roll-w) * var(--chapter-h) - 0.98rem));
+}
+
+/*
+ * THAT'S A WRAP, as wide as the roll (its padding ignored), heads the
+ * column. Its slot is as tall as the small CREDITS eyebrow it replaces
+ * (0.7rem at a line height of 1.4), and the card hangs from the slot's
+ * foot, growing up into the lead-in: his line rests exactly where it did.
+ * It fades under the page controls like the rest of the roll. Unlike the
+ * other cards it keeps to the roll, whose width follows the window, so
+ * that it never covers the dawn cinema's marquee; and where even the roll
+ * would reach the marquee (a window under about 880 px, a phone on its
+ * side, where the plate can go no further left), to the part of it 1rem
+ * clear of the board: its right edge (plates.json, the snipe's board),
+ * placed as .stage places the plate. Zoomed in far enough, the page takes
+ * the portrait layout below, where it is sized like every other card.
+ */
+.chapterSlot {
+  position: relative;
+  height: 0.98rem;
+}
+
+.chapterSlot > .chapter {
+  /* The plate's width and left edge as .stage has them: the section is as wide as the frame, which is 100svh tall. */
+  --dawn-w: max(100cqw, 177.78svh);
+  --dawn-x: clamp(100cqw - var(--dawn-w), (100cqw - var(--roll-w)) / 2 - 0.33 * var(--dawn-w), 0px);
+  /* How far the board, and 1rem more, reaches past the roll's left edge. */
+  --board-in: calc(var(--dawn-x) + (var(--w-bx) + var(--w-bw)) * var(--dawn-w) / 100 + 1rem - (100cqw - var(--roll-w)));
+  --chapter-w: 100%;
+  position: absolute;
+  right: calc(-1 * var(--roll-pad));
+  bottom: 0;
+  left: max(-1 * var(--roll-pad), var(--board-in) - var(--roll-pad));
 }
 
 .roll > .top {
@@ -165,7 +204,6 @@
   background: linear-gradient(var(--va-finale-scrim-clear), var(--va-finale-scrim));
 }
 
-.eyebrow,
 .head {
   font: 700 0.7rem / 1.4 var(--va-font-mono);
   letter-spacing: 0.32em;
@@ -575,10 +613,14 @@
 /* --- portrait screens: the frame, then the roll ------------------------------ */
 
 @media (max-aspect-ratio: 5/6), (max-width: 640px) {
+  .credits,
+  .frame {
+    container-type: normal;
+  }
+
   .frame {
     position: relative;
     height: auto;
-    container-type: normal;
   }
 
   .stage {
@@ -614,9 +656,25 @@
     scroll-margin-top: 0;
   }
 
-  .roll > .eyebrow,
+  .roll > .chapterSlot,
   .roll > .top {
     margin-block: 0;
+  }
+
+  /*
+   * Between the cinema and his line, as wide as every other card: wider
+   * than the roll on a tablet, so its band reaches out of the roll on both
+   * sides (negative margins) to the card's width.
+   */
+  .chapterSlot {
+    height: auto;
+    margin-inline: -1.25rem;
+  }
+
+  .chapterSlot > .chapter {
+    --chapter-w: min(100vw - 2rem, var(--va-chapter-span));
+    position: static;
+    margin-inline: calc((100% - var(--chapter-w)) / 2);
   }
 
   .roll > .top {

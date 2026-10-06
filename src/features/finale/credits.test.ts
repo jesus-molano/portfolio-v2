@@ -173,6 +173,9 @@ describe("the cast and the rest", () => {
     const faces = [...TYPEFACES.site, ...TYPEFACES.radio, ...TYPEFACES.posters];
     expect(new Set(faces).size).toBe(faces.length);
     expect(faces).toContain("Bebas Neue");
+    // The chapter cards' faces (src/app/fonts), under the site's titles: the word's script (OFL) and the banner's capitals.
+    expect(TYPEFACES.site).toContain("Mr Dafoe");
+    expect(TYPEFACES.site).toContain("Big Shoulders Display");
   });
 });
 

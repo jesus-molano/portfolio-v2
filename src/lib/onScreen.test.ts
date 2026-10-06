@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOnScreen, lineRootMargin, ON_SCREEN_THRESHOLDS } from "./onScreen";
+import { isOnScreen, lineBelow, lineRootMargin, ON_SCREEN_THRESHOLDS } from "./onScreen";
 
 describe("isOnScreen", () => {
   it("keeps the scene running while any of it shows", () => {
@@ -34,5 +34,28 @@ describe("lineRootMargin", () => {
     expect(lineRootMargin(-10, 900)).toBe("0px 0px -899px 0px");
     expect(lineRootMargin(2000, 900)).toBe("-899px 0px 0px 0px");
     expect(lineRootMargin(0, 0)).toBe("0px 0px 0px 0px");
+  });
+});
+
+describe("lineBelow", () => {
+  it("puts the line the gap under the box's bottom edge", () => {
+    // The radio's callout on a 360 px phone: 84 px down, 33 px tall.
+    expect(lineBelow([{ top: 84, height: 33 }], 8)).toBe(125);
+  });
+
+  it("goes under the lowest of several boxes", () => {
+    expect(
+      lineBelow(
+        [
+          { top: 92, height: 49 },
+          { top: 16, height: 40 },
+        ],
+        8,
+      ),
+    ).toBe(149);
+  });
+
+  it("is the viewport's top edge with no box", () => {
+    expect(lineBelow([], 8)).toBe(0);
   });
 });

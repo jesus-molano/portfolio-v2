@@ -11,6 +11,7 @@ import {
   Unbounded,
   Yellowtail,
 } from "next/font/google";
+import localFont from "next/font/local";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import "lenis/dist/lenis.css";
@@ -113,6 +114,37 @@ const marqueeFont = Bebas_Neue({
   preload: false,
 });
 
+/*
+ * The chapter cards (src/components/ChapterCard), each a checked-in subset
+ * beside its OFL licence in src/app/fonts: the word in Chapter Script (Mr
+ * Dafoe, subset and renamed by tools/chapter/fonts.py, which also reads
+ * the metrics the cards are laid out with) and the banner's capitals in
+ * Big Shoulders Display Black (next/font/google only serves the merged
+ * variable family, heavier, with other widths than capsFace.ts measured).
+ * About 14 KB each. Not preloaded, like the marquee's face: the cards are
+ * below the fold, so they never compete with the hero's faces, and a page
+ * without a card (a 404) never fetches them. The cards are in the first
+ * HTML, so the home page still fetches both early, and ChapterMotion holds
+ * a card clear until they are in. `block`: a card's drawing is laid out on
+ * the server for these exact faces and its box never changes, but a
+ * fallback face must never paint in it.
+ */
+const chapterScriptFont = localFont({
+  src: [{ path: "../fonts/ChapterScript-Regular.woff2", weight: "400", style: "normal" }],
+  variable: "--font-chapter-script",
+  display: "block",
+  preload: false,
+  adjustFontFallback: false,
+});
+
+const chapterCapsFont = localFont({
+  src: [{ path: "../fonts/BigShouldersDisplay-Black.latin.woff2", weight: "900", style: "normal" }],
+  variable: "--font-chapter-caps",
+  display: "block",
+  preload: false,
+  adjustFontFallback: false,
+});
+
 const fontVariables = [
   displayFont,
   bodyFont,
@@ -124,6 +156,8 @@ const fontVariables = [
   radioHiphopFont,
   radioDecoFont,
   marqueeFont,
+  chapterScriptFont,
+  chapterCapsFont,
 ]
   .map((font) => font.variable)
   .join(" ");

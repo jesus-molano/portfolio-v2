@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ChapterCard, chapterVars } from "@/components/ChapterCard/ChapterCard";
 import { formatFrequency } from "@/features/music/stations";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { BackToTop } from "./BackToTop";
@@ -34,7 +35,11 @@ type Props = {
   locale: string;
 };
 
-/** Where the "held over" snipe is pasted: the marquee board's top-right corner, on both plates. */
+/**
+ * The marquee board on both plates, in cqw of a container as wide as the
+ * plate: where the "held over" snipe is pasted (its top-right corner), and
+ * what the roll's chapter card keeps clear of.
+ */
 function boardVars(): Vars {
   const vars: Vars = {};
   for (const [layout, name] of Object.entries(DAWN) as ["wide" | "tall", keyof typeof PLATES][]) {
@@ -103,6 +108,11 @@ function Block({ id, title, children }: { id: string; title: string; children: R
  * roll scrolls over its right side; on portrait screens the frame comes
  * first and the roll follows. No animation runs on its own: the roll is
  * the page's own scroll.
+ *
+ * The roll opens on its chapter card, THAT'S A WRAP (the director's call,
+ * before Jesús says "Roll credits"), as wide as the roll, in the slot the
+ * small CREDITS eyebrow had: it grows up into the empty lead-in, so his
+ * line rests exactly where it did.
  */
 export function EndCredits({ dict, newTab, locale }: Props) {
   const rows = dict.marquee.rows;
@@ -112,7 +122,7 @@ export function EndCredits({ dict, newTab, locale }: Props) {
   const quote = (text: string) => `${dict.music.quotes[0]}${text}${dict.music.quotes[1]}`;
 
   return (
-    <section id="credits" className={styles.credits} aria-labelledby="credits-title">
+    <section id="credits" className={styles.credits} aria-labelledby="credits-title" style={boardVars()}>
       <div className={styles.frame} aria-hidden="true">
         <div className={styles.stage}>
           <PlatePicture mood="dawn" locale={locale} className={styles.plate} />
@@ -121,7 +131,7 @@ export function EndCredits({ dict, newTab, locale }: Props) {
               <MarqueeRow key={i} tiles={row} style={rowVars(DAWN, i, sizes)} />
             ))}
           </div>
-          <span className={styles.snipeBoard} style={boardVars()}>
+          <span className={styles.snipeBoard}>
             <span className={styles.snipe}>{dict.marquee.snipe}</span>
           </span>
         </div>
@@ -129,9 +139,9 @@ export function EndCredits({ dict, newTab, locale }: Props) {
 
       <div className={styles.roll}>
         <span className={styles.fadeTop} aria-hidden="true" />
-        <h2 id="credits-title" className={styles.eyebrow}>
-          {dict.title}
-        </h2>
+        <div className={styles.chapterSlot} style={chapterVars(dict.chapter, locale)}>
+          <ChapterCard id="credits-title" chapter={dict.chapter} lang={locale} className={styles.chapter} />
+        </div>
         <p className={styles.card}>
           <span className={styles.speaker}>{dict.speaker}:</span> {dict.opening}
         </p>

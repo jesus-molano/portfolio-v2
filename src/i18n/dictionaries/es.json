@@ -108,7 +108,10 @@
     ]
   },
   "suspects": {
-    "title": "Sospechosos habituales",
+    "chapter": {
+      "word": "La banda",
+      "ribbon": "Sospechosos habituales"
+    },
     "place": "Rueda de reconocimiento · Tenerife",
     "associates": "Compañeros de piso",
     "description": "Una rueda de reconocimiento con los cuatro gatos de Jesús ante una regla de alturas, cada uno tras su placa numerada. Tom y Kira son los más altos, Odin se queda un poco por debajo y a Dante, el cachorro, todos le sacan una cabeza.",
@@ -240,8 +243,11 @@
     "hint": "o pulsa cualquier tecla"
   },
   "stats": {
+    "chapter": {
+      "word": "Jugador uno",
+      "ribbon": "Fuera de horario"
+    },
     "title": "PAUSA",
-    "sub": "FUERA DE HORARIO",
     "description": "Es una pantalla de pausa. Sus misiones principales resumen su carrera en cinco: cuatro completadas y una en curso. El mapa es Tenerife, más o menos, con los pueblos renombrados, y esconde por la isla sus videojuegos, películas y series favoritos, y también la Fórmula 1. Una cabina que no para de sonar lleva a sus proyectos personales. La segunda pestaña es su ficha de personaje, con sus habilidades y sus récords.",
     "tabs": [
       "MAPA",
@@ -277,7 +283,6 @@
       },
       "you": "Eh, tú, al fin has despertado.",
       "hq": "Cuartel general en un volcán, claro.",
-      "legend": "En el mapa",
       "blips": {
         "pit": "Pit lane. Box 33.",
         "box": "Una caja de cartón que se ha movido.",
@@ -400,7 +405,10 @@
     "newTab": "(se abre en una pestaña nueva)"
   },
   "projects": {
-    "title": "Proyectos personales",
+    "chapter": {
+      "word": "Sesión golfa",
+      "ribbon": "Proyectos personales"
+    },
     "marquee": {
       "rows": [
         "ESTA NOCHE · CUATRO FUNCIONES",
@@ -460,7 +468,10 @@
     }
   },
   "credits": {
-    "title": "Créditos",
+    "chapter": {
+      "word": "¡Y corten!",
+      "ribbon": "Créditos y contacto"
+    },
     "marquee": {
       "rows": [
         "EN CARTEL",

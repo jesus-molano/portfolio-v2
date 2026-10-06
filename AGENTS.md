@@ -34,10 +34,10 @@ also exists as real DOM for keyboard and screen-reader users.
 - `pnpm lint` — ESLint CLI (`next lint` no longer exists in Next 16).
 - `pnpm typecheck` — `tsc --noEmit`.
 - `pnpm test` — Vitest unit tests (`src/**/*.test.ts`): locale negotiation,
-  proxy redirects, the deterministic city layout, the shader `pow()` rule,
-  the loading screen's tips, keys and key-art budget, the content map
-  (`i18n/contentMap.test.ts`), and the hero's scroll UX acceptance checks
-  (`scroll/acceptance.test.ts`).
+  proxy redirects, the deterministic city layout, the chapter cards'
+  layout, the shader `pow()` rule, the loading screen's tips, keys and
+  key-art budget, the content map (`i18n/contentMap.test.ts`), and the
+  hero's scroll UX acceptance checks (`scroll/acceptance.test.ts`).
   Add a test for every new pure function.
 - `pnpm build` — production build. `next/font/google` downloads fonts at build
   time, so the build needs access to `fonts.googleapis.com` and `fonts.gstatic.com`.
@@ -45,7 +45,8 @@ also exists as real DOM for keyboard and screen-reader users.
 - `node tools/capture/scrollux.mjs --url http://localhost:3000` — the
   browser half of the scroll UX acceptance (dev server running): swipes
   against the radio's long-press, the arrows, the hold note, the rewind
-  hint, the long wait, the radio and its callout, reduced motion (and back),
+  hint, the long wait, the radio and its callout (kept off THE CREW's card
+  after Skip), reduced motion (and back),
   focus, caption pills, calm readers, the title (a tap while the name
   forms, no ghost after a short swipe) and the loader on a phone, on
   desktop and a phone in both languages. PASS or FAIL.
@@ -73,8 +74,10 @@ also exists as real DOM for keyboard and screen-reader users.
   The home page runs, in order: the hero, THE USUAL SUSPECTS (`#suspects`),
   the career city (still to come: a comment in `HomeMain.tsx` marks its
   place), STATS (`#stats`), the finale's cinema (`#projects`) and the end
-  credits (`#credits`, with `#contact` before their fine print). `HomeMain.tsx` renders them, so
-  `anchors.test.ts` can render the page in both locales: every
+  credits (`#credits`, with `#contact` before their fine print), each
+  static section headed by its chapter card (`src/components/ChapterCard`).
+  `HomeMain.tsx` renders them, so `anchors.test.ts` can render the page in
+  both locales: every
   `href="#..."` must reach an element id that exists (no dead links). Any
   other path under a locale (`[...rest]`) renders the localized 404
   (`not-found.tsx`), with its own title (`notFound.title`, "Wrong exit —
@@ -348,7 +351,12 @@ also exists as real DOM for keyboard and screen-reader users.
   has settled and is quiet (a line playing, no prompt up), steps aside
   when the hero asks her something, and hangs below the HUD while the
   button glows; a tap on it opens the wheel ("Tap here for the radio" on
-  touch). Radio off sits at
+  touch). It is the hero's alone (`data-side-hint`): it shows only while
+  the hero runs down past its bottom edge and 8 px more
+  (`sceneLoading.onScreen`, asked of the line of pixels there), since past
+  it (Skip, a deep link, a strip of its night left at the top after a
+  little scroll back) it would cover the next section's chapter card.
+  Radio off sits at
   the bottom; every sector stays a 44 px target on a 360 px phone
   (`wheelGeometry.ts`, tested). Station logos (`StationLogo.tsx`) are our
   own SVG typography in `radio` tokens and `radioFonts`: no trademarks,
@@ -537,10 +545,12 @@ also exists as real DOM for keyboard and screen-reader users.
     taller than the screen less everything around it (`MAP_CHROME_PX`, the
     paddings, menu bar, map title, source line and prompts, mirrored in
     `Stats.module.css`), and beside the map (1280 px up) the missions take
-    the frame's height, so the MAP tab fits 1440 × 900. The section lands
-    at the viewport's top edge (a negative `scroll-margin-top` cancels the
-    html scroll-padding: its own 64 px top padding clears the page
-    controls).
+    the frame's height, so the MAP tab, scrolled to the top of the screen
+    below its chapter card, fits 1440 × 900. A link lands the whole card
+    under the page controls and the menu just under it (`scroll-margin-top`
+    counts the card's rise over the section's top edge; under 52rem the
+    line-up's last line, centred just over the card, lands with it, below
+    the controls).
   - Without JS (the stacking only applies under `@media (scripting:
     enabled)`) both panels stay on the page, one under the other, with two
     plain links; the tab roles come with hydration (`statsMarkup.test.ts`
@@ -621,6 +631,83 @@ also exists as real DOM for keyboard and screen-reader users.
     the roll's sticky top fade (`scroll-margin-top`), never dimmed under it. Then THE END and "Same time
     tomorrow?". No job and no side project is named there (tested): STATS,
     the career city and the cinema tell them.
+- `src/components/ChapterCard` — the static sections' headings: one
+  sign-painter's chapter card each, a word in the film's voice over a
+  scroll banner that says plainly what the section is (`<section>.chapter`
+  in the dictionaries, `{ word, ribbon }`; the owner's texts, tested: La
+  banda · Sospechosos habituales, Jugador uno · Fuera de horario, Sesión
+  golfa · Proyectos personales, ¡Y corten! · Créditos y contacto; The crew
+  · The usual suspects, Player one · Off the clock, The late show · Side
+  projects, That’s a wrap · Credits and contact). "El conductor" / "The
+  driver" is his role in the credits' cast, never a ribbon.
+  - The look: the word in Chapter Script, cream to amber to peach, with an
+    ink keyline, a magenta split shade and a dusk-to-ink block shade; under
+    it a flat banner of even height on a gentle arch, its swallow-tail ends
+    folded back behind it (the fold in deep rose), the band orange to peach
+    to pink with an ink keyline, a cream pinstripe top and bottom and the
+    same shades; the ribbon in capitals in Big Shoulders Display Black,
+    night ink, evenly tracked, set on the arch. The whole card leans 5°.
+    Colours are `chapterCard` tokens.
+  - One server-rendered SVG per card, deterministic: `chapterLayout.ts`
+    (pure, tested) lays it out in a viewBox 1000 units wide from
+    checked-in metrics, never by measuring in the browser: `scriptFace.ts`
+    reads `scriptMetrics.json` (advances, ink boxes, kerning and each
+    glyph's lowest ink per 0.02 em column) and `capsFace.ts` holds the
+    capitals' widths and kerning. The banner hangs as close under the word
+    as it can: its top clears the word's body; deep descenders and swashes
+    (Jugador uno, Sesión golfa, ¡Y corten!) cross in front of the band with
+    their shade on it, as on a painted sign, and no ink or shade ever
+    reaches a capital (tested). A new word or ribbon: `python3
+    tools/chapter/fonts.py` subsets the face again with the dictionaries'
+    letters and rewrites the metrics (fontTools and brotli), and `node
+    tools/chapter/measure.mjs` prints Chromium's numbers for the MEASURED
+    tables in `chapterLayout.test.ts`; a capital `capsFace.ts` lacks fails
+    the tests.
+  - The card is its section's one `h2`, named "<word>. <ribbon>"
+    (`chapterName`: "La banda. Sospechosos habituales"), its SVG
+    `aria-hidden`; the word and the ribbon are its only text, once each
+    (the shades are `<use>` copies), so find in page finds them
+    (`anchors.test.ts`). Forced colours draw it in the system's two
+    colours, without shades.
+  - Its faces are self-hosted in `src/app/fonts`, each beside its OFL
+    licence: Chapter Script is Mr Dafoe subset to the cards' letters plus
+    a safe Latin set and renamed (the OFL's Reserved Font Name), under
+    16 KB and checked against the metrics' SHA-256; the capitals are a
+    latin subset of Big Shoulders Display Black. Both use `font-display:
+    block` and are not preloaded (the cards are below the fold, and a page
+    without one, a 404, never fetches them); no box depends on them.
+    `ChapterMotion` keeps a card clear until its faces are in (no card ever paints in a
+    fallback face, and the layout shift stays 0 with the faces held back),
+    and plays each card's entrance once as it comes up: the word fades in
+    with a 2° turn, and 240 ms later the banner unfurls from its middle.
+    Reduced motion plays nothing.
+  - One width for every card: its band less 2rem, at most 48rem
+    (`--va-chapter-span`, `chapterSpan` in the tokens; `cardWidth`). In
+    rem, not in viewport widths, so a card grows with the text size and
+    the browser's zoom like any heading, until the window stops it
+    (tested: 1.5 times at 150%); the span is also at most 1.5 screen
+    heights, which only binds on a phone on its side. Its capitals stay at
+    least 11 px tall on a 360 px phone (tested). Each section places the card's band: THE
+    USUAL SUSPECTS on the night over the line-up (from 64rem, 3rem of
+    night under the controls' row, as in the mockup); PLAYER ONE and THE
+    LATE SHOW straddle the cut from the section before
+    (`--chapter-straddle`, `STRADDLE` in `chapterLayout.ts`, mirrored and
+    tested: PLAYER ONE rises `--chapter-edge` of the card's width, to its
+    word's middle, and the line-up's caption makes room; THE LATE SHOW
+    rises only the top of its word, never above STATS's prompts row, so
+    it stays clear of what ends a row gap over them, the map's source
+    line, and of the main missions beside the map, which end a source line
+    higher still, `statsLayout.test.ts`; its box, which does reach the
+    prompts' 44 px targets, in Spanish from 1000 to about 1125 px (in
+    English only at 1000 px) and wider with a larger text size, lets their
+    clicks through wherever it straddles, its text still selectable; and
+    the cinema's sky makes room under it). Under 1000 px the cinema's
+    card has a band of its own, since a card nearly as wide as the screen
+    would cross STATS's prompts, and a link lands them with it, under the
+    controls. The credits' card heads the roll, rising into its lead-in,
+    as wide as the roll, and narrower where even the roll would reach the
+    dawn marquee (under about 880 px, a phone on its side): it starts 1rem
+    clear of the board (`--w-bx`, `--w-bw` on the section).
 - `src/hooks` — SSR-safe media query hooks.
 - `src/lib` — small shared helpers: `onScreen.ts` says what an
   IntersectionObserver counts as on screen (an edge that only touches the
@@ -814,9 +901,11 @@ To add a track to a station:
   has a `scroll-padding-top` (their inset, height and a 1rem gap,
   `globals.css`): a section reached by a link or by keyboard focus stops
   below them. Scripted scrolls (`scrollTo`, Lenis) ignore it; nothing
-  focusable may sit under the controls in the hero's pinned frame. STATS
-  cancels it with a negative `scroll-margin-top`: its own top padding
-  clears the controls, and its one screen shows whole.
+  focusable may sit under the controls in the hero's pinned frame. THE
+  USUAL SUSPECTS cancels it with a negative `scroll-margin-top` (its
+  chapter card's band clears the controls); STATS and the cinema add their
+  card's rise over their top edge, so a link lands the whole card below
+  them.
 - Three.js runs client-side only: `HeroCanvas` loads `HeroScene` with
   `next/dynamic` and `ssr: false`, inside an error boundary. The page must stay
   readable without WebGL: real text in the DOM, CSS sky as fallback.
@@ -854,7 +943,10 @@ Zapadores XVI, Ejército de Tierra / Spanish Army); Gran Canaria only in
 `hero.lines`, on the STATS map's inset (its name, and the map's text
 alternative that describes it) and in the career city's `work.*` keys,
 where the army's posting is a fact, not the joke; the cardboard box only
-on the STATS map; "from the sofa" once; Madrid never. Widen an allowance only with a comment saying why. Baked text (the
+on the STATS map; "from the sofa" once; "off the clock" / "fuera de
+horario" once, on STATS's chapter card (`stats.chapter.ribbon`: the
+ribbons name only what their own section owns); Madrid never. Widen an
+allowance only with a comment saying why. Baked text (the
 posters' billing blocks in `posters.mjs`, the city's canvases) is outside
 the dictionaries and the test: hold it to the map by hand.
 

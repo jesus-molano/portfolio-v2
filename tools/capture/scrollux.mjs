@@ -27,7 +27,8 @@
  * input while the name forms says the name is still arriving, then "keep
  * driving", never "take the wheel" again), callout (the
  * radio's callout never shares the screen with a prompt; on a phone a tap
- * on it opens the wheel), trap (whatever moves the page past the frontier,
+ * on it opens the wheel; after Skip, a little scroll back up never brings
+ * it over THE CREW's card), trap (whatever moves the page past the frontier,
  * a jump Lenis misses, a programmatic scroll, find in page, a wheel burst
  * on a busy page, hard flings, it is back at the wall within a frame and
  * she drives on), stroke (a phone's drag that pauses on a pressure change
@@ -816,6 +817,38 @@ const CHECKS = {
       report(`${device} ${lang} callout: a tap on "tap here" opens the radio, not the next line`, opened && Math.abs(after.p - before.p) < 0.002, { opened, before: before.p, after: after.p });
     }
     await s.close();
+
+    // It is the hero's alone. After Skip, a little scroll back up leaves a strip of the hero's
+    // night at the top, with THE CREW's card right under it: the callout stays away. Further
+    // back, the hero runs down past it and it comes.
+    const k = await session(device, lang);
+    await k.page.evaluate(() => localStorage.removeItem("va-radio-hint"));
+    await sleep(1500);
+    await k.page.locator("[data-skip]").click({ timeout: 10_000 });
+    await sleep(1500);
+    const back = {};
+    for (const px of [16, 80, 200]) {
+      back[px] = await k.page.evaluate(async (by) => {
+        const shown = [];
+        let on = true;
+        const tick = () => {
+          shown.push(document.querySelector("[data-side-hint]")?.getAttribute("data-visible") === "true");
+          if (on) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+        // The scrollbar, as it were: the walls are open, so the page stays there.
+        window.scrollTo(0, document.getElementById("suspects").getBoundingClientRect().top + scrollY - by);
+        await new Promise((resolve) => setTimeout(resolve, 1600));
+        on = false;
+        return shown.some(Boolean);
+      }, px);
+    }
+    report(
+      `${device} ${lang} callout: after Skip, 16 or 80 px back up it stays off THE CREW's card; 200 px back, in the hero, it comes`,
+      !back[16] && !back[80] && back[200],
+      back,
+    );
+    await k.close();
   },
 
   async trap(device, lang) {

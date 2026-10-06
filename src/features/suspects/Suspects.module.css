@@ -5,6 +5,10 @@
  * (placed in centimetres by lineup.ts and the renders' manifest) both
  * multiply it, so every cat keeps its real size next to the others.
  *
+ * The section opens on its chapter card (THE CREW, ChapterCard), on the
+ * night the hero fades out to; the board under it is the line-up, one
+ * screen tall, sized exactly as it was before the card.
+ *
  * Wide screens: one wall, the floor line low on it, four slots at 36, 52,
  * 68 and 84% of the width, his complaint taped on the left, the plates
  * and their descriptions on the floor, the caption under them.
@@ -27,6 +31,18 @@
   position: relative;
   z-index: var(--va-z-title);
   isolation: isolate;
+  overflow: clip;
+  background: var(--va-lineup-floor);
+  color: var(--va-color-cream);
+  /*
+   * A link lands the section at the viewport's top edge, as Skip does: its
+   * card already clears the page controls (globals.css scroll-padding).
+   */
+  scroll-margin-top: calc(-1 * (1rem + var(--va-control-height-sm) + 1rem));
+}
+
+/* The line-up under the card: one screen, as before the card came. */
+.board {
   display: grid;
   /* Slot centres at 36, 52, 68 and 84%: four 16% columns from 28%. */
   grid-template-columns: 28% repeat(4, minmax(0, 1fr)) 8%;
@@ -34,9 +50,30 @@
   grid-template-rows: minmax(calc(var(--cm) * 53 + 6rem), 1fr) auto auto;
   min-height: 100vh;
   min-height: 100svh;
-  overflow: clip;
-  background: var(--va-lineup-floor);
-  color: var(--va-color-cream);
+}
+
+/* ---------------------------------------------------------------- the card */
+
+/*
+ * THE CREW on the night the hero fades out to, centred over the wall,
+ * clear of the page controls when the section sits at the top of the
+ * screen (where Skip lands it). The wall below starts on the same night.
+ */
+.chapter {
+  padding: calc(1rem + var(--va-control-height-sm) + 1rem) 0 1.25rem;
+  background: var(--va-color-night);
+}
+
+/*
+ * From 64rem, as in the mockup: 3rem of night between the controls' row
+ * and the word, and the wall straight under the banner (the slug's own
+ * top padding is the air there), so the card sits in its night rather
+ * than under the screen's top edge.
+ */
+@media (min-width: 64rem) {
+  .chapter {
+    padding: calc(1rem + var(--va-control-height-sm) + 3rem) 0 0;
+  }
 }
 
 /* Focus arrives here from the hero's Skip; the section is not a control. */
@@ -125,31 +162,34 @@
 
 /* ---------------------------------------------------------------- the slug */
 
-/* The hero's HUD voice: mono caps, a magenta record dot. */
+/*
+ * The case label on the wall, in the hero's HUD voice: mono caps, the
+ * magenta record dot on its first line. The card above is the heading.
+ */
 .slug {
   grid-area: 1 / 1 / 2 / -1;
   align-self: start;
   justify-self: start;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
   padding: max(5.5svh, 2.25rem) 1.25rem 0 max(4vw, 1.25rem);
   font-family: var(--va-font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.75;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
 }
 
-.title {
+.place {
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.3;
-  letter-spacing: 0.3em;
   color: var(--va-color-cream);
 }
 
-.title::before {
+.place::before {
   content: "";
   flex: none;
   width: 0.5rem;
@@ -159,21 +199,8 @@
   box-shadow: 0 0 10px var(--va-color-magenta);
 }
 
-.slugLine {
-  display: flex;
-  flex-direction: column;
-  margin-top: 0.45rem;
-  padding-left: 1.2rem;
-  font-size: 0.6875rem;
-  line-height: 1.75;
-  letter-spacing: 0.22em;
-}
-
-.place {
-  color: var(--va-color-cream);
-}
-
 .associates {
+  padding-left: 1.2rem;
   color: var(--va-color-text-muted);
 }
 
@@ -545,7 +572,13 @@
   justify-self: center;
   z-index: 2;
   max-width: 44rem;
-  padding: 1.25rem 1rem max(2.25rem, 5svh);
+  /*
+   * The next card (STATS, PLAYER ONE) rises over this section's floor by
+   * the top of its drawing down to its word's middle (Stats.module.css):
+   * at most 0.124 of its width (chapterLayout.test.ts), with 0.5rem clear
+   * above it.
+   */
+  padding: 1.25rem 1rem max(2.25rem, 5svh, calc(min(100vw - 2rem, var(--va-chapter-span)) * 0.124 + 0.5rem));
   font-family: var(--va-font-body);
   font-size: clamp(0.95rem, 1.35vw, 1.2rem);
   font-weight: 500;
@@ -592,6 +625,9 @@
 @media (min-aspect-ratio: 1/1) and (min-width: 40.0625rem) and (max-height: 32rem) {
   .suspects {
     --cm: min(0.62vw, 0.6875rem);
+  }
+
+  .board {
     grid-template-columns: 6% repeat(4, minmax(0, 1fr)) 6%;
     grid-template-rows: calc(var(--cm) * 53 + 6rem) auto auto auto;
   }
@@ -601,7 +637,7 @@
   }
 
   /* A phone's 12 px floor for the small type. */
-  .slugLine,
+  .slug,
   .number,
   .alias {
     font-size: 0.75rem;
@@ -632,25 +668,30 @@
   .suspects {
     --cm: min(1.84vw, 0.9svh, 0.6875rem);
     --strip-labels: 1.9rem;
+    background: linear-gradient(180deg, var(--va-color-night) 0, var(--va-lineup-floor) 22rem);
+  }
+
+  .board {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
     justify-items: center;
-    background: linear-gradient(180deg, var(--va-color-night) 0, var(--va-lineup-floor) 14rem);
+  }
+
+  .chapter {
+    padding-bottom: 0.25rem;
+    background: none;
   }
 
   .wall {
     display: none;
   }
 
-  /* Clear of the page controls fixed at the top right. */
+  /* Under the card, which clears the page controls. */
   .slug {
     grid-area: auto;
     justify-self: stretch;
-    padding: max(6svh, 5rem) 1.25rem 1.75rem;
-  }
-
-  /* Tighter tracking, so the Spanish lines hold on a 360 px phone. */
-  .slugLine {
+    padding: 1.25rem 1.25rem 1.75rem;
+    /* Tighter tracking, so the Spanish lines hold on a 360 px phone. */
     font-size: 0.75rem;
     letter-spacing: 0.12em;
   }
@@ -770,9 +811,10 @@
     font-size: 0.8125rem;
   }
 
+  /* PLAYER ONE's rise under it, as on wide screens: a tablet's card is nearly as wide as the screen. */
   .caption {
     grid-area: auto;
-    padding: 2.25rem 1rem max(3rem, 6svh);
+    padding: 2.25rem 1rem max(3rem, 6svh, calc(min(100vw - 2rem, var(--va-chapter-span)) * 0.124 + 0.5rem));
     font-size: 1rem;
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useLenis } from "lenis/react";
@@ -9,10 +9,11 @@ import { motion } from "@/design/tokens";
 import { REDUCED_MOTION_QUERY, usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { goTo, registerPassage } from "@/lib/navigate";
+import { isOnScreen, lineBelow, lineRootMargin, ON_SCREEN_THRESHOLDS } from "@/lib/onScreen";
 import styles from "./Hero.module.css";
 import { HeroCanvas } from "./HeroCanvas";
 import { HeroTitle } from "./HeroTitle";
-import { getSceneLoading, markQuiet, markSettled } from "./sceneLoading";
+import { getSceneLoading, markOnScreen, markQuiet, markSettled } from "./sceneLoading";
 import { titleIntro } from "./titleIntro";
 import { decay, ELASTIC, rubberBand, touchStretchMax } from "./scroll/elastic";
 import {
@@ -123,6 +124,15 @@ const TEASE_LIFT = 12;
 const TEASE_BARS = 8;
 /** Once the first line has been read and she has rested this long (s), the radio may offer itself. */
 const SETTLE_IDLE = 1;
+/**
+ * Side hints (`data-side-hint`: the radio's callout) hang under the page
+ * controls, and they are the hero's: they show only while the hero runs
+ * down past their bottom edge and this gap (px), so the section after it,
+ * whose chapter card comes up just under its top edge, starts below them.
+ * A sliver of the hero's night at the top of the screen is not the hero
+ * behind them.
+ */
+const SIDE_HINT_GAP = 8;
 /** Switched to the still hero mid-film: the line she was on sits this far down the viewport. */
 const STILL_PLACE = 0.3;
 /** The still hero settles (side hints may come) once she has scrolled this share of a viewport past the title. */
@@ -278,6 +288,38 @@ export function HeroStage({
   const walls = useMemo(() => buildWalls(timeline), [timeline]);
   const cardTexts = useMemo(() => lines.flat(), [lines]);
   const cardParts = useMemo(() => lines.map((cards) => cards.map(splitCard)), [lines]);
+
+  // Whether the hero (the film, or the still and its running script) is up behind the side hints:
+  // asked of the line of pixels under them, measured again when the viewport or a hint's box changes.
+  useEffect(() => {
+    const element = stage.current;
+    if (!element || typeof IntersectionObserver === "undefined") return;
+    const hints = Array.from(document.querySelectorAll<HTMLElement>("[data-side-hint]"));
+    let observer: IntersectionObserver | null = null;
+    const observe = () => {
+      observer?.disconnect();
+      const line = lineBelow(
+        hints.map((hint) => ({ top: hint.offsetTop, height: hint.offsetHeight })),
+        SIDE_HINT_GAP,
+      );
+      observer = new IntersectionObserver(
+        // One target: the newest entry is its state now.
+        (entries) => markOnScreen(isOnScreen(entries[entries.length - 1])),
+        { rootMargin: lineRootMargin(line, window.innerHeight), threshold: ON_SCREEN_THRESHOLDS },
+      );
+      observer.observe(element);
+    };
+    observe();
+    // A hint's text changes with the input (touch or not) and wraps with its face loading.
+    const resized = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(observe);
+    hints.forEach((hint) => resized?.observe(hint));
+    window.addEventListener("resize", observe);
+    return () => {
+      window.removeEventListener("resize", observe);
+      resized?.disconnect();
+      observer?.disconnect();
+    };
+  }, []);
 
   useGSAP(
     () => {

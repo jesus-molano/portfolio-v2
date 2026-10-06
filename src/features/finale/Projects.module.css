@@ -7,11 +7,54 @@
  */
 
 .projects {
+  /* How far THE LATE SHOW rises over the cut from STATS (below): chapterLayout.ts STRADDLE.projects. */
+  --chapter-straddle: 0.55;
   position: relative;
   z-index: var(--va-z-title);
   padding-bottom: clamp(3rem, 7vw, 6rem);
   background: var(--va-color-night);
-  overflow: clip;
+  /* Sideways only: the chapter card rises over the section's top edge. */
+  overflow-x: clip;
+  /*
+   * STATS's ringing booth and its prompt link here: the whole card lands
+   * under the page controls, its rise over the edge included
+   * (Stats.module.css explains the formula).
+   */
+  scroll-margin-top: calc(min(100vw - 2rem, var(--va-chapter-span)) * var(--chapter-edge) * var(--chapter-straddle));
+}
+
+/*
+ * THE LATE SHOW straddles the cut from STATS: the top of its word stands
+ * over the menu's last pixels, between its prompts, never higher than
+ * their row (tested against statsLayout.ts FOOT_PX: the map's source line
+ * ends a row gap over it, the main missions beside the map higher still).
+ * Its banner hangs in the night over the plate. Under the banner's tails,
+ * clear sky of 0.09 of the card's width (about two and a half of its
+ * capitals) before the top of the AFTERGLOW sign: the sign's tablet starts
+ * 30 units down the 1280-unit wide plate (tools/art/finale/cinema.mjs).
+ */
+.chapter {
+  padding-bottom: max(1rem, calc(var(--chapter-w) * 0.09 - min(100%, 177.78svh) * 30 / 1280));
+}
+
+/*
+ * Where the card straddles the cut (from 1000 px), its box rises over
+ * STATS's prompts, two links with 44 px targets at the screen's edges, and
+ * the later section paints on top. In Spanish the box reaches them from
+ * 1000 px to about 1125 px (in English only at 1000 px), and wider screens
+ * too with a larger text size, since the card grows in rem. Their clicks
+ * pass through the band; only the card's two lines of text take the
+ * pointer back, so they stay selectable: the word, centred between the
+ * prompts, stays 40 px or more clear of their targets.
+ */
+@media (min-width: 1000px) {
+  .chapter {
+    pointer-events: none;
+  }
+
+  .chapter text {
+    pointer-events: auto;
+  }
 }
 
 .cinema {
@@ -393,9 +436,37 @@
   translate: 2px -2px;
 }
 
+/* --- phones and tablets: the card in a night band of its own ------------------ */
+
+/*
+ * STATS ends on its prompts at the screen's edges: under 1000 px a card
+ * nearly as wide as the screen would cross them. A link lands them just
+ * under the page controls, over the card, instead of behind the controls.
+ */
+@media (max-width: 999.98px) {
+  .projects {
+    --chapter-straddle: 0;
+    scroll-margin-top: 2.25rem;
+  }
+
+  .chapter {
+    padding-top: 1.75rem;
+  }
+}
+
 /* --- portrait screens: the cases hang in a list on the vitrolite ------------- */
 
 @media (max-aspect-ratio: 5/6), (max-width: 640px) {
+  /*
+   * The tall plate opens on a whole sky, the tower in it: the card keeps
+   * to a band over it, on the vitrolite dark that STATS fades into and
+   * the plate's sky starts from.
+   */
+  .chapter {
+    padding-bottom: 1.25rem;
+    background: var(--va-finale-vitrolite);
+  }
+
   .cinema {
     width: 100%;
     background: linear-gradient(var(--va-finale-vitrolite), var(--va-finale-vitrolite-deep) 85%, var(--va-color-night));

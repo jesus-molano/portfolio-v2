@@ -66,6 +66,15 @@ const RULES: Rule[] = [
     max: 1,
   },
   {
+    // STATS is him off the clock, and its chapter card's ribbon says so (it
+    // carries what the pause menu's subtitle said). The cinema's marquee
+    // bills free admission instead, and no other card or line borrows it.
+    subject: "off the clock",
+    pattern: /off the clock|fuera de horario/i,
+    owners: [/^stats\.chapter\.ribbon$/],
+    max: 1,
+  },
+  {
     // He has never lived or worked there.
     subject: "Madrid",
     pattern: /Madrid/i,
@@ -107,7 +116,7 @@ describe("the content map", () => {
     }
 
     // The patterns have to bite: each owner still says what it owns.
-    it(`${locale}: still names the side projects in the cinema, and the employers and the army's unit in the career index`, () => {
+    it(`${locale}: still names the side projects in the cinema, the employers and the army's unit in the career index, and STATS off the clock`, () => {
       const text = (owner: RegExp) =>
         copy
           .filter(([path]) => owner.test(path))
@@ -123,6 +132,7 @@ describe("the content map", () => {
       expect(text(/^hero\.lines\./)).toMatch(/Gran Canaria/);
       expect(text(/^stats\.map\./)).toMatch(/cart[oó]n|cardboard/i);
       expect(text(/^stats\.bars\./)).toMatch(/desde el sof[aá]|from the sofa/i);
+      expect(text(/^stats\.chapter\./)).toMatch(/off the clock|fuera de horario/i);
     });
   }
 });

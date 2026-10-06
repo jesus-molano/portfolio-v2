@@ -108,7 +108,10 @@
     ]
   },
   "suspects": {
-    "title": "The usual suspects",
+    "chapter": {
+      "word": "The crew",
+      "ribbon": "The usual suspects"
+    },
     "place": "Line-up · Tenerife",
     "associates": "Flatmates",
     "description": "A police line-up of Jesús's four cats in front of a height chart, each behind a numbered plate. Tom and Kira stand the tallest, Odin a little lower, and Dante, the kitten, is the smallest by a head.",
@@ -240,8 +243,11 @@
     "hint": "or press any key"
   },
   "stats": {
+    "chapter": {
+      "word": "Player one",
+      "ribbon": "Off the clock"
+    },
     "title": "PAUSED",
-    "sub": "OFF THE CLOCK",
     "description": "This is a pause screen. His main missions sum up his career in five: four completed and one still running. The map is Tenerife, more or less, with the towns renamed, and hides his favourite games, films and series around the island, and Formula 1 too. A phone booth that won't stop ringing leads to his side projects. The second tab is his character sheet, with his skills and records.",
     "tabs": [
       "MAP",
@@ -277,7 +283,6 @@
       },
       "you": "Hey, you. You're finally awake.",
       "hq": "HQ in a volcano, obviously.",
-      "legend": "On the map",
       "blips": {
         "pit": "Pit lane. Box 33.",
         "box": "A cardboard box that just moved.",
@@ -400,7 +405,10 @@
     "newTab": "(opens in a new tab)"
   },
   "projects": {
-    "title": "Side projects",
+    "chapter": {
+      "word": "The late show",
+      "ribbon": "Side projects"
+    },
     "marquee": {
       "rows": [
         "TONIGHT · FOUR FEATURES",
@@ -460,7 +468,10 @@
     }
   },
   "credits": {
-    "title": "Credits",
+    "chapter": {
+      "word": "That’s a wrap",
+      "ribbon": "Credits and contact"
+    },
     "marquee": {
       "rows": [
         "NOW SHOWING",

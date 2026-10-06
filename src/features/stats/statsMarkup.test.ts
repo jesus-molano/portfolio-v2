@@ -19,7 +19,7 @@ describe("STATS in the server HTML", () => {
   for (const lang of locales) {
     it(`has both tabs' words, MAP's and STATS's, on /${lang}`, async () => {
       const { stats } = await getDictionary(lang);
-      const html = renderToStaticMarkup(createElement(Stats, { dict: stats }));
+      const html = renderToStaticMarkup(createElement(Stats, { dict: stats, lang }));
       const words = [
         ...Object.values(stats.map.blips),
         ...Object.values(stats.missions.items).map((item) => item.name),
@@ -37,7 +37,7 @@ describe("STATS in the server HTML", () => {
   it("puts the main missions before the map, and the map's way out (the booth) after them", async () => {
     for (const lang of locales) {
       const { stats } = await getDictionary(lang);
-      const html = renderToStaticMarkup(createElement(Stats, { dict: stats }));
+      const html = renderToStaticMarkup(createElement(Stats, { dict: stats, lang }));
       const missions = html.indexOf(' id="stats-missions"');
       expect(missions).toBeGreaterThan(html.indexOf(' id="stats-map"'));
       expect(html.indexOf(' id="stats-map-title"')).toBeGreaterThan(missions);
@@ -48,7 +48,7 @@ describe("STATS in the server HTML", () => {
   it("makes the foot's way on a real link to the cinema, named by its visible label", async () => {
     for (const lang of locales) {
       const { stats } = await getDictionary(lang);
-      const html = renderToStaticMarkup(createElement(Stats, { dict: stats }));
+      const html = renderToStaticMarkup(createElement(Stats, { dict: stats, lang }));
       const link = html.match(/<a[^>]*href="#projects"[^>]*>((?:(?!<\/a>).)*)<\/a>(?![\s\S]*href="#projects")/)?.[1] ?? "";
       expect(link).toContain(stats.hint);
       expect(link).toContain(`: ${escape(stats.hintTarget)}`);
@@ -59,7 +59,7 @@ describe("STATS in the server HTML", () => {
   it("names the ringing booth by what it shows, its action and then where it leads (label in name)", async () => {
     for (const lang of locales) {
       const { stats } = await getDictionary(lang);
-      const html = renderToStaticMarkup(createElement(Stats, { dict: stats }));
+      const html = renderToStaticMarkup(createElement(Stats, { dict: stats, lang }));
       const open = html.match(/<a[^>]*href="#projects"[^>]*>/)?.[0] ?? "";
       expect(open, lang).toContain("boothLink");
       // No aria-label: the link's own words are its name, so a voice command for the visible text finds it.
@@ -74,14 +74,15 @@ describe("STATS in the server HTML", () => {
   it("leaves the side projects to the cinema: no repo is named in STATS", async () => {
     for (const lang of locales) {
       const { stats } = await getDictionary(lang);
-      const html = renderToStaticMarkup(createElement(Stats, { dict: stats })).toLowerCase();
+      const html = renderToStaticMarkup(createElement(Stats, { dict: stats, lang })).toLowerCase();
       for (const feature of FEATURES) expect(html, feature.repo).not.toContain(feature.repo.toLowerCase());
     }
   });
 
   it("links the two panels with plain links until the tabs hydrate", async () => {
-    const { stats } = await getDictionary("en");
-    const html = renderToStaticMarkup(createElement(Stats, { dict: stats }));
+    const lang = "en";
+    const { stats } = await getDictionary(lang);
+    const html = renderToStaticMarkup(createElement(Stats, { dict: stats, lang }));
     expect(html).toContain('href="#stats"');
     expect(html).toContain('href="#stats-sheet"');
     expect(html).not.toMatch(/role="tab(list|panel)?"/);
@@ -89,8 +90,9 @@ describe("STATS in the server HTML", () => {
   });
 
   it("keeps the map and the portrait lazy in the first HTML", async () => {
-    const { stats } = await getDictionary("en");
-    const html = renderToStaticMarkup(createElement(Stats, { dict: stats }));
+    const lang = "en";
+    const { stats } = await getDictionary(lang);
+    const html = renderToStaticMarkup(createElement(Stats, { dict: stats, lang }));
     expect(html).toMatch(/<img[^>]*src="\/stats\/map\.svg"[^>]*loading="lazy"/);
     expect(html).toMatch(/<img[^>]*src="\/stats\/portrait\.webp"[^>]*loading="lazy"/);
   });

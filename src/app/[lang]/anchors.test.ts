@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { chapterName, shadeLayers } from "@/components/ChapterCard/chapterLayout";
 import { MISSIONS } from "@/features/stats/statsLayout";
 import { LoadingScreen } from "@/features/loader/LoadingScreen";
 import { locales } from "@/i18n/config";
@@ -48,6 +49,32 @@ describe("in-page links", () => {
       expect(next, lang).toMatch(/^<section\s/);
       expect(next, lang).toContain(' id="suspects"');
       expect(next, lang).toContain(' tabindex="-1"');
+    }
+  });
+
+  it("heads each static section with its chapter card, under the heading ids its links and labels use", async () => {
+    for (const lang of locales) {
+      const html = await renderHome(lang);
+      const dict = await getDictionary(lang);
+      for (const section of ["suspects", "stats", "projects", "credits"] as const) {
+        const open = html.match(new RegExp(`<section[^>]* id="${section}"[^>]*>`))?.[0] ?? "";
+        expect(open, `${lang} #${section}`).toContain(`aria-labelledby="${section}-title"`);
+        // One h2 per section, and it is the card: named "<word>. <ribbon>", its drawing hidden from assistive technology.
+        const start = html.indexOf(open);
+        const end = html.indexOf("</section>", html.indexOf(`id="${section}-title"`));
+        const body = html.slice(start, end);
+        expect(body.match(/<h2\b/g), `${lang} #${section}`).toHaveLength(1);
+        const heading = body.match(/<h2([^>]*)>([\s\S]*?)<\/h2>/);
+        const { word, ribbon } = dict[section].chapter;
+        const escaped = (text: string) => text.replace(/&/g, "&amp;").replace(/'/g, "&#x27;");
+        expect(heading?.[1]).toContain(` id="${section}-title"`);
+        expect(heading?.[1]).toContain(` aria-label="${escaped(chapterName(word, ribbon))}"`);
+        expect(heading?.[2]).toMatch(/^<svg[^>]*aria-hidden="true"/);
+        // Its only text: the word as written and the ribbon in capitals, once each (the shades are <use> copies).
+        const text = (heading?.[2] ?? "").match(/>([^<]+)</g)?.map((match) => match.slice(1, -1)) ?? [];
+        expect(text, `${lang} #${section}`).toEqual([escaped(ribbon.toLocaleUpperCase(lang)), escaped(word)]);
+        expect(heading?.[2].match(/<use\b/g)?.length, `${lang} #${section}`).toBe(2 * shadeLayers().length);
+      }
     }
   });
 

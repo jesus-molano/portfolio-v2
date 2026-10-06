@@ -19,26 +19,19 @@
   position: relative;
   z-index: var(--va-z-title);
   /*
-   * The menu bar, the open tab's panel, the button prompts: one screen.
-   * Its paddings and gaps are in statsLayout.ts MAP_CHROME_PX.
+   * A link lands the whole chapter card under the page controls (the html
+   * scroll-padding, globals.css): its rise over the section's top edge, a
+   * share (--chapter-edge, set on the section) of the card's width
+   * (ChapterCard.module.css; scroll-margin takes no percentages, and 100vw
+   * counts a classic scrollbar too, a harmless few pixels on a window
+   * under 50rem). The menu starts just under the card. Under 52rem the
+   * line-up's last line, centred just over the card, would land under the
+   * controls at the top right: it lands below them too (--landing-room,
+   * two of its lines).
    */
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  row-gap: 24px;
-  min-height: 100svh;
-  /*
-   * 16 px clear of the fixed page controls (music, language) at the top
-   * right. The content stops growing at 1680 px (statsLayout.ts
-   * SCREEN_MAX), centred; the glows behind it span the page.
-   */
-  padding: 64px max(var(--pad), calc((100% - 1680px) / 2 + var(--pad))) 24px;
-  /*
-   * A link lands the section at the viewport's top edge, not under the
-   * html scroll-padding (globals.css): its own top padding already clears
-   * the page controls, and so the whole screen of it shows.
-   */
-  scroll-margin-top: calc(-1 * (1rem + var(--va-control-height-sm) + 1rem));
-  /* The appetite bar breaks out of its panel; the page never scrolls sideways. */
+  --landing-room: 0rem;
+  scroll-margin-top: calc(min(100vw - 2rem, var(--va-chapter-span)) * var(--chapter-edge) + var(--landing-room));
+  /* The appetite bar breaks out of its panel; the page never scrolls sideways (only sideways: the card rises over the top). */
   overflow-x: clip;
   color: var(--va-color-text);
   /* What the cinema starts with below (its tall plate starts darker). */
@@ -61,6 +54,40 @@
     var(--va-color-night);
 }
 
+@media (max-width: 51.98rem) {
+  .stats {
+    --landing-room: 3.5rem;
+  }
+}
+
+/*
+ * PLAYER ONE straddles the cut: its word's upper half rises over the
+ * line-up's floor, clear of Jesús' line there (Suspects.module.css keeps
+ * the room under the caption).
+ */
+.chapter {
+  --chapter-straddle: 1;
+}
+
+/*
+ * The menu bar, the open tab's panel, the button prompts: one screen,
+ * under the card. Its paddings and gaps are in statsLayout.ts
+ * MAP_CHROME_PX: scrolled to the top of the screen, it fits as it did
+ * before the card.
+ */
+.screen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 24px;
+  min-height: 100svh;
+  /*
+   * 16 px clear of the fixed page controls (music, language) at the top
+   * right. The content stops growing at 1680 px (statsLayout.ts
+   * SCREEN_MAX), centred; the glows behind it span the page.
+   */
+  padding: 64px max(var(--pad), calc((100% - 1680px) / 2 + var(--pad))) 24px;
+}
+
 /* Film grain over the menu, like the hero's. */
 .stats::before {
   content: "";
@@ -74,11 +101,13 @@
 
 /* ── Menu bar ─────────────────────────────────────────────────────── */
 
+/* 46 px tall, as MAP_CHROME_PX counts it, now that the card above has the subtitle's words. */
 .menu {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 24px;
+  min-height: 46px;
 }
 
 .who {
@@ -105,13 +134,6 @@
   letter-spacing: 0.04em;
   color: var(--va-color-cream);
   text-shadow: 0 2px 18px color-mix(in srgb, var(--va-color-magenta) 30%, transparent);
-}
-
-.sub {
-  margin-top: 7px;
-  font: 500 11px/1 var(--va-font-mono);
-  letter-spacing: 0.22em;
-  color: var(--va-color-text-muted);
 }
 
 /* The tab bar between the shoulder buttons' key caps. */
@@ -239,7 +261,7 @@
  * open one is on the page.
  */
 @media (scripting: enabled) {
-  .stats {
+  .screen {
     grid-template-rows: auto 1fr auto;
   }
 
@@ -1406,8 +1428,10 @@ a.missionRow:focus-visible {
 /* Below 1000 px: the square map with keyed pins, the words in a legend under it. */
 @media (max-width: 999.98px) {
   /*
-   * The title on its own row, the tabs and the clock under it: three
-   * columns leave the subtitle too little room ("J." / "MOLANO" at 768).
+   * The title on its own row, the tabs and the clock under it: in three
+   * columns the tabs, with their key caps, could not sit centred (in
+   * Spanish, from 700 to 768 px, the title would come within 24 to 26 px of
+   * them), and a phone has no room for three at all.
    */
   .menu {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1670,6 +1694,27 @@ a.missionRow:focus-visible {
   }
 }
 
+/*
+ * The narrowest phones: the tabs and the clock no longer fit one row (in
+ * Spanish ESTADÍSTICAS ran into the clock at 360 px), so the clock goes up
+ * beside the title, which has room to spare, and the tabs take the row
+ * under it (statsLayout.ts PHONE_MENU, tested).
+ */
+@media (max-width: 389.98px) {
+  .who {
+    grid-column: 1;
+  }
+
+  .tabs {
+    grid-column: 1 / -1;
+  }
+
+  .clock {
+    grid-row: 1;
+    grid-column: 2;
+  }
+}
+
 /* Tablets: the legend in two columns. */
 @media (min-width: 700px) and (max-width: 999.98px) {
   .places {
@@ -1682,15 +1727,18 @@ a.missionRow:focus-visible {
 @media (max-width: 699.98px) {
   .stats {
     --pad: 16px;
+  }
+
+  /* The card above clears the page controls; the menu needs less room under it. */
+  .screen {
     row-gap: 20px;
-    padding-top: 72px;
+    padding-top: 32px;
   }
 
   .title {
     font-size: 22px;
   }
 
-  .sub,
   .mapTitle,
   .panelTitle,
   .years,

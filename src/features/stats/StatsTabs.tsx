@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
@@ -117,7 +118,17 @@ function isModifiedClick(event: ReactMouseEvent): boolean {
 }
 
 /** The section (#stats) and the tabs' state, for the menu, the panels and the portrait inside it. */
-export function StatsSection({ className, labelledBy, children }: { className: string; labelledBy: string; children: ReactNode }) {
+export function StatsSection({
+  className,
+  labelledBy,
+  style,
+  children,
+}: {
+  className: string;
+  labelledBy: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
   const [store] = useState(createTabsStore);
   const state = useSyncExternalStore(store.subscribe, store.get, store.getServer);
   const enhanced = useSyncExternalStore(
@@ -216,7 +227,15 @@ export function StatsSection({ className, labelledBy, children }: { className: s
 
   return (
     <Context value={context}>
-      <section ref={ref} id={STATS_ID} className={className} aria-labelledby={labelledBy} data-loops data-motion={motion}>
+      <section
+        ref={ref}
+        id={STATS_ID}
+        className={className}
+        style={style}
+        aria-labelledby={labelledBy}
+        data-loops
+        data-motion={motion}
+      >
         {children}
       </section>
     </Context>

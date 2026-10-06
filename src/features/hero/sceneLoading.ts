@@ -27,6 +27,13 @@ export type SceneLoading = {
    * then, never next to a prompt (HeroStage writes it when it changes).
    */
   quiet: boolean;
+  /**
+   * The hero is up behind the side hints under the page controls (it runs
+   * down past their bottom edge): they belong to it. Past the hero, even
+   * with a strip of its night still at the top, they would cover the next
+   * section's chapter card.
+   */
+  onScreen: boolean;
 };
 
 export type EnteredVia = "key" | "pointer";
@@ -39,6 +46,7 @@ const INITIAL: SceneLoading = {
   enteredVia: null,
   settled: false,
   quiet: true,
+  onScreen: true,
 };
 
 let state: SceneLoading = INITIAL;
@@ -91,6 +99,11 @@ export function markSettled() {
 /** Whether the hero asks her for nothing right now (see `quiet`). */
 export function markQuiet(quiet: boolean) {
   if (state.quiet !== quiet) update({ quiet });
+}
+
+/** Whether the hero is up behind the side hints (see `onScreen`). */
+export function markOnScreen(onScreen: boolean) {
+  if (state.onScreen !== onScreen) update({ onScreen });
 }
 
 /** Tests only. */

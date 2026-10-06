@@ -4,6 +4,7 @@ import {
   getServerSceneLoading,
   markEntered,
   markSceneReady,
+  markOnScreen,
   markQuiet,
   markSettled,
   reportSceneProgress,
@@ -23,6 +24,7 @@ describe("sceneLoading", () => {
       enteredVia: null,
       settled: false,
       quiet: true,
+      onScreen: true,
     };
     expect(getSceneLoading()).toEqual(empty);
     expect(getServerSceneLoading()).toEqual(empty);
@@ -37,6 +39,20 @@ describe("sceneLoading", () => {
     markQuiet(false);
     expect(getSceneLoading().quiet).toBe(false);
     markQuiet(true);
+    expect(listener).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+
+  it("says whether the hero is up behind the side hints, telling its subscribers only on a change", () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeSceneLoading(listener);
+    markOnScreen(true);
+    expect(listener).not.toHaveBeenCalled();
+    markOnScreen(false);
+    markOnScreen(false);
+    expect(getSceneLoading().onScreen).toBe(false);
+    markOnScreen(true);
+    expect(getSceneLoading().onScreen).toBe(true);
     expect(listener).toHaveBeenCalledTimes(2);
     unsubscribe();
   });

@@ -98,7 +98,7 @@ describe("THE USUAL SUSPECTS copy", () => {
     expect(es.suspects.associates).toBe("Compañeros de piso");
     expect(en.suspects.associates).toBe("Flatmates");
     for (const copy of [en.suspects, es.suspects]) {
-      const visible = [copy.title, copy.place, copy.associates, ...copy.cats.map((cat) => cat.description)];
+      const visible = [copy.chapter.word, copy.chapter.ribbon, copy.place, copy.associates, ...copy.cats.map((cat) => cat.description)];
       expect(visible.join(" ")).not.toMatch(/Molano/);
     }
   });

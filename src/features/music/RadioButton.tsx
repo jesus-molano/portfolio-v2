@@ -18,7 +18,11 @@ const HINT_KEY = "va-radio-hint";
  * Once the hero has settled (its first line read and the visitor at rest,
  * see sceneLoading), the callout waits for a quiet moment that lasts: a
  * line playing, nothing on screen asking her for anything. It never shares
- * the screen with a prompt: when the hero asks her again, it goes.
+ * the screen with a prompt: when the hero asks her again, it goes. It is
+ * the hero's alone (`data-side-hint`): it shows only while the hero runs
+ * down past it, since past the hero (Skip, a deep link, scrolling on) it
+ * would cover the next section's chapter card, so it goes, and comes back
+ * in the hero until it has been seen.
  */
 const HINT_DELAY_MS = 800;
 /** Up this long at most, and seen once it has been up this long in all. */
@@ -49,16 +53,16 @@ function markHintSeen() {
  * key press, unless the visitor turned the radio off. Once per visitor, a
  * small callout says how to open the wheel, while the button glows: after
  * the hero's first line, in a quiet moment (a line playing, no prompt up,
- * so never two instructions at once), below the hero's HUD so it never
- * covers it. A tap or click on the callout opens the wheel too: on touch
- * screens it says "tap here".
+ * so never two instructions at once), while the hero is on screen behind
+ * it, below the hero's HUD so it never covers it. A tap or click on the
+ * callout opens the wheel too: on touch screens it says "tap here".
  */
 export function RadioButton({ dict }: Props) {
   const radio = useSyncExternalStore(subscribeRadio, getRadio, getServerRadio);
-  /** The hero has settled and asks her for nothing right now. */
+  /** The hero has settled, asks her for nothing right now and is up behind the callout. */
   const calm = useSyncExternalStore(
     subscribeSceneLoading,
-    () => getSceneLoading().settled && getSceneLoading().quiet,
+    () => getSceneLoading().settled && getSceneLoading().quiet && getSceneLoading().onScreen,
     () => false,
   );
   /** How long the callout has been up so far (ms), over its appearances. */
@@ -157,6 +161,7 @@ export function RadioButton({ dict }: Props) {
       {/* The button is the control for keyboards and screen readers; the tag only adds a bigger target. */}
       <span
         className={styles.callout}
+        data-side-hint
         data-visible={showCallout}
         aria-hidden="true"
         onClick={() => openWheel("browse", "button", button.current)}

@@ -1,0 +1,246 @@
+/*
+ * A chapter card (ChapterCard.tsx): a sign-painter's word over a scroll
+ * banner, the heading of a static section. One SVG, drawn on the server
+ * (chapterLayout.ts); its width and height attributes give it its box
+ * before any font loads, and CSS scales it to the card.
+ *
+ * The band is a full-width row the section places (its room above and
+ * below, a straddle over the section's top edge); the card is centred in
+ * it. One width for every card, so they read as one family: its band less
+ * 2rem, at most 48rem (--va-chapter-span, tokens.ts chapterSpan;
+ * chapterLayout.ts cardWidth). In rem, not in viewport widths: like any
+ * heading, a card grows with the text size and the browser's zoom (1.5
+ * times at 150%, 1.75 at 200% on a 1440 x 900 window) until the window
+ * stops it. The span is also never more than 1.5 screen heights, which
+ * only binds under 512 px of height: a phone on its side keeps a third of
+ * its screen. The banner's capitals are 4.2% of the width, a cap height
+ * of 3.4%:
+ *
+ *   360 px: 328 px wide, capitals 11.2 px tall
+ *   390 px: 358 px, 12.2 px
+ *   768 px: 736 px, 25.1 px
+ *   800 px up: 768 px, 26.2 px
+ *   844 x 390 (on its side): 585 px, 20 px
+ *
+ * A section may set --chapter-w (the credits' roll does). Sections that
+ * need the card's width where a percentage would resolve against another
+ * box (a scroll-margin, the line-up's caption padding) use
+ * min(100vw - 2rem, var(--va-chapter-span)): a classic scrollbar's width
+ * more, and only on a window under 50rem.
+ *
+ * The vertical numbers come from the card's layout as shares of its width:
+ * --chapter-h, the drawing's height (0.38 to 0.44), and --chapter-edge,
+ * the word's middle. A section that straddles its top edge sets
+ * --chapter-straddle: 1 on its band (0 when unset), and the card rises
+ * over the edge by that much.
+ */
+
+.band {
+  --chapter-w: min(100% - 2rem, var(--va-chapter-span));
+  /* Its own formatting context: the card's rise never collapses through it into the section's margin. */
+  display: flow-root;
+  position: relative;
+}
+
+/* The heading. Percentages in the width and the margin both resolve against the band. */
+.card {
+  position: relative;
+  isolation: isolate;
+  width: var(--chapter-w);
+  margin: calc(var(--chapter-w) * var(--chapter-edge) * var(--chapter-straddle, 0) * -1) auto 0;
+  font: inherit;
+}
+
+/*
+ * A night haze behind the card, never wider than it (no sideways scroll):
+ * the sign reads over the lit windows of the cinema's skyline and the
+ * credits' dawn without a box round it.
+ */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: -4% 0 -5%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 50% 50% at 50% 50%,
+    color-mix(in srgb, var(--va-chapter-haze) 70%, transparent),
+    color-mix(in srgb, var(--va-chapter-haze) 34%, transparent) 58%,
+    transparent 100%
+  );
+}
+
+/* The sign. Its shade may lean a hair past the box: ink overflow, never scroll width. */
+.sign {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  font-family: var(--va-font-chapter-script);
+  font-weight: 400;
+  text-rendering: geometricPrecision;
+}
+
+/* Every painted piece, the word included, has an ink keyline under its fill. */
+.piece {
+  stroke: var(--va-chapter-keyline);
+  stroke-width: 3.2;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
+}
+
+.fold {
+  fill: var(--va-chapter-fold);
+}
+
+/* The cream pinstripe inset along the band's top and bottom. */
+.pin {
+  fill: none;
+  stroke: var(--va-chapter-pin);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  opacity: 0.92;
+}
+
+/* The ribbon's capitals, in night ink on the band. */
+.caps {
+  font-family: var(--va-font-chapter-caps);
+  font-weight: 900;
+  fill: var(--va-chapter-caps);
+}
+
+/* The shades: <use> copies of the word and the banner, stepped down and right. */
+.split,
+.block,
+.deep {
+  stroke-width: 3.2;
+  stroke-linejoin: round;
+}
+
+.split {
+  fill: var(--va-chapter-split);
+  stroke: var(--va-chapter-split);
+}
+
+.block {
+  fill: var(--va-chapter-block);
+  stroke: var(--va-chapter-block);
+}
+
+.deep {
+  fill: var(--va-chapter-block-deep);
+  stroke: var(--va-chapter-block-deep);
+}
+
+/* The fills' stops. */
+.wordTop {
+  stop-color: var(--va-chapter-word-top);
+}
+
+.wordMid {
+  stop-color: var(--va-chapter-word-mid);
+}
+
+.wordFoot {
+  stop-color: var(--va-chapter-word-foot);
+}
+
+.bandStart {
+  stop-color: var(--va-chapter-band-start);
+}
+
+.bandMid {
+  stop-color: var(--va-chapter-band-mid);
+}
+
+.bandEnd {
+  stop-color: var(--va-chapter-band-end);
+}
+
+.tailStart {
+  stop-color: var(--va-chapter-tail-start);
+}
+
+.tailMid {
+  stop-color: var(--va-chapter-tail-mid);
+}
+
+.tailEnd {
+  stop-color: var(--va-chapter-tail-end);
+}
+
+/* The word turns about the card's pivot (its inline transform-origin, in viewBox units). */
+.word {
+  transform-box: view-box;
+}
+
+/*
+ * A card held until its faces are in (ChapterMotion.tsx) keeps its box and
+ * shows nothing, so a fallback face never paints in it; its text can still
+ * be found in the page. (A card waiting for its entrance shows nothing
+ * either: its word is clear and its banner clipped away.)
+ */
+.band[data-chapter="held"] .sign {
+  opacity: 0;
+}
+
+/*
+ * The entrance (ChapterMotion.tsx): a card still below the fold waits
+ * hidden, then the word fades in as it turns 2 degrees into place, and
+ * 240 ms later the banner unfurls from its middle to its tails. Transform,
+ * opacity and a clip only. Under reduced motion every card simply shows.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .band[data-chapter="waiting"] .word {
+    opacity: 0;
+    transform: rotate(2deg);
+  }
+
+  .band[data-chapter="waiting"] .banner {
+    clip-path: inset(0 50%);
+  }
+
+  .band[data-chapter="in"] .word {
+    transition:
+      opacity 420ms ease-out,
+      transform 620ms var(--va-motion-ease);
+  }
+
+  .band[data-chapter="in"] .banner {
+    clip-path: inset(-10%);
+    transition: clip-path 560ms var(--va-motion-ease) 240ms;
+  }
+}
+
+/*
+ * Forced colours: the system's two colours, drawn plainly. The word in the
+ * text colour with a keyline of the canvas round it (it stays apart from
+ * the banner where a descender crosses it), the banner as an outline with
+ * its capitals in the text colour, no shade, no pinstripe, no haze.
+ */
+@media (forced-colors: active) {
+  .card::before,
+  .shade,
+  .pin {
+    display: none;
+  }
+
+  .sign {
+    forced-color-adjust: none;
+  }
+
+  .piece {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+
+  .letters {
+    fill: CanvasText;
+    stroke: Canvas;
+    stroke-width: 6;
+  }
+
+  .caps {
+    fill: CanvasText;
+  }
+}

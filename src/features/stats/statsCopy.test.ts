@@ -75,7 +75,7 @@ describe("STATS copy", () => {
   });
 
   it("never counts the cats in a record, and draws no halo anywhere", () => {
-    for (const dict of [en, es]) {
+    for (const [lang, dict] of [["en", en], ["es", es]] as const) {
       // The line-up shows the four of them; a count here only raised the question of the fourth.
       for (const record of dict.stats.records.items) {
         const text = `${record.value} ${record.spoken} ${record.caption}`;
@@ -88,7 +88,7 @@ describe("STATS copy", () => {
       for (const [path, text] of strings(dict.stats)) {
         expect(/halo|aureola|from above|desde arriba|keeping watch|vigilando/i.test(text), `${path}: ${text}`).toBe(false);
       }
-      const html = renderToStaticMarkup(createElement(Stats, { dict: dict.stats as Dictionary["stats"] }));
+      const html = renderToStaticMarkup(createElement(Stats, { dict: dict.stats as Dictionary["stats"], lang }));
       expect(html).not.toMatch(/halo|<svg[^>]*viewBox="0 0 40 12"/i);
     }
   });

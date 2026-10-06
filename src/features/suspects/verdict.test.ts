@@ -43,7 +43,7 @@ describe("the culprit", () => {
   for (const lang of locales) {
     it(`${lang}: wears the stamp on his plate, a real button with a name, and nobody else does`, async () => {
       const dict = await getDictionary(lang);
-      const html = renderToStaticMarkup(createElement(Suspects, { dict: dict.suspects }));
+      const html = renderToStaticMarkup(createElement(Suspects, { dict: dict.suspects, lang }));
       expect(html.match(/<button\b/g)).toHaveLength(1);
 
       const dante = slot(html, CULPRIT);

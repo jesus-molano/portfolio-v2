@@ -26,3 +26,17 @@ export function lineRootMargin(y: number, viewportHeight: number): string {
   const bottom = Math.max(0, viewportHeight - top - 1);
   return `${-top}px 0px ${-bottom}px 0px`;
 }
+
+/**
+ * The line `gap` px under the lowest of some fixed boxes (top and height in
+ * viewport px, as `offsetTop` and `offsetHeight` give them for a fixed
+ * element: without the transform of its fade), for an observer on that
+ * line (`lineRootMargin`) that asks whether a target at the top of the page
+ * runs down past all of them, so whatever comes after it starts below
+ * them. With no box, the viewport's top edge.
+ */
+export function lineBelow(boxes: Iterable<{ top: number; height: number }>, gap: number): number {
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const box of boxes) bottom = Math.max(bottom, box.top + box.height);
+  return Number.isFinite(bottom) ? bottom + gap : 0;
+}

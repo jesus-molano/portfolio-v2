@@ -77,9 +77,14 @@ export const BUILT_WITH = [
  * License 2.0). Our own logos and posters set in them: no borrowed marks.
  */
 export const TYPEFACES = {
-  site: ["Unbounded", "Space Grotesk", "JetBrains Mono"],
+  /**
+   * Mr Dafoe and Big Shoulders Display: the chapter cards' words and their
+   * banners' capitals (Big Shoulders is a poster face too; each face is
+   * credited once).
+   */
+  site: ["Unbounded", "Space Grotesk", "JetBrains Mono", "Mr Dafoe", "Big Shoulders Display"],
   radio: ["Shrikhand", "Kanit", "Playfair Display", "Yellowtail", "Bowlby One", "Limelight", "Bebas Neue"],
-  posters: ["Big Shoulders Display", "Cinzel", "Oswald", "Anton", "Six Caps", "Special Elite"],
+  posters: ["Cinzel", "Oswald", "Anton", "Six Caps", "Special Elite"],
 } as const;
 
 /**
