@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { createElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { FitLine } from "@/features/suspects/FitLine";
 import { parseSubtitleSize, SUBTITLE_SCALE, SUBTITLE_SIZES, subtitleAttributes } from "./subtitleSize";
 
 const css = (file: string) => readFileSync(path.join(process.cwd(), "src", file), "utf8");
@@ -34,7 +37,23 @@ describe("the subtitle size", () => {
     const work = cardFont("features/work/Work.module.css");
     expect(work).toBe(hero);
     const globals = css("app/globals.css");
-    expect(globals).toContain(`font-size: calc(${hero} * var(--va-subtitle-scale, 1));`);
+    expect(globals).toContain(`font-size: calc(var(--va-card-fs, ${hero}) * var(--va-subtitle-scale, 1));`);
     expect(globals).toMatch(/html\[data-subtitles\] \[data-captions\] \[data-card\]/);
+  });
+
+  it("scales his line to the officer too, from its own size", () => {
+    // The line-up's last word is the hero's card (FitLine): [data-captions] on its row, [data-card] on the block.
+    const hero = cardFont("features/hero/Hero.module.css");
+    const suspects = css("features/suspects/Suspects.module.css");
+    const caption = suspects.match(/\n\.caption \{[^}]*?--va-card-fs: ([^;]+);[^}]*?font-size: ([^;]+);/);
+    expect(caption?.[1]).toBe(hero);
+    expect(caption?.[2]).toBe("var(--va-card-fs)");
+    // A phone's line is a little larger, and scales from there: no rule sets its size past the variable.
+    expect(suspects).not.toMatch(/\.caption(Text)? \{[^}]*?\bfont-size: (?!var\(--va-card-fs\))/);
+    expect(css("features/suspects/Suspects.tsx")).toMatch(/<p className=\{styles\.caption\} data-captions>/);
+    // Its words come as children (createElement's third argument, which its props type cannot see).
+    const Line = FitLine as (props: { className: string; children?: ReactNode }) => ReactNode;
+    const card = renderToStaticMarkup(createElement(Line, { className: "card" }, "Jesús: el número 3."));
+    expect(card).toMatch(/^<span class="card" data-card=/);
   });
 });

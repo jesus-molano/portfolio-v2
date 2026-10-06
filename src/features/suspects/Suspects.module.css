@@ -598,7 +598,9 @@
   z-index: 2;
   padding: clamp(2.5rem, 6 * var(--va-svh), 4rem) 1rem max(2.25rem, 5 * var(--va-svh));
   font-family: var(--va-font-body);
-  font-size: clamp(0.95rem, 1.35vw, 1.2rem);
+  /* The hero's card size (Hero.module.css .subtitle); the subtitle size she picks scales it (globals.css). */
+  --va-card-fs: clamp(0.95rem, 1.35vw, 1.2rem);
+  font-size: var(--va-card-fs);
   font-weight: 500;
   line-height: 1.4;
   text-align: center;
@@ -846,6 +848,6 @@
   .caption {
     grid-area: auto;
     padding: 3rem 1rem max(3rem, 6 * var(--va-svh));
-    font-size: 1rem;
+    --va-card-fs: 1rem;
   }
 }

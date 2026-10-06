@@ -21,12 +21,14 @@ import { createPedalDriver } from "@/features/hero/scroll/pedalDriver";
 import { STORY } from "@/features/hero/scroll/story";
 import { isPictureTap, keyAction, speedKmh, type TargetKind } from "@/features/hero/scroll/transport";
 import { createDashPainter, Dash } from "@/features/hero/Dash";
+import { fitCards } from "@/features/hero/fitCards";
 import { Pedal } from "@/features/hero/Pedal";
 import { dashLayout, newDashState, stepDash, stepLimiter } from "@/features/hero/scroll/dash";
 import { type FeedbackInput, newFeedback, stepFeedback } from "@/features/hero/scroll/feedback";
 import { meterRate } from "@/features/hero/scroll/throttle";
 import { getSceneLoading } from "@/features/hero/sceneLoading";
 import { getRadio } from "@/features/music/radio";
+import { DIRECTION } from "@/features/night/direction";
 import { NightCanvas } from "@/features/night/NightCanvas";
 import { getNightReadiness, night, subscribeNightReadiness } from "@/features/night/nightState";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -34,6 +36,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { goTo, isNavigation, registerPassage } from "@/lib/navigate";
 import { stableScreen } from "@/lib/screen";
+import { SUBTITLES_EVENT } from "@/lib/subtitleSize";
 import { newDipView, stepDipView } from "./dip";
 import { openingAt } from "./opening";
 import { DISARMED, insideQuad, quadClipPath, quadIsTargetable, stepArm, type ArmEvent } from "./hotspot";
@@ -180,8 +183,12 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       const geom = { top: 0, range: 1, vh: stableScreen().large };
       /** Where the dash sits (hero/scroll/dash.ts DASH_MEDIA, the same queries as the CSS); a phone has none. */
       let layout = dashLayout((query) => window.matchMedia(query).matches);
+      // Each card fitted to its widest line, as the hero's (hero/fitCards.ts): with the viewport, the fonts and the subtitle size.
+      const cardText = Array.from(stage.querySelectorAll<HTMLElement>("[data-card-text]"));
+      const fitLines = () => fitCards(cardText);
       const measure = () => {
         layout = dashLayout((query) => window.matchMedia(query).matches);
+        fitLines();
         // The screen the page is laid out with (lib/screen.ts): a phone's bars coming and going never change it.
         const { large } = stableScreen();
         const rect = stage.getBoundingClientRect();
@@ -191,6 +198,10 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         geom.vh = large;
       };
       measure();
+      let fontsWaiting = true;
+      document.fonts?.ready.then(() => {
+        if (fontsWaiting) fitLines();
+      });
       const scrollFor = (p: number) => geom.top + p * geom.range;
       const progressFor = (y: number) => (y - geom.top) / geom.range;
       const scrollNow = () => (lenis ? lenis.scroll : window.scrollY);
@@ -232,6 +243,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         reel: Array.from(stage.querySelectorAll<HTMLElement>("[data-reel-fill]")),
         cards: Array.from(stage.querySelectorAll<HTMLElement>("[data-card]")),
         supers: Array.from(stage.querySelectorAll<HTMLElement>("[data-super]")),
+        supersRight: Array.from(stage.querySelectorAll<HTMLElement>("[data-super-right]")),
         articles: Array.from(stage.querySelectorAll<HTMLElement>("[data-stop]")),
         chips: Array.from(stage.querySelectorAll<HTMLElement>("[data-chip]")),
         pedal: q("[data-pedal]"),
@@ -437,7 +449,11 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         // The stop on screen: its super, its chip, its HUD line and its reel segment.
         if (stop !== lastStop) {
           el.supers.forEach((node, i) => attr(node, "data-active", i === stop));
+          el.supersRight.forEach((node) => attr(node, "data-active", Number(node.dataset.superRight) === stop));
           el.articles.forEach((node, i) => attr(node, "data-active", i === stop));
+          // On a phone the captions give the top left to a stop's art that holds it (direction.ts phoneCaptions):
+          // the right-hand copies fade in and the left ones out, so nothing moves (no layout shift).
+          attr(stage, "data-caption-side", DIRECTION[stop]?.phoneCaptions ?? null);
           lastStop = stop;
         }
         attr(stage, "data-chrome", showChrome);
@@ -826,6 +842,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       const hotspot = el.hotspot;
       window.addEventListener("keydown", onKey);
       window.addEventListener("resize", measure);
+      window.addEventListener(SUBTITLES_EVENT, fitLines);
       document.addEventListener("visibilitychange", onVisibility);
       stage.addEventListener("pointerdown", onPointerDown);
       stage.addEventListener("pointerup", onPointerUp);
@@ -870,6 +887,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         unregisterPassage();
         window.removeEventListener("keydown", onKey);
         window.removeEventListener("resize", measure);
+        window.removeEventListener(SUBTITLES_EVENT, fitLines);
+        fontsWaiting = false;
         document.removeEventListener("visibilitychange", onVisibility);
         resizeObserver?.disconnect();
         stage.removeEventListener("pointerdown", onPointerDown);
@@ -929,6 +948,11 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         <p className={styles.hud} aria-hidden="true">
           <span className={styles.hudTitle}>{work.eyebrow}</span>
         </p>
+        {/* The same captions on the right, for a stop whose art holds the top left on a portrait screen
+            (direction.ts phoneCaptions). A copy that fades in, never the left one moved: moving it was a layout shift. */}
+        <p className={`${styles.hud} ${styles.hudRight}`} aria-hidden="true">
+          <span className={styles.hudTitle}>{work.eyebrow}</span>
+        </p>
 
         {/* The route: one link per stop, filling as the car gets there. */}
         <nav className={styles.reel} aria-label={work.reel}>
@@ -952,21 +976,34 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
             </p>
           ))}
         </div>
+        <div className={`${styles.supers} ${styles.supersRight}`} aria-hidden="true">
+          {STOPS.map((stop, i) =>
+            DIRECTION[i]?.phoneCaptions === "right" ? (
+              <p key={stop.id} className={styles.super} data-super-right={i}>
+                {work.stop} {String(stop.index).padStart(2, "0")}/{String(STOPS.length).padStart(2, "0")} · {work.stops[stop.id].h3}
+                <span className={styles.superLine}>{work.stops[stop.id].line}</span>
+              </p>
+            ) : null,
+          )}
+        </div>
 
         <ul className={styles.subtitles} aria-hidden="true" data-captions>
           {timeline.cards.map((card) => (
             <li key={card.id} className={styles.subtitle} data-card>
-              <span className={styles.subtitleText}>
+              {/* The hero's card: one block around the whole line, balanced, as wide as its widest line (hero/fitCards.ts). */}
+              <span className={styles.subtitleText} data-card-text>
                 <span className={styles.speaker}>{work.speaker}:</span> {card.text}
-                <span className={styles.cueTail}>
-                  <span className={styles.cueArrow} />
-                  <span className={styles.cueLabel}>
-                    <span className={styles.forWheel}>{cues.next}</span>
-                    <span className={styles.forTouch}>{cues.nextTouch}</span>
-                    <span className={styles.forClick}>{cues.nextClick}</span>
-                    <span className={styles.forPedal}>{cues.nextPedal}</span>
-                    <span className={styles.forKey}>{cues.nextKey}</span>
-                  </span>
+              </span>
+              {/* Under the block: the way on in her input's words, once the line is read and she waits.
+                  The reading bar fills in the same place before it (::after). */}
+              <span className={styles.cueTail}>
+                <span className={styles.cueArrow} />
+                <span className={styles.cueLabel}>
+                  <span className={styles.forWheel}>{cues.next}</span>
+                  <span className={styles.forTouch}>{cues.nextTouch}</span>
+                  <span className={styles.forClick}>{cues.nextClick}</span>
+                  <span className={styles.forPedal}>{cues.nextPedal}</span>
+                  <span className={styles.forKey}>{cues.nextKey}</span>
                 </span>
               </span>
             </li>

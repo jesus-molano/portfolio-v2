@@ -1,14 +1,14 @@
 /**
  * The subtitle size she picks in STATS's settings (SETTINGS · DISPLAY):
  * small, medium or large, for the film's cards in the hero and in the
- * career city. Medium is the cards' own size and sets nothing; small and
- * large set `data-subtitles` and `--va-subtitle-scale` on <html>, which
- * globals.css multiplies into both stages' cards ([data-captions]
- * [data-card]). Remembered per visitor in localStorage; read back on
+ * career city, and his line to the officer under THE USUAL SUSPECTS.
+ * Medium is the cards' own size and sets nothing; small and large set
+ * `data-subtitles` and `--va-subtitle-scale` on <html>, which globals.css
+ * multiplies into every card ([data-captions] [data-card]). Remembered per visitor in localStorage; read back on
  * hydration by StatsSettings (restoreSubtitleSize, in its effect: the
  * settings panel is on every home page, open or not). A change fires
- * SUBTITLES_EVENT, so the hero fits its cards to their lines again
- * (cardFit.ts).
+ * SUBTITLES_EVENT, so every card is fitted to its lines again
+ * (hero/fitCards.ts).
  */
 
 export const SUBTITLE_SIZES = ["s", "m", "l"] as const;

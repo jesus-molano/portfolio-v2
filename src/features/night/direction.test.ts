@@ -4,7 +4,7 @@ import es from "@/i18n/dictionaries/es.json";
 import { dipAt } from "@/features/work/dip";
 import { type StageTimeline, workTimeline } from "@/features/work/workTimeline";
 import { carAt } from "./carPath";
-import { DIRECTION } from "./direction";
+import { CAPTION_SPAN, DIRECTION } from "./direction";
 import { type Pose, projectPose, type Vec3 } from "./frame";
 import { rigKeys, rigPose } from "./rig";
 import { MAST_TOP, NAME_SIGN_CORNERS } from "./sets/HeuristikSet";
@@ -193,6 +193,29 @@ describe("the camera's direction", () => {
           expect(Math.max(...xs) - Math.min(...xs), id).toBeGreaterThan(0.25);
         }
       });
+
+      if (aspect < 1) {
+        it(`leaves PwC's C whole on a portrait screen: the captions stand right of it (${name}, ${screen})`, () => {
+          // The C stands over the readerboard, left of the car, in the top left of the reading shots.
+          expect(DIRECTION[PWC].phoneCaptions).toBe("right");
+          // The captions' left edge: their share of the width and their 1.25rem margin (20 px of a 360 px phone).
+          const edge = 1 - CAPTION_SPAN - 20 / 360;
+          for (const [id, t] of [
+            ["pwc.marquee", 1],
+            ["pwc.card0", 0.5],
+            ["pwc.card1", 0.5],
+            ["pwc.leave", 0.12],
+          ] as const) {
+            const b = beat(timeline, id);
+            const pose = poseAt(PWC, b.start + (b.end - b.start) * t, aspect);
+            const c = projectPose(pose, PWC_FRAMING.letters[2], aspect);
+            expect(Math.max(...c.map(([x]) => x)), id).toBeLessThan(edge);
+            // Whole in the frame, under the route.
+            expect(Math.min(...c.map(([x]) => x)), id).toBeGreaterThan(0.02);
+            expect(Math.min(...c.map(([, y]) => y)), id).toBeGreaterThan(0.06);
+          }
+        });
+      }
 
       it(`frames Logixs' type whole: the snipe, the ban and each line's bill (${name}, ${screen})`, () => {
         for (const [id, bill] of [

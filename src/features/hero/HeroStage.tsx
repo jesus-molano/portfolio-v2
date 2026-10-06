@@ -25,7 +25,7 @@ import { HeroTitle } from "./HeroTitle";
 import { createDashPainter, Dash } from "./Dash";
 import { createPedalDriver } from "./scroll/pedalDriver";
 import { Pedal } from "./Pedal";
-import { fitWidth } from "./cardFit";
+import { fitCards } from "./fitCards";
 import { SUBTITLES_EVENT } from "@/lib/subtitleSize";
 import { getSceneLoading, markOnScreen, markOnStage, markQuiet, markSettled } from "./sceneLoading";
 import { titleIntro } from "./titleIntro";
@@ -489,22 +489,11 @@ export function HeroStage({
       /**
        * Each card is one block around its whole line, balanced; a wrapped
        * block would keep the full width of the band, so it is set to its
-       * widest line (cardFit.ts). Measured with the viewport and once the
+       * widest line (fitCards.ts). Measured with the viewport and once the
        * fonts have arrived, never in the frame.
        */
       const cardText = cards.map((card) => card.querySelector<HTMLElement>("[data-card-text]"));
-      const fitCards = () => {
-        for (const text of cardText) text?.style.removeProperty("--fit");
-        const widths = cardText.map((text) => {
-          if (!text) return 0;
-          const range = document.createRange();
-          range.selectNodeContents(text);
-          return fitWidth(range.getClientRects());
-        });
-        cardText.forEach((text, i) => {
-          if (text && widths[i] > 0) text.style.setProperty("--fit", `${widths[i]}px`);
-        });
-      };
+      const fitLines = () => fitCards(cardText);
       const measure = () => {
         const rect = root.getBoundingClientRect();
         geom.top = rect.top + window.scrollY;
@@ -513,12 +502,12 @@ export function HeroStage({
         geom.vh = large;
         scrollGate.heroEnd = geom.top + geom.range;
         layout = dashLayout((query) => window.matchMedia(query).matches);
-        fitCards();
+        fitLines();
       };
       measure();
       let disposed = false;
       document.fonts?.ready.then(() => {
-        if (!disposed) fitCards();
+        if (!disposed) fitLines();
       });
       /** Scroll position (px) of a film position, and back. */
       const scrollFor = (p: number) => geom.top + p * geom.range;
@@ -1717,7 +1706,7 @@ export function HeroStage({
       window.addEventListener("keyup", onKeyUp);
       window.addEventListener("resize", remeasure);
       // The subtitle size changed in STATS's settings: each card fits its line again.
-      window.addEventListener(SUBTITLES_EVENT, fitCards);
+      window.addEventListener(SUBTITLES_EVENT, fitLines);
       document.addEventListener("visibilitychange", onVisibility);
       root.addEventListener("pointerdown", onFinger, true);
       root.addEventListener("pointerup", onFinger, true);
@@ -1767,7 +1756,7 @@ export function HeroStage({
         window.removeEventListener("keydown", onKey);
         window.removeEventListener("keyup", onKeyUp);
         window.removeEventListener("resize", remeasure);
-        window.removeEventListener(SUBTITLES_EVENT, fitCards);
+        window.removeEventListener(SUBTITLES_EVENT, fitLines);
         document.removeEventListener("visibilitychange", onVisibility);
         resizeObserver?.disconnect();
         root.removeEventListener("pointerdown", onFinger, true);

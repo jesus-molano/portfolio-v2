@@ -321,10 +321,12 @@ also exists as real DOM for keyboard and screen-reader users.
     the wheel as a mouse, and the keys as W and Space keycaps), bobbing
     the way it points. Each card is one solid block around the whole line
     (never a pill per line), balanced (`text-wrap: balance`, no word alone
-    on a line) and as wide as its widest line (`cardFit.ts`, measured with
-    the viewport and once the fonts have arrived, never in the frame); the
-    reading bar and then the marker sit under the block, never in the
-    text. Her first
+    on a line) and as wide as its widest line (`cardFit.ts`, applied by
+    `fitCards.ts`, the one fitting of every card: the hero's, the career
+    city's and the line to the officer; measured with the viewport, once
+    the fonts have arrived and when the subtitle size changes, never in
+    the frame); the reading bar and then the marker sit under the block,
+    never in the text. Her first
     input is answered in place of the title hint ("You have the wheel",
     which replaces the "you drive" line under it: never more than two
     "you drive" messages on screen at once, counting the dash's YOU DRIVE
@@ -594,6 +596,16 @@ also exists as real DOM for keyboard and screen-reader users.
   company» and, under it, the stop's one `line` (clients and stack); the
   years live on the board. The cues (scroll, swipe, click, pedal, Space,
   Skip) are the hero's own words, `common.cues`, shared by both stages.
+  Its subtitle cards are the hero's (one block, balanced, fitted by
+  `hero/fitCards.ts`, the reading bar and the marker under the block) and
+  stand with their cue over the night cover and the dip, so the opening
+  line, played as the night fades up, reads at full strength. The HUD
+  names the section as its ribbon does («Trayectoria» / "Career"). On a
+  portrait screen a stop whose art holds the top left of its shots puts
+  the HUD and the super on the right (`phoneCaptions` in
+  `night/direction.ts`, `data-caption-side`; copies on the right fade in as
+  the left ones fade out, never moved there: a layout shift): PwC, whose blade's C stands
+  over the readerboard, left of the car, in every reading shot.
   The city drives with the hero's pedal (`Pedal.tsx`, the same button,
   bottom right, Skip beside it, or bottom left on a phone): a press plays
   the next line, holding drives on through the same gate and walls, and W
@@ -744,8 +756,10 @@ also exists as real DOM for keyboard and screen-reader users.
     número 3.» / "Officer, I'd take a good look at number three." It has a
     row of its own under the plates and their descriptions, a pause's room
     above it, in the hero's subtitle card (one block, balanced, as wide as
-    its widest line, `FitLine.tsx` with the hero's `cardFit.ts`; on the
-    night floor a hairline and the plates' shadow keep its edge). The
+    its widest line, `FitLine.tsx` with the hero's `fitCards.ts`, and
+    sized by the subtitle size like every card: `data-captions` on its
+    row, `data-card` on the block, scaled from its own `--va-card-fs`; on
+    the night floor a hairline and the plates' shadow keep its edge). The
     complaint's boxes are drawn (SVG, never a ✓ glyph from a fallback
     face) and stand in their item's first line on its x-height centre
     (`vertical-align: middle`, the columns sharing a baseline). The
@@ -954,8 +968,9 @@ also exists as real DOM for keyboard and screen-reader users.
     none` and `pointer: coarse`) shows the touch column only. DISPLAY sets the subtitle size, small, medium
     or large (`lib/subtitleSize.ts`: `data-subtitles` and
     `--va-subtitle-scale` on `<html>`, multiplied into both stages' cards
-    by `globals.css`, tested against their stylesheets; remembered as
-    `va-subtitles`; the hero fits its cards again), with a sample card.
+    and the line to the officer by `globals.css`, tested against their
+    stylesheets; remembered as `va-subtitles`; every card is fitted
+    again), with a sample card.
     LANGUAGE links to the other locale on this very tab
     (`/es#stats-settings`), so she lands back here; while the game is
     paused the page controls' EN/ES carries the open tab's fragment too
@@ -1102,9 +1117,10 @@ also exists as real DOM for keyboard and screen-reader users.
     glyph's lowest ink per 0.02 em column) and `capsFace.ts` holds the
     capitals' widths and kerning. The banner hangs as close under the word
     as it can: its top clears the word's body; deep descenders and swashes
-    (Sesión golfa, ¡Y corten!, That’s a wrap, Main story) cross in front
-    of the band with their shade on it, as on a painted sign, and no ink
-    or shade ever reaches a capital (tested). A new word or ribbon: `python3
+    (Sesión golfa, ¡Y corten!, That’s a wrap, Main story; `DEEP` in
+    `chapterLayout.test.ts`) cross in front of the band with
+    their shade on it, as on a painted sign, and no ink or shade ever
+    reaches a capital (tested). A new word or ribbon: `python3
     tools/chapter/fonts.py` subsets the face again with the dictionaries'
     letters and rewrites the metrics (fontTools and brotli), and `node
     tools/chapter/measure.mjs` prints Chromium's numbers for the MEASURED

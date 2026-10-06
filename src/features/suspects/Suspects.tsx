@@ -145,8 +145,9 @@ export function Suspects({ dict, lang }: Props) {
           <p className={styles.tally}>{dict.complaint.tally}</p>
         </div>
 
-        {/* His line to the officer, on a row of its own: the hero's subtitle card, as wide as its widest line. */}
-        <p className={styles.caption}>
+        {/* His line to the officer, on a row of its own: the hero's subtitle card, as wide as its widest line,
+            at the subtitle size she picked (data-captions, lib/subtitleSize.ts). */}
+        <p className={styles.caption} data-captions>
           <FitLine className={styles.captionText}>
             <span className={styles.speaker}>{dict.speaker}:</span> {dict.line}
           </FitLine>

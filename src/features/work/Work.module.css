@@ -328,11 +328,17 @@
 
 /* ---- subtitles ---- */
 
+/*
+ * Above the night cover and the dip (z-fade + 1, inside the pinned frame's
+ * own stacking context): the city's first line plays while the night fades
+ * up to the first stop, and a line read through a dip, and each reads at
+ * full strength, as the hero's do, however dark the picture under it.
+ */
 .subtitles {
   position: absolute;
   left: 50%;
   bottom: max(3.75rem, 6vh);
-  z-index: var(--va-z-ui);
+  z-index: calc(var(--va-z-fade) + 1);
   display: grid;
   width: min(44rem, calc(100% - 2rem));
   margin: 0;
@@ -349,23 +355,35 @@
 
 .subtitle {
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   grid-area: 1 / 1;
   align-self: end;
   font-family: var(--va-font-body);
   font-size: clamp(0.95rem, 1.35vw, 1.2rem);
   font-weight: 500;
-  line-height: 1.75;
+  line-height: 1.4;
   color: var(--va-color-cream);
   opacity: 0;
 }
 
+/*
+ * The hero's card (Hero.module.css .subtitleText): one solid block around
+ * the whole line, never a pill per line, so it reads on any part of the
+ * night and a wrapped line never looks like two. Balanced, so no word sits
+ * alone on a line, and as wide as its widest line (--fit, measured by
+ * WorkStage with the hero's hero/fitCards.ts).
+ */
 .subtitleText {
-  padding: 0.2em 0.55em;
-  border-radius: 0.4em;
+  display: block;
+  box-sizing: content-box;
+  width: var(--fit, fit-content);
+  max-width: calc(100% - 1.7em);
+  padding: 0.4em 0.85em 0.45em;
+  border-radius: 0.55em;
   background: var(--va-color-osd);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+  text-wrap: balance;
   text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
 }
 
@@ -374,12 +392,12 @@
   font-weight: 700;
 }
 
-/* The line's reading time fills a short bar under the card. */
+/* The line's reading time fills a short bar under the card's block, as in the hero. */
 .subtitle::after {
   content: "";
   position: absolute;
+  top: calc(100% + 0.5rem);
   left: 50%;
-  bottom: -0.5rem;
   width: 4rem;
   height: calc(3px + 2px * var(--push, 0));
   border-radius: 2px;
@@ -388,6 +406,7 @@
     var(--va-color-pink) calc(var(--read, 0) * 100%),
     color-mix(in srgb, var(--va-color-cream) 25%, transparent) calc(var(--read, 0) * 100%)
   );
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--va-color-night) 45%, transparent);
   transform: translateX(-50%);
   opacity: 0;
   transition: opacity 200ms ease;
@@ -401,8 +420,37 @@
   opacity: 0;
 }
 
+/* Wide: under a card up to 44rem wide, a longer, thicker bar reads at a glance (the hero's). */
+@media (min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px) {
+  .subtitle::after {
+    width: 7rem;
+    height: calc(4px + 2px * var(--push, 0));
+  }
+}
+
+/*
+ * The marker under the card, like a game dialogue box: it takes the bar's
+ * place and bobs once the line has been read and she waits, in her last
+ * input's words. Its own element, out of the flow, never part of the line,
+ * so the line wraps on its own words and the marker never moves the card.
+ */
 .cueTail {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.25em 0.6em;
+  border-radius: 0.4em;
+  background: var(--va-color-osd);
   white-space: nowrap;
+  translate: -50% 0;
+  opacity: 0;
+}
+
+.subtitle[data-ready] .cueTail {
+  opacity: 1;
 }
 
 .cueArrow {
@@ -410,9 +458,6 @@
   display: inline-block;
   width: 0.8em;
   height: 0.62em;
-  margin-left: 0.5em;
-  vertical-align: 0.05em;
-  opacity: 0;
 }
 
 .cueArrow::after {
@@ -424,25 +469,16 @@
 }
 
 .subtitle[data-ready] .cueArrow {
-  opacity: 1;
   animation: work-bob 1.1s ease-in-out 5;
 }
 
-/* Always laid out, shown only when the card waits for her: its words appearing never move the card (no layout shift). */
 .cueLabel {
-  display: inline;
-  visibility: hidden;
-  margin-left: 0.45em;
   font-family: var(--va-font-mono);
   font-size: 0.74em;
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--va-color-pink);
-}
-
-.subtitle[data-ready] .cueLabel {
-  visibility: visible;
 }
 
 /* Copy that depends on the input: wheel by default, touch on coarse pointers, then the last input (as in the hero). */
@@ -472,11 +508,12 @@
   }
 }
 
+/* The between-card cue stands with the subtitles, over the night cover and the dip. */
 .cue {
   position: absolute;
   left: 50%;
   bottom: max(3.75rem, 6vh);
-  z-index: var(--va-z-ui);
+  z-index: calc(var(--va-z-fade) + 1);
   margin: 0;
   padding: 0.4em 0.8em;
   border-radius: 0.4em;
@@ -889,6 +926,48 @@
   .skip {
     right: auto;
     left: max(1rem, env(safe-area-inset-left));
+  }
+}
+
+/*
+ * A stop whose art holds the top left of its shots on a portrait screen,
+ * where the stage films with its portrait keys (PwC's blade,
+ * night/direction.ts phoneCaptions): the HUD and the super stand on the
+ * right, in at most 48% of the width (CAPTION_SPAN), so the art reads whole.
+ * They are copies standing there all along, faded in as the left ones fade
+ * out: moving the left ones across was a layout shift at every such stop.
+ */
+.hudRight,
+.supersRight {
+  display: none;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .hudRight,
+  .supersRight {
+    left: auto;
+    right: max(1.25rem, env(safe-area-inset-right));
+    max-width: 48%;
+    text-align: right;
+  }
+
+  .hudRight {
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .supersRight {
+    display: grid;
+  }
+
+  .supersRight .super::before {
+    inset: -0.8rem -1.25rem -0.8rem -2rem;
+  }
+
+  .stage[data-caption-side="right"] .hud:not(.hudRight),
+  .stage[data-caption-side="right"] .supers:not(.supersRight) .super,
+  .stage:not([data-caption-side="right"]) .hud.hudRight {
+    opacity: 0;
   }
 }
 
