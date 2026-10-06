@@ -255,7 +255,7 @@ function CareerMap({ dict }: { dict: StatsDict }) {
             return (
               <li key={mission.id}>
                 <Row
-                  className={`${styles.missionRow} ${mission.live ? styles.missionRowLive : ""}`}
+                  className={`${styles.missionRow} ${mission.mode === "remote" ? styles.missionRowRemote : ""} ${mission.live ? styles.missionRowLive : ""}`}
                   href={CAREER_CITY_ON_PAGE ? `#${mission.anchor}` : undefined}
                 >
                   <span className={styles.missionBadge} aria-hidden="true">
@@ -296,7 +296,7 @@ function CareerMap({ dict }: { dict: StatsDict }) {
           <h3 id="stats-map-title" className={styles.mapTitle}>
             {map.title}
           </h3>
-          {/* The map's key: a badge on a place was done there; at home base, remote. */}
+          {/* The map's key: a sodium ring was done on site, at its place; home base's cream disc, remote. */}
           <p className={styles.mapKey} aria-hidden="true">
             <span className={styles.keyOnSite}>
               <i className={styles.keyBadge} />

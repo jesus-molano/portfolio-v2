@@ -420,10 +420,16 @@
   box-shadow: 0 0 8px color-mix(in srgb, var(--va-color-sodium) 45%, transparent);
 }
 
+/* Remote: home base's own marker, the cream disc the remote jobs' badges share. */
 .keyHq {
-  width: 15px;
-  height: 15px;
-  color: var(--va-color-cream);
+  box-sizing: border-box;
+  width: 17px;
+  height: 17px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--va-color-cream);
+  color: var(--va-color-night);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--va-color-cream) 40%, transparent);
 }
 
 .mapTitle {
@@ -588,6 +594,19 @@
 
 .homeStack .missionLive {
   margin-right: 40px;
+}
+
+/*
+ * The jobs done remote wear home base's cream, as the key says: the sodium
+ * ring is for a job done on site, at its place on the map.
+ */
+.homeStack .mission:not(.missionLive) {
+  border-color: var(--va-color-cream);
+  background: var(--va-color-cream);
+  color: var(--va-color-night);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--va-color-night) 55%, transparent),
+    0 0 12px color-mix(in srgb, var(--va-color-cream) 40%, transparent);
 }
 
 .tick {
@@ -886,6 +905,13 @@ a.missionRow:focus-visible {
   border-radius: 50%;
   font: 700 12px/1 var(--va-font-display);
   color: var(--va-color-sodium);
+}
+
+/* A remote job's number in home base's cream, as on the map. */
+.missionRowRemote .missionBadge {
+  border-color: var(--va-color-cream);
+  background: var(--va-color-cream);
+  color: var(--va-color-night);
 }
 
 .missionRowLive .missionBadge {
