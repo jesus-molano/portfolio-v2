@@ -314,7 +314,7 @@
 
 .name {
   font-family: var(--va-font-display);
-  font-size: max(0.95rem, calc(var(--size) * 0.047));
+  font-size: max(0.95rem, calc(var(--size) * 0.043));
   font-weight: 800;
   line-height: 1.02;
   letter-spacing: -0.01em;
