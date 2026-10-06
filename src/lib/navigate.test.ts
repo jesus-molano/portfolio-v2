@@ -1,5 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fragmentTarget, getPassage, goTo, landingY, landsPast, registerPassage, registerScroller } from "./navigate";
+import {
+  fragmentTarget,
+  getPassage,
+  goTo,
+  landingY,
+  landsPast,
+  PLACE,
+  placeOf,
+  registerPassage,
+  registerScroller,
+  withPlace,
+} from "./navigate";
 
 describe("fragmentTarget", () => {
   const here = "https://jesusmolano.dev/en";
@@ -19,6 +30,31 @@ describe("fragmentTarget", () => {
     expect(fragmentTarget("https://jesusmolano.dev/en#", here)).toBeNull();
     expect(fragmentTarget("https://jesusmolano.dev/en", here)).toBeNull();
     expect(fragmentTarget("not a url", here)).toBeNull();
+  });
+});
+
+describe("a history entry's place", () => {
+  it("is where the page was when she left the entry, kept beside Next's own state", () => {
+    const next = { __NA: true, __PRIVATE_NEXTJS_INTERNALS_TREE: ["", {}] };
+    const left = withPlace(next, 7210.6);
+    expect(left).toEqual({ ...next, [PLACE]: 7211 });
+    expect(placeOf(left)).toBe(7211);
+    // The state it came from is untouched: history entries are copies.
+    expect(next).not.toHaveProperty(PLACE);
+    // A new entry starts with no place of its own.
+    expect(placeOf(withPlace(left, null))).toBeNull();
+    expect(withPlace(left, null)).toEqual(next);
+  });
+
+  it("is nothing for an entry nobody marked, or a place that is not one", () => {
+    expect(placeOf(null)).toBeNull();
+    expect(placeOf(undefined)).toBeNull();
+    expect(placeOf("7200")).toBeNull();
+    expect(placeOf({ [PLACE]: "7200" })).toBeNull();
+    expect(placeOf({ [PLACE]: Number.NaN })).toBeNull();
+    expect(placeOf({ [PLACE]: -5 })).toBeNull();
+    expect(placeOf({ [PLACE]: 0 })).toBe(0);
+    expect(withPlace(null, -3)).toEqual({ [PLACE]: 0 });
   });
 });
 

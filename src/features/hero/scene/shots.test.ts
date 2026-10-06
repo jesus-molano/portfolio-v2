@@ -253,14 +253,14 @@ describe("framing at every aspect", () => {
 
 describe("the dash on tall screens", () => {
   // Hero.module.css: on a tall screen the dash hangs in the sky at 1rem + 5rem from the top, 4.96em
-  // tall in --va-pod-fs (14 px under 340 px wide, 15 px to 399, 16 px from 400).
+  // tall in --va-pod-fs (14 px under 340 px wide, 15 px to 399, 16 px from 400). A phone has none
+  // (dash.ts DASH_MEDIA.phone): the tall screens that show it are portrait tablets and narrow windows.
   const podBottom = (width: number) => 96 + 4.96 * (width < 340 ? 14 : width < 400 ? 15 : 16);
   const SCREENS = [
-    [360, 640],
-    [360, 740],
     [390, 844],
-    [430, 932],
+    [600, 960],
     [768, 1024],
+    [834, 1194],
   ] as const;
   /** The top of his head, over its centre. */
   const headTop = new Vector3(DRIVER_HEAD.x, DRIVER_HEAD.y + 0.14, DRIVER_HEAD.z);

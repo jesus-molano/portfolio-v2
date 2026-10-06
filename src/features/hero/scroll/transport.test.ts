@@ -23,6 +23,8 @@ import {
   type PromptInput,
   pushingHard,
   REMINDERS,
+  SKIP_AGAIN,
+  skipSwallowed,
   skipTapAllowed,
   speedKmh,
   stepHoldNote,
@@ -502,6 +504,37 @@ describe("keyAction", () => {
     expect(keyAction(key(" ", { targetKind: "button", onPedal: true }))).toBe("next");
     expect(keyAction(key("Enter", { targetKind: "button", onPedal: true }))).toBe("next");
     expect(keyAction(key("Enter", { targetKind: "button" }))).toBeNull();
+  });
+});
+
+describe("skipSwallowed", () => {
+  const ESC = { action: "skip", key: "Escape", repeat: false, sinceSkipMs: Infinity, sinceDialogEscMs: Infinity } as const;
+
+  it("lets a lone Esc or End skip", () => {
+    expect(skipSwallowed(ESC)).toBe(false);
+    expect(skipSwallowed({ ...ESC, key: "End" })).toBe(false);
+  });
+
+  it("swallows a second Esc or End right after a skip: it would go on past the line-up", () => {
+    for (const key of ["Escape", "End"]) {
+      expect(skipSwallowed({ ...ESC, key, sinceSkipMs: 120 })).toBe(true);
+      expect(skipSwallowed({ ...ESC, key, sinceSkipMs: SKIP_AGAIN.afterSkipMs - 1 })).toBe(true);
+      expect(skipSwallowed({ ...ESC, key, sinceSkipMs: SKIP_AGAIN.afterSkipMs })).toBe(false);
+    }
+    // A held key's autorepeat never skips twice.
+    expect(skipSwallowed({ ...ESC, repeat: true })).toBe(true);
+  });
+
+  it("swallows an Esc right after one a dialog took: she was closing the radio, not skipping the film", () => {
+    expect(skipSwallowed({ ...ESC, sinceDialogEscMs: 200 })).toBe(true);
+    expect(skipSwallowed({ ...ESC, sinceDialogEscMs: SKIP_AGAIN.afterDialogEscMs })).toBe(false);
+    // End is no dialog's key: it still skips.
+    expect(skipSwallowed({ ...ESC, key: "End", sinceDialogEscMs: 200 })).toBe(false);
+  });
+
+  it("leaves every other key alone", () => {
+    expect(skipSwallowed({ ...ESC, action: "next", key: " ", sinceSkipMs: 10 })).toBe(false);
+    expect(skipSwallowed({ ...ESC, action: null, key: "x", sinceSkipMs: 10, repeat: true })).toBe(false);
   });
 });
 

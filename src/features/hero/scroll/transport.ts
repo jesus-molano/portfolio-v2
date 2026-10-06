@@ -484,6 +484,32 @@ export function keyAction(input: KeyInput): KeyAction | null {
   }
 }
 
+/** How long a skip key stays spent (ms): after a skip, and after an Esc a dialog took. */
+export const SKIP_AGAIN = {
+  afterSkipMs: 800,
+  afterDialogEscMs: 800,
+} as const;
+
+/**
+ * A key that would skip (Esc, End, Ctrl+End, Cmd+Down) that must not:
+ * its own autorepeat, the same press again right after a skip (Esc Esc,
+ * End End: the second went on past the line-up, natively or into the
+ * next section's own handling), or an Esc right after one a dialog took
+ * (she was closing the radio, not skipping the film). The page swallows
+ * it (preventDefault) and nothing moves.
+ */
+export function skipSwallowed(input: {
+  action: KeyAction | null;
+  key: string;
+  repeat: boolean;
+  sinceSkipMs: number;
+  sinceDialogEscMs: number;
+}): boolean {
+  if (input.action !== "skip") return false;
+  if (input.repeat || input.sinceSkipMs < SKIP_AGAIN.afterSkipMs) return true;
+  return input.key === "Escape" && input.sinceDialogEscMs < SKIP_AGAIN.afterDialogEscMs;
+}
+
 export const TAP = {
   /** A tap moves less than this (px)... */
   slop: 10,

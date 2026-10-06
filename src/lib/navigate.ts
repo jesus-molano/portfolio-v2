@@ -18,8 +18,13 @@
  *   its film) opens it first, as the focus moving past it does: a link to
  *   a later section is her moving on, not a jump the hero pulls back.
  *
- * Pure helpers (`fragmentTarget`, `landingY`, `landsPast`) are unit tested
- * in navigate.test.ts; `goTo` applies them.
+ * History: an in-page link adds an entry as the browser's jump would
+ * (`pushFragment`), the entry she leaves remembering where the page was,
+ * and Back goes there through `goTo` (PageEntry); back to top drops the
+ * fragment (`clearFragment`).
+ *
+ * Pure helpers (`fragmentTarget`, `landingY`, `landsPast`, `placeOf`,
+ * `withPlace`) are unit tested in navigate.test.ts; `goTo` applies them.
  */
 import type Lenis from "lenis";
 
@@ -107,6 +112,50 @@ export function landingY(input: { top: number; scrollY: number; scrollMargin: nu
 export function landsPast(to: { y: number; follows: boolean | null }, end: number): boolean {
   if (to.follows !== null) return to.follows;
   return to.y >= end - 1;
+}
+
+/**
+ * Where the page was in a history entry, kept in the entry's state beside
+ * Next's own keys: an in-page link writes it into the entry she leaves
+ * (`pushFragment`), and Back (PageEntry's popstate) takes the page there.
+ */
+export const PLACE = "vaPlace";
+
+/** The place a history entry remembers (page px), or null if none. */
+export function placeOf(state: unknown): number | null {
+  if (!state || typeof state !== "object") return null;
+  const y = (state as Record<string, unknown>)[PLACE];
+  return typeof y === "number" && Number.isFinite(y) && y >= 0 ? y : null;
+}
+
+/** A copy of a history entry's state with `y` as its place (null: none). */
+export function withPlace(state: unknown, y: number | null): Record<string, unknown> {
+  const next: Record<string, unknown> = state && typeof state === "object" ? { ...(state as Record<string, unknown>) } : {};
+  if (y === null) delete next[PLACE];
+  else next[PLACE] = Math.max(0, Math.round(y));
+  return next;
+}
+
+/**
+ * Follows an in-page link as the browser's own jump would leave the
+ * history: a new entry whose address names `hash`, and the entry she
+ * leaves remembering where the page was, so Back returns there (never a
+ * dead Back). The page itself moves with `goTo`.
+ */
+export function pushFragment(hash: string): void {
+  const { history } = window;
+  history.replaceState(withPlace(history.state, window.scrollY), "");
+  history.pushState(withPlace(history.state, null), "", hash);
+}
+
+/**
+ * Drops the fragment from the address (back to top): a reload then starts
+ * at the top, never at the section an earlier link named.
+ */
+export function clearFragment(): void {
+  const { history, location } = window;
+  if (!location.hash) return;
+  history.replaceState(withPlace(history.state, null), "", location.pathname + location.search);
 }
 
 export type GoToOptions = {

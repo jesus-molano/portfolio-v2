@@ -60,6 +60,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
   const stroke = useRef(newStroke());
   /** Where the page is when her input comes, against where Lenis thinks it is (gate.ts). */
   const reading = useRef<PageReading>({ page: 0, lenis: 0, gliding: false });
+  /** Two fingers are on the picture (a pinch): the browser's zoom until every finger has lifted. */
+  const pinch = useRef(false);
   /** The current touch stroke started below the hero: the browser scrolls it (gate.ts browserStroke). */
   const browserOwns = useRef(false);
 
@@ -68,7 +70,9 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
    * relies on four Lenis 1.3.26 internals (pinned in package.json and
    * guarded by lenisContract.test.ts):
    * 1. `options.virtualScroll` runs before Lenis' own ctrlKey and isStopped
-   *    checks (onVirtualScroll), so pinch zoom is filtered here;
+   *    checks (onVirtualScroll), so pinch zoom is filtered here (a
+   *    trackpad's ctrlKey wheel, and two fingers on a touch screen, whose
+   *    moves it must never cancel: the browser zooms);
    * 2. Lenis reads the deltas from `data` after this callback, and zero
    *    deltas return early as for a tap;
    * 3. touchend inertia, sign(delta)·|velocity|^touchInertiaExponent, is
@@ -96,7 +100,27 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       if (event.type.startsWith("touch") && event.target instanceof Element && event.target.closest("[data-pedal]")) {
         return false;
       }
-      // Pinch zoom, sideways gestures and input before the visitor entered are not scrolling.
+      // Two fingers on the picture are a pinch (or a two-finger pan): the browser's zoom, never a
+      // stroke. Nothing cancels their moves, Lenis drops them before it would (internal 4), until
+      // every finger has lifted: a finger left from the pinch is not a stroke either.
+      if (event.type.startsWith("touch") && "touches" in event) {
+        const fingers = fingersOnPicture((event as TouchEvent).touches);
+        // A finger landing: a pinch only with another one on the picture (a lost touchend never sticks).
+        if (event.type === "touchstart") {
+          pinch.current = fingers >= 2;
+          if (pinch.current) {
+            resetStroke(stroke.current);
+            scrollGate.touching = false;
+            strokeMoved.current = false;
+            browserOwns.current = false;
+          }
+        }
+        if (pinch.current) {
+          if (event.type === "touchend" && fingers === 0) pinch.current = false;
+          return false;
+        }
+      }
+      // Pinch zoom on a trackpad (ctrlKey), sideways gestures and input before the visitor entered are not scrolling.
       if (reducedMotion || event.ctrlKey || !getSceneLoading().entered) return true;
       const lenis = lenisRef.current?.lenis;
       // Every finger lands still.
@@ -138,7 +162,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         // The stroke is still her input, through its slop, for the hero she may scroll back into.
         const now = performance.now();
         if (event.type === "touchmove") {
-          const move = strokeMove(stroke.current, data.deltaY);
+          const move = strokeMove(stroke.current, data.deltaY, event.timeStamp);
           if (move !== 0) {
             strokeMoved.current = true;
             recordInput(move, "touch", now);
@@ -153,7 +177,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       }
       if (event.type === "touchmove") {
         // A finger moves the page only once it is past its slop (gate.ts).
-        const move = strokeMove(stroke.current, data.deltaY);
+        // On the event's own clock: a slow frame never turns a move into a rest.
+        const move = strokeMove(stroke.current, data.deltaY, event.timeStamp);
         if (move === 0) {
           // Still, or a move with nothing vertical in it: nothing scrolls,
           // and the move is cancelled here, or the browser takes the rest of
@@ -172,8 +197,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         if (strokeMoved.current) scrollGate.touchEndAt = now;
         strokeMoved.current = false;
         // The fling goes the stroke's way, not its last tremble's; a finger
-        // that never left its slop (a tap, a resting thumb) flings nothing.
-        const lift = strokeLift(stroke.current);
+        // that never left its slop (a tap) or came to rest flings nothing.
+        const lift = strokeLift(stroke.current, event.timeStamp);
         if (lift === 0) data.deltaX = 0;
         data.deltaY = lift;
         // A forward fling flies up to the wall and no further (gate.ts
@@ -319,6 +344,16 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       {children}
     </ReactLenis>
   );
+}
+
+/** Fingers on the glass that are not holding the hero's pedal: a thumb on it is never part of a pinch. */
+function fingersOnPicture(touches: TouchList): number {
+  let count = 0;
+  for (let i = 0; i < touches.length; i += 1) {
+    const target = touches[i].target;
+    if (!(target instanceof Element && target.closest("[data-pedal]"))) count += 1;
+  }
+  return count;
 }
 
 /** Lenis' touch handling that the gate mirrors (lenisContract.test.ts). */

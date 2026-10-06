@@ -756,7 +756,8 @@
  * off a state attribute, so nothing runs at rest; the only endless ones
  * (flat out, pushing on the limiter, reverse) last only while her input
  * holds that state, and none blinks faster than 2.5 Hz. Decoration only:
- * hidden under reduced motion and forced colours (its meaning is in text).
+ * hidden under reduced motion and forced colours (its meaning is in text),
+ * and not on a phone at all.
  */
 .dash {
   --tone: var(--va-color-cream);
@@ -785,7 +786,7 @@
   transition: opacity 250ms ease;
 }
 
-/* Tall: the sky band under the page controls, centred. */
+/* Tall (portrait tablets; a phone has none): the sky band under the page controls, centred. */
 @media (max-aspect-ratio: 1/1) {
   .dash {
     left: 50%;
@@ -806,6 +807,17 @@
   /* Room for the dash on both sides of the subtitles, kept for good, so nothing reflows. */
   .subtitles {
     width: min(44rem, calc(100% - 2 * (19 * var(--va-pod-fs) + 2rem)));
+  }
+}
+
+/*
+ * A phone (scroll/dash.ts DASH_MEDIA.phone): no dash at all, the subtitles
+ * are the focus. The card's reading bar, its marker, the between-card cue,
+ * the hold note and the pedal's own treads say what it said.
+ */
+@media (pointer: coarse) and (max-aspect-ratio: 1/1) and (max-width: 599px), (pointer: coarse) and (min-aspect-ratio: 1/1) and (max-height: 500px) {
+  .dash {
+    display: none;
   }
 }
 

@@ -45,22 +45,32 @@ export const DASH = {
 } as const;
 
 /**
- * The three layouts, as media queries (verbatim in Hero.module.css, so CSS
- * and JS agree): wide windows put the dash in GTA's radar corner, bottom
- * left; tall ones (phones, portrait tablets) in the sky under the page
- * controls, centred; any other landscape window (small or short) top left. At exactly 1:1 both aspect queries match: wide wins
- * there when the window is big enough, tall otherwise.
+ * The layouts, as media queries (verbatim in Hero.module.css, so CSS and
+ * JS agree): wide windows put the dash in GTA's radar corner, bottom
+ * left; tall ones (portrait tablets) in the sky under the page controls,
+ * centred; any other landscape window (small or short) top left. At
+ * exactly 1:1 both aspect queries match: wide wins there when the window
+ * is big enough, tall otherwise.
+ *
+ * A phone (a touch screen under 600 px wide upright, or under 501 px tall
+ * on its side: the tall and compact layouts on a phone) has no dash at all
+ * (the owner's call: up there it pulled her eyes off the subtitles). The
+ * pedal, Skip, the card with its reading bar and the cues stay, and say
+ * what the dash said where she looks (Hero.module.css, `phone`).
  */
 export const DASH_MEDIA = {
   wide: "(min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px)",
   tall: "(max-aspect-ratio: 1/1)",
+  phone:
+    "(pointer: coarse) and (max-aspect-ratio: 1/1) and (max-width: 599px), (pointer: coarse) and (min-aspect-ratio: 1/1) and (max-height: 500px)",
 } as const;
 
-export type DashLayout = "wide" | "tall" | "compact";
+export type DashLayout = "wide" | "tall" | "compact" | "phone";
 
 /** The layout for the viewport, given a media query matcher (window.matchMedia). */
 export function dashLayout(matches: (query: string) => boolean): DashLayout {
   if (matches(DASH_MEDIA.wide)) return "wide";
+  if (matches(DASH_MEDIA.phone)) return "phone";
   if (matches(DASH_MEDIA.tall)) return "tall";
   return "compact";
 }
@@ -139,13 +149,14 @@ export function dashShow(input: {
 export type DashVis = "off" | "idle" | "on";
 
 /**
- * Whether the dash shows. Never from the fade to night on. On wide screens
- * it wakes dimmed ("idle") with the title hint, on the black letterbox bar,
- * and comes fully on with her first input. On tall and compact screens it
- * takes the title's place, so it shows only once the title has all but
- * gone (`titleOut`, 0..1, the title's position-based fade) and goes again
- * if she rewinds to it. The radio's one-time callout never takes its
- * place: on tall screens it hangs below the dash (RadioButton.module.css).
+ * Whether the dash shows. Never on a phone, never from the fade to night
+ * on. On wide screens it wakes dimmed ("idle") with the title hint, on the
+ * black letterbox bar, and comes fully on with her first input. On tall
+ * and compact screens it takes the title's place, so it shows only once
+ * the title has all but gone (`titleOut`, 0..1, the title's position-based
+ * fade) and goes again if she rewinds to it. The radio's one-time callout
+ * never takes its place: on tall screens it hangs below the dash, on a
+ * phone where the dash would be (RadioButton.module.css).
  */
 export function dashVisibility(input: {
   layout: DashLayout;
@@ -155,7 +166,8 @@ export function dashVisibility(input: {
   titleOut: number;
   p: number;
 }): DashVis {
-  if (input.p >= STORY.fadeFrom) return "off";
+  // A phone has none: the subtitles are the focus there.
+  if (input.layout === "phone" || input.p >= STORY.fadeFrom) return "off";
   if (input.layout === "wide") {
     if (input.started) return "on";
     return input.sinceEntered >= PROMPT.hintAt ? "idle" : "off";

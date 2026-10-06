@@ -44,17 +44,20 @@ also exists as real DOM for keyboard and screen-reader users.
 - `pnpm check` — lint, typecheck, tests and build in sequence.
 - `node tools/capture/scrollux.mjs --url http://localhost:3000` — the
   browser half of the scroll UX acceptance (dev server running): swipes
-  against the radio's long-press, the arrows, the hold note, the rewind
-  hint, the long wait, the radio and its callout (kept off THE CREW's card
-  after Skip), reduced motion (and back), the dash's gesture,
-  focus, one-block caption cards, calm readers, the title (a tap while the name
-  forms, no ghost after a short swipe), the loader on a phone, and the
-  pedal (a thumb, the mouse, W and Space held, two fingers, blur, a lost
-  keyup, Q, the end, reduced motion) and its layout from 360 x 640 to
-  1440 x 900, and the static page after Skip (wheel, trackpad and keys;
-  swipes while a phone's bars come and go, in both motion modes: no
-  section moves, nothing against her input, no scroll by script, no
-  layout shift), on desktop and a phone in both languages. PASS or FAIL.
+  against the radio's long-press (and a thumb resting on the picture),
+  the arrows, the hold note, the rewind hint, the long wait, the radio
+  and its callout (kept off THE CREW's card after Skip), reduced motion
+  (and back), the dash's gesture (no dash on a phone), focus, one-block
+  caption cards, calm readers, the title (a tap while the name forms, no
+  ghost after a short swipe), a resting thumb after a swipe back, a
+  pinch, Esc and End twice, Back after a link and back to top's address,
+  the loader on a phone, the pedal (a thumb, the mouse, W and Space
+  held, two fingers, blur, a lost keyup, Q, the end, reduced motion) and
+  its layout from 360 x 640 to 1440 x 900, and the static page after
+  Skip (wheel, trackpad and keys; swipes while a phone's bars come and
+  go, in both motion modes: no section moves, nothing against her input,
+  no scroll by script, no layout shift), on desktop and a phone in both
+  languages. PASS or FAIL.
 - `node tools/capture/capture.mjs --device both --progress 0.05,0.3,0.6,0.9`
   — renders hero frames at those film positions (dev server running) into
   `.captures/`. Look at the frames before calling a visual change done.
@@ -156,8 +159,17 @@ also exists as real DOM for keyboard and screen-reader users.
     (`gate.ts` Stroke, the same in the scroller model): a resting thumb
     trembles by 0.3 to 3 px, and followed 1:1 every tremble back read as
     REVERSE (the line being read hid and its clock stopped) and every one
-    forward at a wall as a push. Nothing is lost: starting or turning, the
-    stroke scrolls the finger's whole travel. Held input
+    forward at a wall as a push. A finger that has come to rest (under
+    3 px its way in 150 ms, on the events' own clock) lands still again,
+    and moves the page again only past 12 px: after a swipe back, a thumb
+    left on the glass rolls a few px as its pad flattens, and followed,
+    REVERSE stayed up as long as it rested; lifted after resting, it
+    flings nothing. Nothing is lost: starting, turning or going on from
+    rest, the stroke scrolls the finger's whole travel. Two fingers on
+    the picture (a thumb on the pedal does not count) are the browser's
+    pinch zoom, never a stroke: the gate cancels none of their moves and
+    Lenis drops them before it would, until every finger has lifted, and
+    they are no tap on the picture either. Held input
     is never silent, and answers in the next frame: it bounces the card
     (`elastic.ts`), raises the world's pace (`throttle.ts`: the drive
     distance step runs x1 to x2; `drive.speed` stays 18 and nothing ever
@@ -180,7 +192,16 @@ also exists as real DOM for keyboard and screen-reader users.
     takes the sky under the page controls once the title has gone (the
     radio's one-time callout hangs below it, never in its place); other
     landscape windows put it top left. Nothing else sits in that corner:
-    no name block, no site title (the owner's call). Under reduced
+    no name block, no site title (the owner's call). A phone
+    (`DASH_MEDIA.phone`: a touch screen under 600 px wide upright, or
+    under 501 px tall on its side) has no dash at all, the owner's call:
+    up there it pulled her eyes off the subtitles. What it said is said
+    where she looks: her turn by the read card's marker and the
+    between-card cue in her input's words, "let the man finish" over the
+    card, the reading bar under it, and the pedal's own treads (her foot,
+    the limiter's cyan and gate while she holds it); nothing else
+    replaces it (`acceptance.test.ts` runs phone visitors with
+    `layout: "phone"`). Tablets and desktops keep it. Under reduced
     motion and forced colours it is not shown (its meaning is in text),
     and the camera readout is `aria-hidden` decoration like it.
     The tick only writes attributes and custom properties, and only what
@@ -325,7 +346,11 @@ also exists as real DOM for keyboard and screen-reader users.
     animates those jumps, and the next section flashed before the gate
     pulled the page back): the page lands with `#suspects` at the top and
     that section takes the focus (it has `tabIndex={-1}`;
-    `anchors.test.ts` checks it follows the hero). Focus
+    `anchors.test.ts` checks it follows the hero). Pressed again right
+    after (Esc Esc, End End) or held, they go no further than the
+    line-up (`skipSwallowed`: the second End scrolled natively to the
+    credits); Esc while the radio wheel is open only closes it, wherever
+    the focus is, and an Esc right after that does not skip the film. Focus
     leaving the hero opens the walls, and so does any move of the page
     past it that is not her scrolling (a link, a deep link, Skip:
     `lib/navigate.ts`). A viewport change (rotation, resize) keeps the
@@ -457,9 +482,13 @@ also exists as real DOM for keyboard and screen-reader users.
   the scene, holding or pressing Q, a long-press on touch, or the music
   button (`RadioButton.tsx`, the obvious way in on touch). The long-press
   never steals a swipe (`touchHold.ts`, tested): it arms after 0.6 s held
-  within 8 px (a ring under the finger), opens as that still finger
-  lifts, and any movement, scroll input or a page still in motion cancels
-  it. While the wheel is open it keeps every scroll and swipe to itself
+  within 8 px (a ring under the finger; the scroll stroke's own slop, so
+  whatever the stroke scrolls is no long-press), opens as that still
+  finger lifts while the ring is up, and any movement, scroll input (the
+  other thumb on the pedal too), a second finger (a pinch, a thumb on the
+  pedal) or a page still in motion cancels it. Held past 2.5 s it is a
+  thumb resting on the picture while she reads: the ring goes, and
+  lifting opens nothing. While the wheel is open it keeps every scroll and swipe to itself
   (the mouse wheel browses the dial; a finger closes it with a tap on the
   backdrop, never with a swipe), and the drive slows down
   (`hero/scene/timeScale.ts`, not under reduced motion). The long-press is
@@ -468,7 +497,8 @@ also exists as real DOM for keyboard and screen-reader users.
   has settled and is quiet (a line playing, no prompt up), steps aside
   when the hero asks her something, and hangs below the camera readout
   while the button glows (on tall screens below the dash, which stays
-  up); a tap on it opens the wheel ("Tap here for the radio" on touch).
+  up; a phone has no dash, and the callout takes the sky it left); a tap
+  on it opens the wheel ("Tap here for the radio" on touch).
   It is the hero's alone (`data-side-hint`): it shows only while the hero
   runs down past its bottom edge and 8 px more (`sceneLoading.onScreen`,
   asked of the line of pixels there) and its film is not over
@@ -513,8 +543,10 @@ also exists as real DOM for keyboard and screen-reader users.
     employer") comes back with the city. Every trivia is true of the site
     (the aviators mirror our sky, the palms are made in code, the grain
     changes 24 times a second, every station keeps its own clock, the
-    traffic going her way holds her pace). Natural sentences, never
-    telegraphic. `tips.ts` orders them (`tipOrder`: the
+    traffic going her way holds her pace), and so is every tip: the touch
+    radio tip names a still finger on the picture, not the pedal, until
+    the ring shows, then lifted (`touchHold.ts`; tested). Natural
+    sentences, never telegraphic. `tips.ts` orders them (`tipOrder`: the
     first card, then her tips in authored order alternating with shuffled
     trivia) and times them (`tipDuration`: reading time plus 1.5 s, at
     least 5 s); hover or focus holds a tip, Next skips it.
@@ -847,6 +879,14 @@ also exists as real DOM for keyboard and screen-reader users.
   moving past it does, so the frontier never pulls back a page that is
   legitimately past the hero. Focus goes with `focusInPlace` (never
   scrolls; a target that cannot take the focus can while it has it).
+  An in-page link adds a history entry as the browser's jump would
+  (`pushFragment`), and the entry she leaves remembers where the page
+  was (`placeOf`, beside Next's own history state): Back and Forward go
+  there through `goTo` (PageEntry's popstate; the browser's own scroll
+  restoration is off, it moved the page behind Lenis' back), or to the
+  section the address names, so Back is never dead. Back to top drops
+  the old fragment from the address (`clearFragment`, replaceState), so
+  a reload starts at the top, never in the cinema the STATS booth named.
 - `tools/art/stats` — the STATS map. `extract.mjs` (run once, needs the
   network) turns the public-domain Terrain Tiles on AWS (zoom 8: SRTM,
   GMTED2010, ETOPO1 only; it refuses a tile with any other source) into
@@ -1004,8 +1044,8 @@ To add a track to a station:
   keyboard starts at the top of the page (skip link, radio, languages,
   then Skip). It also takes every same-page link (`a[href="#..."]`, a
   plain click no handler has taken) and every later fragment change the
-  same way, the address naming the target as the browser's jump would.
-  Never move the page with `scrollIntoView`, `window.scrollTo` or a bare
+  same way, the address naming the target as the browser's jump would,
+  and Back returning to where she was. Never move the page with `scrollIntoView`, `window.scrollTo` or a bare
   `lenis.scrollTo(..., { immediate })` next to a native jump: use `goTo`.
 - The page controls (RADIO, EN/ES) are fixed at the top right
   (`components/PageControls.tsx`). Over the hero's picture they float on

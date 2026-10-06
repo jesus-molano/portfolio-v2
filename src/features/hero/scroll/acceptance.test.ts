@@ -26,6 +26,7 @@ import {
   pedalTaps,
   pump,
   restless,
+  settle,
   type SimFrame,
   simulate,
   type Source,
@@ -337,6 +338,32 @@ describe("acceptance: a resting thumb that trembles is still", () => {
           const what = `card ${card}, ${stroke} px`;
           expect(run.frames.some((frame) => frame.time >= up && frame.holdNote), what).toBe(false);
           expect(rest.filter((frame) => frame.mode === "reverse").length, what).toBe(0);
+        }
+      }
+    });
+
+    it(`${locale}: after a swipe back, a thumb resting on the glass is rest, not REVERSE`, () => {
+      for (const card of [1, 2, 3]) {
+        const up = upAt(card) + 0.4;
+        for (const [amp, roll] of [
+          [0.3, 0],
+          [1, -3],
+          [2, -7],
+          [3, -7],
+          [1, 3],
+        ] as const) {
+          // A calm swipe back of 200 px, the thumb left on the glass, trembling and rolling as it settles.
+          const input = together(during(up, up + 0.15, strokeAndRest(-200, 0.15)), during(up + 0.15, up + 4.15, settle(amp, roll)));
+          const run = simulate(lines, together(during(0, up, calm), input), { vh: 750, maxTime: up + 4.15 });
+          const what = `card ${card}, ${amp} px, rolling ${roll} px`;
+          // The swipe went back...
+          const swiped = after(run.frames, up)[0];
+          expect(Math.min(...after(run.frames, up).map((frame) => frame.p)), what).toBeLessThan(swiped.p - 150 / (5 * 750));
+          // ...and once the thumb has come to rest on the glass (gate.ts Stroke) it is still: no
+          // REVERSE, nothing hidden, the picture at rest.
+          const rest = after(run.frames, up + 0.15 + GATE.restMs / 1000 + Math.max(STORY.rewindHide, TRANSPORT.reverseWindow) + 0.1);
+          expect(rest.filter((frame) => frame.mode === "reverse").length, what).toBe(0);
+          for (const frame of rest) expect(frame.p, `${what}, ${frame.time.toFixed(2)} s`).toBeCloseTo(rest[0].p, 6);
         }
       }
     });
@@ -706,6 +733,46 @@ describe("acceptance: the dash and its pit limiter", () => {
       expect(clear.length).toBeGreaterThan(0);
       expect(Math.max(...clear.map((frame) => kmh(frame.pace)))).toBeGreaterThan(90);
     });
+  }
+});
+
+describe("acceptance: a phone has no dash, and loses nothing it said", () => {
+  /** Phone visitors: a finger on the picture, the pedal under a thumb, both. */
+  const PHONE: [string, Source][] = [
+    ["touch 400 px every 0.35 s", touch(0.35)],
+    ["touch 250 px every 1 s", touch(1, 250, 0.15)],
+    ["a tap every 2 s", space(2)],
+    ["the pedal held from the title", pedal([0, 200])],
+    ["the pedal pumped 1.5 s on, 1.5 s off", pump(1.5, 1.5)],
+    ["the pedal tapped every 2 s", pedalTaps(2)],
+  ];
+
+  for (const [locale, lines] of LOCALES) {
+    for (const [label, source] of PHONE) {
+      it(`${locale}, ${label}: the card, its bar, the cues and the pedal say what the dash said`, () => {
+        for (const stopAt of [5, 14, Number.POSITIVE_INFINITY]) {
+          const run = simulate(lines, source, { vh: 750, stopAt, maxTime: Math.min(stopAt + 12, 120), layout: "phone" });
+          for (const frame of run.frames) {
+            const at = `${label}, ${stopAt} s, ${frame.time.toFixed(2)} s`;
+            // No dash at all: no lights, no speed, no word, no limit sign.
+            expect(frame.dash, at).toBe("hidden");
+            if (frame.p >= STORY.fadeFrom) continue;
+            // LIMITER: the unread line is on screen, its reading bar filling under it, and a foot on the
+            // pedal sees the limiter in its own treads.
+            if (frame.show === "limiter") {
+              expect(frame.active, at).toBeGreaterThanOrEqual(0);
+              expect(frame.opacity[frame.active], at).toBeGreaterThan(0);
+              expect(frame.fill, at).toBeLessThan(1);
+              if (frame.pedalDown) expect(frame.pedalLim, at).toBe(true);
+            }
+            // "Let the man finish" rides on the card it is about.
+            if (frame.holdNote) expect(frame.playing, at).toBe("card");
+            // Her turn (the dash's gesture): the read card's marker or a cue says how to go on.
+            if (frame.started && frame.mode === "waiting") expect(frame.ready || frame.prompt !== null, at).toBe(true);
+          }
+        }
+      });
+    }
   }
 });
 

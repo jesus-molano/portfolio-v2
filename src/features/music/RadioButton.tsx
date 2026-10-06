@@ -56,7 +56,8 @@ function markHintSeen() {
  * so never two instructions at once), while the hero is on screen behind
  * it and its film is not over, below the hero's dash and camera readout
  * so it never covers them (on tall screens the dash takes the sky under
- * the page controls, and the callout hangs below it). A tap or click on the
+ * the page controls, and the callout hangs below it; a phone has no dash,
+ * and the callout takes that sky itself). A tap or click on the
  * callout opens the wheel too: on touch screens it says "tap here".
  */
 export function RadioButton({ dict }: Props) {

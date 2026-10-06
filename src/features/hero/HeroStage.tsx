@@ -106,6 +106,7 @@ import {
   type PromptInput,
   pushingHard,
   REMINDERS,
+  skipSwallowed,
   skipTapAllowed,
   speedKmh,
   type TargetKind,
@@ -1235,44 +1236,47 @@ export function HeroStage({
         }
         attr(el.endCue, "data-visible", prompt === "end");
 
+        // The transport's own mode, for tools/capture/scrollux.mjs (what the dash shows is its data-show).
+        attr(root, "data-mode", nextMode);
         const dash = el.dash;
         attr(dash, "data-vis", vis);
-        attr(dash, "data-show", nextShow);
-        if (nextShow !== show) {
-          show = nextShow;
-          showParity = flip(showParity);
-        }
-        attr(dash, "data-pulse", showParity);
-        attr(dash, "data-lim", lim === "off" ? null : lim);
-        attr(dash, "data-release", now < sweepUntil ? releaseParity : null);
-        attr(dash, "data-boot", now < bootUntil);
-        attr(dash, "data-remind", nextShow === "prompt" && turn ? remindParity : null);
-        // The transport's own mode, for tools/capture/scrollux.mjs: what the dash shows is data-show.
-        attr(dash, "data-mode", nextMode);
-        if (lit !== drawn.lit) {
-          drawn.lit = lit;
-          set(el.strip, "--lit", String(lit));
-        }
-        const kickStep = Math.round(kick * 20) / 20;
-        if (kickStep !== drawn.kick) {
-          drawn.kick = kickStep;
-          set(el.strip, "--kick", kickStep.toFixed(2));
-        }
-        // The limit sign's ring is the line's reading bar, drawn from the same value.
-        if (lim !== "off") {
-          const ring = readStep(fill);
-          if (ring !== drawn.lim) {
-            drawn.lim = ring;
-            set(dash, "--lim", ring.toFixed(2));
+        // A phone has no dash (dash.ts DASH_MEDIA.phone): nothing to draw there.
+        if (layout !== "phone") {
+          attr(dash, "data-show", nextShow);
+          if (nextShow !== show) {
+            show = nextShow;
+            showParity = flip(showParity);
           }
-        }
-        if (speed !== shownSpeed) {
-          shownSpeed = speed;
-          const cells = speedCells(speed);
-          for (let i = 0; i < el.cells.length; i += 1) {
-            if (cells[i] === drawnCells[i]) continue;
-            drawnCells[i] = cells[i];
-            el.cells[i].textContent = cells[i];
+          attr(dash, "data-pulse", showParity);
+          attr(dash, "data-lim", lim === "off" ? null : lim);
+          attr(dash, "data-release", now < sweepUntil ? releaseParity : null);
+          attr(dash, "data-boot", now < bootUntil);
+          attr(dash, "data-remind", nextShow === "prompt" && turn ? remindParity : null);
+          if (lit !== drawn.lit) {
+            drawn.lit = lit;
+            set(el.strip, "--lit", String(lit));
+          }
+          const kickStep = Math.round(kick * 20) / 20;
+          if (kickStep !== drawn.kick) {
+            drawn.kick = kickStep;
+            set(el.strip, "--kick", kickStep.toFixed(2));
+          }
+          // The limit sign's ring is the line's reading bar, drawn from the same value.
+          if (lim !== "off") {
+            const ring = readStep(fill);
+            if (ring !== drawn.lim) {
+              drawn.lim = ring;
+              set(dash, "--lim", ring.toFixed(2));
+            }
+          }
+          if (speed !== shownSpeed) {
+            shownSpeed = speed;
+            const cells = speedCells(speed);
+            for (let i = 0; i < el.cells.length; i += 1) {
+              if (cells[i] === drawnCells[i]) continue;
+              drawnCells[i] = cells[i];
+              el.cells[i].textContent = cells[i];
+            }
           }
         }
         for (let i = 0; i < el.reel.length; i += 1) {
@@ -1364,6 +1368,7 @@ export function HeroStage({
               lim,
               show: nextShow,
               vis,
+              layout,
               kick,
               clearing,
               limited: fbInput.limited === true,
@@ -1419,7 +1424,11 @@ export function HeroStage({
         scrollGate.maxScroll = Number.POSITIVE_INFINITY;
       };
 
+      /** When Skip, Esc or End last cut to the end, and when a dialog last took an Esc (performance.now()). */
+      let skippedAt = Number.NEGATIVE_INFINITY;
+      let dialogEscAt = Number.NEGATIVE_INFINITY;
       const skipToEnd = () => {
+        skippedAt = performance.now();
         openWalls();
         jumpToEnd();
       };
@@ -1588,6 +1597,12 @@ export function HeroStage({
       update(0);
 
       const onKey = (event: KeyboardEvent) => {
+        // Esc while a dialog is open (the radio wheel) only closes it: the dialog takes it, and an
+        // Esc right after does not skip the film either (skipSwallowed).
+        if (event.key === "Escape" && (event.defaultPrevented || getRadio().wheel)) {
+          dialogEscAt = performance.now();
+          return;
+        }
         if (event.defaultPrevented) return;
         if (spentKey !== null && event.code === spentKey && event.repeat) {
           event.preventDefault();
@@ -1595,12 +1610,7 @@ export function HeroStage({
         }
         const loading = getSceneLoading();
         if (!loading.entered || event.timeStamp - loading.enteredAt < KEY_GUARD_MS) return;
-        if (!lenis || lenis.isStopped || stillQuery.matches) return;
-        const scroll = window.scrollY;
-        // In the hero: pinned, or resting at its very end, where W, Space and PageDown glide on.
-        const inHero = scroll >= geom.top - 1 && scroll <= geom.top + geom.range + 1;
-        if (!inHero) return;
-        const atEnd = heroProgress.value >= 0.999;
+        if (!lenis || stillQuery.matches) return;
         const onPedal = event.target instanceof Element && el.pedal !== null && el.pedal.contains(event.target);
         const action = keyAction({
           key: event.key,
@@ -1613,6 +1623,27 @@ export function HeroStage({
           onPedal,
         });
         if (!action) return;
+        // A skip key pressed again right after a skip (Esc Esc, End End) or held: wherever the page
+        // has landed, it goes no further than the line-up.
+        const pressedAt = performance.now();
+        if (
+          skipSwallowed({
+            action,
+            key: event.key,
+            repeat: event.repeat,
+            sinceSkipMs: pressedAt - skippedAt,
+            sinceDialogEscMs: pressedAt - dialogEscAt,
+          })
+        ) {
+          event.preventDefault();
+          return;
+        }
+        if (lenis.isStopped) return;
+        const scroll = window.scrollY;
+        // In the hero: pinned, or resting at its very end, where W, Space and PageDown glide on.
+        const inHero = scroll >= geom.top - 1 && scroll <= geom.top + geom.range + 1;
+        if (!inHero) return;
+        const atEnd = heroProgress.value >= 0.999;
         // W and Space are the pedal: down drives, up lets go. Their autorepeat is no new press, only
         // the heartbeat that says the key is still held (a silent one lost its keyup).
         const gas = action === "gas" || (action === "next" && (event.key === " " || event.key === "Spacebar"));
@@ -1701,6 +1732,27 @@ export function HeroStage({
         if (pedal.down) letGo();
       };
 
+      /**
+       * Fingers on the picture (not on the pedal, Skip or a control), counted before the tap's own
+       * handlers run: two make a pinch, the browser's zoom, and no tap until every one is up.
+       */
+      const fingers = new Set<number>();
+      let pinching = false;
+      const onFinger = (event: PointerEvent) => {
+        if (event.pointerType !== "touch") return;
+        if (event.type !== "pointerdown") {
+          fingers.delete(event.pointerId);
+          if (fingers.size === 0) pinching = false;
+          return;
+        }
+        const target = event.target instanceof Element ? event.target : null;
+        if (target?.closest("button, a, [role='button'], [data-hud], [data-skip], [data-pedal]")) return;
+        fingers.add(event.pointerId);
+        if (fingers.size >= 2) {
+          pinching = true;
+          press = null;
+        }
+      };
       /** A tap or click on the picture plays the next line, like Space. */
       let press: null | {
         id: number;
@@ -1717,6 +1769,8 @@ export function HeroStage({
           press = null;
           return;
         }
+        // Two fingers on the picture are a pinch, never a tap, until every one of them is up.
+        if (pinching) return;
         press = {
           id: event.pointerId,
           x: event.clientX,
@@ -1885,6 +1939,9 @@ export function HeroStage({
       window.addEventListener("pagehide", onPageHide);
       window.addEventListener("resize", remeasure);
       document.addEventListener("visibilitychange", onVisibility);
+      root.addEventListener("pointerdown", onFinger, true);
+      root.addEventListener("pointerup", onFinger, true);
+      root.addEventListener("pointercancel", onFinger, true);
       root.addEventListener("pointerdown", onPointerDown);
       root.addEventListener("pointerup", onPointerUp);
       const pedalEl = el.pedal;
@@ -1944,6 +2001,9 @@ export function HeroStage({
         window.removeEventListener("resize", remeasure);
         document.removeEventListener("visibilitychange", onVisibility);
         resizeObserver?.disconnect();
+        root.removeEventListener("pointerdown", onFinger, true);
+        root.removeEventListener("pointerup", onFinger, true);
+        root.removeEventListener("pointercancel", onFinger, true);
         root.removeEventListener("pointerdown", onPointerDown);
         root.removeEventListener("pointerup", onPointerUp);
         pedalEl?.removeEventListener("pointerdown", onPedalDown);

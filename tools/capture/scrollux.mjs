@@ -10,8 +10,9 @@
  *     [--webgl]
  *
  * Checks: swipe (a thumb resting before a swipe never opens the radio; a
- * still long-press does), arrows (one arrow per input type everywhere, the
- * dash's mouse for the wheel),
+ * still long-press does; a thumb resting for a while, or beside a thumb
+ * on the pedal, does not), arrows (one arrow per input type everywhere, the
+ * dash's mouse for the wheel, no dash on a phone),
  * signals (never WAITING while a line plays or the note scolds; the note
  * only under sustained pushing, gone when she stops), rewind (the title
  * hint comes back, centred), wait (the long wait brakes and escalates),
@@ -35,10 +36,16 @@
  * on a busy page, hard flings, it is back at the wall within a frame and
  * she drives on), stroke (a phone's drag that pauses on a pressure change
  * or a tremble stays gated; a thumb trembling while a line is read is
- * still), ends (Ctrl+End and Ctrl+Home, Cmd+Down and Cmd+Up, act as End
- * and Home in the hero), navigate (the STATS booth, a STATS tab, back to top and a deep
+ * still; after a swipe back a thumb resting on the glass is rest, not
+ * REVERSE), pinch (two fingers on the picture are the browser's zoom,
+ * never a stroke, a tap or the radio), ends (Ctrl+End and Ctrl+Home, Cmd+Down and Cmd+Up, act as End
+ * and Home in the hero), escape (Esc or End twice, or held, cut to THE
+ * USUAL SUSPECTS and no further; Esc with the radio open only closes it),
+ * navigate (the STATS booth, a STATS tab, back to top and a deep
  * link land with Lenis, the hero's walls open past it, and her next notch
- * or swipe goes on from there, even before the next frame), loader (no
+ * or swipe goes on from there, even before the next frame; Back after a
+ * link returns to where she was, Forward to where it went; back to top
+ * clears the old #fragment), loader (no
  * "press any key" on a phone), pedal (a held
  * pedal drives within a frame of its press, under a thumb with no radio
  * ring, menu or selection, beside a second finger swiping without a jump,
@@ -50,7 +57,8 @@
  * there; under
  * reduced motion there is none), pedallayout (the pedal and its hit area,
  * Skip expanded, the longest card, the dash, the hint and the radio button
- * never overlap, 360 x 640 to 1440 x 900), statics (after Skip, the static
+ * never overlap, 360 x 640 to 1440 x 900; a phone has no dash, a tablet
+ * keeps it), statics (after Skip, the static
  * page follows wheel notches, trackpad bursts and keys on a desktop, and
  * swipes on a phone whose bars hide going down and come back going up,
  * the viewport and every viewport unit with them, under both motion modes:
@@ -98,12 +106,19 @@ const report = (name, ok, detail) => {
   console.log(`${ok ? "PASS" : "FAIL"} ${name}${ok ? "" : ` ${JSON.stringify(detail)}`}`);
 };
 
-const browser = await chromium.launch({
-  args: [
-    "--autoplay-policy=no-user-gesture-required",
-    ...(values.webgl ? ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] : ["--disable-3d-apis"]),
-  ],
-});
+/**
+ * A fresh browser for every check, device and language: a run is some two
+ * hundred sessions, and one browser carried through all of them grew slow
+ * enough to add frames of input latency to the late timing checks.
+ */
+const launch = () =>
+  chromium.launch({
+    args: [
+      "--autoplay-policy=no-user-gesture-required",
+      ...(values.webgl ? ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] : ["--disable-3d-apis"]),
+    ],
+  });
+let browser = null;
 
 /** A fresh page, entered (without music), with the hero's probe on. */
 async function session(device, lang, { reducedMotion = "no-preference", enter = true, hash = "", init = null } = {}) {
@@ -185,14 +200,19 @@ const startLog = (page) =>
       return style.visibility !== "hidden" && Number(style.opacity) > 0.02;
     };
     const tick = () => {
-      const osd = document.querySelector("[data-osd]");
+      // The transport's mode is the stage's (a phone has no dash); the speed is the car's, from the probe.
+      const stage = document.querySelector("[data-sticky]")?.parentElement;
       const card = document.querySelector("[data-card][data-active]");
       const hint = document.querySelector("[data-hint]");
       const cue = document.querySelector("[data-cue]");
       log.push({
         t: performance.now(),
-        mode: osd?.getAttribute("data-mode"),
-        speed: Number(document.querySelector("[data-speed]")?.textContent ?? 0),
+        mode: stage?.getAttribute("data-mode"),
+        speed: window.__vaProbe?.at?.(-1)?.speed ?? 0,
+        dash: (() => {
+          const dash = document.querySelector("[data-osd]");
+          return Boolean(dash) && getComputedStyle(dash).display !== "none" && dash.getAttribute("data-vis") !== "off";
+        })(),
         ready: !!document.querySelector("[data-card][data-ready]"),
         cue: cue?.hasAttribute("data-visible"),
         cueShown: shown(cue),
@@ -394,6 +414,44 @@ const CHECKS = {
     await sleep(600);
     report(`${device} ${lang} swipe: a still long-press, lifted, opens the radio`, await wheelOpen(s.page), {});
     await s.close();
+
+    // A thumb resting on the picture while she reads (3.5 s, trembling a pixel), then lifted: no radio.
+    const r = await session(device, lang);
+    await sleep(1500);
+    await r.cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 195, y: 600 }] });
+    for (let t = 0; t < 3500; t += 100) {
+      await sleep(100);
+      await r.cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 195, y: 600 + ((t / 100) % 2) }] });
+    }
+    const ring = await r.page.evaluate(() => document.querySelector("[data-armed='true']") !== null);
+    await r.cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await sleep(600);
+    const restOpened = await wheelOpen(r.page);
+    report(`${device} ${lang} swipe: a thumb resting on the picture for a while, then lifted, never opens the radio`, !restOpened && !ring, {
+      opened: restOpened,
+      ringStillUp: ring,
+    });
+
+    // A thumb still on the picture while the other holds the pedal, then both lift: no radio.
+    const pedal = await r.page.evaluate(() => {
+      const box = document.querySelector("[data-pedal]").getBoundingClientRect();
+      return { x: box.right - box.width * 0.4, y: box.top + box.height * 0.5 };
+    });
+    await r.cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 120, y: 500, id: 0 }] });
+    await sleep(200);
+    await r.cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [
+        { x: 120, y: 500, id: 0 },
+        { x: pedal.x, y: pedal.y, id: 1 },
+      ],
+    });
+    await sleep(1000);
+    await r.cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await sleep(600);
+    const withPedal = await wheelOpen(r.page);
+    report(`${device} ${lang} swipe: a thumb still on the picture while the other holds the pedal never opens the radio`, !withPedal, {});
+    await r.close();
   },
 
   async arrows(device, lang) {
@@ -419,17 +477,15 @@ const CHECKS = {
     await sleep(1500);
     const end = await shown("[data-end-cue]");
     const all = [marker, end];
-    // The dash asks with the same gesture: the arrow for a finger, the mouse's wheel for the wheel.
-    const dashWant = device === "mobile" ? "up" : "wheel";
+    // The dash asks with the same gesture (the mouse's wheel for the wheel); a phone has no dash:
+    // the marker under the card asks there.
+    const dashWant = device === "mobile" ? "none" : "wheel";
+    const dashOk = device === "mobile" ? readout?.length === 0 : readout?.length === 1 && readout[0] === dashWant;
     // The title's ask on a phone names the pedal first ("Hold the pedal or swipe up"): the pedal's glyph.
     const hintWant = device === "mobile" ? "pedal" : want;
     report(
       `${device} ${lang} arrows: the marker and the end cue point ${want}, the hint shows ${hintWant}, the dash asks with ${dashWant}`,
-      all.every((g) => g?.length === 1 && g[0] === want) &&
-        hint?.length === 1 &&
-        hint[0] === hintWant &&
-        readout?.length === 1 &&
-        readout[0] === dashWant,
+      all.every((g) => g?.length === 1 && g[0] === want) && hint?.length === 1 && hint[0] === hintWant && dashOk,
       { hint, marker, readout, end },
     );
     await s.close();
@@ -441,11 +497,11 @@ const CHECKS = {
     await s.page.evaluate(() => {
       const log = (window.__frames = []);
       const tick = () => {
-        const osd = document.querySelector("[data-osd]");
+        const stage = document.querySelector("[data-sticky]")?.parentElement;
         const card = document.querySelector("[data-card][data-active]");
         log.push({
           t: performance.now(),
-          mode: osd?.getAttribute("data-mode"),
+          mode: stage?.getAttribute("data-mode"),
           hold: document.querySelector("[data-hold-note]")?.hasAttribute("data-visible"),
           filling: !!card && !card.hasAttribute("data-ready") && Number(card.style.getPropertyValue("--read") || 0) < 1,
         });
@@ -893,7 +949,7 @@ const CHECKS = {
             shown: Number(getComputedStyle(hint).opacity) > 0.05 && hint.getAttribute("data-prompt") !== null,
             text: visibleText(hint),
             started: stage.hasAttribute("data-started"),
-            mode: document.querySelector("[data-osd]")?.getAttribute("data-mode"),
+            mode: stage.getAttribute("data-mode"),
           });
           requestAnimationFrame(tick);
         };
@@ -1178,6 +1234,26 @@ const CHECKS = {
       { ...r, readAtStart: start.read },
     );
 
+    // A swipe back, then the thumb left on the glass, trembling and rolling 7 px back as its pad
+    // flattens: rest, not REVERSE (gate.ts Stroke: it comes to rest and lands still again).
+    start = await onto(2);
+    t0 = await s.page.evaluate(() => performance.now());
+    const back = [[0, "touchStart", 400]];
+    for (let i = 1; i <= 9; i += 1) back.push([i * 16, "touchMove", 400 + (200 * i) / 9]);
+    for (let t = 160, k = 0; t < 3160; t += 16, k += 1) back.push([t, "touchMove", 600 + Math.min(1, (t - 160) / 1500) * 7 + (k % 2 ? 1 : -1)]);
+    back.push([3170, "touchEnd"]);
+    await script(back);
+    r = await since(t0 + 160 + 150 + 250 + 100);
+    const restP = await s.page.evaluate((from) => {
+      const frames = window.__vaProbe.filter((f) => f.t >= from && f.t <= from + 2400);
+      return { swept: frames.length ? Math.max(...frames.map((f) => f.p)) - Math.min(...frames.map((f) => f.p)) : null, rewinding: frames.filter((f) => f.rewinding).length };
+    }, t0 + 660);
+    report(
+      `${device} ${lang} stroke: after a swipe back, a thumb resting (trembling, rolling) on the glass is rest, not REVERSE`,
+      r.frames > 0 && r.reverse === 0 && restP.rewinding === 0 && restP.swept !== null && restP.swept * 5 * 844 < 2,
+      { ...r, ...restP, startActive: start.active },
+    );
+
     // Zero moves mid-stroke: a drag that pauses on a pressure change, and one
     // that pauses on a tremble (coalesced moves), then drags on hard and flicks off.
     const drags = {
@@ -1199,7 +1275,7 @@ const CHECKS = {
         return p;
       },
     };
-    let card = 2;
+    let card = Math.max(3, (await probe(s.page)).active + 1);
     for (const [name, make] of Object.entries(drags)) {
       start = await onto(card);
       await s.page.evaluate(() => (window.__moves.length = 0));
@@ -1215,6 +1291,47 @@ const CHECKS = {
       );
       card = Math.max(card, (await probe(s.page)).active) + 1;
     }
+    await s.close();
+  },
+
+  async pinch(device, lang) {
+    // Two fingers on the picture are the browser's pinch zoom, never a stroke: nothing cancels their
+    // moves, the film and the page stay where they are, no line plays and the radio stays shut.
+    if (device !== "mobile") return;
+    const s = await session(device, lang);
+    await sleep(1500);
+    await reachCard(s, device, 1);
+    for (let i = 0; i < 30 && !(await s.page.evaluate(() => !!document.querySelector("[data-card][data-ready]"))); i += 1) await sleep(400);
+    await s.page.evaluate(() => {
+      const log = (window.__pinch = { moves: 0, cancelled: 0 });
+      // After Lenis' and the gate's own listeners: what they did to each move.
+      window.addEventListener("touchmove", (e) => {
+        log.moves += 1;
+        if (e.defaultPrevented) log.cancelled += 1;
+      });
+    });
+    const before = { ...(await probe(s.page)), y: await s.page.evaluate(() => scrollY), scale: await s.page.evaluate(() => visualViewport.scale) };
+    const finger = (t, spread) => [
+      { x: 195 - spread, y: 480 + t, id: 0 },
+      { x: 195 + spread, y: 520 - t, id: 1 },
+    ];
+    await s.cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [finger(0, 30)[0]] });
+    await sleep(40);
+    await s.cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: finger(0, 30) });
+    for (let i = 1; i <= 20; i += 1) {
+      await s.cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: finger(i * 2, 30 + i * 6) });
+      await sleep(20);
+    }
+    await s.cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await sleep(1500);
+    const after = { ...(await probe(s.page)), y: await s.page.evaluate(() => scrollY), scale: await s.page.evaluate(() => visualViewport.scale) };
+    const log = await s.page.evaluate(() => window.__pinch);
+    const opened = await wheelOpen(s.page);
+    report(
+      `${device} ${lang} pinch: two fingers on the picture are the browser's zoom: no move cancelled, the film stays, no line, no radio`,
+      log.moves > 0 && log.cancelled === 0 && Math.abs(after.p - before.p) < 1e-4 && after.active === before.active && !opened,
+      { ...log, p: [before.p, after.p], active: [before.active, after.active], scale: [before.scale, after.scale], opened },
+    );
     await s.close();
   },
 
@@ -1265,6 +1382,65 @@ const CHECKS = {
     }
   },
 
+  async escape(device, lang) {
+    // Esc twice quickly (or End twice, or held) cuts to THE USUAL SUSPECTS and no further; Esc while
+    // the radio is open only closes it, and an Esc right after that does not skip the film.
+    if (device !== "desktop") return;
+    const landed = (s) =>
+      s.page.evaluate(() => ({
+        suspectsTop: Math.round(document.getElementById("suspects").getBoundingClientRect().top),
+        focus: document.activeElement?.id,
+      }));
+    for (const [name, press] of [
+      ["Esc twice", async (s) => { await s.page.keyboard.press("Escape"); await sleep(90); await s.page.keyboard.press("Escape"); }],
+      ["End twice", async (s) => { await s.page.keyboard.press("End"); await sleep(90); await s.page.keyboard.press("End"); }],
+      ["Esc then End", async (s) => { await s.page.keyboard.press("Escape"); await sleep(150); await s.page.keyboard.press("End"); }],
+      ["Esc held", async (s) => {
+        await s.page.keyboard.down("Escape");
+        for (let i = 0; i < 8; i += 1) { await sleep(40); await s.page.keyboard.down("Escape"); }
+        await s.page.keyboard.up("Escape");
+      }],
+    ]) {
+      const s = await session(device, lang);
+      await sleep(1500);
+      await reachCard(s, device, 1);
+      await press(s);
+      await sleep(1200);
+      const r = await landed(s);
+      report(`${device} ${lang} escape: ${name}, quickly, cuts to THE USUAL SUSPECTS and no further`, Math.abs(r.suspectsTop) <= 1 && r.focus === "suspects", r);
+      await s.close();
+    }
+    const s = await session(device, lang);
+    await sleep(1500);
+    await reachCard(s, device, 1);
+    const before = await probe(s.page);
+    // Q pressed and let go opens the wheel to browse; the focus is in it.
+    await s.page.keyboard.press("q");
+    await sleep(500);
+    const opened = await wheelOpen(s.page);
+    await s.page.keyboard.press("Escape");
+    await sleep(120);
+    const closed = !(await wheelOpen(s.page));
+    await s.page.keyboard.press("Escape");
+    await sleep(1000);
+    const after = await probe(s.page);
+    const r = await landed(s);
+    // Open again with the focus left outside it (on the page): Esc still only closes it.
+    await s.page.keyboard.press("q");
+    await sleep(500);
+    await s.page.evaluate(() => document.activeElement?.blur());
+    const reopened = await wheelOpen(s.page);
+    await s.page.keyboard.press("Escape");
+    await sleep(600);
+    const outside = { closed: !(await wheelOpen(s.page)), p: (await probe(s.page)).p };
+    report(
+      `${device} ${lang} escape: Esc with the radio open only closes it, and an Esc right after does not skip the film`,
+      opened && closed && after.p < 0.999 && Math.abs(after.p - before.p) < 0.02 && r.suspectsTop > 100 && reopened && outside.closed && outside.p < 0.999,
+      { opened, closed, before: before.p, after: after.p, suspectsTop: r.suspectsTop, reopened, outside },
+    );
+    await s.close();
+  },
+
   async navigate(device, lang) {
     // Every in-page move goes through one path (lib/navigate.ts): Lenis and
     // the page land together, and a page sent past the hero opens its walls,
@@ -1306,6 +1482,7 @@ const CHECKS = {
       const box = await booth.boundingBox();
       return box !== null && box.y > 80 && box.y + box.height < H - 60;
     });
+    const was = await s.page.evaluate(() => ({ y: Math.round(scrollY), hash: location.hash }));
     if (device === "desktop") await booth.click();
     else await booth.tap();
     await sleep(900);
@@ -1321,6 +1498,50 @@ const CHECKS = {
         after.y >= landed.y &&
         after.y - landed.y <= H,
       { landed, after },
+    );
+
+    // The browser's Back: where she was when she followed the booth, the address as it was; Forward:
+    // the cinema again. Never a dead Back (lib/navigate.ts pushFragment, PageEntry's popstate).
+    const linked = await s.page.evaluate(() => location.hash);
+    await s.page.evaluate(() => history.back());
+    await sleep(1200);
+    const backed = { ...(await state(s)), hash: await s.page.evaluate(() => location.hash) };
+    await notch(s);
+    await sleep(1200);
+    const backedOn = await state(s);
+    await s.page.evaluate(() => history.forward());
+    await sleep(1200);
+    const forward = { projects: await top(s, "projects"), hash: await s.page.evaluate(() => location.hash) };
+    report(
+      `${device} ${lang} navigate: Back after the booth returns to where she was in STATS, her next ${device === "desktop" ? "notch" : "swipe"} goes on from there, and Forward goes back to the cinema`,
+      linked === "#projects" &&
+        Math.abs(backed.y - was.y) <= 2 &&
+        backed.hash === was.hash &&
+        backed.frontier === null &&
+        backedOn.y >= backed.y &&
+        backedOn.y - backed.y <= H &&
+        Math.abs(forward.projects - landed.rest) <= 2 &&
+        forward.hash === "#projects",
+      { was, linked, backed, backedOn, forward },
+    );
+
+    // The cinema's booth (a link to the credits' #contact), then Back: the cinema again.
+    // Where she is when she follows it: the booth in view, so the click itself moves nothing.
+    await s.page.evaluate(() => document.querySelector('#projects a[href="#contact"]').scrollIntoView({ block: "center" }));
+    await sleep(800);
+    const cinemaY = await s.page.evaluate(() => Math.round(scrollY));
+    const toCredits = s.page.locator('#projects a[href="#contact"]').first();
+    if (device === "desktop") await toCredits.click();
+    else await toCredits.tap();
+    await sleep(900);
+    const credits = { contact: await top(s, "contact"), hash: await s.page.evaluate(() => location.hash) };
+    await s.page.evaluate(() => history.back());
+    await sleep(1200);
+    const cinemaAgain = { ...(await state(s)), hash: await s.page.evaluate(() => location.hash) };
+    report(
+      `${device} ${lang} navigate: the cinema's booth to the credits, then Back: the cinema again, where she was`,
+      credits.hash === "#contact" && Math.abs(cinemaAgain.y - cinemaY) <= 2 && cinemaAgain.hash !== "#contact",
+      { cinemaY, credits, cinemaAgain },
     );
 
     // Her next scroll before the page's next frame (a slow phone): a notch right after the click.
@@ -1389,13 +1610,14 @@ const CHECKS = {
     if (device === "desktop") await back.click();
     else await back.tap();
     await sleep(2200);
-    const atTop = await state(s);
+    const atTop = { ...(await state(s)), url: await s.page.evaluate(() => location.pathname + location.search + location.hash) };
     await notch(s);
     await sleep(1500);
     const topAfter = await state(s);
+    // The address names no section any more: a reload starts at the top, never in the cinema.
     report(
-      `${device} ${lang} navigate: back to top lands at the top on the title, and her next ${device === "desktop" ? "notch" : "swipe"} stays there`,
-      atTop.y <= 1 && atTop.focus === "hero-title" && topAfter.y >= 0 && topAfter.y <= H / 2,
+      `${device} ${lang} navigate: back to top lands at the top on the title, clears the old #fragment, and her next ${device === "desktop" ? "notch" : "swipe"} stays there`,
+      atTop.y <= 1 && atTop.focus === "hero-title" && atTop.url === `/${lang}` && topAfter.y >= 0 && topAfter.y <= H / 2,
       { atTop, topAfter },
     );
     await s.close();
@@ -1437,19 +1659,26 @@ const CHECKS = {
         const f = window.__vaProbe.at(-1);
         return f && { p: f.p, down: f.pedalDown, target: f.lenisTarget, active: f.active, page: f.page, max: f.maxScroll, show: f.show };
       });
-    /** Frames from the press (`pointerdown`) to the first probe frame that answers it: the pedal down and the strip's flare. */
+    /**
+     * Frames from the press reaching the page (`pointerdown` dispatched) to the first probe frame
+     * that answers it: the pedal down and the strip's flare. A frame already under way when the
+     * press arrived cannot answer it; how long the press took to reach the page (its own
+     * timeStamp to its dispatch: the input pipeline, and any long task of the page's) is `lag`.
+     */
     const answer = (page) =>
       page.evaluate(() => {
-        const mark = window.__downAt;
-        const after = window.__vaProbe.filter((f) => f.t >= mark - 1);
+        const { stamp, run } = window.__down;
+        const after = window.__vaProbe.filter((f) => f.t >= Math.max(stamp, run) - 1);
         const i = after.findIndex((f) => f.pedalDown && f.kick >= 0.95);
-        return i < 0 ? null : { frames: i + 1, ms: Math.round(after[i].t - mark) };
+        return i < 0 ? null : { frames: i + 1, ms: Math.round(after[i].t - stamp), lag: Math.round(run - stamp) };
       });
     const armDown = (page) =>
       page.evaluate(() => {
-        window.__downAt = Infinity;
-        window.addEventListener("pointerdown", (e) => (window.__downAt = Math.min(window.__downAt, e.timeStamp)), { capture: true, once: true });
+        window.__down = { stamp: Infinity, run: Infinity };
+        window.addEventListener("pointerdown", (e) => (window.__down = { stamp: e.timeStamp, run: performance.now() }), { capture: true, once: true });
       });
+    /** Answered in the next frame, and the press was never held up by the page for a frame and more. */
+    const prompt = (fast) => fast !== null && fast.frames <= 2 && fast.lag < 34;
 
     if (device === "mobile") {
       // A thumb held on the pedal: it drives at once, no radio ring, no menu, no selection.
@@ -1504,7 +1733,7 @@ const CHECKS = {
       await sleep(300);
       const settled = await frameOf(s.page);
       report(`${device} ${lang} pedal: a thumb on it drives within a frame, never arms the radio, no menu, no selection`,
-        fast !== null && fast.frames <= 2 && held.down && !ring && menu && selection,
+        prompt(fast) && held.down && !ring && menu && selection,
         { fast, down: held.down, ring, menu, selection });
       report(`${device} ${lang} pedal: a second finger swiping beside the thumb never jumps the picture back`,
         twoFingers.drops === 0 && twoFingers.back === 0 && twoFingers.down && past === 0, { ...twoFingers, past });
@@ -1594,7 +1823,7 @@ const CHECKS = {
     await sleep(250);
     const up = await frameOf(s.page);
     report(`${device} ${lang} pedal: the mouse held on it drives within a frame, stays down slid off it, takes no focus`,
-      fast !== null && fast.frames <= 2 && slid.down && !focused, { fast, slid: slid.down, focused });
+      prompt(fast) && slid.down && !focused, { fast, slid: slid.down, focused });
     report(`${device} ${lang} pedal: the mouse up lets go`, !up.down, {});
 
     // W held, with the autorepeat a held key sends: it drives; a lost keyup is caught.
@@ -1719,6 +1948,8 @@ const CHECKS = {
             ["390x844", { width: 390, height: 844 }],
             ["430x932", { width: 430, height: 932 }],
             ["844x390", { width: 844, height: 390 }],
+            // A tablet keeps its dash.
+            ["768x1024", { width: 768, height: 1024 }],
           ]
         : [
             ["1024x768", { width: 1024, height: 768 }],
@@ -1798,8 +2029,12 @@ const CHECKS = {
         for (const [a, b] of pairs) if (hit(set[a], set[b])) clashes.push(`${label}:${a}/${b}`);
       }
       const shown = title.pedal && card.pedal && card.block && card.marker && title.skip;
-      report(`${device} ${lang} pedallayout ${name}: the pedal, Skip, the card, its marker, the dash and the hint never overlap`,
-        clashes.length === 0 && Boolean(shown), { clashes, card, title: { pedal: title.pedal, hint: title.hint, skip: title.skip } });
+      // A phone has no dash at all (dash.ts DASH_MEDIA.phone); desktops and tablets show it once she drives.
+      const layout = await page.evaluate(() => window.__vaProbe.at(-1)?.layout);
+      const phone = touch && (viewport.width < 600 || viewport.height <= 500);
+      const dashOk = phone ? layout === "phone" && card.dash === null && title.dash === null : layout !== "phone" && card.dash !== null;
+      report(`${device} ${lang} pedallayout ${name}: the pedal, Skip, the card, its marker, the dash and the hint never overlap${phone ? "; no dash on a phone" : ""}`,
+        clashes.length === 0 && Boolean(shown) && dashOk, { clashes, layout, dash: card.dash, card, title: { pedal: title.pedal, hint: title.hint, skip: title.skip } });
       await context.close();
     }
   },
@@ -1924,15 +2159,17 @@ for (const [name, check] of Object.entries(CHECKS)) {
   if (ONLY && !ONLY.includes(name)) continue;
   for (const device of DEVICES_WANTED) {
     for (const lang of LANGS) {
+      browser = await launch();
       try {
         await check(device, lang);
       } catch (error) {
         report(`${device} ${lang} ${name}: ran`, false, { error: String(error?.message ?? error).slice(0, 300) });
+      } finally {
+        await browser.close();
       }
     }
   }
 }
-await browser.close();
 const failed = results.filter((ok) => !ok).length;
 console.log(`\n${results.length - failed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -190,7 +190,7 @@
       {
         "kind": "tip",
         "when": ["touch"],
-        "text": "Deja el dedo sobre la imagen, o toca el botón de la radio, y se abre el dial. Luego toca una emisora para sintonizarla."
+        "text": "Para la radio, toca su botón o deja un dedo quieto en la imagen (no en el pedal) hasta que salga un aro, y levántalo."
       },
       {
         "kind": "tip",

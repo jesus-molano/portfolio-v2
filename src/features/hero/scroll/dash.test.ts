@@ -23,6 +23,9 @@ import { PROMPT, type TransportMode } from "./transport";
 
 const FRAME = 1 / 60;
 
+/** A string matched as itself in a RegExp. */
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /** The lights a single input lights, frame by frame from the next one, as HeroStage eases them. */
 function stripAfter(viewports: number, frames: number): number[] {
   const meter: Meter = { rate: 0, at: 0 };
@@ -178,8 +181,19 @@ describe("dashVisibility", () => {
     }
   });
 
+  it("is never on a phone: the subtitles are the focus there", () => {
+    for (const [started, titleOut, sinceEntered] of [
+      [false, 0, 0],
+      [false, 0, 30],
+      [true, 1, 9],
+      [true, 0.3, 9],
+    ] as const) {
+      expect(dashVisibility({ ...base, layout: "phone", started, titleOut, sinceEntered, p: 0.3 })).toBe("off");
+    }
+  });
+
   it("is off in every layout from the fade to night", () => {
-    for (const layout of ["wide", "tall", "compact"] as const) {
+    for (const layout of ["wide", "tall", "compact", "phone"] as const) {
       expect(dashVisibility({ ...base, layout, started: true, titleOut: 1, p: STORY.fadeFrom, sinceEntered: 30 })).toBe(
         "off",
       );
@@ -188,23 +202,45 @@ describe("dashVisibility", () => {
 });
 
 describe("dashLayout", () => {
-  const matcher = (width: number, height: number) => (query: string) => {
-    const aspect = width / height;
-    if (query === DASH_MEDIA.wide) return aspect >= 1 && width >= 1024 && height >= 501;
-    if (query === DASH_MEDIA.tall) return aspect <= 1;
-    throw new Error(query);
-  };
+  /** window.matchMedia for a `width` x `height` viewport, `coarse` for a touch screen. */
+  const matcher =
+    (width: number, height: number, coarse = false) =>
+    (query: string) => {
+      const aspect = width / height;
+      if (query === DASH_MEDIA.wide) return aspect >= 1 && width >= 1024 && height >= 501;
+      if (query === DASH_MEDIA.tall) return aspect <= 1;
+      if (query === DASH_MEDIA.phone) return coarse && ((aspect <= 1 && width <= 599) || (aspect >= 1 && height <= 500));
+      throw new Error(query);
+    };
 
-  it("puts phones and portrait tablets in the tall layout, desktops in the wide one", () => {
+  it("puts portrait tablets and narrow windows in the tall layout, desktops in the wide one", () => {
     expect(dashLayout(matcher(390, 844))).toBe("tall");
     expect(dashLayout(matcher(768, 1024))).toBe("tall");
+    expect(dashLayout(matcher(768, 1024, true))).toBe("tall");
     expect(dashLayout(matcher(1440, 900))).toBe("wide");
     expect(dashLayout(matcher(1024, 768))).toBe("wide");
+    expect(dashLayout(matcher(1024, 768, true))).toBe("wide");
   });
 
   it("puts small and short landscape windows in the compact one", () => {
     expect(dashLayout(matcher(844, 390))).toBe("compact");
     expect(dashLayout(matcher(1280, 500))).toBe("compact");
+    // A small tablet on its side keeps its dash.
+    expect(dashLayout(matcher(960, 600, true))).toBe("compact");
+  });
+
+  it("gives a phone, upright or on its side, no dash at all", () => {
+    for (const [width, height] of [
+      [320, 568],
+      [360, 640],
+      [390, 844],
+      [430, 932],
+      [568, 320],
+      [844, 390],
+      [932, 430],
+    ] as const) {
+      expect(dashLayout(matcher(width, height, true)), `${width}x${height}`).toBe("phone");
+    }
   });
 
   it("resolves a square window as the CSS does: wide when big, tall otherwise", () => {
@@ -216,6 +252,10 @@ describe("dashLayout", () => {
     const css = readFileSync(new URL("../Hero.module.css", import.meta.url), "utf8");
     expect(css).toContain(`@media ${DASH_MEDIA.wide} {`);
     expect(css).toContain(`@media ${DASH_MEDIA.tall} {`);
+    // On a phone the pod is not rendered at all, and the radio's callout takes the sky it left.
+    expect(css).toMatch(new RegExp(`@media ${escape(DASH_MEDIA.phone)} \\{\\s*\\.dash \\{\\s*display: none;`));
+    const radio = readFileSync(new URL("../../music/RadioButton.module.css", import.meta.url), "utf8");
+    expect(radio).toContain(`@media ${DASH_MEDIA.phone} {`);
   });
 
   it("sizes and places the pedal in those same queries, next to the dash", () => {

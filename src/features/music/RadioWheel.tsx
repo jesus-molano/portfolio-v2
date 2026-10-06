@@ -46,7 +46,7 @@ import {
   WHEEL_START,
   type WheelEntry,
 } from "./stations";
-import { holdArmed, holdCancelled, holdMayStart, TOUCH_HOLD } from "./touchHold";
+import { holdArmed, holdCancelled, holdLapsed, holdMayStart, TOUCH_HOLD } from "./touchHold";
 import { ringSectorPath, sectorArcPath, unwrapAngle, WHEEL_LAYOUT } from "./wheelGeometry";
 
 type Props = { dict: Dictionary["radio"] };
@@ -271,14 +271,26 @@ export function RadioWheel({ dict }: Props) {
   useEffect(() => {
     let pointer: { x: number; y: number } | null = null;
     /** A finger held on the scene: it may become the long-press that opens the wheel. */
-    let press: { id: number; x: number; y: number; at: number; inputAt: number; moved: number; timer: number } | null =
-      null;
+    let press: {
+      id: number;
+      x: number;
+      y: number;
+      at: number;
+      inputAt: number;
+      moved: number;
+      others: boolean;
+      timer: number;
+      lapse: number;
+    } | null = null;
     let holdingQ = false;
     /** When the right button last let go of an aim. */
     let aimReleasedAt = -Infinity;
 
     const cancelPress = () => {
-      if (press) window.clearTimeout(press.timer);
+      if (press) {
+        window.clearTimeout(press.timer);
+        window.clearTimeout(press.lapse);
+      }
       press = null;
       setArmedAt(null);
     };
@@ -293,6 +305,7 @@ export function RadioWheel({ dict }: Props) {
       heldMs: at - current.at,
       moved: current.moved,
       scrolled: scrollInput.at > current.inputAt,
+      others: current.others,
     });
 
     const startAim = (at: { x: number; y: number } | null) => {
@@ -330,19 +343,39 @@ export function RadioWheel({ dict }: Props) {
         openWheel("aim", "pointer");
         return;
       }
+      // A second finger anywhere (a pinch, a thumb on the pedal): the held one is no long-press.
+      if (press && event.pointerType === "touch" && event.pointerId !== press.id) {
+        press.others = true;
+        cancelPress();
+        return;
+      }
       if (event.pointerType === "touch" && event.isPrimary && !current && onRadioSurface(event)) {
         cancelPress();
         // The event's own time (performance.now()'s clock), not when this handler got to run.
         const at = event.timeStamp;
         // A finger landing on a page in motion is stopping a scroll, not asking for the radio.
         if (!holdMayStart({ sinceScrollMs: at - scrollInput.at, scrolling: Boolean(lenisRef.current?.isScrolling) })) return;
-        const next = { id: event.pointerId, x: event.clientX, y: event.clientY, at, inputAt: scrollInput.at, moved: 0, timer: 0 };
+        const next = {
+          id: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+          at,
+          inputAt: scrollInput.at,
+          moved: 0,
+          others: false,
+          timer: 0,
+          lapse: 0,
+        };
         // Held still long enough: a ring under the finger says lifting opens the radio.
         next.timer = window.setTimeout(() => {
           if (press !== next || !holdArmed(holdOf(next)) || getRadio().wheel || isLoading()) return;
           setArmedAt({ x: next.x, y: next.y });
           navigator.vibrate?.(8);
         }, TOUCH_HOLD.armMs);
+        // Left there much longer, it is a thumb resting while she reads: the ring goes, lifting opens nothing.
+        next.lapse = window.setTimeout(() => {
+          if (press === next && holdLapsed(holdOf(next))) cancelPress();
+        }, TOUCH_HOLD.lapseMs);
         press = next;
       }
     };
@@ -397,6 +430,13 @@ export function RadioWheel({ dict }: Props) {
     const isQ = (event: KeyboardEvent) => event.key === "q" || event.key === "Q";
 
     const onKeyDown = (event: KeyboardEvent) => {
+      // Esc while it is open closes it, wherever the focus is (inside, the dialog's own handler
+      // already did and took the key): it never reaches the page behind (the hero's Esc skips).
+      if (event.key === "Escape" && getRadio().wheel && !event.defaultPrevented) {
+        event.preventDefault();
+        closeWheel();
+        return;
+      }
       if (!isQ(event) || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
       if (event.defaultPrevented || isLoading() || isTyping(event.target)) return;
       if (event.repeat) return;

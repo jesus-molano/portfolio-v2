@@ -61,19 +61,22 @@ describe("the gate", () => {
 });
 
 describe("a finger's stroke", () => {
-  /** What a run of moves scrolls, move by move. */
-  const run = (moves: number[]) => {
+  /** What a run of moves scrolls, move by move, one a frame (`frameMs` apart). */
+  const run = (moves: number[], frameMs = 1000 / 60) => {
     const stroke = newStroke();
-    return { scrolled: moves.map((move) => strokeMove(stroke, move)), stroke };
+    const scrolled = moves.map((move, i) => strokeMove(stroke, move, i * frameMs));
+    /** Which way it flings, lifted the frame after its last move. */
+    const lift = () => strokeLift(stroke, moves.length * frameMs);
+    return { scrolled, stroke, lift };
   };
 
   it("keeps a resting thumb that trembles still: it neither goes back nor pushes", () => {
     for (const amp of [0.3, 0.67, 1, 2, 3]) {
       // Up and down by `amp` around where it landed, for 3 s.
       const moves = Array.from({ length: 180 }, (_, i) => (i % 2 ? amp : -amp));
-      const { scrolled, stroke } = run(moves);
+      const { scrolled, lift } = run(moves);
       expect(scrolled.every((px) => px === 0), `${amp} px`).toBe(true);
-      expect(strokeLift(stroke), `${amp} px`).toBe(0);
+      expect(lift(), `${amp} px`).toBe(0);
     }
   });
 
@@ -82,16 +85,57 @@ describe("a finger's stroke", () => {
       const swipe = [40, 40, 40];
       // Then up and down by `amp` around where the swipe left it: -amp, +amp, -amp...
       const tremble = Array.from({ length: 120 }, (_, i) => (i === 0 ? -amp : i % 2 ? 2 * amp : -2 * amp));
-      const { scrolled, stroke } = run([...swipe, ...tremble]);
+      const { scrolled, lift } = run([...swipe, ...tremble]);
       expect(scrolled.slice(0, 3)).toEqual([40, 40, 40]);
       const after = scrolled.slice(3);
       // Never back; forward at most once, by the tremble's own reach past where the swipe stopped.
       expect(after.every((px) => px >= 0), `${amp} px`).toBe(true);
       expect(after.filter((px) => px > 0).length, `${amp} px`).toBeLessThanOrEqual(1);
       expect(after.reduce((a, b) => a + b, 0), `${amp} px`).toBeLessThanOrEqual(amp + 1e-9);
-      // Lifted, it still flings the way the swipe went, not the way the last tremble went.
-      expect(strokeLift(stroke)).toBe(1);
+      // Come to rest, it lands still again: lifted, it flings nothing.
+      expect(lift()).toBe(0);
+      // Lifted mid-tremble, before it has rested, it flings the way the swipe went, never the tremble's.
+      expect(run([...swipe, -amp, 2 * amp, -2 * amp]).lift()).toBe(1);
+      // Swiped, then held perfectly still (no moves at all) and lifted: it rested, and flings nothing.
+      const still = run(swipe);
+      expect(strokeLift(still.stroke, 3 * (1000 / 60) + GATE.restMs)).toBe(0);
     }
+  });
+
+  it("after a swipe back, a thumb that rests and rolls on the glass never scrolls back again", () => {
+    for (const [amp, roll] of [
+      [0.3, -3],
+      [1, -7],
+      [3, -7],
+      [2, 5],
+    ] as const) {
+      // A swipe back, then the thumb on the glass for 3 s: trembling by `amp` and rolling `roll` px
+      // over the first 1.5 s as its pad flattens.
+      const swipe = [-40, -40, -40];
+      const rest = Array.from({ length: 180 }, (_, i) => (i % 2 ? amp : -amp) + (i < 90 ? roll / 90 : 0));
+      const { scrolled, lift } = run([...swipe, ...rest]);
+      expect(scrolled.slice(0, 3)).toEqual([-40, -40, -40]);
+      // At most the first few moves before it has rested follow it, a pixel or two; then nothing.
+      const resting = scrolled.slice(3 + Math.ceil(GATE.restMs / (1000 / 60)) + 1);
+      expect(resting.every((px) => px === 0), `${amp} px, ${roll} px`).toBe(true);
+      expect(Math.abs(scrolled.slice(3).reduce((a, b) => a + b, 0)), `${amp} px, ${roll} px`).toBeLessThanOrEqual(GATE.restPx + amp);
+      expect(lift(), `${amp} px, ${roll} px`).toBe(0);
+    }
+  });
+
+  it("follows a slow, deliberate drag, and one that pauses and goes on, losing nothing", () => {
+    // Two pixels a frame (120 px a second) for 2 s.
+    const slow = Array.from({ length: 120 }, () => 2);
+    const { scrolled } = run(slow);
+    expect(scrolled.reduce((a, b) => a + b, 0)).toBe(240);
+    expect(scrolled.slice(4).every((px) => px === 2)).toBe(true);
+    // A drag that stops for half a second (no moves) and goes on: it rested, so past the rest's
+    // slop it scrolls the whole travel again.
+    const stroke = newStroke();
+    const first = [20, 20, 20].map((px, i) => strokeMove(stroke, px, i * 16));
+    const again = [4, 4, 4, 20].map((px, i) => strokeMove(stroke, px, 600 + i * 16));
+    expect(first).toEqual([20, 20, 20]);
+    expect(again).toEqual([0, 0, GATE.restSlop, 20]);
   });
 
   it("follows a real swipe 1:1 once past its slop, and loses nothing", () => {
@@ -103,21 +147,21 @@ describe("a finger's stroke", () => {
 
   it("still rewinds on a real swipe back, from the furthest the finger went", () => {
     // Forward 100 px, then back: the first 7 px back are slack, then the page is under the finger again.
-    const { scrolled, stroke } = run([50, 50, -4, -3, -5, -30, -30]);
+    const { scrolled, lift } = run([50, 50, -4, -3, -5, -30, -30]);
     expect(scrolled).toEqual([50, 50, 0, 0, -12, -30, -30]);
-    expect(strokeLift(stroke)).toBe(-1);
+    expect(lift()).toBe(-1);
     // A swipe that starts backwards rewinds as soon as it leaves the slop.
     expect(run([-6, -6, -20]).scrolled).toEqual([0, -12, -20]);
   });
 
   it("starts every finger still, and ignores a move that is not a number", () => {
     const stroke = newStroke();
-    expect(strokeMove(stroke, 30)).toBe(30);
+    expect(strokeMove(stroke, 30, 0)).toBe(30);
     resetStroke(stroke);
     expect(stroke).toEqual(newStroke());
-    expect(strokeMove(stroke, GATE.touchSlop - 1)).toBe(0);
-    expect(strokeMove(stroke, Number.NaN)).toBe(0);
-    expect(strokeMove(stroke, 1)).toBe(GATE.touchSlop);
+    expect(strokeMove(stroke, GATE.touchSlop - 1, 0)).toBe(0);
+    expect(strokeMove(stroke, Number.NaN, 16)).toBe(0);
+    expect(strokeMove(stroke, 1, 32)).toBe(GATE.touchSlop);
   });
 });
 

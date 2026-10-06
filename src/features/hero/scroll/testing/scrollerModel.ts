@@ -9,14 +9,14 @@
  * its own landing), the page itself, the gate in SmoothScroll and
  * HeroStage (gate.ts), the pedal's drive as HeroStage runs it before
  * Lenis (pedal.ts), the real story functions and the real feedback
- * (the dash and its pit limiter, pace, the hold note, Skip's patience,
- * the marker and the prompts), at 60 frames
- * a second or slower (`fps`), with the story's reading clocks capped per
+ * (the dash and its pit limiter, none on a phone, pace, the hold note,
+ * Skip's patience, the marker and the prompts), at 60 frames a second or
+ * slower (`fps`), with the story's reading clocks capped per
  * frame as HeroStage caps them. Not a test itself; story.test.ts and
  * acceptance.test.ts run it.
  */
 import { motion } from "@/design/tokens";
-import { DASH, type DashShow, dashShow, type Limiter, limiterState } from "../dash";
+import { DASH, type DashLayout, type DashShow, dashShow, type Limiter, limiterState } from "../dash";
 import type { FilmTimeline } from "../film";
 import { type Feedback, type FeedbackInput, newFeedback, stepFeedback } from "../feedback";
 import {
@@ -153,6 +153,21 @@ export const tremble = (amp: number, still = 4): Source => {
   return (time, dt) => {
     const i = Math.round(time / dt);
     return [{ type: "touchmove", delta: at(i) - at(i - 1) }];
+  };
+};
+
+/**
+ * A thumb settling on the glass after a stroke: it trembles by `amp` px
+ * (as `tremble`) and rolls `roll` px (negative: back down the glass) over
+ * `over` seconds as its pad flattens, never lifting.
+ */
+export const settle = (amp: number, roll: number, over = 1.5): Source => {
+  const shake = tremble(amp);
+  return (time, dt, vh) => {
+    const shook = shake(time, dt, vh)[0];
+    const delta = shook.type === "touchmove" ? shook.delta : 0;
+    const rolled = time < over ? (roll * Math.min(dt, over - time)) / over : 0;
+    return [{ type: "touchmove", delta: delta + rolled }];
   };
 };
 
@@ -296,6 +311,8 @@ export type SimOptions = {
   hidden?: [number, number];
   /** Frames a second (default 60): a slow device. */
   fps?: number;
+  /** Where the dash sits (dash.ts dashLayout; default wide); a phone has none. */
+  layout?: DashLayout;
 };
 
 export type SimFrame = {
@@ -310,8 +327,12 @@ export type SimFrame = {
   /** The visitor's feedback this frame, as HeroStage draws it. */
   mode: TransportMode;
   pace: number;
-  /** What the dash says, and its pit limiter (dash.ts). */
+  /** What the transport would have the dash say, and its pit limiter (dash.ts). */
   show: DashShow;
+  /** What the dash on screen says: nothing on a phone, which has none. */
+  dash: DashShow;
+  /** The pedal shows the limiter in its own treads (HeroStage data-lim): her foot on it at an unread line. */
+  pedalLim: boolean;
   limiter: Limiter;
   /** The limiter caps the pace this frame (an unread line up, no ALL CLEAR running). */
   limited: boolean;
@@ -562,9 +583,9 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
       let delta = event.type === "wheel" || event.type === "touchmove" ? event.delta : 0;
       if (event.type === "touchmove") {
         touching = true;
-        delta = strokeMove(stroke, event.delta);
+        delta = strokeMove(stroke, event.delta, time * 1000);
         if (delta === 0) continue;
-      } else if (event.type === "touchend" && strokeLift(stroke) === 0) {
+      } else if (event.type === "touchend" && strokeLift(stroke, time * 1000) === 0) {
         // A finger that never left its slop (a tap, a resting thumb) lifts without a fling.
         touching = false;
         resetStroke(stroke);
@@ -602,7 +623,7 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
         touching = false;
         // Lenis flings |v|^1.7 the stroke's way (gate.ts strokeLift); forward,
         // the gate lets it fly up to the wall and no further (gate.ts).
-        const lift = strokeLift(stroke);
+        const lift = strokeLift(stroke, time * 1000);
         resetStroke(stroke);
         const fling = Math.abs(velocity) ** 1.7;
         if (lift < 0) {
@@ -858,6 +879,7 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
       if (Math.abs(p - prevP) * range > 0.5 && !landed) result.lastFastMove = time - asked;
       result.maxPAfterStop = Math.max(result.maxPAfterStop, p);
     }
+    const show = dashShow({ p, started, mode: feedback.mode, limiter, clearing });
     result.frames.push({
       time,
       p,
@@ -868,7 +890,9 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
       opacity: [...story.opacity],
       mode: feedback.mode,
       pace: feedback.pace,
-      show: dashShow({ p, started, mode: feedback.mode, limiter, clearing }),
+      show,
+      dash: options.layout === "phone" ? "hidden" : show,
+      pedalLim: ped.down && limiter !== "off",
       limiter,
       limited: input.limited,
       clearing,

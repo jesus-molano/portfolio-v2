@@ -118,7 +118,7 @@
 }
 
 /*
- * Tall screens (phones, portrait tablets): the hero's dash takes the sky
+ * Tall screens (portrait tablets): the hero's dash takes the sky
  * under the page controls (Hero.module.css: 5rem below the safe top, 5em
  * of --va-pod-fs tall, 15 px, 14 px under 340 px wide, 16 px from 400 px),
  * so the callout hangs below it instead of hiding it.
@@ -138,6 +138,17 @@
 @media (max-aspect-ratio: 1/1) and (min-width: 400px) {
   .callout {
     top: calc(max(1rem, env(safe-area-inset-top)) + 5rem + 5 * 16px + 0.75rem);
+  }
+}
+
+/*
+ * A phone has no dash (scroll/dash.ts DASH_MEDIA.phone, the same query):
+ * the callout takes the sky it left, under the camera readout (3.6rem
+ * from the top upright, 4.2rem on its side).
+ */
+@media (pointer: coarse) and (max-aspect-ratio: 1/1) and (max-width: 599px), (pointer: coarse) and (min-aspect-ratio: 1/1) and (max-height: 500px) {
+  .callout {
+    top: 5.5rem;
   }
 }
 

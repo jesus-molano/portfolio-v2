@@ -185,6 +185,20 @@ describe("loading screen copy", () => {
       for (const tip of tips) expect(tip.text).not.toMatch(later);
     });
 
+    it(`${locale}: tells the radio's long-press on touch as it is: a still finger off the pedal, the ring, the lift`, () => {
+      // touchHold.ts: still within its slop until the ring comes up, opened as it lifts; a finger on
+      // the pedal drives and is never a long-press. The radio button is the other way in.
+      const words =
+        locale === "en"
+          ? [/\bstill\b/, /\bpicture\b/, /not the pedal/, /\bring\b/, /\blift\b/, /\bbutton\b/]
+          : [/\bquieto\b/, /\bimagen\b/, /no en el pedal/, /\baro\b/, /levántalo/, /\bbotón\b/];
+      const radio = tips.filter((tip) => tip.when.includes("touch") && !tip.when.includes("motion"));
+      expect(radio).toHaveLength(1);
+      for (const word of words) expect(radio[0].text).toMatch(word);
+      // Not "hold the picture" alone: a thumb left there while she reads opens nothing.
+      expect(radio[0].text).not.toMatch(/press and hold|deja el dedo sobre/i);
+    });
+
     it(`${locale}: keeps the buttons and the slow note short`, () => {
       expect(Array.from(loader.withMusic).length).toBeLessThanOrEqual(22);
       expect(Array.from(loader.withoutMusic).length).toBeLessThanOrEqual(22);

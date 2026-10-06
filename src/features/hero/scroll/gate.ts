@@ -31,7 +31,7 @@
  * starts Lenis again from the page when it missed a move.
  *
  * A finger's stroke is read through its slop (`Stroke`): a resting thumb
- * that trembles is still, neither going back nor pushing.
+ * that trembles or rolls is still, neither going back nor pushing.
  *
  * Pure functions; HeroStage, SmoothScroll and the scroller model
  * (testing/scrollerModel.ts) apply them.
@@ -51,6 +51,17 @@ export const GATE = {
    * to 3 px; Android's own touch slop is 8 dp.
    */
   touchSlop: 8,
+  /**
+   * A finger that has gone less than `restPx` its way over `restMs` has
+   * come to rest: it lands still again where it is. A thumb left on the
+   * glass after a swipe trembles and rolls a few px as its pad flattens;
+   * followed, every roll back read as REVERSE for as long as it rested.
+   * A deliberate drag goes 20 px a second and more.
+   */
+  restMs: 150,
+  restPx: 3,
+  /** From rest, a finger moves the page again once it has moved this far (px): past a tremble and a roll. */
+  restSlop: 12,
 } as const;
 
 /**
@@ -61,45 +72,71 @@ export const GATE = {
  * wall as a push. So a stroke scrolls once the finger has moved
  * `touchSlop` px from where it landed, and then follows it 1:1 in its
  * direction; turning back, it waits until the finger is `touchSlop` px
- * back from the furthest it went (backlash). Nothing is lost: when the
- * stroke starts or turns, it scrolls the finger's whole travel, so the
- * page is under the finger again.
+ * back from the furthest it went (backlash). A finger that has come to
+ * rest (`restMs`, `restPx`) lands still again where it is, and moves the
+ * page again only past `restSlop`: after a swipe, back or forward, a
+ * thumb left on the glass is rest, not more of the swipe. Nothing is
+ * lost: when the stroke starts, turns or goes on from rest, it scrolls
+ * the finger's whole travel, so the page is under the finger again.
  */
 export type Stroke = {
   /** Which way the stroke scrolls: 1 forward, -1 back, 0 not yet (the finger is within its slop). */
   dir: -1 | 0 | 1;
   /** Finger travel (px, positive forward) since the stroke last scrolled: held in the slop. */
   slack: number;
+  /** Travel its way (px) since `paceAt` (ms, the moves' own clock): under `restPx` for `restMs`, it rests. */
+  pace: number;
+  paceAt: number;
+  /** It came to rest: it goes on only past `restSlop`. */
+  rested: boolean;
 };
 
 export function newStroke(): Stroke {
-  return { dir: 0, slack: 0 };
+  return { dir: 0, slack: 0, pace: 0, paceAt: 0, rested: false };
 }
 
 /** A new finger on the glass: its stroke starts still. */
 export function resetStroke(stroke: Stroke): void {
   stroke.dir = 0;
   stroke.slack = 0;
+  stroke.pace = 0;
+  stroke.paceAt = 0;
+  stroke.rested = false;
 }
 
 /**
- * One move of the finger (`delta` px, positive forward): how far it
- * scrolls the page, 0 while the finger is still (within the slop, or
- * trembling back from the furthest it went).
+ * One move of the finger (`delta` px, positive forward) at `at` ms (the
+ * event's own time): how far it scrolls the page, 0 while the finger is
+ * still (within the slop, trembling back from the furthest it went, or
+ * resting).
  */
-export function strokeMove(stroke: Stroke, delta: number): number {
+export function strokeMove(stroke: Stroke, delta: number, at: number): number {
   if (!Number.isFinite(delta)) return 0;
+  // Gone less than restPx its way for restMs: it has come to rest, and lands still where it is.
+  if (stroke.dir !== 0 && at - stroke.paceAt >= GATE.restMs) {
+    stroke.dir = 0;
+    stroke.slack = 0;
+    stroke.rested = true;
+  }
   stroke.slack += delta;
   const { dir, slack } = stroke;
   // Further the way it goes: on at once.
   if (dir !== 0 && Math.sign(slack) === dir) {
     stroke.slack = 0;
+    stroke.pace += Math.abs(slack);
+    if (stroke.pace >= GATE.restPx) {
+      stroke.pace = 0;
+      stroke.paceAt = at;
+    }
     return slack;
   }
-  // Starting, or turning back: only past the slop.
-  if (Math.abs(slack) >= GATE.touchSlop) {
+  // Starting, turning back or going on from rest: only past the slop.
+  if (Math.abs(slack) >= (stroke.rested && dir === 0 ? GATE.restSlop : GATE.touchSlop)) {
     stroke.dir = slack > 0 ? 1 : -1;
     stroke.slack = 0;
+    stroke.pace = 0;
+    stroke.paceAt = at;
+    stroke.rested = false;
     return slack;
   }
   return 0;
@@ -108,11 +145,12 @@ export function strokeMove(stroke: Stroke, delta: number): number {
 /**
  * The finger lifts: which way its fling goes (Lenis takes only the sign
  * of the lift's delta; its size is Lenis' own velocity). A stroke that
- * never left its slop flings nothing (a tap, a thumb that rested), and a
+ * never left its slop flings nothing (a tap, a thumb that rested), nor
+ * does one that has come to rest by `at` (ms, the lift's own time), and a
  * last tremble back does not turn a forward fling around.
  */
-export function strokeLift(stroke: Stroke): -1 | 0 | 1 {
-  return stroke.dir;
+export function strokeLift(stroke: Stroke, at: number): -1 | 0 | 1 {
+  return stroke.dir !== 0 && at - stroke.paceAt >= GATE.restMs ? 0 : stroke.dir;
 }
 
 /** One frame's reading of where the page is. */
