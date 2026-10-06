@@ -1651,7 +1651,7 @@ const CHECKS = {
     const k = await session(device, lang);
     await k.page.evaluate(() => localStorage.removeItem("va-radio-hint"));
     await sleep(1500);
-    await k.page.locator("[data-skip]").click({ timeout: 10_000 });
+    await k.page.locator("[data-hud][data-skip]").click({ timeout: 10_000 });
     await sleep(1500);
     const night = Math.round(0.6 * DEVICES[device].viewport.height);
     const back = {};

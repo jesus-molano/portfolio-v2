@@ -51,9 +51,11 @@ html:has(#credits a:focus) {
   scroll-padding-block: 6rem;
 }
 
-/* Lenis stops the page with overflow: clip, which drops the scrollbar and its gutter;
-   hidden keeps the reserved gutter (scrollbar-gutter needs a scroll container). */
-html.lenis.lenis-stopped {
+/* Lenis stops the page (the radio wheel, the start menu's dialog) with
+   overflow: clip, which drops the scrollbar and its gutter; hidden keeps the
+   reserved gutter (scrollbar-gutter needs a scroll container). The :not()
+   matches Lenis' own selector, which otherwise outranks this one. */
+html.lenis.lenis-stopped:not(.lenis-autoToggle) {
   overflow: hidden;
 }
 
@@ -73,7 +75,12 @@ body {
     var(--va-color-night) 100%
   );
   background-attachment: fixed;
-  overflow-x: hidden;
+  /* clip, never hidden: hidden makes the body a scroll container whenever
+     html's overflow is not visible (Lenis stopped, the radio wheel open),
+     and the hero's pinned frame then stuck to the body instead of the
+     screen, dropping by everything scrolled and leaving half the screen
+     empty under the wheel. */
+  overflow-x: clip;
 }
 
 h1,
