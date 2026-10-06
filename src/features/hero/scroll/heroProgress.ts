@@ -1,3 +1,4 @@
+import type Lenis from "lenis";
 import { feedMeter, type Meter } from "./throttle";
 
 /**
@@ -34,18 +35,42 @@ export const scrollGate = {
   touchEndAt: Number.NEGATIVE_INFINITY,
 };
 
-export type InputSource = "wheel" | "touch" | "key";
+/**
+ * Her input: the wheel or a trackpad, a finger, the keyboard, a mouse click
+ * on the picture, or the on-screen pedal (a finger or the mouse on it; W
+ * and Space press it too, but they speak as the keyboard).
+ */
+export type InputSource = "wheel" | "touch" | "key" | "click" | "pedal";
 
 /**
  * The visitor's last input, in performance.now() milliseconds, and how hard
  * she pushes forward (`meter`, viewport heights per second, see throttle.ts).
+ * A held pedal is input every frame (`at`, `forwardAt`: never her turn
+ * while her foot is down), but only its press is an event: `eventAt` and
+ * `stepAt` move with discrete input alone (a notch, a swipe, a key, a tap,
+ * a press of the pedal), for what answers each event once (the strip's
+ * flare, a line asked for at the title). `pedal` is her foot's demand in
+ * viewport heights a second (pedal.ts pedalRate), kept off the meter: it
+ * drives the strip and the world's pace, never the scolding.
  */
 export const scrollInput = {
   at: Number.NEGATIVE_INFINITY,
   forwardAt: Number.NEGATIVE_INFINITY,
   backwardAt: Number.NEGATIVE_INFINITY,
+  eventAt: Number.NEGATIVE_INFINITY,
+  stepAt: Number.NEGATIVE_INFINITY,
   source: null as InputSource | null,
   meter: { rate: 0, at: 0 } as Meter,
+  pedal: 0,
+};
+
+/**
+ * The pedal's hook into the scroll: HeroStage sets `step`, and SmoothScroll
+ * calls it on the ticker right before `lenis.raf`, so a held pedal moves
+ * the picture, the dash and the car in the same frame, as a wheel notch does.
+ */
+export const scrollDrive = {
+  step: null as null | ((deltaMs: number, lenis: Lenis) => void),
 };
 
 /** Written by HeroStage, read by DriveClock (pace, from the crawl to x2) and CameraRig (FOV kick, degrees). */
@@ -58,21 +83,38 @@ export const heroFeedback = { pace: 1, fovKick: 0 };
  */
 export function recordInput(deltaY: number, source: InputSource, nowMs: number, vh = viewportHeight()): void {
   scrollInput.at = nowMs;
+  scrollInput.eventAt = nowMs;
   scrollInput.source = source;
   if (deltaY > 0) {
     scrollInput.forwardAt = nowMs;
+    scrollInput.stepAt = nowMs;
     feedMeter(scrollInput.meter, deltaY / Math.max(1, vh), nowMs / 1000);
   } else if (deltaY < 0) {
     scrollInput.backwardAt = nowMs;
   }
 }
 
+/**
+ * One frame of a held pedal: her foot (`rate`, viewport heights a second
+ * of demand) is input now, forward, from `source` ("pedal" for the
+ * on-screen button, "key" for W or Space), so it is never her turn while
+ * it is down. Not an event (eventAt, stepAt) and not on the meter.
+ */
+export function recordPedal(rate: number, source: InputSource, nowMs: number): void {
+  scrollInput.at = nowMs;
+  scrollInput.forwardAt = nowMs;
+  scrollInput.source = source;
+  scrollInput.pedal = Math.max(0, rate);
+}
+
 /** Forgets every input: a new visit (tests and remounts). */
 export function resetInput(): void {
   scrollInput.at = scrollInput.forwardAt = scrollInput.backwardAt = Number.NEGATIVE_INFINITY;
+  scrollInput.eventAt = scrollInput.stepAt = Number.NEGATIVE_INFINITY;
   scrollInput.source = null;
   scrollInput.meter.rate = 0;
   scrollInput.meter.at = 0;
+  scrollInput.pedal = 0;
   scrollGate.pressure = 0;
   scrollGate.pushedAt = scrollGate.touchEndAt = Number.NEGATIVE_INFINITY;
   scrollGate.touching = false;

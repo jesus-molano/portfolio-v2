@@ -131,6 +131,26 @@ describe("stepFeedback", () => {
     });
   }
 
+  it("never learns the pause of a visitor who waits to be asked: each ask comes as soon as the first", () => {
+    const feedback = newFeedback();
+    const input = resting();
+    const asks: number[] = [];
+    let lastInput = 0;
+    let wasWaiting = false;
+    run(feedback, input, 60, (t, i) => {
+      const waiting = feedback.mode === "waiting";
+      if (waiting && !wasWaiting) asks.push(t - lastInput);
+      wasWaiting = waiting;
+      // She answers each ask 0.3 s after it comes up: a notch, which moves the picture for half a second.
+      if (waiting && feedback.waitingFor >= 0.3) lastInput = t;
+      i.sinceInput = t - lastInput;
+      i.pictureSpeed = i.sinceInput < 0.5 ? 0.01 : 0;
+    });
+    expect(asks.length).toBeGreaterThan(10);
+    for (const after of asks) expect(after).toBeLessThan(TRANSPORT.waitIdle + TRANSPORT.turnDwell + 0.1);
+    expect(feedback.rhythm).toBe(0);
+  });
+
   it("reads FLAT OUT only once she has held full throttle, and keeps it through a dip", () => {
     const feedback = newFeedback();
     const input = resting({ meterRate: 30 });

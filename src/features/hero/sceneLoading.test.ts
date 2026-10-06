@@ -5,6 +5,7 @@ import {
   markEntered,
   markSceneReady,
   markOnScreen,
+  markOnStage,
   markQuiet,
   markSettled,
   reportSceneProgress,
@@ -25,6 +26,7 @@ describe("sceneLoading", () => {
       settled: false,
       quiet: true,
       onScreen: true,
+      onStage: true,
     };
     expect(getSceneLoading()).toEqual(empty);
     expect(getServerSceneLoading()).toEqual(empty);
@@ -53,6 +55,20 @@ describe("sceneLoading", () => {
     expect(getSceneLoading().onScreen).toBe(false);
     markOnScreen(true);
     expect(getSceneLoading().onScreen).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+
+  it("says whether the hero is on stage (the film not over), telling its subscribers only on a change", () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeSceneLoading(listener);
+    markOnStage(true);
+    expect(listener).not.toHaveBeenCalled();
+    markOnStage(false);
+    markOnStage(false);
+    expect(getSceneLoading().onStage).toBe(false);
+    markOnStage(true);
+    expect(getSceneLoading().onStage).toBe(true);
     expect(listener).toHaveBeenCalledTimes(2);
     unsubscribe();
   });

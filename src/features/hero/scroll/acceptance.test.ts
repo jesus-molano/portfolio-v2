@@ -10,13 +10,21 @@ import { describe, expect, it } from "vitest";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
 import { createRandom } from "../scene/world";
+import { DASH } from "./dash";
 import { GATE } from "./gate";
 import { STORY } from "./story";
+import { PEDAL } from "./pedal";
 import {
+  answering,
   arrows,
+  backAt,
   drag,
   during,
   jump,
+  pedal,
+  pedalBy,
+  pedalTaps,
+  pump,
   restless,
   type SimFrame,
   simulate,
@@ -27,6 +35,7 @@ import {
   touch,
   trackpad,
   tremble,
+  tremor,
   wheel,
 } from "./testing/scrollerModel";
 import { THROTTLE, WAIT } from "./throttle";
@@ -375,6 +384,30 @@ describe("acceptance: a calm reader's car does not lurch", () => {
       expect(Math.min(...steady.map((frame) => frame.pace))).toBeGreaterThan(0.8);
     });
 
+    it(`${locale}: a visitor who waits to be asked, a notch each time, is asked again as soon as the first time`, () => {
+      const run = simulate(lines, answering(0.3, () => [{ type: "wheel", delta: 100 }]), { maxTime: 120 });
+      // Each ask comes as soon as it is her turn by the first wait (TRANSPORT.waitIdle after her notch,
+      // once the picture is still and nothing plays): the pauses she spent waiting to be asked never
+      // become a beat of hers that would stretch the next wait toward TRANSPORT.maxWaitIdle.
+      let rest = Number.NaN;
+      let asks = 0;
+      for (let i = 1; i < run.frames.length; i += 1) {
+        const frame = run.frames[i];
+        if (frame.p >= STORY.fadeFrom) break;
+        expect(frame.rhythm, `${frame.time.toFixed(2)} s`).toBeLessThan(TRANSPORT.waitIdle);
+        const moving = Math.abs(frame.p - run.frames[i - 1].p) / FRAME >= TRANSPORT.stillSpeed;
+        if (moving || frame.playing !== null) rest = frame.time;
+        if (frame.idle < FRAME / 2) rest = frame.time + TRANSPORT.waitIdle;
+        const ask = frame.mode === "waiting" && run.frames[i - 1].mode !== "waiting";
+        if (!ask || Number.isNaN(rest)) continue;
+        asks += 1;
+        expect(frame.time - rest, `${frame.time.toFixed(2)} s`).toBeLessThanOrEqual(TRANSPORT.turnDwell + 0.5);
+      }
+      expect(asks).toBeGreaterThan(20);
+      // She gets through the whole drive, one ask at a time.
+      expect(run.frames.at(-1)!.p).toBeGreaterThanOrEqual(STORY.fadeFrom);
+    });
+
     it(`${locale}: one swipe a second surges the car without flipping the readout to FLAT OUT`, () => {
       const run = simulate(lines, touch(1, 300, 0.15), { vh: 750, maxTime: 40 });
       const steady = after(run.frames, 3);
@@ -537,6 +570,39 @@ describe("acceptance: her input goes on from where the page is", () => {
   }
 });
 
+describe("acceptance: the pedal goes on from where the page is", () => {
+  for (const [locale, lines] of LOCALES) {
+    it(`${locale}: a native move Lenis has not heard of, then the pedal pressed and held: on from there, never back`, () => {
+      const range = 5 * 900;
+      for (const fps of [60, 4]) {
+        const read = simulate(lines, wheel(3), { fps, maxTime: 900 });
+        const open = read.frames.find((frame) => !Number.isFinite(frame.frontier))!.time;
+        // The walls open, she is back at 0.2 (Lenis with her), then the scrollbar takes the page down
+        // to 0.6 and W goes down in that same frame: the press steps on from 0.6, the hold drives on.
+        const at = Math.ceil((open + 3) * fps) / fps;
+        const moved = at + 1;
+        const back = simulate(
+          lines,
+          together(during(0, open + 1, wheel(3)), jump(at, 0.2, true), jump(moved, 0.6, false), pedalBy("key", [moved, moved + 1.5])),
+          { fps, maxTime: moved + 2.5 },
+        );
+        for (const frame of after(back.frames, moved)) {
+          expect(frame.page, `${fps} fps, ${frame.time.toFixed(2)} s`).toBeGreaterThanOrEqual(0.6 * range - 1);
+        }
+        expect(back.frames.at(-1)!.page, `${fps} fps`).toBeGreaterThan(0.6 * range + 100);
+        // Past the hero the pedal has gone with it: a press there moves nothing.
+        const past = simulate(lines, together(during(0, open + 1, wheel(3)), jump(at, 1.3, false), pedal([at, at + 1.5])), {
+          fps,
+          maxTime: at + 2.5,
+        });
+        for (const frame of after(past.frames, at)) {
+          expect(frame.page, `${fps} fps, past, ${frame.time.toFixed(2)} s`).toBeCloseTo(1.3 * range, 0);
+        }
+      }
+    });
+  }
+});
+
 describe("acceptance: no stuck states (fuzz)", () => {
   for (let seed = 1; seed <= 20; seed += 1) {
     it(`seed ${seed}: keeps every invariant and always says how to go on`, () => {
@@ -575,6 +641,270 @@ describe("acceptance: no stuck states (fuzz)", () => {
         { maxTime: 110 },
       );
       expect(run.frames.at(-1)!.p, `seed ${seed}`).toBeGreaterThanOrEqual(0.999);
+    }
+  });
+});
+
+describe("acceptance: the dash and its pit limiter", () => {
+  /** km/h the pace reads, as the dash's digits do. */
+  const kmh = (pace: number) => Math.round(18 * 3.6 * pace);
+
+  for (const [locale, lines] of LOCALES) {
+    for (const [name, source, vh] of SCROLLERS) {
+      it(`${locale}, ${name}: an unread line holds the car at 80 km/h at most, and its release fires once`, () => {
+        const run = simulate(lines, source, { vh, maxTime: 90 });
+        const what = `${locale} ${name}`;
+        // A car arriving fast brakes into the pit lane: from a quarter of a second after the limiter caps it.
+        let cappedFor = 0;
+        for (const frame of run.frames) {
+          cappedFor = frame.limited ? cappedFor + FRAME : 0;
+          if (cappedFor >= 1) expect(kmh(frame.pace), `${what} ${frame.time.toFixed(2)} s`).toBeLessThanOrEqual(81);
+          // LIMITER only ever explains a line on screen, and never shows next to a WAITING car.
+          if (frame.show === "limiter") {
+            expect(frame.playing, what).toBe("card");
+            expect(frame.mode).not.toBe("waiting");
+          }
+        }
+        // ALL CLEAR once per line read, never twice for the same wall.
+        const walls = run.releases.map((release) => release.wall);
+        expect(new Set(walls).size, what).toBe(walls.length);
+        const cards = run.walls.filter((wall) => wall.kind === "card").length;
+        if (run.endAt === run.endAt) expect(walls.length, what).toBe(cards);
+      });
+    }
+
+    it(`${locale}: pushing on a line shows LIMITER hit only while she pushes; resting, it stays armed`, () => {
+      for (const stopAt of [6, 12, 20]) {
+        const run = simulate(lines, wheel(15), { stopAt, maxTime: stopAt + 4 });
+        expect(run.frames.some((frame) => frame.show === "limiter" && frame.limiter === "hit")).toBe(true);
+        for (const frame of run.frames) {
+          if (frame.limiter === "hit") expect(frame.idle, `${stopAt} s`).toBeLessThan(DASH.hitInput);
+        }
+      }
+    });
+
+    it(`${locale}: a rewind never releases a line, and the line held before it releases once read`, () => {
+      // Drive onto the second card, rewind over it before it is read, then drive back.
+      const run = simulate(
+        lines,
+        together(during(0, 6, wheel(6)), during(6, 6.6, () => [{ type: "wheel", delta: -120 }]), during(7.5, 40, wheel(4))),
+        { maxTime: 40 },
+      );
+      const walls = run.releases.map((release) => release.wall);
+      expect(new Set(walls).size).toBe(walls.length);
+      for (const release of run.releases) {
+        const frame = run.frames.find((f) => f.time >= release.time - 1e-9)!;
+        // Released where the line was read, never while the picture went back: ALL CLEAR shows.
+        expect(frame.show === "clear" || frame.p >= STORY.fadeFrom).toBe(true);
+        expect(frame.mode).not.toBe("reverse");
+      }
+    });
+
+    it(`${locale}: ALL CLEAR lifts the cap: a car still pushed leaves the pit lane above 80 km/h`, () => {
+      const run = simulate(lines, wheel(15), { maxTime: 40 });
+      const clear = run.frames.filter((frame) => frame.clearing && frame.p < STORY.fadeFrom);
+      expect(clear.length).toBeGreaterThan(0);
+      expect(Math.max(...clear.map((frame) => kmh(frame.pace)))).toBeGreaterThan(90);
+    });
+  }
+});
+
+describe("acceptance: the pedal", () => {
+  /** A swipe of `dy` px (negative: down, going back) over 0.13 s, starting at `at` seconds. */
+  const swipeAt = (at: number, dy: number): Source => during(at, at + 0.13 + 2 * FRAME, touch(10, dy, 0.13));
+  /** Pedal visitors, from a thumb held from the title to a frantic one, with the viewport they run on. */
+  const PEDALERS: [string, Source, number][] = [
+    ["held from the title", pedal([0, 200]), 750],
+    ["held on a desktop (W or the mouse)", pedal([0, 200]), 900],
+    ["held, letting go to read", pump(2.5, 3), 750],
+    ["pumped 1.5 s on, 1.5 s off", pump(1.5, 1.5), 750],
+    ["pumped 1 s on, 3 s off", pump(1, 3), 750],
+    ["tapped every 2 s", pedalTaps(2), 750],
+    ["held with a tremor (a 120 ms lift every 2 s)", tremor(2, 0.12), 750],
+    ["held, and a swipe up on the picture", together(pedal([0, 200]), swipeAt(6, 300)), 750],
+  ];
+
+  for (const [locale, lines] of LOCALES) {
+    for (const [label, source, vh] of PEDALERS) {
+      it(`${locale}, ${label}: every line read in full, never WAITING under her foot, never dead, never past the hero`, () => {
+        const run = simulate(lines, source, { vh, maxTime: 150 });
+        const what = `${locale} ${label}`;
+        // Every card fully up for its reading time, none early.
+        run.timeline.beats.forEach((beat, i) => {
+          expect(run.fullyOpaque[i], `${what}, card ${i}`).toBeGreaterThanOrEqual(beat.seconds - STORY.cardFadeIn - FRAME);
+        });
+        expect(run.earlyCards, what).toBe(0);
+        // She gets to the end. The pedal never pushes the page past the hero: only a new press
+        // there, or the pedal held there until the way on has been up a while, glides on into the
+        // next section.
+        expect(run.frames.at(-1)!.p, what).toBeGreaterThanOrEqual(0.999);
+        const range = 5 * vh;
+        let onward = false;
+        let upAt = Number.NEGATIVE_INFINITY;
+        let restedAtEnd = 0;
+        for (let i = 0; i < run.frames.length; i += 1) {
+          const frame = run.frames[i];
+          const was = i > 0 && run.frames[i - 1].pedalDown;
+          if (was && !frame.pedalDown) upAt = frame.time;
+          // A new press at the end (a quick regrip of a hold only carries on).
+          const press = frame.pedalDown && !was && frame.time - upAt >= PEDAL.regripMs / 1000;
+          if (press && i > 0 && run.frames[i - 1].p >= 0.999) onward = true;
+          restedAtEnd = was && i > 0 && run.frames[i - 1].p >= 0.999 ? restedAtEnd + FRAME : 0;
+          if (restedAtEnd >= PEDAL.endHold - 2 * FRAME) onward = true;
+          if (!onward) expect(frame.page, `${what}, ${frame.time.toFixed(2)} s`).toBeLessThanOrEqual(range + 1);
+          // Her foot on the pedal is input: it is never her turn while it is down.
+          if (frame.pedalDown) expect(frame.mode, `${what}, ${frame.time.toFixed(2)} s`).not.toBe("waiting");
+        }
+        if (onward) expect(run.frames.at(-1)!.page, what).toBeGreaterThan(range + 0.5 * vh);
+        // Never dead under her foot: the picture moves, or a line (or the title, or the crane) plays.
+        let still = 0;
+        let longest = 0;
+        for (let i = 1; i < run.frames.length; i += 1) {
+          const frame = run.frames[i];
+          const dead =
+            frame.pedalDown &&
+            !frame.pedalSuspended &&
+            frame.p < 0.999 &&
+            frame.playing === null &&
+            Math.abs(frame.p - run.frames[i - 1].p) < 1e-7;
+          still = dead ? still + FRAME : 0;
+          longest = Math.max(longest, still);
+        }
+        expect(longest, what).toBeLessThanOrEqual(2 * FRAME);
+      });
+    }
+
+    it(`${locale}: a held pedal knocks once at each line and rests there: never the note, never "In a hurry?"`, () => {
+      for (const [label, source, vh] of PEDALERS.filter(([name]) => name.startsWith("held"))) {
+        const run = simulate(lines, source, { vh, maxTime: 90 });
+        const what = `${locale} ${label}`;
+        expect(run.frames.some((frame) => frame.holdNote), what).toBe(false);
+        expect(run.frames.some((frame) => frame.hurry), what).toBe(false);
+        // One knock per wall at most: the title, each card and the crane.
+        expect(run.knocks.length, what).toBeLessThanOrEqual(run.walls.length);
+        // Resting on a line's wall, the dash says LIMITER, armed: "pushing on it" only for the knock
+        // (a swipe of hers against the wall is a push of its own).
+        if (label.includes("swipe")) continue;
+        for (const frame of run.frames) {
+          if (frame.pedalDown && frame.limiter === "hit") {
+            const knock = run.knocks.findLast((t) => t <= frame.time + 1e-9) ?? Number.NEGATIVE_INFINITY;
+            expect(frame.time - knock, `${what}, ${frame.time.toFixed(2)} s`).toBeLessThan(0.3 + FRAME);
+          }
+        }
+      }
+    });
+
+    it(`${locale}: a tremor or a rolling thumb on the pedal knocks no more than a steady hold`, () => {
+      const steady = simulate(lines, pedal([0, 200]), { vh: 750, maxTime: 90 });
+      for (const lift of [0.06, 0.12]) {
+        const shaky = simulate(lines, tremor(2, lift), { vh: 750, maxTime: 90 });
+        expect(shaky.knocks.length, `${lift} s lifts`).toBeLessThanOrEqual(steady.knocks.length);
+        expect(shaky.frames.some((frame) => frame.holdNote), `${lift} s lifts`).toBe(false);
+      }
+    });
+
+    it(`${locale}: sustained pumping at an unread line brings the note and "In a hurry?", as mashed Space does`, () => {
+      const run = simulate(lines, pump(0.1, 0.15), { vh: 750, maxTime: 60 });
+      expect(run.frames.some((frame) => frame.holdNote)).toBe(true);
+      expect(run.frames.some((frame) => frame.hurry)).toBe(true);
+      // ...and never skips a line.
+      expect(run.earlyCards).toBe(0);
+    });
+
+    it(`${locale}: taps on the pedal every 2 s finish within a second of Space every 2 s`, () => {
+      const taps = simulate(lines, pedalTaps(2), { vh: 750, maxTime: 150 });
+      const keys = simulate(lines, space(2), { vh: 750, maxTime: 150 });
+      expect(Math.abs(taps.endAt - keys.endAt)).toBeLessThanOrEqual(1);
+    });
+
+    it(`${locale}: held from the title, the walls set the pace: every line in full, about half a minute`, () => {
+      const run = simulate(lines, pedal([0, 200]), { vh: 750, maxTime: 90 });
+      const reading = run.timeline.beats.reduce((sum, beat) => sum + beat.seconds, 0);
+      expect(run.fadeAt).toBeGreaterThan(reading);
+      expect(run.fadeAt).toBeLessThan(reading + 25);
+      // The pace never sits at the crawl while her foot is down, and the limiter holds it at 80 km/h on a line.
+      for (const frame of after(run.frames, 3)) {
+        if (frame.pedalDown && frame.p < STORY.fadeFrom) expect(frame.pace, `${frame.time.toFixed(2)} s`).toBeGreaterThan(THROTTLE.crawl + 0.3);
+      }
+    });
+
+    it(`${locale}: letting go stops the picture within 0.2 s (or as her press's line step lands), and the car brakes`, () => {
+      for (const upAt of [3.3, 8, 12.7, 17, 21.2]) {
+        const run = simulate(lines, pedal([0, upAt]), { vh: 750, maxTime: upAt + 8 });
+        const what = `${upAt} s`;
+        // Not under her foot any more: the picture stops within 0.2 s of the release.
+        expect(run.lastFastMove, what).toBeLessThanOrEqual(0.2 + FRAME);
+        expect(run.maxPAfterStop, what).toBeLessThanOrEqual(run.targetAtStop + 1e-9);
+        // Then it is her turn as soon as nothing plays, and the car brakes toward the crawl.
+        expect(run.frames.at(-1)!.pace, what).toBeLessThanOrEqual(THROTTLE.crawl + 0.05);
+      }
+    });
+
+    it(`${locale}: held to the end, the way on comes up under her foot, then she goes on into the next section`, () => {
+      for (const via of ["touch", "key"] as const) {
+        const run = simulate(lines, pedalBy(via, [0, 200]), { vh: 750, maxTime: 90 });
+        const range = 5 * 750;
+        const what = `${locale} ${via}`;
+        const arrived = run.frames.find((frame) => frame.p >= 0.999)!;
+        // While she still holds it at the end, the cue says how to go on...
+        const cue = run.frames.find((frame) => frame.time >= arrived.time && frame.prompt === "end")!;
+        expect(cue, what).toBeDefined();
+        expect(cue.pedalDown, what).toBe(true);
+        expect(cue.time - arrived.time, what).toBeLessThanOrEqual(STORY.endIdle + 0.1);
+        // ...and, held on, the pedal takes her into the line-up once the cue has been read.
+        const gone = run.frames.find((frame) => frame.page > range + 1)!;
+        expect(gone, what).toBeDefined();
+        expect(gone.time - arrived.time, what).toBeGreaterThanOrEqual(PEDAL.endHold - FRAME);
+        expect(gone.time - arrived.time, what).toBeLessThanOrEqual(PEDAL.endHold + 0.2);
+        expect(run.frames.at(-1)!.page, what).toBeGreaterThan(range + 0.9 * 750);
+      }
+    });
+
+    it(`${locale}: W held through a tap of S goes back, then drives on, and the dash never reads FLAT OUT over a still picture`, () => {
+      const at = 9;
+      const run = simulate(lines, together(pedalBy("key", [0, 200]), backAt(at)), { vh: 750, maxTime: 20 });
+      const before = after(run.frames, at)[0].p;
+      const back = after(run.frames, at + 0.3)[0];
+      expect(back.p).toBeLessThan(before);
+      // Once she has stopped going back, her foot drives again: the picture moves on past where it was.
+      expect(after(run.frames, at + 2.5)[0].p).toBeGreaterThan(before);
+      // Suspended, her foot is not input: the pace is not held at full while the picture waits.
+      for (const frame of after(run.frames, at)) {
+        if (frame.time > at + 2.5) break;
+        if (frame.pedalSuspended) expect(frame.mode, `${frame.time.toFixed(2)} s`).not.toBe("floored");
+      }
+    });
+
+    it(`${locale}: a swipe down while the pedal is held goes back and is never fought until her next press`, () => {
+      const at = 9;
+      const run = simulate(lines, together(pedal([0, 200]), swipeAt(at, -300)), { vh: 750, maxTime: 20 });
+      const before = after(run.frames, at)[0].p;
+      const back = after(run.frames, at + 0.4)[0];
+      expect(back.p).toBeLessThan(before);
+      expect(back.pedalSuspended).toBe(true);
+      // Her foot is still down, but its push waits: the picture never creeps forward again on its own.
+      let lowest = back.p;
+      for (const frame of after(run.frames, at + 0.4)) {
+        expect(frame.p, `${frame.time.toFixed(2)} s`).toBeLessThanOrEqual(lowest + 1e-6);
+        lowest = Math.min(lowest, frame.p);
+      }
+      // Her foot is not input while its push waits: it becomes her turn, and the car brakes.
+      expect(after(run.frames, at + 0.4).some((frame) => frame.pedalDown && frame.mode === "waiting")).toBe(true);
+      expect(after(run.frames, at + 0.4).some((frame) => frame.mode === "floored")).toBe(false);
+      // Her next press drives again.
+      const again = simulate(lines, together(pedal([0, 10.5], [11, 200]), swipeAt(at, -300)), { vh: 750, maxTime: 20 });
+      expect(again.frames.at(-1)!.p).toBeGreaterThan(after(again.frames, 10.6)[0].p);
+    });
+  }
+
+  it("spools her foot up to the floor in about a second, and pushes no faster than PEDAL.vFull", () => {
+    const run = simulate(en.hero.lines, pedal([0, 200]), { vh: 750, maxTime: 40 });
+    const floored = run.frames.find((frame) => frame.pedalLevel >= 0.95)!;
+    expect(floored.time).toBeLessThan(1.1);
+    for (let i = 1; i < run.frames.length; i += 1) {
+      const step = (run.frames[i].page - run.frames[i - 1].page) / 750;
+      // A press's line step glides faster for a moment; the pedal's own push never passes vFull.
+      if (run.frames[i].pedalDown && step > 0) expect(step).toBeLessThanOrEqual(5 * PEDAL.vFull * FRAME + 0.05);
     }
   });
 });

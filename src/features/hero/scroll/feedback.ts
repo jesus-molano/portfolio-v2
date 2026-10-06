@@ -1,30 +1,31 @@
 /**
  * One frame of everything the hero answers the visitor with besides the
- * picture: what the dashboard readout says, how long the film has waited
- * for her, the world's pace and the "let the man finish" note. Pure, on a
- * small mutable state, so a frame allocates nothing. HeroStage steps it on
- * the GSAP ticker; the scroller model (testing/scrollerModel.ts) steps the
- * same function, so the acceptance tests check what the page does. It runs
- * on real time (HeroStage passes the frame's real length; only the story's
- * reading clocks are capped), so a slow device neither scolds sooner nor
- * keeps a state up longer.
+ * picture: the transport's mode (the dash shows it, dash.ts), how long the
+ * film has waited for her, the world's pace and the "let the man finish"
+ * note. Pure, on a small mutable state, so a frame allocates nothing.
+ * HeroStage steps it on the GSAP ticker; the scroller model
+ * (testing/scrollerModel.ts) steps the same function, so the acceptance
+ * tests check what the page does. It runs on real time (HeroStage passes
+ * the frame's real length; only the story's reading clocks are capped), so
+ * a slow device neither scolds sooner nor keeps a state up longer.
  *
  * At any moment the hero says one of two things, never both:
  * - the line is playing, hold on: the card's bar fills, the car cruises
- *   (or surges while she pushes), the readout says YOU DRIVE or FLAT OUT,
- *   and only sustained pushing brings up the note;
+ *   (or surges while she pushes, up to the pit limiter's 80 km/h while
+ *   the line is unread), the dash says LIMITER, and only sustained pushing
+ *   brings up the note;
  * - your turn: the line has been read (or none is up), she has stopped
- *   for her wait, the readout says WAITING, the marker or a cue points the
- *   way on (they show only with WAITING) and the car brakes to a crawl,
- *   lower still after a long wait.
+ *   for her wait, the transport says WAITING (the dash asks with her
+ *   gesture), the marker or a cue points the way on (they show only with
+ *   WAITING) and the car brakes to a crawl, lower still after a long wait.
  */
-import { easePace, paceFor, THROTTLE, WAIT, waitPace } from "./throttle";
+import { easePace, paceTarget, THROTTLE, WAIT, waitPace } from "./throttle";
 import {
   HOLD_NOTE,
   type HoldNote,
   newHoldNote,
-  nextRhythm,
   PROMPT,
+  rhythmAfter,
   stepHoldNote,
   turnConditions,
   type TransportInput,
@@ -65,6 +66,11 @@ export type FeedbackInput = TransportInput & {
   touch: boolean;
   /** The unread card up at the picture, its line playing, or -1. */
   unreadCard: number;
+  /**
+   * The pit limiter holds the pace at 80 km/h (throttle.ts LIMITER): an
+   * unread card is up, and its predecessor's ALL CLEAR is over (HeroStage).
+   */
+  limited?: boolean;
 };
 
 export function newFeedback(): Feedback {
@@ -83,7 +89,7 @@ export function newFeedback(): Feedback {
 /**
  * Whether the film waits for her: on the title once the hint asks her to
  * take the wheel (except while the tease revs the car), then whenever the
- * readout says WAITING.
+ * transport says WAITING.
  */
 export function filmWaits(started: boolean, mode: TransportMode, sinceEntered: number, teasing: boolean): boolean {
   if (started) return mode === "waiting";
@@ -102,8 +108,11 @@ export function deepWait(feedback: Feedback): boolean {
  */
 export function stepFeedback(feedback: Feedback, input: FeedbackInput, dt: number): void {
   const step = Math.max(0, dt);
-  // A new input ends a pause: its length is a beat of her rhythm.
-  if (input.sinceInput < feedback.lastIdle) feedback.rhythm = nextRhythm(feedback.rhythm, feedback.lastIdle);
+  // A new input ends a pause: its length is a beat of her rhythm, unless it answered WAITING.
+  if (input.sinceInput < feedback.lastIdle) {
+    const answered = feedback.mode === "waiting" ? feedback.waitingFor : -1;
+    feedback.rhythm = rhythmAfter(feedback.rhythm, feedback.lastIdle, answered);
+  }
   feedback.lastIdle = input.sinceInput;
   input.pace = feedback.pace;
   input.waitIdle = waitIdleFor(feedback.rhythm);
@@ -115,8 +124,9 @@ export function stepFeedback(feedback: Feedback, input: FeedbackInput, dt: numbe
   feedback.mode = transportMode(input, feedback.mode);
   const waits = filmWaits(input.started, feedback.mode, input.sinceEntered, input.teasing);
   feedback.waitingFor = waits ? (feedback.waitingFor < 0 ? 0 : feedback.waitingFor + step) : -1;
-  const target = waits ? waitPace(feedback.waitingFor) : paceFor(input.meterRate);
+  const limited = input.limited === true;
+  const target = waits ? waitPace(feedback.waitingFor) : paceTarget(input.meterRate, null, limited);
   // Once she drives, a light push gets the car up from the crawl gently; the tease and hard pushes surge.
-  feedback.pace = easePace(feedback.pace, target, step, input.meterRate, input.started && !input.teasing);
+  feedback.pace = easePace(feedback.pace, target, step, input.meterRate, input.started && !input.teasing, limited);
   stepHoldNote(feedback.hold, input.sincePush, input.held, input.unreadCard, step, input.touch ? HOLD_NOTE.touchGap : HOLD_NOTE.gap);
 }

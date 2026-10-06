@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
 import { activeCard, heroTimeline, STORY } from "./story";
-import { THROTTLE, WAIT } from "./throttle";
+import { limitPace, paceFor, THROTTLE, WAIT } from "./throttle";
 import {
   FIGHT,
   fightLevel,
@@ -16,10 +16,12 @@ import {
   type KeyInput,
   newHoldNote,
   nextRhythm,
+  rhythmAfter,
   POINTER_FOCUS_MS,
   PROMPT,
   promptFor,
   type PromptInput,
+  pushingHard,
   REMINDERS,
   skipTapAllowed,
   speedKmh,
@@ -117,6 +119,15 @@ describe("her rhythm", () => {
     expect(nextRhythm(2.5, 1.5)).toBeCloseTo(2.1, 10);
     expect(nextRhythm(2.5, 0.2)).toBe(2.5);
     expect(nextRhythm(2.5, TRANSPORT.rhythmMax + 1)).toBe(0);
+  });
+
+  it("learns a pause that ended on her own beat, never one that answered WAITING", () => {
+    expect(rhythmAfter(0, 2.5, -1)).toBe(2.5);
+    // WAITING had been up 1.2 s: her own beat crossed it, still a beat of hers.
+    expect(rhythmAfter(0, 2.5, TRANSPORT.answer + 0.2)).toBe(2.5);
+    // She moved 0.3 s after WAITING came up: she waited to be asked; the next ask comes no later.
+    expect(rhythmAfter(0, 1.6, 0.3)).toBe(0);
+    expect(rhythmAfter(5, 5.6, 0)).toBe(5);
   });
 
   it("stretches the wait before WAITING to a little more than her beat, within bounds", () => {
@@ -402,6 +413,22 @@ describe("fightLevel", () => {
     expect(time).toBeLessThan(3.5);
   });
 
+  it("reads her demand, not the pace the limiter caps: pushing at a card still offers Skip", () => {
+    // The limiter holds the pace at x1.235; she asks for x1.8.
+    expect(limitPace()).toBeLessThan(THROTTLE.ff);
+    const demand = 1.8;
+    expect(pushingHard({ demand, holding: true, wall: 3 })).toBe(true);
+    let level = 0;
+    for (let t = 0; t < 3.5; t += 1 / 60) level = fightLevel(level, pushingHard({ demand, holding: true, wall: 3 }), 1 / 60);
+    expect(level).toBeGreaterThanOrEqual(FIGHT.expandAt);
+  });
+
+  it("is no hard push without a wall holding her, or under full throttle", () => {
+    expect(pushingHard({ demand: 1.8, holding: false, wall: 3 })).toBe(false);
+    expect(pushingHard({ demand: 1.8, holding: true, wall: -1 })).toBe(false);
+    expect(pushingHard({ demand: paceFor(0.3), holding: true, wall: 3 })).toBe(false);
+  });
+
   it("forgets the fight once she stops pushing", () => {
     expect(fightLevel(2, false, FIGHT.window * Math.LN2)).toBeCloseTo(1, 10);
   });
@@ -425,8 +452,8 @@ describe("keyAction", () => {
     expect(keyAction(key("PageUp"))).toBe("prev");
     expect(keyAction(key("ArrowDown"))).toBe("down");
     expect(keyAction(key("ArrowUp"))).toBe("up");
-    expect(keyAction(key("w"))).toBe("down");
-    expect(keyAction(key("W", { shiftKey: true }))).toBe("down");
+    expect(keyAction(key("w"))).toBe("gas");
+    expect(keyAction(key("W", { shiftKey: true }))).toBe("gas");
     expect(keyAction(key("s"))).toBe("up");
     expect(keyAction(key("Home"))).toBe("home");
     expect(keyAction(key("End"))).toBe("skip");
@@ -460,6 +487,21 @@ describe("keyAction", () => {
     expect(keyAction(key(" ", { targetKind: "button" }))).toBeNull();
     expect(keyAction(key(" ", { targetKind: "link" }))).toBeNull();
     expect(keyAction(key("PageDown", { targetKind: "button" }))).toBe("next");
+  });
+
+  it("makes W the pedal by its physical place, so AZERTY's Z drives and its W does not back up", () => {
+    expect(keyAction(key("z", { code: "KeyW" }))).toBe("gas");
+    expect(keyAction(key("w", { code: "KeyW" }))).toBe("gas");
+    expect(keyAction(key("ArrowDown", { code: "ArrowDown" }))).toBe("down");
+    expect(keyAction(key("w", { code: "KeyW", ctrlKey: true }))).toBeNull();
+    expect(keyAction(key("w", { code: "KeyW", targetKind: "text" }))).toBeNull();
+  });
+
+  it("keeps Space a line step, and gives the focused pedal Space and Enter", () => {
+    expect(keyAction(key(" ", { code: "Space" }))).toBe("next");
+    expect(keyAction(key(" ", { targetKind: "button", onPedal: true }))).toBe("next");
+    expect(keyAction(key("Enter", { targetKind: "button", onPedal: true }))).toBe("next");
+    expect(keyAction(key("Enter", { targetKind: "button" }))).toBeNull();
   });
 });
 

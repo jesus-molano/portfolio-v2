@@ -1,18 +1,22 @@
 /**
  * A frame-by-frame model of a visitor scrolling the hero, for the story
- * and acceptance tests: input sources (wheel, trackpad, touch, keys, and
- * native jumps of the page: the scrollbar, find in page, an anchor),
+ * and acceptance tests: input sources (wheel, trackpad, touch, keys, the
+ * pedal held, pumped or tapped, and native jumps of the page: the
+ * scrollbar, find in page, an anchor),
  * Lenis 1.3.26 as the page uses it (lerp 0.09 for wheel and keys,
  * syncTouch with lerp 1 under the finger and |v|^1.7 inertia at lerp 0.08
  * after it; a native move it may miss, as it drops the scroll event after
  * its own landing), the page itself, the gate in SmoothScroll and
- * HeroStage (gate.ts), the real story functions and the real feedback
- * (readout, pace, the hold note, the marker and the prompts), at 60 frames
+ * HeroStage (gate.ts), the pedal's drive as HeroStage runs it before
+ * Lenis (pedal.ts), the real story functions and the real feedback
+ * (the dash and its pit limiter, pace, the hold note, Skip's patience,
+ * the marker and the prompts), at 60 frames
  * a second or slower (`fps`), with the story's reading clocks capped per
  * frame as HeroStage caps them. Not a test itself; story.test.ts and
  * acceptance.test.ts run it.
  */
 import { motion } from "@/design/tokens";
+import { DASH, type DashShow, dashShow, type Limiter, limiterState } from "../dash";
 import type { FilmTimeline } from "../film";
 import { type Feedback, type FeedbackInput, newFeedback, stepFeedback } from "../feedback";
 import {
@@ -43,8 +47,30 @@ import {
   STORY,
   type Wall,
 } from "../story";
-import { feedMeter, type Meter, meterRate, THROTTLE } from "../throttle";
-import { isNotePush, type Prompt, promptFor, type TransportMode } from "../transport";
+import { ELASTIC } from "../elastic";
+import {
+  newPedal,
+  PEDAL,
+  type PedalVia,
+  pedalPush,
+  pedalRate,
+  pedalSpeed,
+  pressPedal,
+  releasePedal,
+  stepPedal,
+  suspendPedal,
+} from "../pedal";
+import { feedMeter, type Meter, meterRate, paceFor, THROTTLE } from "../throttle";
+import {
+  FIGHT,
+  fightLevel,
+  isNotePush,
+  PROMPT,
+  type Prompt,
+  promptFor,
+  pushingHard,
+  type TransportMode,
+} from "../transport";
 
 /** HeroStage's queue for a line asked for at the title (Space, a tap): seconds it stays valid. */
 const TITLE_QUEUE = 6;
@@ -55,6 +81,11 @@ export type ScrollEvent =
   | { type: "touchend" }
   | { type: "space" }
   | { type: "arrow" }
+  /** S or ArrowUp: a small step back. */
+  | { type: "back" }
+  /** The pedal goes down (a finger or the mouse on it, W or Space; a finger when `via` is left out) and comes up. */
+  | { type: "pedalDown"; via?: PedalVia }
+  | { type: "pedalUp" }
   /**
    * A native move of the page to film position `p` (past 1: below the
    * hero), which no input gate sees: the scrollbar, find in page, an
@@ -63,8 +94,8 @@ export type ScrollEvent =
    */
   | { type: "jump"; p: number; seen: boolean };
 
-/** Events a visitor sends during the frame that starts at `time`. */
-export type Source = (time: number, dt: number, vh: number) => ScrollEvent[];
+/** Events a visitor sends during the frame that starts at `time`; `last` is what the hero showed the frame before. */
+export type Source = (time: number, dt: number, vh: number, last?: SimFrame) => ScrollEvent[];
 
 /** Fires `make` once every `period` seconds, starting at time 0 (every firing a long frame spans). */
 function every(period: number, make: (i: number) => ScrollEvent[]): Source {
@@ -133,12 +164,72 @@ export const drag =
 /** Space (or a tap on the picture) every `gap` s. */
 export const space = (gap: number): Source => every(gap, () => [{ type: "space" }]);
 
+/** The pedal held over these spans of seconds: down at the start of each, up at its end. */
+export const pedal =
+  (...spans: [number, number][]): Source =>
+    pedalBy("touch", ...spans);
+
+/** The pedal held by `via` (a finger, the mouse, a key) over these spans of seconds. */
+export const pedalBy =
+  (via: PedalVia, ...spans: [number, number][]): Source =>
+  (time, dt) => {
+    const out: ScrollEvent[] = [];
+    for (const [a, b] of spans) {
+      if (time <= a + 1e-9 && a < time + dt - 1e-9) out.push({ type: "pedalDown", via });
+      if (time <= b + 1e-9 && b < time + dt - 1e-9) out.push({ type: "pedalUp" });
+    }
+    return out;
+  };
+
+/** The pedal pumped: held `hold` s, let go `gap` s, over and over until `until`. */
+export function pump(hold: number, gap: number, until = 200): Source {
+  const spans: [number, number][] = [];
+  for (let t = 0; t < until; t += hold + gap) spans.push([t, t + hold]);
+  return pedal(...spans);
+}
+
+/** A tap on the pedal (down, up 90 ms later) every `every` s. */
+export const pedalTaps = (every: number, until = 200): Source => pump(0.09, every - 0.09, until);
+
+/** The pedal held from the start, with a lift of `lift` s every `every` s (a tremor, a rolling thumb). */
+export function tremor(every = 2, lift = 0.12, until = 200): Source {
+  const spans: [number, number][] = [];
+  for (let t = 0; t < until; t += every) spans.push([t, t + every - lift]);
+  return pedal(...spans);
+}
+
 /** One native jump of the page to film position `p` at `at` seconds (see ScrollEvent). */
 export const jump = (at: number, p: number, seen = false): Source =>
   (time, dt) => (time <= at + 1e-9 && at < time + dt - 1e-9 ? [{ type: "jump", p, seen }] : []);
 
 /** ArrowDown at `perSecond` presses (autorepeat is about 30). */
 export const arrows = (perSecond: number): Source => every(1 / perSecond, () => [{ type: "arrow" }]);
+
+/** S (or ArrowUp) tapped once at `at` seconds. */
+export const backAt = (at: number): Source =>
+  (time, dt) => (time <= at + 1e-9 && at < time + dt - 1e-9 ? [{ type: "back" }] : []);
+
+/**
+ * A visitor who waits to be asked: each time the hero asks her (the title
+ * hint, or WAITING), she gives `make()` `delay` seconds later, once, and
+ * waits for the next ask.
+ */
+export function answering(delay: number, make: () => ScrollEvent[]): Source {
+  let askedAt = Number.NaN;
+  let answered = false;
+  return (time, _dt, _vh, last) => {
+    const asking = last !== undefined && (last.started ? last.mode === "waiting" : time >= PROMPT.hintAt);
+    if (!asking) {
+      askedAt = Number.NaN;
+      answered = false;
+      return [];
+    }
+    if (Number.isNaN(askedAt)) askedAt = time;
+    if (answered || time - askedAt < delay - 1e-9) return [];
+    answered = true;
+    return make();
+  };
+}
 
 /** `source`, started at `from` seconds (its own clock starts there) and stopped at `to`. */
 export const during =
@@ -219,8 +310,17 @@ export type SimFrame = {
   /** The visitor's feedback this frame, as HeroStage draws it. */
   mode: TransportMode;
   pace: number;
+  /** What the dash says, and its pit limiter (dash.ts). */
+  show: DashShow;
+  limiter: Limiter;
+  /** The limiter caps the pace this frame (an unread line up, no ALL CLEAR running). */
+  limited: boolean;
+  /** ALL CLEAR is up: a line was read this recently. */
+  clearing: boolean;
   /** Seconds the film has waited for her, -1 while it does not. */
   waitingFor: number;
+  /** Her rhythm as the feedback learned it (seconds between her bursts; 0: none). */
+  rhythm: number;
   holdNote: boolean;
   /** The hold note's push episode: seconds its pushes span and viewport heights held (0 between episodes). */
   holdSpan: number;
@@ -239,6 +339,14 @@ export type SimFrame = {
   idle: number;
   /** The picture's opacity of the title (its position-based fade and settleTitle). */
   title: number;
+  /** The pedal is down, her foot on it, and its push resting on a wall or suspended by a backward input. */
+  pedalDown: boolean;
+  pedalLevel: number;
+  pedalContact: boolean;
+  pedalSuspended: boolean;
+  /** Skip's patience (transport.fightLevel) and whether "In a hurry?" would offer itself. */
+  fight: number;
+  hurry: boolean;
 };
 
 export type SimResult = {
@@ -272,6 +380,10 @@ export type SimResult = {
   maxPAfterStop: number;
   /** Times of every input event (seconds). */
   inputs: number[];
+  /** When each ALL CLEAR fired (seconds), and the wall it released. */
+  releases: { time: number; wall: number }[];
+  /** Knocks on a wall: the pedal's on arrival and its press's on an unread line (seconds). */
+  knocks: number[];
   frames: SimFrame[];
 };
 
@@ -343,8 +455,13 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
     targetAtStop: Number.NaN,
     maxPAfterStop: 0,
     inputs: [],
+    releases: [],
+    knocks: [],
     frames: [],
   };
+  // The dash's pit limiter, as HeroStage runs it.
+  let limitWall = -1;
+  let clearUntil = Number.NEGATIVE_INFINITY;
 
   // Feedback, as HeroStage feeds it.
   const feedback: Feedback = newFeedback();
@@ -376,6 +493,35 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
     if (Number.isNaN(firstForward)) firstForward = time;
     feedMeter(meter, viewports, time);
   };
+  // The pedal, as HeroStage drives it; backward input before its press, and Skip's patience.
+  const ped = newPedal();
+  let pressBack = Number.NEGATIVE_INFINITY;
+  /** Seconds the pedal has rested at the very end of the drive (PEDAL.endHold). */
+  let endHold = 0;
+  let fight = 0;
+  /**
+   * HeroStage.stepLine forward (Space, a tap, a press of the pedal): the
+   * glide to the next line, or a knock on an unread one; at the title the
+   * line waits for the name. Returns whether it knocked.
+   */
+  const stepLine = (time: number): boolean => {
+    forward(time, THROTTLE.keyStep);
+    const fr = frontier(walls, story);
+    const from = Math.max(anim / range, target / range);
+    const goal = lineStep(1, Math.min(from, fr), timeline, fr);
+    let knocked = false;
+    // A press on an unread line knocks on it (HeroStage.stepLine).
+    if (goal === null || goal < (lineStep(1, Math.min(from, fr), timeline, Number.POSITIVE_INFINITY) ?? 1)) {
+      pushedAt = time;
+      heldPx += ELASTIC.knock * vh;
+      result.knocks.push(time);
+      knocked = true;
+    }
+    if (goal !== null) scrollTo(goal * range, { duration: 0.6 });
+    // At the title, the line plays once the name has formed (HeroStage.stepLine).
+    queued = frontierIndex(story) === 0 ? time : Number.NaN;
+    return knocked;
+  };
 
   const scrollTo = (to: number, how: { lerp?: number; duration?: number }) => {
     target = Math.min(pageLimit, Math.max(0, to));
@@ -392,7 +538,9 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
     // The story's clocks take at most STORY.maxStep a frame; the feedback runs on real time.
     const storyDt = Math.min(dt, STORY.maxStep);
     const visible = !options.hidden || time < options.hidden[0] || time >= options.hidden[1];
-    const events = time >= startAt && time < stopAt && visible ? source(time - startAt, dt, vh) : [];
+    const events = time >= startAt && time < stopAt && visible ? source(time - startAt, dt, vh, result.frames.at(-1)) : [];
+    // Her input stopped (or the tab went hidden): whatever held the pedal let go.
+    if ((time >= stopAt || !visible) && ped.down) releasePedal(ped, time * 1000);
     for (const event of events) {
       if (event.type === "jump") {
         // Not input of hers the hero hears: the page just moves.
@@ -401,6 +549,13 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
         if (event.seen && !glide && anim === target) anim = target = page;
         continue;
       }
+      if (event.type === "pedalUp") {
+        // Letting go is no new input: the foot was input up to here.
+        releasePedal(ped, time * 1000);
+        continue;
+      }
+      // HeroStage.pressGas: below the hero the pedal has gone with it, and a press there does nothing.
+      if (event.type === "pedalDown" && page > range + 1) continue;
       // SmoothScroll.gateInput: a finger moves the page only once past its slop
       // (gate.ts); a still one, trembling or not, is no input, and its moves
       // are cancelled, so the browser never takes the stroke.
@@ -429,7 +584,7 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
       result.inputs.push(time);
       byTouch = event.type === "touchmove" || event.type === "touchend";
       // Any other input she gives takes over from a queued line.
-      if (event.type !== "space" && event.type !== "touchend") queued = Number.NaN;
+      if (event.type !== "space" && event.type !== "touchend" && event.type !== "pedalDown") queued = Number.NaN;
       // SmoothScroll measures the room from the page as well as from Lenis' target.
       const room = maxScroll - Math.max(target, page);
       if (event.type === "wheel" || event.type === "touchmove") {
@@ -461,18 +616,24 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
           }
         }
       } else if (event.type === "space") {
-        forward(time, THROTTLE.keyStep);
-        const fr = frontier(walls, story);
-        const from = Math.max(anim / range, target / range);
-        const goal = lineStep(1, Math.min(from, fr), timeline, fr);
-        // A press on an unread line knocks on it (HeroStage.stepLine).
-        if (goal === null || goal < (lineStep(1, Math.min(from, fr), timeline, Number.POSITIVE_INFINITY) ?? 1)) {
-          pushedAt = time;
-          heldPx += 0.12 * vh;
+        stepLine(time);
+      } else if (event.type === "pedalDown") {
+        // HeroStage.pressGas: a press plays the next line (its knock is the arrival's); a regrip carries on.
+        const kind = pressPedal(ped, event.via ?? "touch", time * 1000);
+        if (kind === "step") {
+          pressBack = backwardAt;
+          if (Math.min(1, Math.min(anim, page) / range) >= 0.999) {
+            // At the end, the way on: a glide into the next section.
+            forward(time, THROTTLE.keyStep);
+            scrollTo(range + vh, { duration: 1.2 });
+          } else if (stepLine(time)) {
+            // The press's knock is the arrival's: resting on, the push does not knock again.
+            ped.contact = true;
+            ped.wall = frontierIndex(story);
+          }
+        } else if (kind === "regrip") {
+          pressBack = backwardAt;
         }
-        if (goal !== null) scrollTo(goal * range, { duration: 0.6 });
-        // At the title, the line plays once the name has formed (HeroStage.stepLine).
-        queued = frontierIndex(story) === 0 ? time : Number.NaN;
       } else if (event.type === "arrow") {
         forward(time, THROTTLE.arrowStep);
         const want = target + THROTTLE.arrowStep * vh;
@@ -482,6 +643,10 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
           heldPx += want - dest;
         }
         if (dest > target + 0.5) scrollTo(dest, { lerp: lambdaWheel });
+      } else if (event.type === "back") {
+        // HeroStage "up": a small step back, never above the hero.
+        backwardAt = time;
+        scrollTo(Math.max(0, target - THROTTLE.arrowStep * vh), { lerp: lambdaWheel });
       }
       targetAtStop = target / range;
     }
@@ -496,6 +661,56 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
         }
       }
       queued = Number.NaN;
+    }
+
+    // HeroStage's pedal drive, which SmoothScroll runs right before lenis.raf: her foot spools up,
+    // is input every frame, and once the press's glide has landed pushes the scroll on, trimmed at
+    // the wall and at the end of the hero; it knocks once on arrival and then rests there.
+    const level = stepPedal(ped, Math.min(dt, STORY.maxStep));
+    let foot = 0;
+    if (!ped.down) endHold = 0;
+    else {
+      // Going back suspends the push (pedal.ts suspendPedal); while it is, her foot is not input.
+      const back = backwardAt > pressBack;
+      if (back) pressBack = backwardAt;
+      const suspended = suspendPedal(ped, { back, sinceBack: time - pressBack });
+      // Resting at the very end of the drive is not input: the way on comes up, and after
+      // PEDAL.endHold the pedal still held goes on into the next section.
+      const atEnd = !suspended && glide === null && Math.min(anim, page) / range >= 0.999 && target >= range - 0.5;
+      endHold = atEnd ? endHold + dt : 0;
+      if (atEnd && endHold >= PEDAL.endHold) {
+        forward(time, THROTTLE.keyStep);
+        lastInput = time;
+        releasePedal(ped, time * 1000);
+        scrollTo(range + vh, { duration: 1.2 });
+      } else if (!suspended && !atEnd) {
+        lastInput = time;
+        foot = pedalRate(level);
+      }
+      if (!suspended && !atEnd && glide === null) {
+        // HeroStage reads the page before the push: a native move Lenis missed is where it pushes on from.
+        reading.page = page;
+        reading.lenis = anim;
+        reading.gliding = anim !== target;
+        if (lenisMissed(reading)) anim = target = page;
+        const pedalDt = Math.min(dt, STORY.maxStep);
+        const { dest, knock } = pedalPush(ped, {
+          target,
+          push: pedalSpeed(level) * vh * pedalDt,
+          max: Math.min(maxScroll, range),
+          dt: pedalDt,
+          wall: frontierIndex(story),
+        });
+        if (knock && maxScroll < range) {
+          pushedAt = time;
+          heldPx += ELASTIC.knock * vh;
+          result.knocks.push(time);
+        }
+        if (dest > target + 0.01) {
+          scrollTo(dest, { lerp: PEDAL.lerp * 60 });
+          targetAtStop = target / range;
+        }
+      }
     }
 
     // Lenis raf: while it animates, it writes the page.
@@ -554,7 +769,7 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
       glide = null;
     }
 
-    // HeroStage: the readout, the pace, the hold note, the marker and the prompt.
+    // HeroStage: the dash, the pace, the hold note, the marker and the prompt.
     const idle = time - lastInput;
     const started = !Number.isNaN(firstForward);
     const playing = playingBeat(walls, story, p, active);
@@ -566,7 +781,9 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
     input.sinceBackward = time - backwardAt;
     input.pictureSpeed = Math.abs(p - prevP) / dt;
     input.playing = playing !== null;
-    input.meterRate = meterRate(meter, time);
+    // Her foot drives the pace (and the strip), never the scolding: the note and Skip's patience read the meter.
+    const rate = meterRate(meter, time);
+    input.meterRate = Math.max(rate, foot);
     input.sinceEntered = time;
     // A push counts for the note above HOLD_NOTE.tail (a fling's momentum tails off under it).
     // Only a frame where the held input grew is a push: a thumb resting on the glass is not.
@@ -575,7 +792,24 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
     input.held = heldPx / vh;
     input.touch = touching || byTouch;
     heldPx = 0;
-    input.unreadCard = playing === "card" ? active : -1;
+    const unreadCard = playing === "card";
+    const k = frontierIndex(story);
+    // Skip's patience (HeroStage): her demand at full throttle, held at a wall, offers "In a hurry?".
+    fight = fightLevel(fight, pushingHard({ demand: paceFor(rate), holding: time - pushedAt < 0.3, wall: k }), dt);
+    const hurry = fight >= FIGHT.expandAt;
+    if (hurry) fight = 0;
+    if (unreadCard) {
+      limitWall = k;
+    } else if (limitWall >= 0 && story.done[limitWall]) {
+      result.releases.push({ time, wall: limitWall });
+      limitWall = -1;
+      clearUntil = time + DASH.clearHold;
+    }
+    const clearing = time < clearUntil;
+    // The gate held a push of hers in the last 300 ms (HeroStage HOLDING_MS).
+    const limiter = limiterState({ unreadCard, holding: time - pushedAt < 0.3, sinceInput: idle });
+    input.unreadCard = unreadCard ? active : -1;
+    input.limited = unreadCard && !clearing;
     stepFeedback(feedback, input, dt);
     if (story.done[0] && Number.isNaN(titleDoneAt)) titleDoneAt = time;
     const turn = feedback.mode === "waiting";
@@ -599,7 +833,6 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
         if (o > 0) result.onScreen[i] += dt;
       });
     }
-    const k = frontierIndex(story);
     if (active >= 0 && k >= 0 && cardWall(walls, active) > k) result.earlyCards += 1;
     if (Number.isFinite(nextFrontier)) {
       if (nextFrontier < prevFrontier - 1e-12) result.frontierBackwards += 1;
@@ -635,7 +868,12 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
       opacity: [...story.opacity],
       mode: feedback.mode,
       pace: feedback.pace,
+      show: dashShow({ p, started, mode: feedback.mode, limiter, clearing }),
+      limiter,
+      limited: input.limited,
+      clearing,
       waitingFor: feedback.waitingFor,
+      rhythm: feedback.rhythm,
       holdNote: feedback.hold.visible,
       holdSpan: feedback.hold.span,
       holdHeld: feedback.hold.held,
@@ -647,6 +885,12 @@ export function simulate(lines: string[][], source: Source, options: SimOptions 
       playing,
       idle,
       title: (1 - Math.min(1, p / STORY.titleOut)) * (1 - titleSettle),
+      pedalDown: ped.down,
+      pedalLevel: ped.level,
+      pedalContact: ped.contact,
+      pedalSuspended: ped.suspended,
+      fight,
+      hurry,
     });
     prevP = p;
     prevActive = active;

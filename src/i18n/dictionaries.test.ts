@@ -13,8 +13,11 @@ const CAPS: [RegExp, number][] = [
   [/^intro\.keepGoing/, 30],
   [/^intro\.hold$/, 32],
   [/^intro\.next/, 12],
-  [/^intro\.end$/, 16],
+  [/^intro\.end/, 16],
   [/^osd\./, 9],
+  // The pedal's name and its tag beside it on a long wait.
+  [/^pedal\.label$/, 20],
+  [/^pedal\.tag$/, 8],
   [/^skipLabel$/, 16],
   [/^skipHurry$/, 12],
   // Under the name: two lines at most on a 320 px phone.
@@ -42,6 +45,13 @@ describe("hero UI copy", () => {
   it("has the same intro and transport keys in both languages", () => {
     expect(Object.keys(es.hero.intro).sort()).toEqual(Object.keys(en.hero.intro).sort());
     expect(Object.keys(es.hero.osd).sort()).toEqual(Object.keys(en.hero.osd).sort());
+    expect(Object.keys(es.hero.pedal).sort()).toEqual(Object.keys(en.hero.pedal).sort());
+  });
+
+  it("names the dash's limiter and its release, and asks with her gesture instead of a WAITING word", () => {
+    for (const hero of [en.hero, es.hero]) {
+      expect(Object.keys(hero.osd).sort()).toEqual(["clear", "drive", "floored", "limiter", "reverse", "unit"]);
+    }
   });
 
   it("has the same radio keys in both languages, and a callout short enough for its tag", () => {
@@ -58,6 +68,7 @@ describe("hero UI copy", () => {
       const copy = flatten({
         intro: hero.intro,
         osd: hero.osd,
+        pedal: hero.pedal,
         skipLabel: hero.skipLabel,
         skipHurry: hero.skipHurry,
         tagline: hero.tagline,
@@ -75,6 +86,20 @@ describe("hero UI copy", () => {
 
     it(`${locale}: Skip's accessible name contains its visible label`, () => {
       expect(hero.skipLabel.toLowerCase()).toContain(hero.skip.toLowerCase());
+    });
+
+    it(`${locale}: the pedal's accessible name starts with the word its tag shows, and its prompts name it`, () => {
+      expect(hero.pedal.label.toLowerCase().startsWith(hero.pedal.tag.toLowerCase())).toBe(true);
+      expect(hero.intro.nextPedal).toBe(hero.pedal.tag);
+      // Phones learn both ways to drive on the title; after that every prompt speaks her last input.
+      expect(hero.intro.hintTouch).toMatch(/pedal/i);
+      expect(hero.intro.hintKey).toMatch(/\bW\b/);
+    });
+
+    it(`${locale}: the hero never sounds like a video player`, () => {
+      const words = /\b(play|plays|pause|rewind|fast.?forward|reproduc\w*|pausa|rebobin\w*)\b/i;
+      const copy = flatten({ intro: hero.intro, osd: hero.osd, pedal: hero.pedal, skip: hero.skip, skipHurry: hero.skipHurry });
+      for (const [key, text] of Object.entries(copy)) expect(text, key).not.toMatch(words);
     });
   }
 });

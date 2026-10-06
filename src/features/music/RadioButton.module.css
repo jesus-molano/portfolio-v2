@@ -102,6 +102,7 @@
   line-height: 1.5;
   text-transform: uppercase;
   color: var(--va-color-cream);
+  text-wrap: balance;
   pointer-events: none;
   opacity: 0;
   transform: translateY(-4px);
@@ -113,6 +114,30 @@
 @media (max-width: 639px) {
   .callout {
     top: 5.25rem;
+  }
+}
+
+/*
+ * Tall screens (phones, portrait tablets): the hero's dash takes the sky
+ * under the page controls (Hero.module.css: 5rem below the safe top, 5em
+ * of --va-pod-fs tall, 15 px, 14 px under 340 px wide, 16 px from 400 px),
+ * so the callout hangs below it instead of hiding it.
+ */
+@media (max-aspect-ratio: 1/1) {
+  .callout {
+    top: calc(max(1rem, env(safe-area-inset-top)) + 5rem + 5 * 15px + 0.75rem);
+  }
+}
+
+@media (max-aspect-ratio: 1/1) and (max-width: 339px) {
+  .callout {
+    top: calc(max(1rem, env(safe-area-inset-top)) + 5rem + 5 * 14px + 0.75rem);
+  }
+}
+
+@media (max-aspect-ratio: 1/1) and (min-width: 400px) {
+  .callout {
+    top: calc(max(1rem, env(safe-area-inset-top)) + 5rem + 5 * 16px + 0.75rem);
   }
 }
 

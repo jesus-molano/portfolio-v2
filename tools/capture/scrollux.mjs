@@ -10,7 +10,8 @@
  *     [--webgl]
  *
  * Checks: swipe (a thumb resting before a swipe never opens the radio; a
- * still long-press does), arrows (one arrow per input type everywhere),
+ * still long-press does), arrows (one arrow per input type everywhere, the
+ * dash's mouse for the wheel),
  * signals (never WAITING while a line plays or the note scolds; the note
  * only under sustained pushing, gone when she stops), rewind (the title
  * hint comes back, centred), wait (the long wait brakes and escalates),
@@ -19,9 +20,10 @@
  * reduced (reduced motion switched on mid-film keeps her place, and a
  * round trip without scrolling comes back exactly), focus (Tab right after
  * a click keeps Space and lands on THE USUAL SUSPECTS; the radio clicked
- * open and closed with Esc does not), pills (no caption line without text
- * at phone widths), calm (a notch every 2.5 or 3.5 s: a steady car, and nothing
- * asks for more next to YOU DRIVE; the cue never shares the band with a
+ * open and closed with Esc does not), blocks (every card one block,
+ * balanced, fitted to its lines, its marker outside, 320 to 1440 px wide),
+ * calm (a notch every 2.5 or 3.5 s: a steady car, and nothing asks for more
+ * next to YOU DRIVE; the cue never shares the band with a
  * card), title (a tap while the name forms is answered and plays the
  * first line; a short swipe leaves no ghost of the title), titlewait (hard
  * input while the name forms says the name is still arriving, then "keep
@@ -37,7 +39,18 @@
  * and Home in the hero), navigate (the STATS booth, a STATS tab, back to top and a deep
  * link land with Lenis, the hero's walls open past it, and her next notch
  * or swipe goes on from there, even before the next frame), loader (no
- * "press any key" on a phone).
+ * "press any key" on a phone), pedal (a held
+ * pedal drives within a frame of its press, under a thumb with no radio
+ * ring, menu or selection, beside a second finger swiping without a jump,
+ * under the mouse slid off it, under W held with its autorepeat; a tap of
+ * Space plays one line and a hold drives on; blur, a lost keyup and the
+ * radio let go; W held through a tap of S drives on; at the end it
+ * stands over the night, a press glides into THE USUAL SUSPECTS (focus
+ * there, Space scrolls on) and, held, the way on comes up and it goes on
+ * there; under
+ * reduced motion there is none), pedallayout (the pedal and its hit area,
+ * Skip expanded, the longest card, the dash, the hint and the radio button
+ * never overlap, 360 x 640 to 1440 x 900).
  *
  * WebGL is off by default: the checks read the DOM and its timing, and a
  * machine without a GPU renders the scene at a few frames a second
@@ -264,8 +277,20 @@ const CHECKS = {
     await s.page.evaluate(() => window.__vaJump(0.97));
     await sleep(1500);
     const end = await shown("[data-end-cue]");
-    const all = [hint, marker, readout, end];
-    report(`${device} ${lang} arrows: the hint, the marker, WAITING and the end cue all point ${want}`, all.every((g) => g?.length === 1 && g[0] === want), { hint, marker, readout, end });
+    const all = [marker, end];
+    // The dash asks with the same gesture: the arrow for a finger, the mouse's wheel for the wheel.
+    const dashWant = device === "mobile" ? "up" : "wheel";
+    // The title's ask on a phone names the pedal first ("Hold the pedal or swipe up"): the pedal's glyph.
+    const hintWant = device === "mobile" ? "pedal" : want;
+    report(
+      `${device} ${lang} arrows: the marker and the end cue point ${want}, the hint shows ${hintWant}, the dash asks with ${dashWant}`,
+      all.every((g) => g?.length === 1 && g[0] === want) &&
+        hint?.length === 1 &&
+        hint[0] === hintWant &&
+        readout?.length === 1 &&
+        readout[0] === dashWant,
+      { hint, marker, readout, end },
+    );
     await s.close();
   },
 
@@ -574,47 +599,55 @@ const CHECKS = {
     await r.close();
   },
 
-  async pills(device, lang) {
+  async blocks(device, lang) {
     if (device !== "mobile") return;
     const s = await session(device, lang, { enter: false });
-    let empty = 0;
-    for (const width of [320, 360, 375, 390, 414]) {
-      await s.page.setViewportSize({ width, height: 844 });
-      await sleep(200);
-      empty += await s.page.evaluate(() => {
-        let count = 0;
-        const stage = document.querySelector("[data-sticky]").parentElement;
-        for (const input of ["touch", "wheel"]) {
-          stage.setAttribute("data-input", input);
-          for (const ready of [false, true]) {
-            for (const card of document.querySelectorAll("[data-card]")) {
-              card.style.opacity = "1";
-              if (ready) card.setAttribute("data-ready", "1");
-              else card.removeAttribute("data-ready");
-              card.toggleAttribute("data-cue-label", ready);
-              const text = card.querySelector("[class*='subtitleText']");
-              const centres = [];
-              const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT);
-              for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-                if (getComputedStyle(n.parentElement).display === "none") continue;
-                for (let k = 0; k < n.length; k += 1) {
-                  if (!n.data[k].trim()) continue;
-                  const range = document.createRange();
-                  range.setStart(n, k);
-                  range.setEnd(n, k + 1);
-                  const r = range.getBoundingClientRect();
-                  if (r.height > 0) centres.push((r.top + r.bottom) / 2);
-                }
+    const bad = [];
+    for (const width of [320, 360, 375, 390, 414, 768, 1024, 1440]) {
+      await s.page.setViewportSize({ width, height: width > 800 ? 900 : 844 });
+      // The blocks are fitted to their lines when the viewport changes.
+      await sleep(400);
+      bad.push(
+        ...(await s.page.evaluate((width) => {
+          const out = [];
+          for (const card of document.querySelectorAll("[data-card]")) {
+            card.style.opacity = "1";
+            const text = card.querySelector("[data-card-text]");
+            const boxes = text.getClientRects().length;
+            // Lines from the words' own boxes: the last line never holds a word alone (balanced).
+            const lines = [];
+            const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT);
+            for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+              for (const match of n.data.matchAll(/\S+/g)) {
+                const range = document.createRange();
+                range.setStart(n, match.index);
+                range.setEnd(n, match.index + match[0].length);
+                const r = range.getBoundingClientRect();
+                const mid = (r.top + r.bottom) / 2;
+                const line = lines.find((l) => Math.abs(l.mid - mid) < 4);
+                if (line) {
+                  line.words += 1;
+                  line.left = Math.min(line.left, r.left);
+                  line.right = Math.max(line.right, r.right);
+                } else lines.push({ mid, words: 1, left: r.left, right: r.right });
               }
-              for (const f of text.getClientRects()) if (!centres.some((c) => c >= f.top && c <= f.bottom)) count += 1;
-              card.style.opacity = "";
             }
+            const widest = Math.max(...lines.map((l) => l.right - l.left));
+            const style = getComputedStyle(text);
+            const content = text.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            const words = lines.reduce((n, l) => n + l.words, 0);
+            const orphan = lines.length > 1 && words > 2 && lines.at(-1).words < 2;
+            // The block hugs its widest line (a few px for rounding), and the marker is never in the text.
+            const loose = content - widest > 4;
+            const inside = text.contains(card.querySelector("[class*='cueTail']"));
+            if (boxes !== 1 || orphan || loose || inside) out.push({ width, card: text.textContent.slice(0, 30), boxes, orphan, slack: Math.round(content - widest), inside });
+            card.style.opacity = "";
           }
-        }
-        return count;
-      });
+          return out;
+        }, width)),
+      );
     }
-    report(`${device} ${lang} pills: no caption line without text, 320 to 414 px wide`, empty === 0, { empty });
+    report(`${device} ${lang} blocks: every card one block, balanced, fitted to its lines, its marker outside, 320 to 1440 px wide`, bad.length === 0, bad.slice(0, 4));
     await s.close();
   },
 
@@ -786,11 +819,11 @@ const CHECKS = {
       const first = window.__frames.find((f) => f.callout);
       return first ? Math.round(first.t - window.__frames[0].t) : null;
     });
-    // Up, it hangs clear of the HUD.
+    // Up, it hangs clear of the HUD and of the dash, which stays up beside it.
     for (let i = 0; i < 12 && !(await s.page.evaluate(() => Number(getComputedStyle(document.querySelector("[class*='callout']")).opacity) > 0.9)); i += 1) await sleep(250);
     const hits = await s.page.evaluate(() => {
       const c = document.querySelector("[class*='callout']").getBoundingClientRect();
-      return [...document.querySelectorAll("[data-hud], [class*='reel']")].filter((e) => {
+      return [...document.querySelectorAll("[data-hud], [class*='reel'], [data-osd][data-vis='on']")].filter((e) => {
         const r = e.getBoundingClientRect();
         return r.width > 0 && !(r.right <= c.left || r.left >= c.right || r.bottom <= c.top || r.top >= c.bottom);
       }).length;
@@ -1097,6 +1130,13 @@ const CHECKS = {
     const H = DEVICES[device].viewport.height;
     const notch = (s) => (device === "desktop" ? s.page.mouse.wheel(0, 100) : stroke(s.cdp, { dy: 80, ms: 90, y0: H * 0.7, x: W / 2 }));
     const top = (s, id) => s.page.evaluate((id) => Math.round(document.getElementById(id).getBoundingClientRect().top), id);
+    /** Where an in-page link lands a section's top (lib/navigate.ts landingY): the page controls' scroll-padding plus its own scroll-margin (a chapter card above it). */
+    const rest = (s, id) =>
+      s.page.evaluate((id) => {
+        const padding = Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+        const margin = Number.parseFloat(getComputedStyle(document.getElementById(id)).scrollMarginTop) || 0;
+        return Math.round(padding + margin);
+      }, id);
     const state = (s) =>
       s.page.evaluate(() => {
         const f = window.__vaProbe.at(-1);
@@ -1125,13 +1165,13 @@ const CHECKS = {
     if (device === "desktop") await booth.click();
     else await booth.tap();
     await sleep(900);
-    const landed = { projects: await top(s, "projects"), ...(await state(s)) };
+    const landed = { projects: await top(s, "projects"), rest: await rest(s, "projects"), ...(await state(s)) };
     await notch(s);
     await sleep(1500);
     const after = { projects: await top(s, "projects"), ...(await state(s)) };
     report(
       `${device} ${lang} navigate: the booth lands on the cinema with the walls open, and her next ${device === "desktop" ? "notch" : "swipe"} goes on from there`,
-      Math.abs(landed.projects - 64) <= 2 &&
+      Math.abs(landed.projects - landed.rest) <= 2 &&
         landed.frontier === null &&
         landed.focus === "projects" &&
         after.y >= landed.y &&
@@ -1221,6 +1261,7 @@ const CHECKS = {
     await sleep(1200);
     const deep = {
       contact: await top(d, "contact"),
+      rest: await rest(d, "contact"),
       limit: await d.page.evaluate(() => document.documentElement.scrollHeight - innerHeight),
       ...(await state(d)),
     };
@@ -1229,15 +1270,394 @@ const CHECKS = {
     const deepAfter = { contact: await top(d, "contact"), ...(await state(d)) };
     report(
       `${device} ${lang} navigate: /${lang}#contact lands on the contact with the walls open, and her next ${device === "desktop" ? "notch" : "swipe"} stays there`,
-      // At its top, or as near as the foot of the page allows.
+      // Where a link lands it (its scroll-margin clears the credits' fade), or as near as the foot of the page allows.
       deep.frontier === null &&
         deep.focus === "contact" &&
-        (deep.contact <= 64 || deep.y >= deep.limit - 1) &&
+        (Math.abs(deep.contact - deep.rest) <= 2 || deep.y >= deep.limit - 1) &&
         deepAfter.y >= deep.y - 1 &&
         deepAfter.contact > -H,
       { deep, deepAfter },
     );
     await d.close();
+  },
+
+  async pedal(device, lang) {
+    const box = (page) =>
+      page.evaluate(() => {
+        const r = document.querySelector("[data-pedal]").getBoundingClientRect();
+        // The plate's middle: the button's hit area reaches 1.25em left and 1em up of it.
+        return { x: r.right - r.width * 0.4, y: r.top + r.height * 0.5 };
+      });
+    const frameOf = (page) =>
+      page.evaluate(() => {
+        const f = window.__vaProbe.at(-1);
+        return f && { p: f.p, down: f.pedalDown, target: f.lenisTarget, active: f.active, page: f.page, max: f.maxScroll, show: f.show };
+      });
+    /** Frames from the press (`pointerdown`) to the first probe frame that answers it: the pedal down and the strip's flare. */
+    const answer = (page) =>
+      page.evaluate(() => {
+        const mark = window.__downAt;
+        const after = window.__vaProbe.filter((f) => f.t >= mark - 1);
+        const i = after.findIndex((f) => f.pedalDown && f.kick >= 0.95);
+        return i < 0 ? null : { frames: i + 1, ms: Math.round(after[i].t - mark) };
+      });
+    const armDown = (page) =>
+      page.evaluate(() => {
+        window.__downAt = Infinity;
+        window.addEventListener("pointerdown", (e) => (window.__downAt = Math.min(window.__downAt, e.timeStamp)), { capture: true, once: true });
+      });
+
+    if (device === "mobile") {
+      // A thumb held on the pedal: it drives at once, no radio ring, no menu, no selection.
+      const s = await session(device, lang);
+      await sleep(1800);
+      await s.page.evaluate(() => window.__vaJump(0.2));
+      await sleep(2500);
+      const at = await box(s.page);
+      await armDown(s.page);
+      await s.page.evaluate(() => (window.__vaProbe.length = 0));
+      await s.cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: at.x, y: at.y, id: 0 }] });
+      await sleep(1200);
+      const menu = await s.page.evaluate(() => {
+        const el = document.querySelector("[data-pedal]");
+        const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+        el.dispatchEvent(event);
+        return event.defaultPrevented;
+      });
+      const held = await frameOf(s.page);
+      const ring = await s.page.evaluate(() => document.querySelector("[data-armed='true']") !== null);
+      const selection = await s.page.evaluate(() => window.getSelection()?.isCollapsed ?? true);
+      const fast = await answer(s.page);
+      // A second finger swipes the picture while the thumb wiggles on the pedal: nothing jumps back.
+      await s.page.evaluate(() => (window.__vaProbe.length = 0));
+      for (let i = 0; i < 14; i += 1) {
+        const wiggle = i % 2 ? 3 : -3;
+        const second = i === 0 ? "touchStart" : "touchMove";
+        await s.cdp.send("Input.dispatchTouchEvent", {
+          type: second,
+          touchPoints: [
+            { x: at.x + wiggle, y: at.y, id: 0 },
+            { x: 150, y: 600 - i * 24, id: 1 },
+          ],
+        });
+        await sleep(16);
+      }
+      await sleep(300);
+      const twoFingers = await s.page.evaluate(() => {
+        let drops = 0;
+        let back = 0;
+        const frames = window.__vaProbe;
+        for (let i = 1; i < frames.length; i += 1) {
+          if (frames[i].lenisTarget < frames[i - 1].lenisTarget - 0.5) drops += 1;
+          if (frames[i].p < frames[i - 1].p - 1e-6) back += 1;
+        }
+        return { drops, back, frames: frames.length, down: frames.at(-1)?.pedalDown };
+      });
+      const past = await s.page.evaluate(() => window.__vaProbe.filter((f) => f.maxScroll !== null && f.page > f.maxScroll + 4).length);
+      await s.cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await sleep(400);
+      const after = await frameOf(s.page);
+      await sleep(300);
+      const settled = await frameOf(s.page);
+      report(`${device} ${lang} pedal: a thumb on it drives within a frame, never arms the radio, no menu, no selection`,
+        fast !== null && fast.frames <= 2 && held.down && !ring && menu && selection,
+        { fast, down: held.down, ring, menu, selection });
+      report(`${device} ${lang} pedal: a second finger swiping beside the thumb never jumps the picture back`,
+        twoFingers.drops === 0 && twoFingers.back === 0 && twoFingers.down && past === 0, { ...twoFingers, past });
+      report(`${device} ${lang} pedal: lifting the thumb lets go, and the picture stops`,
+        !after.down && Math.abs(settled.p - after.p) * 5 * 844 < 3, { after: after.p, settled: settled.p });
+      // A tap at the very end glides on into THE USUAL SUSPECTS.
+      await s.page.evaluate(() => window.__vaJump(1));
+      await sleep(1200);
+      // The way on names the pedal there, so the pedal stands over the fade to night, not under it.
+      const night = await s.page.evaluate(() => {
+        const pedal = document.querySelector("[data-pedal]");
+        const fade = document.querySelector("[data-fade]");
+        const z = (el) => Number(getComputedStyle(el).zIndex) || 0;
+        const later = (fade.compareDocumentPosition(pedal) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+        return {
+          fade: Number(getComputedStyle(fade).opacity),
+          shown: pedal.dataset.vis === "shown" && getComputedStyle(pedal).visibility === "visible",
+          above: z(pedal) > z(fade) || (z(pedal) === z(fade) && later),
+        };
+      });
+      report(`${device} ${lang} pedal: at the end of the drive it stands over the night, where the way on names it`,
+        night.fade > 0.9 && night.shown && night.above, night);
+      const end = await box(s.page);
+      await s.cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: end.x, y: end.y }] });
+      await sleep(90);
+      await s.cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await sleep(2200);
+      const cats = await s.page.evaluate(() => Math.round(document.getElementById("suspects").getBoundingClientRect().top));
+      const gone = await s.page.evaluate(() => document.querySelector("[data-pedal]").dataset.vis);
+      report(`${device} ${lang} pedal: a press at the end of the drive glides into THE USUAL SUSPECTS, and the pedal goes`,
+        Math.abs(cats) <= 4 && gone === "hidden", { cats, gone });
+      // Held to the end: the way on comes up under her thumb, then the pedal still held goes on.
+      await s.page.evaluate(() => window.__vaJump(0.97));
+      await sleep(800);
+      const near = await box(s.page);
+      await s.cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: near.x, y: near.y, id: 0 }] });
+      const log = [];
+      const t0 = Date.now();
+      while (Date.now() - t0 < 4500) {
+        log.push(
+          await s.page.evaluate(() => {
+            const f = window.__vaProbe.at(-1);
+            const cue = document.querySelector("[data-end-cue]");
+            return {
+              t: performance.now(),
+              p: f.p,
+              down: f.pedalDown,
+              cue: cue.hasAttribute("data-visible"),
+              cats: Math.round(document.getElementById("suspects").getBoundingClientRect().top),
+            };
+          }),
+        );
+        await sleep(100);
+      }
+      await s.cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      const arrived = log.find((f) => f.p >= 0.999);
+      const cue = log.find((f) => f.cue && f.down);
+      report(`${device} ${lang} pedal: held to the end, the way on comes up under her thumb, then she goes on into THE USUAL SUSPECTS`,
+        Boolean(arrived && cue) && cue.t - arrived.t < 1200 && Math.abs(log.at(-1).cats) <= 4,
+        { arrived: Boolean(arrived), cueAfter: cue && arrived ? Math.round(cue.t - arrived.t) : null, cats: log.at(-1).cats });
+      await s.close();
+      const r = await session(device, lang, { reducedMotion: "reduce" });
+      await sleep(1500);
+      const shownStill = await r.page.evaluate(() => getComputedStyle(document.querySelector("[data-pedal]")).display !== "none");
+      report(`${device} ${lang} pedal: there is no pedal under reduced motion`, !shownStill, {});
+      await r.close();
+      return;
+    }
+
+    // Desktop: the mouse held and slid off, W held with its autorepeat, Space tapped and held.
+    const s = await session(device, lang);
+    await sleep(1800);
+    await s.page.evaluate(() => window.__vaJump(0.2));
+    await sleep(2500);
+    const at = await box(s.page);
+    await s.page.mouse.move(at.x, at.y);
+    await armDown(s.page);
+    await s.page.evaluate(() => (window.__vaProbe.length = 0));
+    await s.page.mouse.down();
+    await sleep(300);
+    await s.page.mouse.move(700, 300, { steps: 5 });
+    await sleep(900);
+    const slid = await frameOf(s.page);
+    const fast = await answer(s.page);
+    const focused = await s.page.evaluate(() => document.activeElement?.hasAttribute("data-pedal") ?? false);
+    await s.page.mouse.up();
+    await sleep(250);
+    const up = await frameOf(s.page);
+    report(`${device} ${lang} pedal: the mouse held on it drives within a frame, stays down slid off it, takes no focus`,
+      fast !== null && fast.frames <= 2 && slid.down && !focused, { fast, slid: slid.down, focused });
+    report(`${device} ${lang} pedal: the mouse up lets go`, !up.down, {});
+
+    // W held, with the autorepeat a held key sends: it drives; a lost keyup is caught.
+    const holdW = async (ms, { up = true } = {}) => {
+      await s.page.keyboard.down("w");
+      const until = Date.now() + ms;
+      while (Date.now() < until) {
+        await sleep(33);
+        await s.page.keyboard.down("w");
+      }
+      if (up) await s.page.keyboard.up("w");
+    };
+    await s.page.evaluate(() => window.__vaJump(0.2));
+    await sleep(1500);
+    const w0 = await frameOf(s.page);
+    await holdW(2500, { up: false });
+    const w1 = await frameOf(s.page);
+    // The keyup never comes: the autorepeat stops and within 0.7 s the pedal lets go.
+    await sleep(700);
+    const lost = await frameOf(s.page);
+    await s.page.keyboard.up("w");
+    report(`${device} ${lang} pedal: W held drives on through its autorepeat, and a lost keyup is caught within 0.7 s`,
+      w1.down && w1.p > w0.p + 0.01 && !lost.down, { from: w0.p, to: w1.p, lostDown: lost.down });
+    // A window blur lets go.
+    await s.page.keyboard.down("w");
+    await sleep(400);
+    const beforeBlur = await frameOf(s.page);
+    await s.page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    await sleep(100);
+    const blurred = await frameOf(s.page);
+    await s.page.keyboard.up("w");
+    report(`${device} ${lang} pedal: a window blur lets go of a held W`, beforeBlur.down && !blurred.down, {});
+    // Q while W is held: the radio opens and the pedal lets go.
+    await sleep(600);
+    await s.page.keyboard.down("w");
+    await sleep(400);
+    await s.page.keyboard.down("q");
+    await sleep(300);
+    const radio = await frameOf(s.page);
+    const opened = await wheelOpen(s.page);
+    await s.page.keyboard.up("q");
+    await s.page.keyboard.up("w");
+    await sleep(200);
+    await s.page.keyboard.press("Escape");
+    await sleep(600);
+    report(`${device} ${lang} pedal: Q while W is held opens the radio and lets go of the pedal`, opened && !radio.down, { opened, down: radio.down });
+
+    // Space: a tap plays exactly the next line; held, it drives on after it.
+    const fromReadLine = async () => {
+      await s.page.evaluate(() => window.__vaJump(0.2));
+      await sleep(400);
+      await s.page.mouse.wheel(0, 100);
+      for (let i = 0; i < 40; i += 1) {
+        const f = await s.page.evaluate(() => window.__vaProbe.at(-1));
+        if (f.ready) break;
+        await sleep(250);
+      }
+      return frameOf(s.page);
+    };
+    const t0 = await fromReadLine();
+    await s.page.keyboard.press("Space");
+    await sleep(2500);
+    const tapped = await frameOf(s.page);
+    const h0 = await fromReadLine();
+    await s.page.keyboard.down("Space");
+    const until = Date.now() + 2500;
+    while (Date.now() < until) {
+      await sleep(33);
+      await s.page.keyboard.down("Space");
+    }
+    const holding = await frameOf(s.page);
+    await s.page.keyboard.up("Space");
+    report(`${device} ${lang} pedal: a tap of Space plays exactly the next line, a hold drives on after it`,
+      tapped.active === t0.active + 1 && !tapped.down && holding.down && holding.p > h0.p + (tapped.p - t0.p) + 0.003,
+      { tap: [t0.active, tapped.active, +(tapped.p - t0.p).toFixed(4)], hold: +(holding.p - h0.p).toFixed(4) });
+
+    // W held through a tap of S: back, then on again; never FLAT OUT over a still picture.
+    await s.page.evaluate(() => window.__vaJump(1));
+    await sleep(200);
+    await s.page.evaluate(() => window.__vaJump(0.4));
+    await sleep(800);
+    const series = [];
+    await s.page.keyboard.down("w");
+    const w0t = Date.now();
+    let tappedS = false;
+    while (Date.now() - w0t < 4000) {
+      await s.page.keyboard.down("w");
+      if (!tappedS && Date.now() - w0t > 1000) {
+        await s.page.keyboard.press("s");
+        tappedS = true;
+      }
+      series.push({ t: Date.now() - w0t, ...(await s.page.evaluate(() => { const f = window.__vaProbe.at(-1); return { p: f.p, suspended: f.pedalSuspended, show: f.show }; })) });
+      await sleep(60);
+    }
+    await s.page.keyboard.up("w");
+    const atS = series.find((f) => f.t > 1000);
+    const low = Math.min(...series.filter((f) => f.t > 1000 && f.t < 2000).map((f) => f.p));
+    const stillFloored = series.filter((f, i) => i > 0 && f.suspended && f.show === "floored" && Math.abs(f.p - series[i - 1].p) < 1e-5).length;
+    report(`${device} ${lang} pedal: W held through a tap of S goes back, then drives on, never FLAT OUT over a still picture`,
+      low < atS.p && series.at(-1).p > atS.p + 0.01 && stillFloored === 0, { atS: atS.p, low, end: series.at(-1).p, stillFloored });
+
+    // Space on the focused pedal at the end: the glide lands on THE USUAL SUSPECTS with the focus there, and Space scrolls on.
+    await s.page.evaluate(() => window.__vaJump(1));
+    await sleep(1200);
+    await s.page.evaluate(() => document.querySelector("[data-pedal]").focus());
+    await s.page.keyboard.press("Space");
+    await sleep(1800);
+    const landed = await s.page.evaluate(() => ({ y: scrollY, cats: Math.round(document.getElementById("suspects").getBoundingClientRect().top), focus: document.activeElement?.id }));
+    await s.page.keyboard.press("Space");
+    await sleep(800);
+    const on = await s.page.evaluate(() => scrollY);
+    report(`${device} ${lang} pedal: Space on the focused pedal at the end lands on THE USUAL SUSPECTS with the focus, and Space scrolls on`,
+      Math.abs(landed.cats) <= 4 && landed.focus === "suspects" && on > landed.y + 100, { ...landed, on });
+    await s.close();
+  },
+
+  async pedallayout(device, lang) {
+    const SIZES =
+      device === "mobile"
+        ? [
+            ["360x640", { width: 360, height: 640 }],
+            ["390x844", { width: 390, height: 844 }],
+            ["430x932", { width: 430, height: 932 }],
+            ["844x390", { width: 844, height: 390 }],
+          ]
+        : [
+            ["1024x768", { width: 1024, height: 768 }],
+            ["1440x900", { width: 1440, height: 900 }],
+          ];
+    for (const [name, viewport] of SIZES) {
+      const touch = device === "mobile";
+      const context = await browser.newContext({ viewport, deviceScaleFactor: 1, isMobile: touch, hasTouch: touch });
+      await context.addInitScript(() => {
+        try {
+          localStorage.setItem("va-radio-hint", "seen");
+        } catch {}
+      });
+      const page = await context.newPage();
+      await page.goto(`${BASE}/${lang}`, { waitUntil: "load" });
+      await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+      await page.waitForSelector('[data-loader][data-phase="ready"], [data-loader][data-slow]', { timeout: 240_000 });
+      await page.locator('[data-loader] [data-enter="silent"]').click();
+      await page.waitForSelector("[data-loader]", { state: "detached", timeout: 20_000 });
+      await page.evaluate(() => (window.__vaProbe = []));
+      await sleep(1500);
+      const boxes = async () =>
+        page.evaluate(() => {
+          const box = (el, pad) => {
+            if (!el) return null;
+            const st = getComputedStyle(el);
+            if (st.display === "none" || st.visibility === "hidden" || Number(st.opacity) < 0.05) return null;
+            const r = el.getBoundingClientRect();
+            if (!r.width || !r.height) return null;
+            return { x: Math.round(r.left), y: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom), pad };
+          };
+          const card = document.querySelector("[data-card][data-active]");
+          return {
+            pedal: box(document.querySelector("[data-pedal] [class*='pedalBody']")),
+            hit: box(document.querySelector("[data-pedal]")),
+            skip: box(document.querySelector("[data-skip] button")),
+            block: box(card?.querySelector("[data-card-text]")),
+            marker: box(card?.querySelector("[class*='cueTail']")),
+            dash: box(document.querySelector("[data-osd]")),
+            hint: box(document.querySelector("[data-hint] [class*='hintBox']")),
+            radio: box(document.querySelector("header button, [class*='wrap'] button")),
+          };
+        });
+      // The title, with its hint up and Skip offering itself.
+      await page.evaluate(() => document.querySelector("[data-skip]")?.setAttribute("data-expanded", ""));
+      await sleep(400);
+      const title = await boxes();
+      // The longest card, read, its marker labelled, Skip offering itself.
+      const longest = await page.evaluate(() => {
+        let best = { p: 0, len: 0 };
+        for (let p = 0.1; p < 0.93; p += 0.004) {
+          window.__vaJump(p);
+          const card = document.querySelector("[data-card][data-active]");
+          const len = card ? card.textContent.length : 0;
+          if (len > best.len) best = { p, len };
+        }
+        return best;
+      });
+      await page.evaluate((p) => window.__vaJump(p), longest.p);
+      for (let i = 0; i < 60 && !(await page.evaluate(() => window.__vaProbe.at(-1)?.ready)); i += 1) await sleep(250);
+      await page.evaluate(() => {
+        document.querySelector("[data-skip]")?.setAttribute("data-expanded", "");
+        document.querySelector("[data-card][data-active]")?.setAttribute("data-cue-label", "");
+      });
+      await sleep(500);
+      const card = await boxes();
+      const hit = (a, b) => a && b && a.x < b.r && b.x < a.r && a.y < b.b && b.y < a.b;
+      const clashes = [];
+      for (const [label, set, pairs] of [
+        ["title", title, [["hit", "skip"], ["pedal", "hint"], ["hit", "hint"], ["skip", "hint"], ["pedal", "dash"], ["pedal", "radio"]]],
+        [
+          "card",
+          card,
+          [["hit", "skip"], ["hit", "block"], ["hit", "marker"], ["pedal", "dash"], ["skip", "block"], ["skip", "marker"], ["pedal", "radio"], ["dash", "block"]],
+        ],
+      ]) {
+        for (const [a, b] of pairs) if (hit(set[a], set[b])) clashes.push(`${label}:${a}/${b}`);
+      }
+      const shown = title.pedal && card.pedal && card.block && card.marker && title.skip;
+      report(`${device} ${lang} pedallayout ${name}: the pedal, Skip, the card, its marker, the dash and the hint never overlap`,
+        clashes.length === 0 && Boolean(shown), { clashes, card, title: { pedal: title.pedal, hint: title.hint, skip: title.skip } });
+      await context.close();
+    }
   },
 
   async loader(device, lang) {

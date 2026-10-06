@@ -54,15 +54,25 @@ function markHintSeen() {
  * small callout says how to open the wheel, while the button glows: after
  * the hero's first line, in a quiet moment (a line playing, no prompt up,
  * so never two instructions at once), while the hero is on screen behind
- * it, below the hero's HUD so it never covers it. A tap or click on the
+ * it and its film is not over, below the hero's dash and camera readout
+ * so it never covers them (on tall screens the dash takes the sky under
+ * the page controls, and the callout hangs below it). A tap or click on the
  * callout opens the wheel too: on touch screens it says "tap here".
  */
 export function RadioButton({ dict }: Props) {
   const radio = useSyncExternalStore(subscribeRadio, getRadio, getServerRadio);
-  /** The hero has settled, asks her for nothing right now and is up behind the callout. */
+  /**
+   * The hero has settled, asks her for nothing right now, is up behind the
+   * callout and its film is not over: past it (Skip lands on THE USUAL
+   * SUSPECTS, a deep link, scrolling on) the callout would hang over the
+   * next section's chapter card.
+   */
   const calm = useSyncExternalStore(
     subscribeSceneLoading,
-    () => getSceneLoading().settled && getSceneLoading().quiet && getSceneLoading().onScreen,
+    () => {
+      const scene = getSceneLoading();
+      return scene.settled && scene.quiet && scene.onScreen && scene.onStage;
+    },
     () => false,
   );
   /** How long the callout has been up so far (ms), over its appearances. */

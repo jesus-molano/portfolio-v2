@@ -1,0 +1,286 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import en from "@/i18n/dictionaries/en.json";
+import es from "@/i18n/dictionaries/es.json";
+import {
+  DASH,
+  DASH_MEDIA,
+  dashLayout,
+  dashShow,
+  dashVisibility,
+  easeRevs,
+  limiterState,
+  litLeds,
+  speedCells,
+  statusEm,
+  stripThrottle,
+  throttleOf,
+} from "./dash";
+import { PEDAL } from "./pedal";
+import { STORY } from "./story";
+import { feedMeter, type Meter, meterRate, THROTTLE } from "./throttle";
+import { PROMPT, type TransportMode } from "./transport";
+
+const FRAME = 1 / 60;
+
+/** The lights a single input lights, frame by frame from the next one, as HeroStage eases them. */
+function stripAfter(viewports: number, frames: number): number[] {
+  const meter: Meter = { rate: 0, at: 0 };
+  feedMeter(meter, viewports, 0);
+  let revs = 0;
+  const lit: number[] = [];
+  for (let i = 1; i <= frames; i += 1) {
+    revs = easeRevs(revs, throttleOf(meterRate(meter, i * FRAME)), FRAME);
+    lit.push(litLeds(revs, false));
+  }
+  return lit;
+}
+
+describe("throttleOf", () => {
+  it("is 0 at rest, grows with her input and stays under 1", () => {
+    expect(throttleOf(0)).toBe(0);
+    expect(throttleOf(-2)).toBe(0);
+    let previous = 0;
+    for (let rate = 0.05; rate < 20; rate *= 1.4) {
+      const value = throttleOf(rate);
+      expect(value).toBeGreaterThan(previous);
+      expect(value).toBeLessThan(1);
+      previous = value;
+    }
+  });
+
+  it("lights the strip as far as each real input asks", () => {
+    const lights = (viewports: number) => litLeds(throttleOf(viewports / THROTTLE.tau), false);
+    // One wheel notch (100 px of 900), an arrow press, Space or a tap.
+    expect(lights(0.11)).toBe(10);
+    expect(lights(THROTTLE.arrowStep)).toBeGreaterThanOrEqual(10);
+    expect(lights(THROTTLE.arrowStep)).toBeLessThanOrEqual(11);
+    expect(lights(THROTTLE.keyStep)).toBeGreaterThanOrEqual(14);
+    // A steady scroll of a viewport a second keeps the meter at 1.
+    expect(litLeds(throttleOf(1), false)).toBeGreaterThanOrEqual(13);
+  });
+});
+
+describe("stripThrottle", () => {
+  it("shows her input or her foot on the pedal, whichever is further down", () => {
+    expect(stripThrottle(0, 0)).toBe(0);
+    expect(stripThrottle(0, PEDAL.bite)).toBe(PEDAL.bite);
+    expect(stripThrottle(0, 1)).toBe(1);
+    expect(stripThrottle(3, 0)).toBe(throttleOf(3));
+    expect(stripThrottle(3, 0.2)).toBe(throttleOf(3));
+    expect(stripThrottle(0, Number.NaN)).toBe(0);
+    expect(stripThrottle(0, 4)).toBe(1);
+    // Her foot at the bite lights six of the fifteen, as many as the pedal's two treads stand for.
+    expect(litLeds(stripThrottle(0, PEDAL.bite), false)).toBe(6);
+  });
+});
+
+describe("easeRevs", () => {
+  it("rises 63% in revRise and falls 63% in revFall", () => {
+    expect(easeRevs(0, 1, DASH.revRise)).toBeCloseTo(1 - Math.exp(-1), 6);
+    expect(easeRevs(1, 0, DASH.revFall)).toBeCloseTo(Math.exp(-1), 6);
+  });
+
+  it("stays in 0..1, and a zero step changes nothing", () => {
+    expect(easeRevs(0.4, 3, 10)).toBe(1);
+    expect(easeRevs(0.4, -3, 10)).toBeCloseTo(0, 9);
+    expect(easeRevs(0.4, -3, 10)).toBeGreaterThanOrEqual(0);
+    expect(easeRevs(0.4, 0.9, 0)).toBe(0.4);
+  });
+
+  it("answers an input in the next frame, and a notch climbs for a few frames, then drains", () => {
+    const notch = stripAfter(0.11, 60);
+    expect(notch[0]).toBeGreaterThanOrEqual(3);
+    expect(Math.max(...notch)).toBeGreaterThanOrEqual(7);
+    expect(notch.at(-1)).toBeLessThan(Math.max(...notch));
+    const space = stripAfter(THROTTLE.keyStep, 30);
+    expect(space[0]).toBeGreaterThanOrEqual(4);
+    expect(Math.max(...space)).toBeGreaterThanOrEqual(12);
+  });
+});
+
+describe("litLeds", () => {
+  it("keeps one light on, ten at most under the limiter, fifteen at full", () => {
+    expect(litLeds(0, false)).toBe(1);
+    expect(litLeds(Number.NaN, false)).toBe(1);
+    expect(litLeds(1, false)).toBe(DASH.leds);
+    expect(litLeds(1, true)).toBe(DASH.limiterLeds);
+    expect(litLeds(0.3, true)).toBeLessThanOrEqual(DASH.limiterLeds);
+  });
+});
+
+describe("limiterState", () => {
+  it("is off without an unread line up", () => {
+    expect(limiterState({ unreadCard: false, holding: true, sinceInput: 0 })).toBe("off");
+  });
+
+  it("is armed while a line is up and she is not pushing on it", () => {
+    expect(limiterState({ unreadCard: true, holding: false, sinceInput: 0 })).toBe("armed");
+    expect(limiterState({ unreadCard: true, holding: false, sinceInput: 5 })).toBe("armed");
+  });
+
+  it("stays armed under a pedal resting on the wall: her foot is input, but resting is not pushing", () => {
+    // HeroStage: a held pedal is input every frame; only its knock on arrival is held input.
+    expect(limiterState({ unreadCard: true, holding: false, sinceInput: 0 })).toBe("armed");
+    expect(limiterState({ unreadCard: true, holding: true, sinceInput: 0 })).toBe("hit");
+  });
+
+  it("is hit only with input held at the wall and an input of hers just now", () => {
+    expect(limiterState({ unreadCard: true, holding: true, sinceInput: 0.1 })).toBe("hit");
+    // A fling's leftover pressure half a second after the finger lifted is no push.
+    expect(limiterState({ unreadCard: true, holding: true, sinceInput: 0.5 })).toBe("armed");
+  });
+});
+
+describe("dashShow", () => {
+  const base = { p: 0.4, started: true, mode: "drive" as TransportMode, limiter: "off" as const, clearing: false };
+
+  it("asks with her gesture before her first input, and hides from the fade", () => {
+    expect(dashShow({ ...base, started: false, mode: "hidden" })).toBe("prompt");
+    expect(dashShow({ ...base, p: STORY.fadeFrom })).toBe("hidden");
+  });
+
+  it("says REVERSE over everything else, then ALL CLEAR, then LIMITER", () => {
+    expect(dashShow({ ...base, mode: "reverse", limiter: "hit", clearing: true })).toBe("reverse");
+    expect(dashShow({ ...base, limiter: "armed", clearing: true })).toBe("clear");
+    expect(dashShow({ ...base, limiter: "armed" })).toBe("limiter");
+    expect(dashShow({ ...base, limiter: "hit", mode: "floored" })).toBe("limiter");
+  });
+
+  it("asks with her gesture once the car waits for her, after ALL CLEAR", () => {
+    expect(dashShow({ ...base, mode: "waiting", clearing: true })).toBe("clear");
+    expect(dashShow({ ...base, mode: "waiting" })).toBe("prompt");
+  });
+
+  it("says FLAT OUT or YOU DRIVE otherwise", () => {
+    expect(dashShow({ ...base, mode: "floored" })).toBe("floored");
+    expect(dashShow(base)).toBe("drive");
+  });
+});
+
+describe("dashVisibility", () => {
+  const base = { layout: "wide" as const, started: false, sinceEntered: 0, titleOut: 0, p: 0 };
+
+  it("wakes dimmed with the title hint on wide screens, and comes on with her first input", () => {
+    expect(dashVisibility({ ...base, sinceEntered: PROMPT.hintAt - 0.01 })).toBe("off");
+    expect(dashVisibility({ ...base, sinceEntered: PROMPT.hintAt })).toBe("idle");
+    expect(dashVisibility({ ...base, started: true, sinceEntered: 0.5 })).toBe("on");
+  });
+
+  it("takes the title's place on tall and compact screens, both ways", () => {
+    for (const layout of ["tall", "compact"] as const) {
+      const small = { ...base, layout, started: true, sinceEntered: 9 };
+      expect(dashVisibility({ ...small, titleOut: DASH.titleClear - 0.01 })).toBe("off");
+      expect(dashVisibility({ ...small, titleOut: DASH.titleClear, p: 0.1 })).toBe("on");
+      // She rewinds to the title: it goes again.
+      expect(dashVisibility({ ...small, titleOut: 0.3, p: 0.03 })).toBe("off");
+      expect(dashVisibility({ ...small, started: false, titleOut: 1, p: 0.3 })).toBe("off");
+    }
+  });
+
+  it("is off in every layout from the fade to night", () => {
+    for (const layout of ["wide", "tall", "compact"] as const) {
+      expect(dashVisibility({ ...base, layout, started: true, titleOut: 1, p: STORY.fadeFrom, sinceEntered: 30 })).toBe(
+        "off",
+      );
+    }
+  });
+});
+
+describe("dashLayout", () => {
+  const matcher = (width: number, height: number) => (query: string) => {
+    const aspect = width / height;
+    if (query === DASH_MEDIA.wide) return aspect >= 1 && width >= 1024 && height >= 501;
+    if (query === DASH_MEDIA.tall) return aspect <= 1;
+    throw new Error(query);
+  };
+
+  it("puts phones and portrait tablets in the tall layout, desktops in the wide one", () => {
+    expect(dashLayout(matcher(390, 844))).toBe("tall");
+    expect(dashLayout(matcher(768, 1024))).toBe("tall");
+    expect(dashLayout(matcher(1440, 900))).toBe("wide");
+    expect(dashLayout(matcher(1024, 768))).toBe("wide");
+  });
+
+  it("puts small and short landscape windows in the compact one", () => {
+    expect(dashLayout(matcher(844, 390))).toBe("compact");
+    expect(dashLayout(matcher(1280, 500))).toBe("compact");
+  });
+
+  it("resolves a square window as the CSS does: wide when big, tall otherwise", () => {
+    expect(dashLayout(matcher(1200, 1200))).toBe("wide");
+    expect(dashLayout(matcher(800, 800))).toBe("tall");
+  });
+
+  it("uses the very media queries of the stylesheet", () => {
+    const css = readFileSync(new URL("../Hero.module.css", import.meta.url), "utf8");
+    expect(css).toContain(`@media ${DASH_MEDIA.wide} {`);
+    expect(css).toContain(`@media ${DASH_MEDIA.tall} {`);
+  });
+
+  it("sizes and places the pedal in those same queries, next to the dash", () => {
+    const css = readFileSync(new URL("../Hero.module.css", import.meta.url), "utf8");
+    /** The declarations of `.sticky` inside `@media <query> {`. */
+    const sticky = (query: string) => {
+      const at = css.indexOf(`@media ${query} {\n  .sticky {`);
+      expect(at, query).toBeGreaterThanOrEqual(0);
+      return css.slice(at, css.indexOf("}", at));
+    };
+    for (const query of [DASH_MEDIA.wide, DASH_MEDIA.tall, "(min-aspect-ratio: 1/1)"]) {
+      const block = sticky(query);
+      for (const name of ["--va-pod-fs", "--va-pedal-fs", "--va-pedal-right", "--va-pedal-bottom", "--va-band-bottom"]) {
+        expect(block, `${query} ${name}`).toContain(`${name}:`);
+      }
+    }
+    // On tall screens the subtitles stand above the pedal's plate.
+    expect(sticky(DASH_MEDIA.tall)).toContain("--va-band-bottom: calc(var(--va-pedal-bottom) + 5.25 * var(--va-pedal-fs)");
+  });
+});
+
+describe("speedCells", () => {
+  it("right-aligns the speed with blank leading cells, never a leading zero", () => {
+    expect(speedCells(7)).toEqual(["", "", "7"]);
+    expect(speedCells(80)).toEqual(["", "8", "0"]);
+    expect(speedCells(124)).toEqual(["1", "2", "4"]);
+    expect(speedCells(64.6)).toEqual(["", "6", "5"]);
+  });
+
+  it("reads 0 for nonsense and clamps at 999", () => {
+    expect(speedCells(Number.NaN)).toEqual(["", "", "0"]);
+    expect(speedCells(-5)).toEqual(["", "", "0"]);
+    expect(speedCells(4000)).toEqual(["9", "9", "9"]);
+  });
+});
+
+describe("the dash's words", () => {
+  /** Widths in em of the status text (it is 0.8125em of the dash). */
+  const ARROW = 0.62;
+  const MOUSE = 0.72;
+  const GAP = 0.5;
+  /** A keycap: 0.9em mono with 0.08em tracking, 0.35em of padding a side, 1.6em at least. */
+  const keycap = (text: string) => Math.max(1.6, Array.from(text).length * 0.68 + 0.7) * 0.9;
+  const inStatus = (em: number) => em * 0.8125;
+
+  for (const [locale, dict] of [
+    ["en", en.hero],
+    ["es", es.hero],
+  ] as const) {
+    it(`${locale}: every word fits its slot, LIMITER beside its sign`, () => {
+      const { osd, intro } = dict;
+      for (const word of [osd.drive, osd.floored, osd.reverse, osd.clear]) {
+        expect(statusEm(word), word).toBeLessThanOrEqual(DASH.slotEm);
+      }
+      expect(statusEm(osd.limiter) + DASH.signGapEm + DASH.signEm).toBeLessThanOrEqual(DASH.slotEm);
+      // The way on, in her input's words: a glyph or keycaps and a word.
+      const prompts = [
+        statusEm(intro.nextTouch) + inStatus(ARROW + GAP),
+        statusEm(intro.next) + inStatus(MOUSE + GAP),
+        statusEm(intro.nextClick) + inStatus(MOUSE + GAP),
+        inStatus(keycap("W") + GAP + keycap(intro.nextKey)),
+        // The pedal's glyph (0.8em) and its word.
+        statusEm(intro.nextPedal) + inStatus(0.8 + GAP),
+      ];
+      for (const width of prompts) expect(width).toBeLessThanOrEqual(DASH.slotEm);
+    });
+  }
+});

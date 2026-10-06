@@ -34,6 +34,15 @@ export type SceneLoading = {
    * section's chapter card.
    */
   onScreen: boolean;
+  /**
+   * The hero is on stage, by its own film: the film not over yet (p < 1),
+   * or the still hero's script still filling most of the screen. At the
+   * end of the drive the way on is the line-up, and Skip lands there:
+   * side hints keep off it even while the hero's last frame is still
+   * behind the page controls. Hints that hang over the page, like the
+   * radio's callout, need both this and `onScreen`.
+   */
+  onStage: boolean;
 };
 
 export type EnteredVia = "key" | "pointer";
@@ -47,6 +56,7 @@ const INITIAL: SceneLoading = {
   settled: false,
   quiet: true,
   onScreen: true,
+  onStage: true,
 };
 
 let state: SceneLoading = INITIAL;
@@ -104,6 +114,11 @@ export function markQuiet(quiet: boolean) {
 /** Whether the hero is up behind the side hints (see `onScreen`). */
 export function markOnScreen(onScreen: boolean) {
   if (state.onScreen !== onScreen) update({ onScreen });
+}
+
+/** Whether the hero is on stage, by its own film (see `onStage`). */
+export function markOnStage(onStage: boolean) {
+  if (state.onStage !== onStage) update({ onStage });
 }
 
 /** Tests only. */

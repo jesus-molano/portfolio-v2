@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { DASH } from "./dash";
+import { pedalRate } from "./pedal";
+import { speedKmh } from "./transport";
 import {
   clampPace,
   easePace,
   feedMeter,
   fovKick,
+  LIMITER,
+  limitPace,
   type Meter,
   meterRate,
   paceFor,
@@ -165,6 +170,62 @@ describe("waiting for her", () => {
   it("coasts while waiting: under a quarter of the cruise", () => {
     expect(THROTTLE.crawl).toBeGreaterThanOrEqual(0.15);
     expect(THROTTLE.crawl).toBeLessThanOrEqual(0.25);
+  });
+});
+
+describe("the pit limiter", () => {
+  it("holds the car at 80 km/h", () => {
+    expect(speedKmh(limitPace())).toBe(LIMITER.kmh);
+    expect(limitPace()).toBeGreaterThan(1);
+  });
+
+  it("caps her demand while it holds, and leaves it alone otherwise", () => {
+    expect(paceTarget(3, null, true)).toBeCloseTo(limitPace(), 10);
+    expect(paceTarget(0.1, null, true)).toBe(paceFor(0.1));
+    expect(paceTarget(3, null, false)).toBe(paceFor(3));
+    expect(paceTarget(3, null)).toBe(paceFor(3));
+  });
+
+  it("lets the wait beat it: a waiting car crawls", () => {
+    expect(paceTarget(3, 30, true)).toBeCloseTo(THROTTLE.deepCrawl, 10);
+  });
+
+  /** Seconds to brake from flat out to within 1 km/h of 80. */
+  const brakeTime = (limited: boolean) => {
+    let pace = 1 + THROTTLE.gain;
+    let t = 0;
+    while (speedKmh(pace) > LIMITER.kmh + 1 && t < 5) {
+      pace = easePace(pace, limitPace(), FRAME, 3, true, limited);
+      t += FRAME;
+    }
+    return t;
+  };
+
+  it("brakes into the pit lane in under a second, quicker than an ease off", () => {
+    expect(brakeTime(true)).toBeLessThan(1);
+    expect(brakeTime(false)).toBeGreaterThan(1.5);
+  });
+
+  it("lifts the cap for ALL CLEAR, so a held pedal surges out of the pit lane, and is back at 80 within a second", () => {
+    const foot = pedalRate(1);
+    let pace = limitPace();
+    // ALL CLEAR: DASH.clearHold seconds with the cap lifted.
+    for (let t = 0; t < DASH.clearHold; t += FRAME) pace = easePace(pace, paceTarget(foot, null, false), FRAME, foot, true, false);
+    expect(speedKmh(pace)).toBeGreaterThan(105);
+    // The next unread line arms the limiter: pit entry.
+    let t = 0;
+    while (speedKmh(pace) > LIMITER.kmh + 1 && t < 5) {
+      pace = easePace(pace, paceTarget(foot, null, true), FRAME, foot, true, true);
+      t += FRAME;
+    }
+    expect(t).toBeLessThan(1);
+  });
+
+  it("never takes the car under the crawl, nor holds it below the cap", () => {
+    expect(easePace(1.1, THROTTLE.crawl, 30, 0, true, true)).toBeGreaterThanOrEqual(THROTTLE.deepCrawl);
+    // Under the cap, the limiter changes nothing: the car eases as ever.
+    expect(easePace(1.1, 1.2, FRAME, 1, true, true)).toBe(easePace(1.1, 1.2, FRAME, 1, true, false));
+    expect(easePace(1.1, 1, FRAME, 0, true, true)).toBe(easePace(1.1, 1, FRAME, 0, true, false));
   });
 });
 

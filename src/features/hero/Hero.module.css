@@ -16,6 +16,83 @@
 }
 
 /*
+ * The dash's and the pedal's sizes (every size in them is in em of these)
+ * and places per layout, the same media queries as scroll/dash.ts
+ * DASH_MEDIA: compact, then tall, then wide, so at exactly 1:1 a big
+ * window is wide and any other tall. --va-pedal-right and
+ * --va-pedal-bottom anchor the pedal's plate (its hit area reaches past
+ * them); --va-band-bottom is where the subtitles, the between-card cue and
+ * the hold note stand. The subtitles read the dash's size too, to keep
+ * clear of it on wide screens.
+ */
+.sticky {
+  --va-band-bottom: max(3.75rem, 6vh);
+}
+
+/* Compact (any landscape window that is not wide): the pedal bottom right, Skip bottom left. */
+@media (min-aspect-ratio: 1/1) {
+  .sticky {
+    --va-pod-fs: 12px;
+    --va-pedal-fs: 13px;
+    --va-pedal-right: max(1rem, env(safe-area-inset-right) + 0.5rem);
+    --va-pedal-bottom: max(0.75rem, env(safe-area-inset-bottom) + 0.5rem);
+    --va-band-bottom: max(4.6rem, 6vh);
+  }
+}
+
+/*
+ * Tall (phones, portrait tablets): the pedal in the thumb's corner, its hit
+ * area never in the home indicator's band; the subtitles, the cue and the
+ * title hint stand 12 px above its plate.
+ */
+@media (max-aspect-ratio: 1/1) {
+  .sticky {
+    --va-pod-fs: 15px;
+    --va-pedal-fs: 16px;
+    --va-pedal-right: max(1rem, env(safe-area-inset-right) + 0.75rem);
+    --va-pedal-bottom: max(1.25rem, env(safe-area-inset-bottom) + 0.75rem);
+    --va-band-bottom: calc(var(--va-pedal-bottom) + 5.25 * var(--va-pedal-fs) + 0.75rem);
+  }
+}
+
+@media (max-aspect-ratio: 1/1) and (max-width: 339px) {
+  .sticky {
+    --va-pod-fs: 14px;
+  }
+}
+
+@media (max-aspect-ratio: 1/1) and (min-width: 400px) {
+  .sticky {
+    --va-pod-fs: 16px;
+  }
+}
+
+/* A short tall screen: a smaller pedal keeps the band off the car. */
+@media (max-aspect-ratio: 1/1) and (max-height: 699px) {
+  .sticky {
+    --va-pedal-fs: 14px;
+  }
+}
+
+/* Wide: the pedal bottom right as tall as the dash, mirroring it; Skip beside it. */
+@media (min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px) {
+  .sticky {
+    --va-pod-fs: 14px;
+    --va-pedal-fs: 14px;
+    --va-pedal-right: max(1.25rem, env(safe-area-inset-right));
+    --va-pedal-bottom: max(1.1rem, env(safe-area-inset-bottom));
+    --va-band-bottom: max(3.75rem, 6vh);
+  }
+}
+
+@media (min-aspect-ratio: 1/1) and (min-width: 1280px) and (min-height: 501px) {
+  .sticky {
+    --va-pod-fs: 16px;
+    --va-pedal-fs: 15px;
+  }
+}
+
+/*
  * The canvas keeps the large-viewport height: phone browsers show and hide
  * their address bar while scrolling, and a canvas that followed 100dvh would
  * be resized (and cleared for a frame) every time, which reads as a flash.
@@ -66,40 +143,6 @@
   background: var(--va-color-night);
   opacity: 0;
   pointer-events: none;
-}
-
-/* HUD: small monospaced labels, like a game overlay. */
-.hud {
-  position: absolute;
-  top: 1.1rem;
-  left: 1.25rem;
-  z-index: var(--va-z-ui);
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  font-family: var(--va-font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--va-color-cream);
-  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
-  pointer-events: none;
-}
-
-.hudTitle {
-  color: var(--va-color-cream);
-}
-
-.hudTitle::before {
-  content: "";
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-right: 0.6rem;
-  border-radius: 50%;
-  background: var(--va-color-magenta);
-  box-shadow: 0 0 10px var(--va-color-magenta);
-  vertical-align: middle;
 }
 
 /*
@@ -214,7 +257,7 @@
     0 0 14px color-mix(in srgb, var(--va-color-night) 60%, transparent);
 }
 
-/* Camera readout, top right under the language switch. */
+/* Camera readout, top right under the language switch: small monospaced labels, like a game overlay. */
 .hudCamera {
   position: absolute;
   top: 4.2rem;
@@ -242,13 +285,15 @@
 /* Dialogue subtitles: speaker in pink, line in cream, bottom centre. */
 /*
  * Low in the frame, like film subtitles: every shot keeps Jesús and the car
- * above this band (scene/shots.ts), and the band clears Skip and the
- * transport readout.
+ * above this band (scene/shots.ts), and the band clears Skip, the pedal and
+ * the dash (on wide screens it keeps the dash's width free on both sides;
+ * on tall ones it stands above the pedal; on compact ones it narrows to
+ * pass between Skip and the pedal).
  */
 .subtitles {
   position: absolute;
   left: 50%;
-  bottom: max(3.75rem, 6vh);
+  bottom: var(--va-band-bottom);
   z-index: var(--va-z-ui);
   display: grid;
   width: min(44rem, calc(100% - 2rem));
@@ -258,6 +303,13 @@
   transform: translateX(-50%);
   text-align: center;
   pointer-events: none;
+}
+
+/* Compact: between Skip (bottom left) and the pedal (bottom right). */
+@media (min-aspect-ratio: 1/1) {
+  .subtitles {
+    width: min(44rem, calc(100% - 2 * (4 * var(--va-pedal-fs) + 2.5rem)));
+  }
 }
 
 /* Every line and every card sit in the same cell; the film fades one in at a time. */
@@ -273,29 +325,34 @@
 
 .subtitle {
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   grid-area: 1 / 1;
   align-self: end;
   font-family: var(--va-font-body);
   font-size: clamp(0.95rem, 1.35vw, 1.2rem);
   font-weight: 500;
-  /* Room between the per-line backgrounds when a line wraps. */
-  line-height: 1.75;
+  line-height: 1.4;
   color: var(--va-color-cream);
   opacity: 0;
 }
 
 /*
- * Caption style: every rendered line gets its own soft dark background that
- * fits the text exactly (box-decoration-break clones padding and corners on
- * each line), so it reads on any part of the scene: sun, sand or asphalt.
+ * Caption style: one solid block around the whole line, so it reads on any
+ * part of the scene (sun, sand or asphalt) and a wrapped line never looks
+ * like two pills. Balanced, so no word sits alone on a line, and as wide as
+ * its widest line (--fit, measured by HeroStage, cardFit.ts).
  */
 .subtitleText {
-  padding: 0.2em 0.55em;
-  border-radius: 0.4em;
+  display: block;
+  box-sizing: content-box;
+  width: var(--fit, fit-content);
+  max-width: calc(100% - 1.7em);
+  padding: 0.4em 0.85em 0.45em;
+  border-radius: 0.55em;
   background: var(--va-color-osd);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+  text-wrap: balance;
   text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
 }
 
@@ -308,7 +365,8 @@
 /*
  * The visitor drives the film (scroll/story.ts). Everything below tells her
  * so: a hint in the letterbox bar that answers her first input, a dashboard
- * readout (YOU DRIVE, WAITING, FLAT OUT, REVERSE, and the speed), a reel of
+ * dash (YOU DRIVE, FLAT OUT, LIMITER, ALL CLEAR, REVERSE, her gesture while
+ * the car waits, the speed and her throttle), a reel of
  * the five shots, a bar that fills while a line is read and a marker that
  * asks for more once it has been, and cues when she stops where no line is
  * up. All of it is decorative (aria-hidden): the screen-reader help and the
@@ -316,13 +374,26 @@
  */
 
 /* Copy that depends on the input: wheel by default, touch on coarse
-   pointers, then the visitor's last input decides (data-input). */
+   pointers, then the visitor's last input decides (data-input: wheel,
+   touch, key, click or pedal). The down arrow (forDown) is the way on for
+   the wheel and the keys; a finger swipes up; a click shows a mouse; the
+   pedal shows the pedal. */
 .stage:not([data-input="key"]) .forKey,
+.stage:not([data-input="click"]) .forClick,
+.stage:not([data-input="pedal"]) .forPedal,
 .stage[data-input="touch"] .forWheel,
 .stage[data-input="key"] .forWheel,
+.stage[data-input="click"] .forWheel,
+.stage[data-input="pedal"] .forWheel,
 .stage[data-input="wheel"] .forTouch,
 .stage[data-input="key"] .forTouch,
-.stage[data-input="touch"] .notTouch {
+.stage[data-input="click"] .forTouch,
+.stage[data-input="pedal"] .forTouch,
+.stage[data-input="touch"] .forDown,
+.stage[data-input="click"] .forDown,
+.stage[data-input="pedal"] .forDown,
+.stage[data-input="click"] .notClick,
+.stage[data-input="pedal"] .notClick {
   display: none;
 }
 
@@ -334,7 +405,7 @@
 
 @media (pointer: coarse) {
   .stage:not([data-input]) .forWheel,
-  .stage:not([data-input]) .notTouch {
+  .stage:not([data-input]) .forDown {
     display: none;
   }
 }
@@ -378,10 +449,67 @@
   clip-path: polygon(0 38%, 52% 38%, 52% 8%, 100% 50%, 52% 92%, 52% 62%, 0 62%);
 }
 
+/*
+ * A mouse, drawn in CSS: its wheel for scrolling (data-g="wheel", the
+ * wheel rolls while the dash asks), its left button lit for a click
+ * (data-g="click").
+ */
+.mouse {
+  --bob: 0.12em;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  width: 0.72em;
+  height: 1.08em;
+  border: 0.1em solid currentColor;
+  border-radius: 0.36em;
+}
+
+.mouse::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.14em;
+  width: 0.12em;
+  height: 0.26em;
+  margin-left: -0.06em;
+  border-radius: 0.06em;
+  background: currentColor;
+}
+
+.mouse[data-g="click"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 50%;
+  height: 46%;
+  border-radius: 0.24em 0 0 0;
+  background: currentColor;
+}
+
+/*
+ * The pedal, drawn as a mask (a plate with three treads on its hinge), so
+ * it takes any token as currentColor: every "how to go on" in the pedal's
+ * words. No play symbol anywhere.
+ */
+.pg {
+  --bob: 0.12em;
+  display: inline-block;
+  flex: none;
+  width: 0.8em;
+  height: 1.02em;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 18'%3E%3Cpath fill-rule='evenodd' d='M3.6 .8h6.8c.7 0 1.3.5 1.4 1.2l1.4 9.3c.1.8-.5 1.5-1.3 1.5H1.1c-.8 0-1.4-.7-1.3-1.5L1.2 2c.1-.7.7-1.2 1.4-1.2zM4.3 3.3h5.4v1.3H4.3zM3.9 6.1h6.2v1.3H3.9zM3.5 8.9h7v1.3h-7zM3 14.4h8a1.1 1.1 0 0 1 0 2.2H3a1.1 1.1 0 0 1 0-2.2z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
 @media (forced-colors: active) {
   .glyph,
   .glyph::before,
-  .glyph::after {
+  .glyph::after,
+  .pg {
     forced-color-adjust: none;
     background: CanvasText;
   }
@@ -459,6 +587,12 @@
   color: var(--va-color-pink);
 }
 
+/* The pedal in the hint's words: big enough to read as the pedal beside it, not as an icon. */
+.hintGlyph.pg {
+  width: 1.15em;
+  height: 1.45em;
+}
+
 .hint[data-pop="1"] .hintGlyph {
   animation: bob 1.1s ease-in-out 4;
 }
@@ -507,7 +641,8 @@
   display: none;
 }
 
-.hint[data-prompt="ack"][data-naming] .hintLine2 {
+/* Her first input answered: "you have the wheel" says it, the model line would say it twice. */
+.hint[data-prompt="ack"] .hintLine2 {
   display: none;
 }
 
@@ -576,6 +711,25 @@
   letter-spacing: 0.16em;
 }
 
+/*
+ * Tall: the chip stands with the subtitles, above the pedal, whatever the
+ * pointer: in the letterbox bar it would sit on the pedal.
+ */
+@media (max-aspect-ratio: 1/1) {
+  .hint,
+  .stage[data-input] .hint {
+    bottom: var(--va-band-bottom);
+    height: auto;
+    transform: none;
+  }
+
+  .hint .hintBox {
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.4rem;
+    background: var(--va-color-osd);
+  }
+}
+
 @media (max-width: 359px) {
   .hint .hintLine1,
   .hint .hintAck,
@@ -585,100 +739,484 @@
   }
 }
 
-/* Dashboard readout, bottom left: what her input does to the car. */
-.osd {
+/*
+ * The dash (scroll/dash.ts): an F1 wheel display. Row 1, fifteen shift
+ * lights in three groups of five, her throttle (--lit, set by the frame;
+ * --kick flares and lifts the strip on every input of hers). Row 2, the
+ * car's speed in three fixed cells (no leading zeros), the unit, one word
+ * (data-show) and, while an unread line holds the film, the pit limiter's
+ * 80 sign whose ring fills with the card's reading bar (--lim). Every size
+ * is in em of --va-pod-fs, set per layout on .sticky. Every animation hangs
+ * off a state attribute, so nothing runs at rest; the only endless ones
+ * (flat out, pushing on the limiter, reverse) last only while her input
+ * holds that state, and none blinks faster than 2.5 Hz. Decoration only:
+ * hidden under reduced motion and forced colours (its meaning is in text).
+ */
+.dash {
+  --tone: var(--va-color-cream);
   position: absolute;
-  left: max(1.25rem, env(safe-area-inset-left));
-  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  /* Compact: top left, the corner the page controls leave free. */
+  left: max(1rem, env(safe-area-inset-left));
+  top: max(1rem, env(safe-area-inset-top));
   z-index: var(--va-z-ui);
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  height: 2rem;
-  padding: 0 0.7rem;
-  border-radius: 0.35rem;
-  background: var(--va-color-osd);
-  font-family: var(--va-font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  white-space: nowrap;
+  display: grid;
+  grid-template-columns: 7.2em 1fr;
+  column-gap: 0.75em;
+  row-gap: 0.55em;
+  box-sizing: border-box;
+  width: 19em;
+  padding: 0.7em 0.875em 0.75em;
+  border-radius: 0.75em;
+  font-size: var(--va-pod-fs, 15px);
+  background: color-mix(in srgb, var(--va-color-osd) 80%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--va-color-cream) 12%, transparent),
+    0 0.5em 2em color-mix(in srgb, var(--va-color-night) 30%, transparent);
   color: var(--va-color-cream);
-  text-shadow: 1px 1px 0 color-mix(in srgb, var(--va-color-letterbox) 55%, transparent);
   pointer-events: none;
+  contain: layout paint;
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 250ms ease;
 }
 
-.osd:not([data-mode="hidden"]) {
+/* Tall: the sky band under the page controls, centred. */
+@media (max-aspect-ratio: 1/1) {
+  .dash {
+    left: 50%;
+    top: calc(max(1rem, env(safe-area-inset-top)) + 5rem);
+    translate: -50% 0;
+  }
+}
+
+/* Wide: GTA's radar corner, bottom left, mirroring Skip. */
+@media (min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px) {
+  .dash {
+    left: max(1.25rem, env(safe-area-inset-left));
+    top: auto;
+    bottom: max(1.1rem, env(safe-area-inset-bottom));
+    translate: none;
+  }
+
+  /* Room for the dash on both sides of the subtitles, kept for good, so nothing reflows. */
+  .subtitles {
+    width: min(44rem, calc(100% - 2 * (19 * var(--va-pod-fs) + 2rem)));
+  }
+}
+
+/* Dimmed on the letterbox bar before her first input (wide), then on. */
+.dash[data-vis="idle"] {
+  opacity: 0.6;
+}
+
+.dash[data-vis="on"] {
   opacity: 1;
 }
 
-.osd[data-pulse="1"] {
-  animation: osd-pulse 160ms ease-out;
+.strip {
+  position: relative;
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.4em;
+  translate: 0 calc(var(--kick, 0) * -1.5px);
+  will-change: translate;
 }
 
-.osd[data-pulse="2"] {
-  animation: osd-pulse-b 160ms ease-out;
+.group {
+  position: relative;
+  flex: 1;
+  display: flex;
+  gap: 0.25em;
 }
 
-/* Waiting for her: the marker that points the way on. */
-.osdWait {
+.group:nth-child(1) {
+  --c: var(--va-color-sodium);
+}
+
+.group:nth-child(2) {
+  --c: var(--va-color-orange);
+}
+
+.group:nth-child(3) {
+  --c: var(--va-color-magenta);
+}
+
+.led {
+  position: relative;
+  flex: 1;
+  height: 0.5em;
+  border-radius: 0.14em;
+  background: color-mix(in srgb, var(--va-color-cream) 11%, transparent);
+}
+
+.led::before,
+.led::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+/* Lit: light i shows once --lit passes it. */
+.led::after {
+  background: var(--c);
+  box-shadow:
+    0 0 0.45em var(--c),
+    0 0 0.12em var(--c);
+  opacity: clamp(0, calc(var(--lit, 0) - var(--i)), 1);
+}
+
+/* The sweep layer: ignition, release, the waiting comet, the reversing beeper. */
+.led::before {
+  z-index: 1;
+  background: var(--sweep, var(--va-color-cream));
+  box-shadow: 0 0 0.5em var(--sweep, var(--va-color-cream));
+  opacity: 0;
+}
+
+/* The flare: a glow under the lit lights; its opacity is the kick of her last input. */
+.flare {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 0.5em;
+  border-radius: 0.2em;
+  transform: scaleX(calc(var(--lit, 0) / 15));
+  transform-origin: left;
+  box-shadow: 0 0 0.9em 0.25em color-mix(in srgb, var(--tone) 70%, transparent);
+  opacity: var(--kick, 0);
+  will-change: opacity;
+}
+
+.speed {
+  grid-row: 2;
+  grid-column: 1;
+  display: flex;
+  justify-content: flex-end;
+  font-family: var(--va-font-display);
+  font-size: 3em;
+  font-weight: 800;
+  line-height: 0.82;
+  color: var(--tone);
+  text-shadow: 0 0 0.35em color-mix(in srgb, var(--tone) 35%, transparent);
+  transform: skewX(-8deg);
+}
+
+.digit {
+  display: inline-block;
+  width: 0.8em;
+  font-weight: inherit;
+  text-align: center;
+}
+
+.side {
+  position: relative;
+  grid-row: 2;
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.32em;
+  min-width: 0;
+}
+
+.unit {
+  font-family: var(--va-font-mono);
+  font-size: 0.625em;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--va-color-cream) 62%, transparent);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  font-family: var(--va-font-mono);
+  font-size: 0.8125em;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--tone);
+}
+
+.status [data-w] {
   display: none;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.dash[data-show="drive"] [data-w="drive"],
+.dash[data-show="floored"] [data-w="floored"],
+.dash[data-show="reverse"] [data-w="reverse"],
+.dash[data-show="limiter"] [data-w="limiter"],
+.dash[data-show="clear"] [data-w="clear"],
+.dash[data-show="prompt"] [data-w="prompt"] {
+  display: inline-flex;
+}
+
+/* A new word pops in like a VCR menu. */
+.dash[data-pulse="1"] .status {
+  animation: vcr-pop 160ms steps(1, end) 1;
+}
+
+.dash[data-pulse="2"] .status {
+  animation: vcr-pop-b 160ms steps(1, end) 1;
+}
+
+/* Keys: W and Space, as keycaps. */
+.keycap {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 1.6em;
+  height: 1.6em;
+  padding: 0 0.35em;
+  border: 1px solid currentColor;
+  border-radius: 0.25em;
+  font: inherit;
+  font-size: 0.9em;
+  letter-spacing: 0.08em;
+  box-shadow: 0 2px 0 color-mix(in srgb, currentColor 45%, transparent);
+}
+
+/* The limit sign: an 80 roundel in cyan (never road-sign red) whose ring is the line's reading time. */
+.sign {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 2.3em;
+  height: 2.3em;
+  margin-top: -1.15em;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 120ms steps(2, end),
+    transform 160ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.sign::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--va-color-cyan) calc(var(--lim, 0) * 360deg),
+    color-mix(in srgb, var(--va-color-cyan) 28%, transparent) 0
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 0.2em), #000 calc(100% - 0.19em));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 0.2em), #000 calc(100% - 0.19em));
+}
+
+.sign span {
+  font-family: var(--va-font-display);
+  font-size: 0.82em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--va-color-cyan);
+  text-shadow: 0 0 0.5em color-mix(in srgb, var(--va-color-cyan) 50%, transparent);
+}
+
+.dash[data-lim] .sign {
+  opacity: 1;
+  transform: none;
+}
+
+/* FLAT OUT: sodium, every light on, the shift group alternating (2.5 Hz). */
+.dash[data-show="floored"] {
+  --tone: var(--va-color-sodium);
+}
+
+.dash[data-show="floored"] .group:nth-child(3) .led::after {
+  animation: alt 0.4s steps(1, end) infinite;
+}
+
+.dash[data-show="floored"] .group:nth-child(3) .led:nth-child(even)::after {
+  animation-delay: -0.2s;
+}
+
+/*
+ * LIMITER: the only cool colour on a warm dash, and spent on nothing else.
+ * Lights 1 to 10 are hers, in cyan; the shift group is locked (hollow)
+ * behind a gate.
+ */
+.dash[data-lim] {
+  --tone: var(--va-color-cyan);
+}
+
+.dash[data-lim] .group {
+  --c: var(--va-color-cyan);
+}
+
+.dash[data-lim] .group:nth-child(3) .led {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--va-color-cyan) 60%, transparent);
+}
+
+.dash[data-lim] .group:nth-child(3) .led::after {
+  opacity: 0;
+}
+
+.dash[data-lim] .group:nth-child(3)::before {
+  content: "";
+  position: absolute;
+  top: -0.22em;
+  bottom: -0.22em;
+  left: -0.2em;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--va-color-cyan);
+  box-shadow: 0 0 6px var(--va-color-cyan);
+}
+
+/* Pushing on it: the revs bounce on the cut. The locked lights flicker odd and even (2.5 Hz), the rim glows. */
+.dash[data-lim="hit"] {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--va-color-cyan) 40%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--va-color-cyan) 45%, transparent),
+    0 0 1.2em color-mix(in srgb, var(--va-color-cyan) 25%, transparent);
+}
+
+.dash[data-lim="hit"] .group:nth-child(3) .led::after {
+  animation: alt 0.4s steps(1, end) infinite;
+}
+
+.dash[data-lim="hit"] .group:nth-child(3) .led:nth-child(even)::after {
+  animation-delay: -0.2s;
+}
+
+.dash[data-lim="hit"] [data-w="limiter"] {
+  animation: alt-word 0.4s steps(1, end) infinite;
+}
+
+/* ALL CLEAR: the line has been read. A warm sweep up the lights, a cream ring, the word in sodium. */
+.dash[data-show="clear"] {
+  --tone: var(--va-color-sodium);
+}
+
+.dash[data-release] .group:nth-child(1) .led {
+  --sweep: var(--va-color-sodium);
+}
+
+.dash[data-release] .group:nth-child(2) .led {
+  --sweep: var(--va-color-orange);
+}
+
+.dash[data-release] .group:nth-child(3) .led {
+  --sweep: var(--va-color-magenta);
+}
+
+.dash[data-release="1"] {
+  animation: dash-ring 600ms ease-out 1;
+}
+
+.dash[data-release="2"] {
+  animation: dash-ring-b 600ms ease-out 1;
+}
+
+/* Her turn: the digits coast in cream, the way on in pink, a pink comet runs up the strip, then light 1 breathes. */
+.dash[data-show="prompt"] .status {
   color: var(--va-color-pink);
 }
 
-.osd[data-mode="waiting"] .osdWait {
-  display: inline-block;
+.dash[data-show="prompt"] .led::before {
+  --sweep: var(--va-color-pink);
+  animation: comet 1.5s linear calc(0.6s + var(--i) * 60ms) 4;
+}
+
+/* A long wait: the comet runs again (each reminder flips the name, so it restarts). */
+.dash[data-show="prompt"][data-remind="1"] .led::before {
+  animation-name: comet-b;
+}
+
+.dash[data-show="prompt"] .group:first-child .led:first-child::after {
+  animation: breathe 2.4s ease-in-out 6.6s 6;
+}
+
+.dash[data-show="prompt"] .glyph {
   animation: bob 1.1s ease-in-out 5;
 }
 
-/* A long wait: the arrow asks again (the car crawls lower meanwhile). */
-.osd[data-deep] .osdWait {
-  animation-name: bob-b;
+.dash[data-show="prompt"] .mouse[data-g="wheel"]::after {
+  animation: wheel-roll 1.1s ease-in-out 5;
 }
 
-/* The way on, in her input's direction: down for the wheel and keys, up for a swipe
-   (the readout only shows once she has given input, so data-input is set). */
-.stage[data-input="touch"] .osd .osdWait.notTouch,
-.stage:not([data-input="touch"]) .osd .osdWait.forTouch {
-  display: none;
+.dash[data-show="prompt"] .mouse[data-g="click"]::before {
+  animation: click-press 1.1s steps(1, end) 5;
 }
 
-/* Flat out or reversing: the speed blinks, like a warning light. */
-.osd[data-mode="floored"] .osdSpeed,
-.osd[data-mode="reverse"] .osdSpeed {
-  animation: readout-blink 0.5s steps(1, end) 5;
+/* REVERSE: amber, the last three lights blinking like a reversing beeper (2 Hz). */
+.dash[data-show="reverse"] {
+  --tone: var(--va-color-amber);
 }
 
-.osdWord {
-  padding-right: 0.55rem;
-  border-right: 1px solid color-mix(in srgb, var(--va-color-cream) 30%, transparent);
+.dash[data-show="reverse"] .group:nth-child(3) .led:nth-child(n + 3)::before {
+  --sweep: var(--va-color-amber);
+  animation: alt 0.5s steps(1, end) infinite;
 }
 
-.osdWord [data-word] {
-  display: none;
+/* The release sweep, after the states it interrupts. */
+.dash[data-release="1"] .led::before {
+  animation: sweep 240ms ease-out calc(var(--i) * 12ms) 1;
 }
 
-.osd[data-mode="drive"] [data-word="drive"],
-.osd[data-mode="waiting"] [data-word="waiting"],
-.osd[data-mode="floored"] [data-word="floored"],
-.osd[data-mode="reverse"] [data-word="reverse"] {
-  display: inline;
+.dash[data-release="2"] .led::before {
+  animation: sweep-b 240ms ease-out calc(var(--i) * 12ms) 1;
 }
 
-/* The speedometer: the cruise reads 65 km/h, the crawl about 23, flat out up to 130. */
-.osdSpeed {
-  letter-spacing: 0.08em;
-  font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--va-color-cream) 70%, transparent);
+/* The ignition self-test the first time the dash shows: on left to right, off right to left. */
+.dash[data-boot] .led::before {
+  animation: boot calc(580ms - var(--i) * 40ms) steps(1, end) calc(var(--i) * 20ms) 1 forwards;
 }
 
-.osdSpeedValue {
-  display: inline-block;
-  min-width: 3ch;
-  margin-right: 0.4em;
-  text-align: right;
+.dash[data-boot] .speed {
+  animation: vcr-pop 160ms steps(1, end) 1;
+}
+
+/* Forced colours: the pedal is a control, so it stays, in system colours, with no glow. */
+@media (forced-colors: active) {
+  .pedal .plate {
+    forced-color-adjust: none;
+    border-color: ButtonText;
+    background: Canvas;
+    box-shadow: none;
+  }
+
+  .pedal .rib {
+    forced-color-adjust: none;
+    background: transparent;
+    box-shadow: inset 0 0 0 1px ButtonText;
+  }
+
+  .pedal .rib::after {
+    background: Highlight;
+    box-shadow: none;
+  }
+
+  .pedal .hinge {
+    forced-color-adjust: none;
+    border-color: ButtonText;
+    background: Canvas;
+    color: ButtonText;
+  }
+
+  .pedal .hingeKey {
+    color: ButtonText;
+  }
+
+  .pedalBody::before,
+  .gate {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .dash {
+    display: none;
+  }
 }
 
 /* The five shots as a reel along the top edge: where she is, nothing buffered. */
@@ -716,55 +1254,84 @@
 }
 
 /*
- * The line's reading time, as a short bar under the active card: it fills
- * while the line is read (--read), thickens when she pushes into it
- * (--push), and gives way to the marker once the line has been read and
- * she waits. "Wait for this to fill" needs no words.
+ * The line's reading time, as a short bar under the card's block: it fills
+ * while the line is read (--read, counted only while the card is fully up,
+ * never faster for a push), thickens when she pushes into it (--push), and
+ * gives way to the marker once the line has been read and she waits. It is
+ * cyan while the pit limiter holds the line (the dash's 80 sign fills with
+ * it), sodium once the line has been read (ALL CLEAR). "Wait for this to
+ * fill" needs no words.
  */
 .subtitle::after {
   content: "";
   position: absolute;
+  top: calc(100% + 0.5rem);
   left: 50%;
-  bottom: -0.5rem;
   width: 4rem;
   height: 3px;
   border-radius: 2px;
   background: linear-gradient(
     90deg,
-    var(--va-color-pink) calc(var(--read, 0) * 100%),
+    var(--va-color-cyan) calc(var(--read, 0) * 100%),
     color-mix(in srgb, var(--va-color-cream) 30%, transparent) 0
   );
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--va-color-night) 45%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--va-color-night) 45%, transparent),
+    0 0 6px color-mix(in srgb, var(--va-color-cyan) 45%, transparent);
   transform: translateX(-50%) scaleY(calc(1 + 0.8 * var(--push, 0)));
   opacity: 0;
   transition: opacity 200ms ease;
+}
+
+.subtitle[data-read]::after {
+  background: var(--va-color-sodium);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--va-color-night) 45%, transparent),
+    0 0 6px color-mix(in srgb, var(--va-color-sodium) 45%, transparent);
 }
 
 .subtitle[data-active]:not([data-ready])::after {
   opacity: 1;
 }
 
+/* Wide: under a card up to 44rem wide, a longer, thicker bar reads at a glance. */
+@media (min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px) {
+  .subtitle::after {
+    width: 7rem;
+    height: 4px;
+  }
+}
+
 /*
- * The marker at the end of a card, like a game dialogue box: it appears
- * and bobs once the line has been read and she waits. It is glued to the
- * card's last word, so it never wraps onto a line of its own (an empty
- * caption pill while the line is read).
+ * The marker under the card, like a game dialogue box: it takes the bar's
+ * place and bobs once the line has been read and she waits, in her last
+ * input's words (labelled the first times and on reminders). Its own
+ * element, never part of the line, so the line wraps on its own words.
  */
-.cueGlue,
 .cueTail {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.25em 0.6em;
+  border-radius: 0.4em;
+  background: var(--va-color-osd);
   white-space: nowrap;
+  translate: -50% 0;
+  opacity: 0;
+}
+
+.subtitle[data-ready] .cueTail {
+  opacity: 1;
 }
 
 .cueArrow {
   display: inline-flex;
-  margin-left: 0.5em;
-  vertical-align: -0.05em;
+  align-items: center;
+  height: 1.1em;
   color: var(--va-color-pink);
-  opacity: 0;
-}
-
-.subtitle[data-ready] .cueArrow {
-  opacity: 1;
 }
 
 .subtitle[data-ready="1"] .cueArrow {
@@ -775,17 +1342,16 @@
   animation: glow-once-b 220ms ease-out 1;
 }
 
-.subtitle[data-ready="1"] .cueArrow .glyph {
+.subtitle[data-ready="1"] .cueArrow > * {
   animation: bob 1.1s ease-in-out 5;
 }
 
-.subtitle[data-ready="2"] .cueArrow .glyph {
+.subtitle[data-ready="2"] .cueArrow > * {
   animation: bob-b 1.1s ease-in-out 5;
 }
 
 .cueLabel {
   display: none;
-  margin-left: 0.45em;
   font-family: var(--va-font-mono);
   font-size: 0.74em;
   font-weight: 600;
@@ -806,7 +1372,7 @@
 .holdNote {
   position: absolute;
   left: 50%;
-  bottom: calc(max(3.75rem, 6vh) + var(--va-card-h, 2rem) + 0.75rem);
+  bottom: calc(var(--va-band-bottom) + var(--va-card-h, 2rem) + 0.75rem);
   z-index: var(--va-z-ui);
   width: max-content;
   max-width: calc(100vw - 2rem);
@@ -836,7 +1402,7 @@
 .cue {
   position: absolute;
   left: 50%;
-  bottom: max(3.75rem, 6vh);
+  bottom: var(--va-band-bottom);
   z-index: var(--va-z-ui);
   display: flex;
   align-items: center;
@@ -915,11 +1481,15 @@
  * Skip the drive, like a cutscene. Shown with the title hint, so there is
  * always a way out, until the fade, and always reachable by Tab (it shows
  * on focus). On a dark backing so the label reads on any part of the scene.
+ * The pedal has the thumb's corner: Skip stands on the pedal's baseline,
+ * bottom left on phones and short landscape windows ("In a hurry?" opens
+ * to the right, away from the pedal), and just left of the pedal on wide
+ * screens.
  */
 .skip {
   position: absolute;
-  right: max(1.25rem, env(safe-area-inset-right));
-  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  left: max(1rem, env(safe-area-inset-left));
+  bottom: var(--va-pedal-bottom, max(1.1rem, env(safe-area-inset-bottom)));
   z-index: var(--va-z-ui);
   opacity: 0;
   pointer-events: none;
@@ -957,6 +1527,428 @@
 .skip[data-expanded] .skipHurry {
   max-width: 8rem;
   margin-right: 0;
+}
+
+@media (min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px) {
+  .skip {
+    left: auto;
+    right: calc(var(--va-pedal-right) + 4 * var(--va-pedal-fs) + 0.875rem);
+  }
+}
+
+/* A narrower wide window: while the title's hint is up in the bar, Skip offers itself without "In a hurry?", so it never reaches the hint. */
+@media (min-aspect-ratio: 1/1) and (min-width: 1024px) and (max-width: 1279px) and (min-height: 501px) {
+  .hint[data-prompt] ~ .skip .skipHurry {
+    max-width: 0;
+    margin-right: -0.55rem;
+  }
+}
+
+/*
+ * The pedal (Pedal.tsx, scroll/pedal.ts): an original floor-hinged
+ * accelerator, a plate with six treads on a hinge, no brand and no play
+ * symbol. Every size is in em of --va-pedal-fs (set per layout on .sticky,
+ * the same queries as the dash) and every colour a token. The button is the
+ * plate's box plus a hit area reaching out toward the thumb (88 x 102 px on
+ * a phone), never into the home indicator's band nor up to the subtitles
+ * 12 px above the plate. --lv (0..1, HeroStage) is
+ * her foot: the plate tilts on its hinge and the treads light from the
+ * bottom up, sodium, orange, magenta, like the dash's shift lights. Every
+ * animation hangs off a state attribute: nothing runs at rest, and nothing
+ * flashes faster than 2.5 Hz.
+ */
+.pedal {
+  --tone: var(--va-color-sodium);
+  position: absolute;
+  right: calc(var(--va-pedal-right, 1rem) - 0.25em);
+  bottom: calc(var(--va-pedal-bottom, 1.25rem) - 0.5em);
+  /* Over the fade to night, like the end cue: at the end of the drive the cue names it and a press goes on. */
+  z-index: var(--va-z-fade);
+  display: block;
+  box-sizing: content-box;
+  width: 4em;
+  height: 5.25em;
+  margin: 0;
+  padding: 0.625em 0.25em 0.5em 1.25em;
+  border: 0;
+  background: none;
+  color: var(--va-color-cream);
+  font-size: var(--va-pedal-fs, 16px);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 12px;
+  transition:
+    opacity 250ms ease,
+    translate 250ms ease,
+    visibility 0s linear 250ms;
+}
+
+.pedal[data-vis="shown"] {
+  opacity: 1;
+  visibility: visible;
+  translate: none;
+  transition-delay: 0s;
+}
+
+.pedal:focus {
+  outline: none;
+}
+
+.pedal:focus-visible .plate {
+  outline: 2px solid var(--va-color-cream);
+  outline-offset: 3px;
+}
+
+.pedalBody {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: opacity 150ms ease;
+}
+
+/*
+ * The glow while she holds it: light under the tilted plate, not a frame
+ * round the button (a ring there read as a selection box). It spreads past
+ * the plate on the thumb's side, so it still shows round a thumb.
+ */
+.pedalBody::before {
+  content: "";
+  position: absolute;
+  inset: 12% -0.8em -0.35em -0.8em;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--tone) 42%, transparent), transparent);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.pedal[data-down] {
+  --down: 1;
+}
+
+.pedal[data-down] .pedalBody::before {
+  opacity: 1;
+  transition-duration: 0ms;
+}
+
+/* The plate itself lights in her tone while she holds it, and tilts with it. */
+.pedal[data-down] .plate {
+  border-color: color-mix(in srgb, var(--tone) 80%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--va-color-cream) 20%, transparent),
+    0 0 0.9em color-mix(in srgb, var(--tone) 50%, transparent);
+}
+
+.plateBox {
+  position: absolute;
+  inset: 0 0 0.9em;
+}
+
+.plate {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.26em;
+  box-sizing: border-box;
+  padding: 0.62em 0.62em 0.56em;
+  border: 1.5px solid color-mix(in srgb, var(--va-color-cream) 62%, transparent);
+  border-radius: 1em 1em 0.62em 0.62em;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--va-color-ink) 85%, var(--va-color-dusk)), var(--va-color-night) 70%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--va-color-cream) 20%, transparent),
+    0 calc(0.45em - var(--down, 0) * 0.3em) 0.9em color-mix(in srgb, var(--va-color-night) 65%, transparent);
+  transform-origin: 50% 100%;
+  transform: perspective(9em) rotateX(calc(12deg + var(--lv, 0) * 30deg)) translateY(calc(var(--down, 0) * 0.12em));
+}
+
+.rib {
+  --c: var(--va-color-sodium);
+  position: relative;
+  flex: 1;
+  border-radius: 0.2em;
+  background: color-mix(in srgb, var(--va-color-cream) 13%, transparent);
+}
+
+.rib:nth-child(n + 3) {
+  --c: var(--va-color-orange);
+}
+
+.rib:nth-child(n + 5) {
+  --c: var(--va-color-magenta);
+}
+
+.rib::before,
+.rib::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+/* Lit from the bottom up as her foot goes down: the same pattern as the strip's lights. */
+.rib::after {
+  background: var(--c);
+  box-shadow:
+    0 0 0.5em var(--c),
+    0 0 0.12em var(--c);
+  opacity: clamp(0, calc(var(--lv, 0) * 6 - var(--r)), 1);
+}
+
+.rib::before {
+  z-index: 1;
+  background: var(--sweep, var(--va-color-cream));
+  box-shadow: 0 0 0.6em var(--sweep, var(--va-color-cream));
+  opacity: 0;
+}
+
+/* The limiter's gate: 10 of 15 lights is 4 of 6 treads. */
+.gate {
+  position: absolute;
+  left: -0.3em;
+  right: -0.3em;
+  bottom: calc(0.56em + 4 * ((100% - 1.18em - 5 * 0.26em) / 6) + 3.5 * 0.26em);
+  height: 2px;
+  margin-bottom: -1px;
+  border-radius: 1px;
+  background: var(--va-color-cyan);
+  box-shadow: 0 0 6px var(--va-color-cyan);
+  opacity: 0;
+}
+
+.hinge {
+  position: absolute;
+  left: 0.5em;
+  right: 0.5em;
+  bottom: 0.05em;
+  display: grid;
+  place-items: center;
+  height: 0.72em;
+  border: 1.5px solid color-mix(in srgb, var(--va-color-cream) 38%, transparent);
+  border-radius: 0.36em;
+  background: var(--va-color-night);
+}
+
+.hinge::before {
+  content: "";
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 50%;
+  height: 1px;
+  background: color-mix(in srgb, var(--va-color-cream) 30%, transparent);
+}
+
+.hingeKey {
+  display: none;
+}
+
+/* Where there is a keyboard, the hinge is a W keycap: it teaches the key without a word. */
+@media (pointer: fine) {
+  .stage:not([data-input="touch"]) .hinge {
+    left: 1.1em;
+    right: 1.1em;
+    bottom: -0.2em;
+    height: 1.3em;
+    border-color: color-mix(in srgb, var(--va-color-cream) 60%, transparent);
+    border-radius: 0.28em;
+    box-shadow: 0 2px 0 color-mix(in srgb, var(--va-color-cream) 30%, transparent);
+  }
+
+  .stage:not([data-input="touch"]) .hinge::before {
+    display: none;
+  }
+
+  .stage:not([data-input="touch"]) .hingeKey {
+    display: block;
+    font-family: var(--va-font-mono);
+    font-size: 0.74em;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--va-color-cream);
+  }
+
+  .stage:not([data-input="touch"]) .pedal[data-down] .hinge {
+    translate: 0 1px;
+    border-color: var(--tone);
+    box-shadow:
+      0 1px 0 color-mix(in srgb, var(--tone) 50%, transparent),
+      0 0 0.6em color-mix(in srgb, var(--tone) 55%, transparent);
+  }
+
+  .stage:not([data-input="touch"]) .pedal[data-down] .hingeKey {
+    color: var(--tone);
+  }
+}
+
+/* Wide: a tighter halo, as tall as the dash it mirrors; a mouse needs no thumb's reach, and Skip stands beside it. */
+@media (min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px) {
+  .pedal {
+    padding: 0.5em 0.25em;
+  }
+
+  .pedalBody::before {
+    inset: 10% -0.5em -0.2em;
+  }
+}
+
+/* A mouse finds it: the plate lifts its rim, and once the title's hint has gone the tag names it. */
+@media (hover: hover) and (pointer: fine) {
+  .pedal:hover .plate {
+    border-color: var(--va-color-cream);
+  }
+
+  .hint:not([data-prompt]) ~ .pedal:hover:not([data-down]) .pedalTag {
+    display: inline-flex;
+  }
+}
+
+/*
+ * HOLD / PISA: offered once on a long wait (she has waited 4 s), gone at
+ * her next input; on desktop, also on hover. On a phone it stands left of
+ * the plate's lower half, below the card's marker, never on its row.
+ */
+.pedalTag {
+  position: absolute;
+  right: calc(100% + 0.9em);
+  bottom: 1.3em;
+  display: none;
+  align-items: center;
+  padding: 0.38em 0.62em;
+  border-radius: 0.4em;
+  background: var(--va-color-osd);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--va-color-pink) 50%, transparent);
+  font-family: var(--va-font-mono);
+  font-size: 0.68em;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-pink);
+}
+
+.pedalTag::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 0.75em;
+  height: 1px;
+  background: color-mix(in srgb, var(--va-color-pink) 70%, transparent);
+}
+
+.pedal[data-tag] .pedalTag {
+  display: inline-flex;
+  animation: vcr-pop 160ms steps(1, end) 1;
+}
+
+/* Landscape: above the plate; Skip stands beside it on wide screens, the subtitles on compact ones. */
+@media (min-aspect-ratio: 1/1) {
+  .pedalTag {
+    right: 50%;
+    bottom: calc(100% + 0.6em);
+    translate: 50% 0;
+  }
+
+  .pedalTag::after {
+    left: 50%;
+    top: 100%;
+    width: 1px;
+    height: 0.6em;
+  }
+}
+
+/* Floored: all six lit, the top two alternating like the strip's last group. */
+.pedal[data-state="floored"] .rib:nth-child(n + 5)::after {
+  animation: alt 0.4s steps(1, end) infinite;
+}
+
+/* The pit limiter: cyan, the top two treads hollow behind the gate. */
+.pedal[data-lim] {
+  --tone: var(--va-color-cyan);
+}
+
+.pedal[data-lim] .rib {
+  --c: var(--va-color-cyan);
+}
+
+.pedal[data-lim] .rib:nth-child(n + 5) {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--va-color-cyan) 62%, transparent);
+}
+
+.pedal[data-lim] .rib:nth-child(n + 5)::after {
+  opacity: 0;
+  animation: none;
+}
+
+.pedal[data-lim] .gate {
+  opacity: 1;
+}
+
+.pedal[data-lim] .plate {
+  border-color: color-mix(in srgb, var(--va-color-cyan) 70%, transparent);
+}
+
+/* A knock on the wall (300 ms): a cyan rim, the hollow treads flicker once. */
+.pedal[data-knock] .plate {
+  border-color: var(--va-color-cyan);
+  box-shadow:
+    0 0 0 0.12em color-mix(in srgb, var(--va-color-cyan) 45%, transparent),
+    0 0 1.2em color-mix(in srgb, var(--va-color-cyan) 55%, transparent);
+}
+
+.pedal[data-knock] .rib:nth-child(n + 5)::before {
+  --sweep: var(--va-color-cyan);
+  animation: sweep 300ms ease-out 1;
+}
+
+/* ALL CLEAR while she holds it: a warm sweep up the treads, 40 ms apart, with the strip's. */
+.pedal[data-clear] {
+  --tone: var(--va-color-sodium);
+}
+
+.pedal[data-clear] .rib::before {
+  --sweep: var(--va-color-amber);
+  animation: sweep 240ms ease-out calc(var(--r) * 40ms) 1 both;
+}
+
+/* Her turn: the bottom tread breathes pink, and the rim with it. */
+.pedal[data-turn] .rib:first-child::after {
+  --c: var(--va-color-pink);
+  opacity: 0.75;
+  animation: breathe 2.4s ease-in-out 6;
+}
+
+.pedal[data-turn] .plate {
+  border-color: color-mix(in srgb, var(--va-color-pink) 70%, transparent);
+}
+
+/* Going back: the pedal has no reverse; it dims while the picture does. */
+.pedal[data-reverse] .pedalBody {
+  opacity: 0.5;
+}
+
+.pedal[data-reverse] .rib::after {
+  opacity: 0;
+}
+
+/* Forced colours: every lit state of the plate is a system Highlight rim, never a glow. */
+@media (forced-colors: active) {
+  .pedal[data-down] .plate,
+  .pedal[data-lim] .plate,
+  .pedal[data-knock] .plate,
+  .pedal[data-turn] .plate,
+  .pedal:hover .plate {
+    border-color: Highlight;
+    box-shadow: none;
+  }
 }
 
 .skipKey {
@@ -1054,39 +2046,141 @@
   }
 }
 
-@keyframes osd-pulse {
-  from {
-    transform: scale(1.08);
+/* The dash's patterns: odd and even lights alternating, the limiter's word, the release sweep and ring. */
+@keyframes alt {
+  0% {
+    opacity: 1;
   }
-}
-
-@keyframes osd-pulse-b {
-  from {
-    transform: scale(1.08);
-  }
-}
-
-@keyframes readout-blink {
   50% {
-    opacity: 0.35;
+    opacity: 0.12;
   }
 }
 
-/* Touch: clear the 44 px Skip and centre the readout on it. */
+@keyframes alt-word {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes sweep {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes sweep-b {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes dash-ring {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--va-color-cream) 70%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+@keyframes dash-ring-b {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--va-color-cream) 70%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+/* The waiting comet: each light flashes as it passes and trails off over the next two. */
+@keyframes comet {
+  0%,
+  5% {
+    opacity: 1;
+  }
+  10% {
+    opacity: 0.45;
+  }
+  16% {
+    opacity: 0.2;
+  }
+  22%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes comet-b {
+  0%,
+  5% {
+    opacity: 1;
+  }
+  10% {
+    opacity: 0.45;
+  }
+  16% {
+    opacity: 0.2;
+  }
+  22%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes boot {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The mouse asks: its wheel rolls down, or its left button clicks. */
+@keyframes wheel-roll {
+  50% {
+    translate: 0 0.22em;
+  }
+}
+
+@keyframes click-press {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/*
+ * Touch on a wide screen (a tablet in landscape): the band clears the 44 px
+ * Skip beside the pedal, and the card's marker under it.
+ */
+@media (pointer: coarse) and (min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px) {
+  .sticky {
+    --va-band-bottom: max(6rem, 6vh);
+  }
+}
+
 @media (pointer: coarse) {
-  .subtitles,
-  .cue {
-    bottom: max(4.6rem, 6vh);
-  }
-
-  .holdNote {
-    bottom: calc(max(4.6rem, 6vh) + var(--va-card-h, 2rem) + 0.75rem);
-  }
-
-  .osd {
-    bottom: calc(max(1.1rem, env(safe-area-inset-bottom)) + 0.375rem);
-  }
-
   .skip .skipButton {
     height: auto;
     min-height: 2.75rem;
@@ -1135,13 +2229,33 @@
     text-align: left;
   }
 
+  /* Running text: each line of the script one block, its cards one paragraph. */
   .line {
     display: block;
+    padding: 0.5em 0.85em 0.55em;
+    border-radius: 0.55em;
+    background: var(--va-color-osd);
+    font-size: clamp(0.95rem, 1.35vw, 1.2rem);
+    line-height: 1.5;
   }
 
   .subtitle {
     display: inline;
+    font-size: inherit;
+    line-height: inherit;
     opacity: 1;
+  }
+
+  .subtitleText {
+    display: inline;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    background: none;
+  }
+
+  .subtitle::after {
+    display: none;
   }
 
   /* One speaker label per line when the cards read as running text. */
@@ -1183,7 +2297,8 @@
   .bar,
   .fade,
   .skip,
-  .osd,
+  .dash,
+  .pedal,
   .reel,
   .cue,
   .holdNote,
@@ -1210,42 +2325,26 @@
   .tagline {
     font-size: 0.85rem;
   }
-
-  .hud {
-    left: 1rem;
-  }
 }
 
-/* Phones: the music and language controls take the top right; keep the HUD short. */
+/* Phones: the music and language controls take the top right; the camera readout sits under them. */
 @media (max-width: 639px) {
-  .hudSubtitle {
-    display: none;
-  }
-
   .hudCamera {
     top: 3.6rem;
     right: 1rem;
   }
+}
 
-  /* Expanded Skip and the readout share the bottom edge: keep only the glyph. */
-  .stage[data-hurry] .osdWord,
-  .stage[data-hurry] .osdSpeed {
+/* "In a hurry?" opens toward the pedal: on the narrowest phones it would reach its hit area. */
+@media (max-width: 339px) {
+  .skipHurry {
     display: none;
   }
 }
 
 @media (max-width: 374px) {
-  .skipHurry {
-    display: none;
-  }
-
   .holdNote {
     font-size: 0.74rem;
     letter-spacing: 0.08em;
-  }
-
-  /* The readout keeps its speed; the word would run into Skip. */
-  .osdWord {
-    display: none;
   }
 }

@@ -46,10 +46,12 @@ also exists as real DOM for keyboard and screen-reader users.
   browser half of the scroll UX acceptance (dev server running): swipes
   against the radio's long-press, the arrows, the hold note, the rewind
   hint, the long wait, the radio and its callout (kept off THE CREW's card
-  after Skip), reduced motion (and back),
-  focus, caption pills, calm readers, the title (a tap while the name
-  forms, no ghost after a short swipe) and the loader on a phone, on
-  desktop and a phone in both languages. PASS or FAIL.
+  after Skip), reduced motion (and back), the dash's gesture,
+  focus, one-block caption cards, calm readers, the title (a tap while the name
+  forms, no ghost after a short swipe), the loader on a phone, and the
+  pedal (a thumb, the mouse, W and Space held, two fingers, blur, a lost
+  keyup, Q, the end, reduced motion) and its layout from 360 x 640 to
+  1440 x 900, on desktop and a phone in both languages. PASS or FAIL.
 - `node tools/capture/capture.mjs --device both --progress 0.05,0.3,0.6,0.9`
   — renders hero frames at those film positions (dev server running) into
   `.captures/`. Look at the frames before calling a visual change done.
@@ -151,11 +153,93 @@ also exists as real DOM for keyboard and screen-reader users.
     is never silent, and answers in the next frame: it bounces the card
     (`elastic.ts`), raises the world's pace (`throttle.ts`: the drive
     distance step runs x1 to x2; `drive.speed` stays 18 and nothing ever
-    runs backwards) and shows on the dashboard readout (`transport.ts`:
-    YOU DRIVE, FLAT OUT, REVERSE or WAITING, and the speed in km/h; no
-    gear letter, a "D" read as the WASD key). No video-player words or
-    glyphs anywhere (play, pause, fast forward, rewind, timecode): the hero
-    must never read as a video playing on its own.
+    runs backwards), except while an unread line holds the film: then
+    the pit limiter caps the pace at 80 km/h (x1.235, `LIMITER`; a car
+    arriving faster brakes to it in under a second) and the push shows on
+    the dash, the card's bounce and the note instead. Every input of hers
+    shows on the dash (`scroll/dash.ts`, pure and tested; an F1 wheel
+    display, `aria-hidden`): 15 shift lights for her throttle (eased up
+    in 0.05 s, down in 0.3 s; a notch lights three in the next frame and
+    flares the strip), the speed in km/h in three fixed cells (no leading
+    zeros), and one word: YOU DRIVE, FLAT OUT, LIMITER with an 80 sign
+    whose ring is the card's own reading bar (`readFill`, the same 1/50
+    steps), ALL CLEAR for 0.8 s the frame the line's wall opens (the cap
+    lifts with it, so a car still pushed leaves the pit lane; a rewind
+    never opens a wall), REVERSE, or her gesture once the car waits for
+    her (the transport's WAITING). Cyan is spent on the limiter only. On
+    wide screens (`DASH_MEDIA`, the same queries in the CSS) it sits
+    bottom left and wakes dimmed with the title hint; on tall screens it
+    takes the sky under the page controls once the title has gone (the
+    radio's one-time callout hangs below it, never in its place); other
+    landscape windows put it top left. Nothing else sits in that corner:
+    no name block, no site title (the owner's call). Under reduced
+    motion and forced colours it is not shown (its meaning is in text),
+    and the camera readout is `aria-hidden` decoration like it.
+    The tick only writes attributes and custom properties, and only what
+    changed; Skip's patience reads her demand (`pushingHard`), not the
+    capped pace, so "In a hurry?" still comes at a line. No gear letter (a
+    "D" read as the WASD key) and no video-player words or glyphs anywhere
+    (play, pause, fast forward, rewind, timecode): the hero must never
+    read as a video playing on its own.
+  - The pedal (`scroll/pedal.ts`, pure and tested; `Pedal.tsx`, a real
+    `<button data-pedal>`; W or Space on a keyboard) is a second way to
+    drive the same scroll, never a replacement, on the same engine: its
+    push goes through the same gate and walls, and like every input of
+    hers it reads where the page is before Lenis moves (`lenisMissed`, at
+    its press and before each push), so a native move Lenis missed never
+    sends the page back. It is not a finger's stroke: the 8 px slop is
+    for touch strokes on the picture, never for its push. A press plays the next
+    line exactly as Space or a tap does (a knock on an unread one), holding
+    keeps driving after it (its push runs before `lenis.raf` through
+    `scrollDrive`, trimmed at the frontier and at the hero's end, at up to
+    0.8 screens a second, spooling up from 0.4 in 0.35 s), and letting go
+    stops the picture within 0.2 s (`PEDAL.lerp`) or as the press's line
+    step lands. Her foot is input every frame (`recordPedal`: never her
+    turn while it is down) and drives the strip and the pace, but not the
+    meter: at an unread line a held pedal knocks once on arrival and then
+    rests on the limiter (armed, 80 km/h, ALL CLEAR lifting the cap as the
+    line is read), so it never brings up the note or the Skip offer; taps
+    and fast pumping knock like Space and do. A finger or the mouse back
+    on it within 150 ms of a hold's release continues that hold (a
+    tremor, a rolling thumb); a key pressed again is always a new press;
+    a press under 220 ms is a tap. It lets go on pointerup, pointercancel,
+    a lost capture, blur, a hidden tab, pagehide, a W or Space whose
+    autorepeat went silent for 0.6 s (a lost keyup), the radio wheel
+    opening, Skip and focus leaving the hero. A backward input suspends
+    its push (`suspendPedal`), and her foot is no input meanwhile (the car
+    coasts, the dash never reads FLAT OUT over a still picture): under a
+    key or the mouse it drives again 0.3 s after she stops going back (W
+    held through a tap of S), under a finger at her next press (a second
+    finger went back to read; her turn comes, in that swipe's words).
+    W is matched by its physical key (`code`, so AZERTY's
+    Z drives; the keycaps show the layout's letter); Space keeps its
+    pointer-focus rule; Enter on the focused pedal is a tap. Its six
+    treads are the shift lights in miniature (`--lv`, sodium, orange,
+    magenta; cyan with a gate under the limiter, a warm sweep on ALL
+    CLEAR, a pink tread on her turn, HOLD / PISA on a long wait when her
+    last input was not the pedal, left of the plate's lower half on a
+    phone, off the marker's row; above it in landscape, and on hover with
+    a mouse once the title's hint has gone). On tall
+    screens it takes the thumb's corner with Skip bottom left, and the
+    subtitles, the cue and the hint stand 12 px above its plate (the
+    shots keep his head above a two-line card there, `shots.test.ts`);
+    on compact ones the subtitles narrow between Skip and it; on wide ones
+    it mirrors the dash bottom right with a W keycap on its hinge, Skip
+    just left of it (`--va-pedal-fs` and its anchors per layout, in the
+    `DASH_MEDIA` queries). A finger on it never scrolls (its touches are
+    cancelled and stopped; `gateInput` ignores them too), never arms the
+    radio's long-press and never opens a menu; at the end of the drive it
+    stands over the fade to night, where the way on names it, and a press
+    glides into the line-up. Held there, it rests (no input: the way on
+    comes up under her foot) and after 2 s (`PEDAL.endHold`) goes on
+    into the line-up as a press would. The glide lands like Skip, through
+    `goTo` (`lib/navigate.ts`, with a 1.2 s glide): Lenis starts from the
+    page, the walls open on the way past, the pedal lets go and the
+    line-up takes the focus at once, and once the page has
+    left the hero the pedal is gone and ignores presses. Hidden under
+    reduced motion; kept, in system colours, under forced colours. Every
+    "how to go on" speaks the pedal (its glyph, "Hold" / "Pisa") once it
+    was her last input.
   - At any moment the hero says one of two things, never both
     (`scroll/feedback.ts`, pure, stepped by HeroStage and by the scroller
     model, so `scroll/acceptance.test.ts` checks what the page does). The
@@ -172,29 +256,41 @@ also exists as real DOM for keyboard and screen-reader users.
     dragging on do) brings up "let the man finish", gone 0.32 s after she
     stops (0.7 s on touch), on at most three lines a visit. Or it is her turn: nothing plays, she has stopped for
     her wait, the picture with her, for 0.3 s (a stalled frame or a card
-    handing over is not her turn); the readout says WAITING, and only
-    then does the read card's marker bob or a cue say how to go on, so
-    nothing asks for more next to YOU DRIVE. The car brakes, from half a
-    second into the wait, to a crawl (x0.2, 13 km/h; x0.35 still read as
+    handing over is not her turn); the transport says WAITING (the dash
+    asks with her gesture), and only then does the read card's marker bob
+    or a cue say how to go on, so nothing asks for more next to YOU DRIVE.
+    The car brakes, from half a second into the wait, to a crawl (x0.2, 13 km/h; x0.35 still read as
     driving); after 4 s of waiting it crawls lower (x0.15, 10 km/h) and
     the marker or cue asks again. That brake, and the car getting going
     again on her next input, tells her she drives more than any label.
     Hysteresis keeps it calm: a visitor with a steady rhythm (gaps up to
     7 s) gets a little more than her own beat before WAITING
-    (`waitIdleFor`, up to 5 s: a notch every 2.5 to 5 s never sees it), a
+    (`waitIdleFor`, up to 5 s: a notch every 2.5 to 5 s never sees it);
+    a pause she ended within 1 s of WAITING answered it and is no beat of
+    hers (`rhythmAfter`), so a visitor who waits to be asked is asked
+    again as soon as the first time, never later and later, a
     light push gets the car up from the crawl like a car (a hard one still
     surges at once), and FLAT OUT needs full throttle held for 0.6 s and
     lets go only under x1.45. The feedback runs on real time (only the
     reading clocks are capped), so a slow device neither scolds sooner
     nor keeps a state up longer.
-  - The way on is one arrow per input type, the same in the hint, the
-    card's marker, the readout's WAITING, the between-card cue and the
-    way into the city: up for a finger (swipe up), down for the wheel and
-    the keys, bobbing the way it points. The marker is glued to the card's
-    last word, so it never wraps onto a caption line of its own. Her first
-    input is answered in place of the title hint ("You have the wheel")
-    while the name forms and holds, with why the road still waits ("Easy,
-    the name's still pulling in"), and 2 s after; Space or a tap pressed
+  - The way on is one glyph per input type, the same in the hint, the
+    card's marker, the dash, the between-card cue and the way into the
+    city: up for a finger (swipe up), down for the wheel and the keys, a
+    mouse with its button lit for a click on the picture (the dash shows
+    the wheel as a mouse, and the keys as W and Space keycaps), bobbing
+    the way it points. Each card is one solid block around the whole line
+    (never a pill per line), balanced (`text-wrap: balance`, no word alone
+    on a line) and as wide as its widest line (`cardFit.ts`, measured with
+    the viewport and once the fonts have arrived, never in the frame); the
+    reading bar and then the marker sit under the block, never in the
+    text. Her first
+    input is answered in place of the title hint ("You have the wheel",
+    which replaces the "you drive" line under it: never more than two
+    "you drive" messages on screen at once, counting the dash's YOU DRIVE
+    and the pedal's tag) while the name forms and holds, with why the
+    road still waits ("Easy, the name's still pulling in"), and 2 s
+    after; Space or a tap pressed
     then plays the first line once the name has formed. Once the wheel is
     hers nothing asks her to take it again: resting on the title (after
     that answer, or rewound there) brings "keep driving" into the hint's
@@ -207,8 +303,11 @@ also exists as real DOM for keyboard and screen-reader users.
     real time and a rewind never shortens a line. Wherever the picture
     rests, a card, the hint, the between-card cue or the way into the city
     says how to go on (tested), in the words of her last input (scroll,
-    swipe or Space). Space, PageDown or a tap on the picture play the next
-    line (a control focused by a pointer, a press or release in the last
+    swipe, Space or W, a click, or the pedal). Space, PageDown, a click or
+    tap on the picture or a press of the pedal play the next line (held,
+    Space, W and the pedal drive on); at the end of the drive any of them
+    glides on into the line-up (a control focused by a pointer,
+    a press or release in the last
     second with no key since, does not keep Space, and stays so when a
     dialog hands the focus back to it, closed by a click or by Esc, until
     a Tab: the radio button clicked open never reopens on Space; one
@@ -230,9 +329,13 @@ also exists as real DOM for keyboard and screen-reader users.
     allocates nothing but the strings of what changed. The hero marks the
     scene `settled` once its first line has been read and she rests (or
     the walls open; the still hero once its title is scrolled away), and
-    `quiet` while nothing on screen asks her for anything: side hints,
-    like the radio's, wait for both and never share the screen with a
-    prompt. `scroll/film.ts` only lays the cards out on the film
+    `quiet` while nothing on screen asks her for anything, and `onStage`
+    while its film is not over (p < 1, or the still script filling most
+    of the screen); `onScreen` says the hero is up in the top fifth of
+    the screen (an IntersectionObserver): side hints, like the radio's,
+    wait for all four, never share the screen with a prompt and never
+    hang over the next section's chapter card (after the end of the
+    drive, Skip or a deep link). `scroll/film.ts` only lays the cards out on the film
     (`buildTimeline`).
   - Film progress cuts between the shots in `scene/shots.ts`; `CameraRig`
     evaluates the pose. `HeroStage` draws the title, letterbox, subtitle
@@ -241,10 +344,14 @@ also exists as real DOM for keyboard and screen-reader users.
     cards per line, at most 64 characters each (tested). Each card is a
     complete thought in his own voice (a film nod only if it reads as plain
     speech); split a line only when the pause is the joke, since every card
-    is a wall the visitor waits on. `LINE_SHOTS` in `scroll/story.ts` says which shot each line
+    is a wall the visitor waits on. Every card shows "Jesús:"; a screen
+    reader hears it once per line (the later cards' name is `aria-hidden`,
+    and so is the live line a key steps to), and nothing else repeats it.
+    `LINE_SHOTS` in `scroll/story.ts` says which shot each line
     plays in; card timing is computed, never hand-placed. The hero's UI copy
-    (`hero.intro`, `hero.osd`, Skip) has length caps per chip
-    (`i18n/dictionaries.test.ts`).
+    (`hero.intro`, `hero.osd`, `hero.pedal`, Skip) has length caps per chip
+    (`i18n/dictionaries.test.ts`), and every dash word fits its slot
+    (`scroll/dash.test.ts`).
   - The car (`Car.tsx`) and the traffic (`Traffic.tsx`) load glTF models.
     The driver (`Driver.tsx`) is Jesús, built with MakeHuman / MPFB from
     CC0 assets by `tools/blender/build_driver_mpfb.py` (body, striped tee,
@@ -349,14 +456,16 @@ also exists as real DOM for keyboard and screen-reader users.
   timed by the touch events' own timestamps, so a slow frame never turns a
   tap into a hold. The button's first-visit callout waits until the hero
   has settled and is quiet (a line playing, no prompt up), steps aside
-  when the hero asks her something, and hangs below the HUD while the
-  button glows; a tap on it opens the wheel ("Tap here for the radio" on
-  touch). It is the hero's alone (`data-side-hint`): it shows only while
-  the hero runs down past its bottom edge and 8 px more
-  (`sceneLoading.onScreen`, asked of the line of pixels there), since past
-  it (Skip, a deep link, a strip of its night left at the top after a
-  little scroll back) it would cover the next section's chapter card.
-  Radio off sits at
+  when the hero asks her something, and hangs below the camera readout
+  while the button glows (on tall screens below the dash, which stays
+  up); a tap on it opens the wheel ("Tap here for the radio" on touch).
+  It is the hero's alone (`data-side-hint`): it shows only while the hero
+  runs down past its bottom edge and 8 px more (`sceneLoading.onScreen`,
+  asked of the line of pixels there) and its film is not over
+  (`sceneLoading.onStage`: p < 1, or the still script filling most of the
+  screen), since past it (the end of the drive, Skip, a deep link, a strip
+  of its night left at the top after a little scroll back) it would cover
+  the next section's chapter card. Radio off sits at
   the bottom; every sector stays a 44 px target on a 360 px phone
   (`wheelGeometry.ts`, tested). Station logos (`StationLogo.tsx`) are our
   own SVG typography in `radio` tokens and `radioFonts`: no trademarks,

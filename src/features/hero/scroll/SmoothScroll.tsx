@@ -10,7 +10,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { registerScroller, type Scroller } from "@/lib/navigate";
 import { getSceneLoading } from "../sceneLoading";
 import { GATE, lenisMissed, liftFling, newStroke, type PageReading, resetStroke, strokeLift, strokeMove } from "./gate";
-import { recordInput, scrollGate } from "./heroProgress";
+import { recordInput, scrollDrive, scrollGate, scrollInput } from "./heroProgress";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -31,7 +31,9 @@ gsap.registerPlugin(ScrollTrigger);
  * The input this gate passes never goes past the frontier; whatever else
  * moves the page there, HeroStage puts it back (gate.ts).
  * Every input is recorded (`recordInput`) for the hero's feedback: the
- * world's pace, the transport and the hints.
+ * world's pace, the transport and the hints. The hero's pedal drives the
+ * same scroll from the ticker (`scrollDrive`, right before `lenis.raf`),
+ * and a finger on it is never a scroll stroke.
  */
 export function SmoothScroll({ children }: { children: ReactNode }) {
   const reducedMotion = usePrefersReducedMotion();
@@ -72,6 +74,11 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
   const gateInput = useCallback(
     (data: VirtualScrollData) => {
       const { event } = data;
+      // A finger on the pedal holds it, it never scrolls: a second finger swiping the picture is the
+      // stroke. (The pedal stops its own touch events too; this is the second guard.)
+      if (event.type.startsWith("touch") && event.target instanceof Element && event.target.closest("[data-pedal]")) {
+        return false;
+      }
       // Pinch zoom, sideways gestures and input before the visitor entered are not scrolling.
       if (reducedMotion || event.ctrlKey || !getSceneLoading().entered) return true;
       const lenis = lenisRef.current?.lenis;
@@ -101,7 +108,9 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       if (event.type === "touchstart") {
         scrollGate.touching = true;
         strokeMoved.current = false;
-        return true;
+        // A second finger landing beside a held pedal: Lenis would take it for a tap that stops the
+        // scroll (reset), dropping the pedal's glide. Its strokes still scroll as ever.
+        return scrollInput.pedal === 0;
       }
       if (event.type === "touchmove") {
         // A finger moves the page only once it is past its slop (gate.ts).
@@ -208,8 +217,12 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const update = (time: number) => {
-      lenisRef.current?.lenis?.raf(time * 1000);
+    const update = (time: number, deltaMs: number) => {
+      const lenis = lenisRef.current?.lenis;
+      if (!lenis) return;
+      // A held pedal pushes the scroll first, so this very frame moves with it.
+      scrollDrive.step?.(deltaMs, lenis);
+      lenis.raf(time * 1000);
     };
     // First on the ticker: the hero then draws this frame's scroll, not the last one's.
     gsap.ticker.add(update, false, true);

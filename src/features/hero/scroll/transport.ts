@@ -1,10 +1,13 @@
 /**
- * The driving vocabulary of the hero: what the dashboard readout says
- * (YOU DRIVE, WAITING, FLAT OUT, REVERSE) and its speedometer, which one
- * prompt tells her what to do next, the attract tease, the "let the man
- * finish" note and the Skip prompt's patience, plus the rules that decide
- * which key, tap, focus or Skip activation counts. No tape-deck words: the
- * hero must never read as a video playing on its own. Pure functions;
+ * The driving vocabulary of the hero: the transport mode the dash reads
+ * (drive, waiting, floored, reverse; dash.ts turns it into YOU DRIVE, her
+ * gesture while the car waits, FLAT OUT, REVERSE, and adds LIMITER and
+ * ALL CLEAR) and the speedometer, which one prompt tells her what to do
+ * next, the attract tease, the "let the man finish" note and the Skip
+ * prompt's patience, plus the rules that decide which key, tap, focus or
+ * Skip activation counts (W is the pedal's "gas", pedal.ts). No tape-deck
+ * words or glyphs: the hero must never read as a video playing on its
+ * own, and holding the pedal is driving, never "playing". Pure functions;
  * feedback.ts and HeroStage apply them.
  */
 import { STORY } from "./story";
@@ -38,6 +41,15 @@ export const TRANSPORT = {
   burstGap: 0.3,
   /** A pause longer than this (s) ends her rhythm: she stopped. */
   rhythmMax: 7,
+  /**
+   * Input this soon (s) after WAITING came up answered it: she waited to
+   * be asked, so that pause is no beat of hers, and her rhythm keeps what
+   * it was (learning it would make the next ask come later, and the one
+   * after later still, up to maxWaitIdle). A calm reader's own beat, a
+   * notch every 2.5 s or more, lands later than this into a WAITING she
+   * has not learned yet.
+   */
+  answer: 1,
 } as const;
 
 /**
@@ -86,10 +98,22 @@ export type TransportInput = {
 };
 
 /**
- * How long to let her be still before the readout says WAITING, for a
+ * Her rhythm once an input ends a pause of `gap` seconds: the pause is a
+ * beat of hers (nextRhythm), unless the input answered her turn, coming
+ * within TRANSPORT.answer of WAITING (`waitingFor`, seconds the film had
+ * waited for her when it came; -1: it was not waiting): she follows the
+ * asks, and her rhythm stays as it was, so the next ask comes no later.
+ */
+export function rhythmAfter(rhythm: number, gap: number, waitingFor: number): number {
+  if (waitingFor >= 0 && waitingFor < TRANSPORT.answer) return rhythm;
+  return nextRhythm(rhythm, gap);
+}
+
+/**
+ * How long to let her be still before the transport says WAITING, for a
  * visitor whose input comes every `rhythm` seconds (0: no rhythm yet). A
  * calm reader who scrolls a notch every 2.5 to 5 s is reading, not
- * waiting: the readout gives her a little more than her own beat, up to
+ * waiting: the transport gives her a little more than her own beat, up to
  * `maxWaitIdle`.
  */
 export function waitIdleFor(rhythm: number): number {
@@ -111,14 +135,15 @@ export function turnConditions(input: TransportInput): boolean {
 }
 
 /**
- * What the readout says, given what it said last frame (`previous`). The
- * first rule that matches wins. WAITING means "your turn": she has
+ * The transport's mode, given last frame's (`previous`); the dash shows it
+ * (dash.ts dashShow: WAITING reads as her gesture). The first rule that
+ * matches wins. WAITING means "your turn": she has
  * stopped, the picture with her, nothing is playing, and that has lasted
  * a moment (`turnFor`); once on, it holds until she moves again, even if a
  * glide is still settling. The marker, the cues and the brake all follow
  * it, so the hero never says "your turn" in one place and "drive on" in
  * another. FLAT OUT turns on at THROTTLE.ff and off only under
- * THROTTLE.ffOff, so the readout never flickers at the threshold
+ * THROTTLE.ffOff, so the dash never flickers at the threshold
  * (feedback.ts also asks for the pace to hold there a moment: one hard
  * swipe is a surge, not flat out).
  */
@@ -193,7 +218,7 @@ export type PromptInput = {
   rewinding: boolean;
   /** Seconds since her last input. */
   idle: number;
-  /** Her turn: the readout says WAITING (transportMode). Cues ask for more only then. */
+  /** Her turn: the transport says WAITING (transportMode). Cues ask for more only then. */
   turn: boolean;
 };
 
@@ -259,6 +284,16 @@ export const FIGHT = { window: 6, expandAt: 2.5, show: 6, cooldown: 25, maxShows
 export function fightLevel(level: number, pushing: boolean, dt: number): number {
   const step = Math.max(0, dt);
   return level * Math.exp(-step / FIGHT.window) + (pushing ? step : 0);
+}
+
+/**
+ * Whether she is pushing hard at a wall, for the Skip prompt's patience:
+ * her demand (`paceFor` of her input, not the pace, which the pit limiter
+ * caps at a card) at full throttle, held at a wall (`wall`, the frontier's
+ * index, -1 once every beat is done).
+ */
+export function pushingHard(input: { demand: number; holding: boolean; wall: number }): boolean {
+  return input.demand >= THROTTLE.ff && input.holding && input.wall >= 0;
 }
 
 /**
@@ -381,26 +416,35 @@ export function focusFromPointer(input: {
   return input.ownedAt !== undefined && input.ownedAt > (input.tabAt ?? Number.NEGATIVE_INFINITY);
 }
 
-export type KeyAction = "next" | "prev" | "down" | "up" | "home" | "skip";
+/**
+ * "gas" is the pedal (W): down drives, up lets go. Space is "next" (a line,
+ * as ever) and HeroStage makes a held Space the pedal too, after its line.
+ */
+export type KeyAction = "next" | "prev" | "down" | "up" | "gas" | "home" | "skip";
 export type TargetKind = "text" | "button" | "link" | "other";
 
 export type KeyInput = {
   key: string;
+  /** The physical key (KeyboardEvent.code): W is the pedal wherever the layout puts the letter (Z on AZERTY). */
+  code?: string;
   shiftKey: boolean;
   ctrlKey: boolean;
   altKey: boolean;
   metaKey: boolean;
   /** What has focus: a text field, a button, a link or anything else. */
   targetKind: TargetKind;
+  /** The focus is on the pedal: Space drives it and Enter is a tap on it (the next line). */
+  onPedal?: boolean;
 };
 
 /**
  * What a key does in the pinned hero. Modifiers and text fields keep their
- * own keys; Space never takes over a focused button or link. The page's
- * own jumps to its ends (Ctrl+End and Ctrl+Home, Cmd+Down and Cmd+Up on a
- * Mac) act as End and Home: the browser animates them, so the page ran
- * past the wall for a few frames, the next section showing, before the
- * gate pulled it back.
+ * own keys; Space never takes over a focused button or link (the pedal
+ * excepted: Space is its key). W is the pedal, matched by its physical
+ * place first, as in games; S backs up. The page's own jumps to its ends
+ * (Ctrl+End and Ctrl+Home, Cmd+Down and Cmd+Up on a Mac) act as End and
+ * Home: the browser animates them, so the page ran past the wall for a
+ * few frames, the next section showing, before the gate pulled it back.
  */
 export function keyAction(input: KeyInput): KeyAction | null {
   if (input.targetKind === "text") return null;
@@ -409,19 +453,22 @@ export function keyAction(input: KeyInput): KeyAction | null {
     if ((input.ctrlKey && input.key === "Home") || (input.metaKey && input.key === "ArrowUp")) return "home";
   }
   if (input.ctrlKey || input.altKey || input.metaKey) return null;
+  if (input.code === "KeyW") return "gas";
   switch (input.key) {
     case " ":
     case "Spacebar":
-      if (input.targetKind === "button" || input.targetKind === "link") return null;
+      if (!input.onPedal && (input.targetKind === "button" || input.targetKind === "link")) return null;
       return input.shiftKey ? "prev" : "next";
+    case "Enter":
+      return input.onPedal ? "next" : null;
     case "PageDown":
       return "next";
     case "PageUp":
       return "prev";
-    // W and S too: in games W drives forward and S backs up.
-    case "ArrowDown":
     case "w":
     case "W":
+      return "gas";
+    case "ArrowDown":
       return "down";
     case "ArrowUp":
     case "s":

@@ -2,8 +2,11 @@
  * The world's pace answers the visitor: she has the wheel. Forward input
  * fills a meter (viewport heights per second, decaying); the pace runs from
  * x1 (the cruise, 18 m/s) to x2 with it, rising fast and falling slowly,
- * and a light FOV kick widens the lens near the top. Held input at a wall
- * still shows up here, so pushing is never silent. While the film waits for
+ * and a light FOV kick widens the lens near the top. Held input at the
+ * title or the crane still shows up here, so pushing is never silent;
+ * while an unread line holds the film, the pit limiter caps the pace at
+ * 80 km/h (LIMITER) and her push shows on the dash, the card's bounce and
+ * the note instead. While the film waits for
  * her (the title before her first input, or once she has stopped where
  * nothing is playing) the car brakes to a crawl, about 13 km/h, and lower
  * still after a long wait, about 10 km/h; her next input gets it going
@@ -46,7 +49,7 @@ export const THROTTLE = {
   deepCrawl: 0.15,
   /** Seconds she has been still (and the picture with her) before the film waits for her. */
   crawlIdle: 1,
-  /** From this pace, held for `ffHold` seconds, the readout reads FLAT OUT... */
+  /** From this pace, held for `ffHold` seconds, the dash reads FLAT OUT... */
   ff: 1.6,
   ffHold: 0.6,
   /** ...until the pace falls under this one (hysteresis: no flicker at the threshold). */
@@ -65,6 +68,25 @@ export const THROTTLE = {
  * escalate (HeroStage).
  */
 export const WAIT = { delay: 0.5, ramp: 1.5, deepAfter: 4, deepRamp: 1.5 } as const;
+
+/**
+ * The pit limiter: while an unread line is up, the world tops out at
+ * 80 km/h however hard she pushes, as a car in the pit lane does; when
+ * the line has been read the cap lifts and the car surges out. Arriving
+ * faster, the car brakes to the cap with `fall` (pit entry), quicker than
+ * its usual ease off.
+ */
+export const LIMITER = {
+  /** The cap, km/h: x1.235 of the 65 km/h cruise. */
+  kmh: 80,
+  /** Braking down to the cap, seconds. */
+  fall: 0.25,
+} as const;
+
+/** The limiter's pace: LIMITER.kmh over the cruise (`drive.speed`, m/s). */
+export function limitPace(metresPerSecond = 18): number {
+  return LIMITER.kmh / (3.6 * metresPerSecond);
+}
 
 /** Rate in viewport heights per second, as of `at` (seconds). */
 export type Meter = { rate: number; at: number };
@@ -106,19 +128,30 @@ export function waitPace(waitingFor: number): number {
 /**
  * The pace the world heads for: braking toward the crawl while the film
  * waits for her (`waitingFor` seconds, or null when it does not), the
- * meter's otherwise.
+ * meter's otherwise, capped at the limiter's while an unread line holds
+ * the film (`limited`). Waiting beats the limiter: the car crawls.
  */
-export function paceTarget(rate: number, waitingFor: number | null): number {
-  return waitingFor === null ? paceFor(rate) : waitPace(waitingFor);
+export function paceTarget(rate: number, waitingFor: number | null, limited = false): number {
+  if (waitingFor !== null) return waitPace(waitingFor);
+  const demand = paceFor(rate);
+  return limited ? Math.min(demand, limitPace()) : demand;
 }
 
 /**
- * Eases the pace toward its target: falls with `fall`; rises with `rise`,
+ * Eases the pace toward its target: falls with `fall` (with LIMITER.fall
+ * while the limiter brakes it to its cap, `limited`); rises with `rise`,
  * or, from below the cruise, with `riseFromCrawl` for a light push
  * (`rate` under `hardRate`) when `gentle`. Stays in [deepCrawl, 1 + gain].
  */
-export function easePace(pace: number, target: number, dt: number, rate = Number.POSITIVE_INFINITY, gentle = false): number {
-  let tau: number = THROTTLE.fall;
+export function easePace(
+  pace: number,
+  target: number,
+  dt: number,
+  rate = Number.POSITIVE_INFINITY,
+  gentle = false,
+  limited = false,
+): number {
+  let tau: number = limited && pace > limitPace() ? LIMITER.fall : THROTTLE.fall;
   if (target > pace) {
     const hard = smoothstep(0.3, THROTTLE.hardRate, rate);
     tau = gentle && pace < 1 ? THROTTLE.riseFromCrawl + (THROTTLE.rise - THROTTLE.riseFromCrawl) * hard : THROTTLE.rise;

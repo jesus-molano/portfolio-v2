@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
 import { STATIC_PROGRESS } from "../scroll/heroProgress";
+import { activeWindow, heroTimeline } from "../scroll/story";
 import { CAR_POSITION } from "./drive";
 import { PALM_ROW } from "./roadside";
 import {
@@ -246,6 +247,72 @@ describe("framing at every aspect", () => {
       // Level with the horizon, looking down the causeway toward the city.
       expect(Math.abs(Math.asin(direction.y))).toBeLessThan((6 * Math.PI) / 180);
       expect(direction.z).toBeLessThan(-0.9);
+    });
+  }
+});
+
+describe("the dash on tall screens", () => {
+  // Hero.module.css: on a tall screen the dash hangs in the sky at 1rem + 5rem from the top, 4.96em
+  // tall in --va-pod-fs (14 px under 340 px wide, 15 px to 399, 16 px from 400).
+  const podBottom = (width: number) => 96 + 4.96 * (width < 340 ? 14 : width < 400 ? 15 : 16);
+  const SCREENS = [
+    [360, 640],
+    [360, 740],
+    [390, 844],
+    [430, 932],
+    [768, 1024],
+  ] as const;
+  /** The top of his head, over its centre. */
+  const headTop = new Vector3(DRIVER_HEAD.x, DRIVER_HEAD.y + 0.14, DRIVER_HEAD.z);
+
+  for (const [width, height] of SCREENS) {
+    it(`${width}x${height}: never hides his head behind the dash, in any shot`, () => {
+      const aspect = width / height;
+      const dashNdc = 1 - (2 * podBottom(width)) / height;
+      for (const index of SHOTS.keys()) {
+        for (const local of MOMENTS) {
+          const camera = evaluateCamera(progressAt(index, local), pose(), aspect);
+          const top = ndc(headTop, camera, aspect);
+          expect(top, `${SHOTS[index].id} t=${local}`).not.toBeNull();
+          expect(top!.y, `${SHOTS[index].id} t=${local}`).toBeLessThan(dashNdc - 0.05);
+        }
+      }
+    });
+  }
+});
+
+describe("the subtitle band on tall screens", () => {
+  // Hero.module.css: on a tall screen the band stands 12 px above the pedal's plate: the pedal's
+  // bottom (1.25rem, or the home indicator's 34 px + 0.75rem), its 5.25em plate (16 px, 14 px under
+  // 700 px tall) and 0.75rem. A two-line card on it is about 56 px tall.
+  const CARD = 56;
+  const bandTop = (height: number, homeIndicator: number) => {
+    const pedalBottom = Math.max(20, homeIndicator + 12);
+    return pedalBottom + 5.25 * (height < 700 ? 14 : 16) + 12 + CARD;
+  };
+  const SCREENS = [
+    [360, 640, 0],
+    [405, 720, 0],
+    [390, 844, 34],
+    [430, 932, 34],
+  ] as const;
+
+  for (const [width, height, home] of SCREENS) {
+    it(`${width}x${height}: keeps his head above a two-line card while each line is up, in both languages`, () => {
+      const aspect = width / height;
+      const top = bandTop(height, home);
+      for (const lines of [en.hero.lines, es.hero.lines]) {
+        for (const [card, beat] of heroTimeline(lines).beats.entries()) {
+          const { from, to } = activeWindow(beat);
+          for (const p of [from, (from + to) / 2, to]) {
+            const camera = evaluateCamera(p, pose(), aspect);
+            const head = ndc(DRIVER_HEAD, camera, aspect);
+            expect(head, `card ${card} at ${p.toFixed(3)}`).not.toBeNull();
+            const fromBottom = ((head!.y + 1) / 2) * height;
+            expect(fromBottom, `card ${card} at ${p.toFixed(3)}`).toBeGreaterThan(top + 12);
+          }
+        }
+      }
     });
   }
 });

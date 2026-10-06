@@ -14,11 +14,12 @@ export function Hero({ dict }: Props) {
         tagline={dict.tagline}
         intro={dict.intro}
         osd={dict.osd}
+        pedal={dict.pedal}
         skip={dict.skip}
         skipLabel={dict.skipLabel}
         skipHurry={dict.skipHurry}
         sceneLabel={dict.sceneLabel}
-        hud={dict.hud}
+        camera={dict.hud.camera}
         shots={dict.shots}
         speaker={dict.speaker}
         lines={dict.lines}

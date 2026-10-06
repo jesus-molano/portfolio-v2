@@ -117,6 +117,8 @@ export type GoToOptions = {
   focus?: HTMLElement | null;
   /** Glide there over this many seconds (Lenis); at once by default. */
   glide?: number;
+  /** The glide's easing (t from 0 to 1); Lenis' own by default. */
+  easing?: (t: number) => number;
   /** Called once the page is there (after the glide). */
   onArrive?: () => void;
 };
@@ -184,7 +186,7 @@ export function goTo(to: HTMLElement | number, options: GoToOptions = {}): void 
   lenis.resize();
   lenis.reset();
   if (options.glide && options.glide > 0) {
-    lenis.scrollTo(y, { duration: options.glide, force: true, onComplete: arrive });
+    lenis.scrollTo(y, { duration: options.glide, easing: options.easing, force: true, onComplete: arrive });
     // Already there: Lenis completes at once, and has called `arrive`.
     return;
   }

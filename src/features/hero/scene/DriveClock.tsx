@@ -15,7 +15,8 @@ type Props = { animate: boolean };
  * runs backwards:
  * - the visitor's pace (heroFeedback.pace, see scroll/throttle.ts): a crawl
  *   while the film waits for her (lower after a long wait), x1 to x2 as she
- *   pushes;
+ *   pushes, and no more than 80 km/h while an unread line holds the film
+ *   (the pit limiter);
  * - `timeScale`, eased here, so the radio wheel can slow the drive down
  *   without a jolt.
  */
