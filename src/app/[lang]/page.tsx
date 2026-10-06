@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Horizon } from "@/features/loader/Horizon";
 import { LoadingScreen } from "@/features/loader/LoadingScreen";
 import { hasLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
@@ -12,7 +13,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
   return (
     <>
       {/* Outside <main>: main is inert while the loading screen is up. */}
-      <LoadingScreen dict={dict.loader} name={dict.hero.name} role={dict.hero.role} />
+      <LoadingScreen dict={dict.loader} settings={dict.stats.settings} lang={lang} art={<Horizon />} />
       <HomeMain dict={dict} lang={lang} />
     </>
   );

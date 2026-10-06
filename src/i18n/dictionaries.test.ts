@@ -120,7 +120,9 @@ describe("loading screen copy", () => {
 
   it("has the same keys in both languages", () => {
     expect(Object.keys(es.loader).sort()).toEqual(Object.keys(en.loader).sort());
-    expect(Object.keys(es.loader.labels).sort()).toEqual(Object.keys(en.loader.labels).sort());
+    for (const part of ["labels", "menu", "keys", "panel"] as const) {
+      expect(Object.keys(es.loader[part]).sort(), part).toEqual(Object.keys(en.loader[part]).sort());
+    }
   });
 
   it("gives every tip the same kind and conditions in both languages", () => {
@@ -201,10 +203,28 @@ describe("loading screen copy", () => {
       expect(radio[0].text).not.toMatch(/press and hold|deja el dedo sobre/i);
     });
 
-    it(`${locale}: keeps the buttons and the slow note short`, () => {
-      expect(Array.from(loader.withMusic).length).toBeLessThanOrEqual(22);
-      expect(Array.from(loader.withoutMusic).length).toBeLessThanOrEqual(22);
+    it(`${locale}: keeps the menu's words, its lines and the slow note short`, () => {
+      // The three items are one huge word each in the marquee face, on one line.
+      for (const item of [loader.menu.newGame, loader.menu.continue, loader.menu.settings]) {
+        expect(Array.from(item).length, item).toBeLessThanOrEqual(14);
+      }
+      // A line under an item holds its lead (or the longest station chip) and its state on a 360 px phone.
+      expect(Array.from(`${loader.menu.noMusic} · ${loader.menu.waiting}`).length).toBeLessThanOrEqual(36);
+      expect(Array.from(loader.menu.settingsSub).length).toBeLessThanOrEqual(40);
+      expect(Array.from(loader.menu.radioOff).length).toBeLessThanOrEqual(16);
+      for (const short of [loader.menu.early, loader.menu.withMusic, loader.keys.move, loader.keys.choose, loader.panel.back]) {
+        expect(Array.from(short).length, short).toBeLessThanOrEqual(14);
+      }
+      expect(Array.from(loader.readyShort).length).toBeLessThanOrEqual(32);
       expect(Array.from(loader.slow).length).toBeLessThanOrEqual(TIP_MAX_CHARS);
+      expect(Array.from(loader.notYet).length).toBeLessThanOrEqual(TIP_MAX_CHARS);
+    });
+
+    it(`${locale}: is a start menu, not a title card: no name and no role on it`, () => {
+      const dict = locale === "en" ? en : es;
+      const copy = JSON.stringify({ ...loader, tips: undefined });
+      expect(copy).not.toContain(dict.hero.name);
+      expect(copy).not.toContain(dict.hero.role);
     });
 
     it(`${locale}: never sounds like a video player`, () => {
@@ -333,4 +353,20 @@ describe("chapter cards (each static section's heading)", () => {
     expect(en.hero.lines.flat().at(-1)).toMatch(/meet the crew/i);
     expect(es.hero.lines.flat().at(-1)).toMatch(/la banda/i);
   });
+});
+
+describe("the game's own words", () => {
+  // The owner: it is a game (a partida, a scene, an intro), so the experience's own UI never calls
+  // the site a film. What really is about films stays: the cinema and its posters, the credits, the
+  // achievements and STATS's bars about watching them, the hero's spoken lines.
+  const FILM = /pel[ií]cula|\bfilms?\b|\bmovies?\b/i;
+  for (const [locale, dict] of [
+    ["en", en],
+    ["es", es],
+  ] as const) {
+    it(`${locale}: never calls the site a film in the start menu, the intro's help, the settings or the description`, () => {
+      const copy = flatten({ loader: dict.loader, intro: dict.hero.intro, settings: dict.stats.settings, description: dict.meta.description });
+      for (const [key, text] of Object.entries(copy)) expect(text, key).not.toMatch(FILM);
+    });
+  }
 });

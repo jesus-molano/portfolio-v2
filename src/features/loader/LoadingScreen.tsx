@@ -2,16 +2,17 @@
 
 import { useLenis } from "lenis/react";
 import {
-  Fragment,
+  type CSSProperties,
   type MouseEvent,
+  type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
-import { Button } from "@/components/ui/Button";
 import {
   type EnteredVia,
   getSceneLoading,
@@ -19,31 +20,25 @@ import {
   markEntered,
   subscribeSceneLoading,
 } from "@/features/hero/sceneLoading";
-import { entryStation, readMemory, requestMusic } from "@/features/music/radio";
-import { DEFAULT_STATION_ID, findStation, formatFrequency, STATIONS } from "@/features/music/stations";
+import { getEntryChoice, getServerEntryChoice, requestMusic, subscribeRadio } from "@/features/music/radio";
+import { findStation, formatFrequency, STATIONS } from "@/features/music/stations";
+import { Settings } from "@/features/settings/Settings";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
-import { goTo } from "@/lib/navigate";
+import { type Locale, localeNames, locales } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { goTo } from "@/lib/navigate";
 import styles from "./LoadingScreen.module.css";
-import {
-  eligible,
-  entersOnKey,
-  firstTip,
-  isSlow,
-  pad2,
-  percentLabel,
-  type TipViewer,
-  tipDuration,
-  tipOrder,
-} from "./tips";
+import { canChoose, itemState, longestEm, MENU_ITEMS, type MenuItem, menuMove, moveSelection } from "./menu";
+import { eligible, firstTip, isSlow, pad2, percentLabel, type TipViewer, tipDuration, tipOrder } from "./tips";
 
 type Props = {
   dict: Dictionary["loader"];
-  /** `hero.name`: the lockup, and the dialog's name. */
-  name: string;
-  /** `hero.role`: the kicker under the name. */
-  role: string;
+  /** The same settings as the pause menu's (STATS's SETTINGS tab). */
+  settings: Dictionary["stats"]["settings"];
+  lang: Locale;
+  /** The picture behind the menu, drawn on the server (Horizon.tsx). */
+  art?: ReactNode;
 };
 type Phase = "loading" | "ready" | "leaving" | "gone";
 
@@ -55,6 +50,11 @@ const LEAVE_MS = 700;
 /** How often the screen asks whether the wait has become slow. */
 const SLOW_POLL_MS = 250;
 const TOUCH_QUERY = "(pointer: coarse)";
+/** The start menu's settings were open when she switched language: they open again on the new page. */
+const REOPEN_KEY = "va-start-settings";
+/** The slab's room around its word: before it, and after it (past the word's slide to the right). */
+const SLAB_BEFORE = 14;
+const SLAB_AFTER = 40;
 
 const subscribeNothing = () => () => {};
 
@@ -65,17 +65,6 @@ function useHydrated(): boolean {
     () => true,
     () => false,
   );
-}
-
-/** What "enter with music" starts, as "BABYLON 105.1": the station requestMusic plays. */
-function useEntryStationLabel(): string {
-  const id = useSyncExternalStore(
-    subscribeNothing,
-    () => entryStation(readMemory()),
-    () => DEFAULT_STATION_ID,
-  );
-  const station = findStation(id) ?? findStation(DEFAULT_STATION_ID) ?? STATIONS[0];
-  return `${station.name} ${formatFrequency(station.frequency)}`;
 }
 
 /**
@@ -89,50 +78,65 @@ function serverFirst(index: number, stillFirst: number): "motion" | "still" | "a
 }
 
 /**
- * The cold open: the drive painted as key art, his name as the game logo,
- * a tip card bottom left, an action slot bottom right and a thin progress
- * line on the bottom edge. The slot shows the progress while the city
- * loads, then the two ways in, with music or without; any printable key
- * enters with music. The click or key press is the gesture browsers need
- * before they play sound.
+ * The start menu: a game's main menu over the causeway at sunset. No name
+ * and no role here (the hero shows them once she starts): three huge
+ * items, NEW GAME (in with the radio: the station it will play, or radio
+ * off, from the radio store), CONTINUE (in without music) and SETTINGS
+ * (the pause menu's own settings, in a modal dialog); a game tip card;
+ * the language; the load as a status line, a percentage riding a
+ * progress line on the bottom edge, the sun sinking and the causeway's
+ * lamps lighting toward the city.
+ *
+ * The menu: a list of real buttons. The selection is a painted slab that
+ * slides to the item, and it is the keyboard focus: ↑ and ↓, W and S (by
+ * their place, menu.ts) move the focus and the slab with it, a mouse over
+ * an item does the same, Enter or Space (the button's own) or a tap
+ * chooses. No other key starts anything. The two ways in wait for the
+ * scene ("waiting for the city"); chosen too soon they shake and say so.
+ * A slow wait (`isSlow`) offers them early ("go now"), in the menu's own
+ * lines, the status line and the tip card. SETTINGS works at once: what
+ * she sets there applies when she starts (radio.ts cueEntry; the volume
+ * and the subtitle size are stored as she sets them).
  *
  * No layout shift: every box is placed against the viewport and has a
- * fixed size; both states of the slot and every tip are in the DOM from
+ * fixed size; every state of every line and every tip is in the DOM from
  * the first paint, stacked in one cell, and the phases only switch
- * opacity, visibility and inert. Device and motion choices are media
- * queries, so the server's HTML already paints the right first tip.
+ * opacity, visibility, transform and inert. Device and motion choices are
+ * media queries, so the server's HTML already paints the right layout and
+ * first tip. The slab is measured once the faces are in, and shown then.
  *
- * A slow wait (`isSlow`) says so in the card and brings the choices early,
- * so she can enter while the scene catches up.
- *
- * Accessibility: a modal dialog named by the lockup and described by the
- * loading state; the page behind is inert; the bottom line is the
- * progressbar; one polite live region says "slow" and "ready", once each;
- * the tips pause on hover or focus and have a Next button. Without
- * JavaScript it is hidden (see NO_JS_STYLE in the layout).
+ * Accessibility: a modal dialog named "Main menu" and described by the
+ * loading state; the page behind is inert; each item is a button named by
+ * its word and described by its line (station, waiting, go now); the
+ * bottom line is the progressbar; one polite live region says "slow",
+ * "ready" and "not yet". The settings are a native modal dialog (focus
+ * kept inside, Esc or Back return to the menu, on SETTINGS). Without
+ * JavaScript the screen is hidden (see NO_JS_STYLE in the layout).
  */
-export function LoadingScreen({ dict, name, role }: Props) {
-  const { progress, ready } = useSyncExternalStore(
-    subscribeSceneLoading,
-    getSceneLoading,
-    getServerSceneLoading,
-  );
+export function LoadingScreen({ dict, settings, lang, art }: Props) {
+  const { progress, ready } = useSyncExternalStore(subscribeSceneLoading, getSceneLoading, getServerSceneLoading);
   const hydrated = useHydrated();
   const reducedMotion = usePrefersReducedMotion();
   const touch = useMediaQuery(TOUCH_QUERY);
-  const stationLabel = useEntryStationLabel();
+  const choice = useSyncExternalStore(subscribeRadio, getEntryChoice, getServerEntryChoice);
   const lenis = useLenis();
   const [phase, setPhase] = useState<Phase>("loading");
   const [slow, setSlow] = useState(false);
+  const [selected, setSelected] = useState(0);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [live, setLive] = useState("");
+  const [nudge, setNudge] = useState(0);
+  /** Each word's width (px), measured once the faces are in: the slab's length. */
+  const [widths, setWidths] = useState<number[] | null>(null);
   /** The phase and the slow flag as of the last render, for event handlers. */
   const phaseRef = useRef<Phase>("loading");
   const slowRef = useRef(false);
   const shownAt = useRef(0);
   const progressAt = useRef(0);
-  const dialog = useRef<HTMLDivElement>(null);
-  const card = useRef<HTMLDivElement>(null);
-  const choices = useRef<HTMLDivElement>(null);
-  const withMusic = useRef<HTMLButtonElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDialogElement>(null);
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  const words = useRef<(HTMLSpanElement | null)[]>([]);
 
   // Tips: her own order once the client knows her device and motion
   // setting; until then the server's first card, which CSS picks.
@@ -150,19 +154,32 @@ export function LoadingScreen({ dict, name, role }: Props) {
   const shownTip = tips[current ?? 0];
   const seconds = tipDuration(shownTip.text);
 
-  /** The two ways in are on offer: loaded, or tired of waiting. */
-  const choosing = phase !== "loading" || slow;
+  const loaded = phase !== "loading";
   const slowNow = phase === "loading" && slow;
   const rotating = order !== null && !slowNow && phase !== "leaving";
   const held = hovered || focused;
+  const loading = { loaded, slow };
 
-  // Start at the top of the drive.
+  // Start at the top of the drive, with the focus on NEW GAME.
   useEffect(() => {
     shownAt.current = performance.now();
     progressAt.current = shownAt.current;
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     goTo(0, { focus: null });
-    dialog.current?.focus();
+    buttons.current[0]?.focus({ preventScroll: true });
+    // Back from the other language with the settings open: open them again.
+    let reopen = false;
+    try {
+      reopen = sessionStorage.getItem(REOPEN_KEY) === "1";
+      sessionStorage.removeItem(REOPEN_KEY);
+    } catch {
+      // Blocked storage: the menu, as usual.
+    }
+    if (reopen && panel.current && !panel.current.open) {
+      buttons.current[2]?.focus({ preventScroll: true });
+      panel.current.showModal();
+      setPanelOpen(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -174,7 +191,7 @@ export function LoadingScreen({ dict, name, role }: Props) {
   // The scroll comes back as soon as she has chosen: input during the fade
   // out already drives the hero, so her first scroll is never swallowed.
   useEffect(() => {
-    const root = document.documentElement;
+    const html = document.documentElement;
     // The skip link too: an aria-modal dialog keeps Tab and Shift+Tab inside.
     const behind = [
       document.querySelector(".skip-link"),
@@ -182,12 +199,12 @@ export function LoadingScreen({ dict, name, role }: Props) {
       document.querySelector("[data-page-controls]"),
     ];
     if (phase === "gone") {
-      delete root.dataset.loading;
+      delete html.dataset.loading;
       behind.forEach((element) => element?.removeAttribute("inert"));
       lenis?.start();
       return;
     }
-    root.dataset.loading = "";
+    html.dataset.loading = "";
     behind.forEach((element) => element?.setAttribute("inert", ""));
     if (phase === "leaving") lenis?.start();
     else lenis?.stop();
@@ -197,19 +214,24 @@ export function LoadingScreen({ dict, name, role }: Props) {
   useEffect(() => {
     if (!ready || phase !== "loading") return;
     const wait = Math.max(0, MIN_VISIBLE_MS - (performance.now() - shownAt.current));
-    const timer = setTimeout(() => setPhase("ready"), wait);
+    const timer = setTimeout(() => {
+      setPhase("ready");
+      setLive(dict.ready);
+    }, wait);
     return () => clearTimeout(timer);
-  }, [ready, phase]);
+  }, [ready, phase, dict.ready]);
 
   // A scene that loaded but never says ready still lets her in. A slow one
   // already has, and keeps saying it is slow until it is ready.
   useEffect(() => {
-    const timer = setTimeout(
-      () => setPhase((p) => (p === "loading" && !slowRef.current ? "ready" : p)),
-      FAILSAFE_MS,
-    );
+    const timer = setTimeout(() => {
+      if (phaseRef.current === "loading" && !slowRef.current) {
+        setPhase("ready");
+        setLive(dict.ready);
+      }
+    }, FAILSAFE_MS);
     return () => clearTimeout(timer);
-  }, []);
+  }, [dict.ready]);
 
   useEffect(() => {
     progressAt.current = performance.now();
@@ -225,22 +247,11 @@ export function LoadingScreen({ dict, name, role }: Props) {
         // At once, not on the next render: an overdue failsafe may run right after this.
         slowRef.current = true;
         setSlow(true);
+        setLive(dict.slow);
       }
     }, SLOW_POLL_MS);
     return () => clearInterval(timer);
-  }, [phase, slow]);
-
-  // The choices appear (slow or loaded): focus the main one, unless she is
-  // already on one of them, or on Next once loaded: a key press meant for
-  // the next tip must not enter the city with music (the live region says
-  // it is ready). The slow note hides Next, so its focus moves on.
-  useEffect(() => {
-    if (!choosing || phase === "leaving") return;
-    const active = document.activeElement;
-    if (choices.current?.contains(active)) return;
-    if (!slowNow && card.current?.contains(active)) return;
-    withMusic.current?.focus({ focusVisible: true });
-  }, [choosing, phase, slowNow]);
+  }, [phase, slow, dict.slow]);
 
   // The tip on screen moves on after its reading time, unless hover or
   // focus holds it.
@@ -248,12 +259,30 @@ export function LoadingScreen({ dict, name, role }: Props) {
     if (!rotating || held) return;
     const left = remaining.current?.position === position ? remaining.current.ms : seconds * 1000;
     const started = performance.now();
-    const timer = setTimeout(() => setPosition((p) => p + 1), left);
+    const timer = setTimeout(() => setPosition((n) => n + 1), left);
     return () => {
       clearTimeout(timer);
       remaining.current = { position, ms: Math.max(0, left - (performance.now() - started)) };
     };
   }, [rotating, held, position, seconds]);
+
+  // The slab's length: each word as drawn, once the faces are in and whenever the screen changes.
+  useLayoutEffect(() => {
+    let cancelled = false;
+    const measure = () => {
+      if (cancelled) return;
+      const next = words.current.map((word) => word?.offsetWidth ?? 0);
+      setWidths((old) => (old && old.length === next.length && old.every((w, i) => w === next[i]) ? old : next));
+    };
+    // Only once the faces are in: a fallback face's width would be the wrong slab for a frame.
+    if (document.fonts) document.fonts.ready.then(measure, measure);
+    else measure();
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("resize", measure);
+    };
+  }, [lang]);
 
   const enter = useCallback((music: boolean, via: EnteredVia) => {
     const now = phaseRef.current;
@@ -265,17 +294,54 @@ export function LoadingScreen({ dict, name, role }: Props) {
     setPhase("leaving");
   }, []);
 
-  // Any printable key enters with music. Enter and Space are left to the
-  // focused button, Tab moves between the controls.
+  const openPanel = useCallback(() => {
+    const dialog = panel.current;
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+    setPanelOpen(true);
+  }, []);
+
+  const choose = useCallback(
+    (item: MenuItem, via: EnteredVia) => {
+      if (item === "settings") {
+        openPanel();
+        return;
+      }
+      if (!canChoose(item, { loaded: phaseRef.current !== "loading", slow: slowRef.current })) {
+        // Not yet: the slab shakes and the live region says why (a new string each time, so it is said again).
+        setNudge((n) => n + 1);
+        setLive((old) => (old === dict.notYet ? `${dict.notYet} ` : dict.notYet));
+        return;
+      }
+      enter(item === "newGame", via);
+    },
+    [dict.notYet, enter, openPanel],
+  );
+
+  // The menu's keys: ↑ ↓, W S, Home and End move the focus, and the slab with it.
   useEffect(() => {
-    if (!choosing || phase === "leaving") return;
+    if (phase === "leaving" || phase === "gone" || panelOpen) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || !entersOnKey(event)) return;
-      enter(true, "key");
+      if (event.defaultPrevented) return;
+      const move = menuMove(event);
+      if (move) {
+        event.preventDefault();
+        const active = buttons.current.findIndex((button) => button === document.activeElement);
+        // From outside the menu (the tip card, the languages), an arrow comes back to the selected item.
+        const to = active >= 0 || move === "first" || move === "last" ? moveSelection(active >= 0 ? active : selected, move) : selected;
+        buttons.current[to]?.focus({ preventScroll: true });
+        setSelected(to);
+        return;
+      }
+      // Enter or Space with nothing focused (the screen itself): the item the slab is on.
+      if ((event.key === "Enter" || event.key === " ") && event.target === root.current && !event.repeat) {
+        event.preventDefault();
+        choose(MENU_ITEMS[selected], "key");
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [choosing, phase, enter]);
+  }, [phase, panelOpen, selected, choose]);
 
   useEffect(() => {
     if (phase !== "leaving") return;
@@ -297,52 +363,181 @@ export function LoadingScreen({ dict, name, role }: Props) {
 
   if (phase === "gone") return null;
 
-  const loaded = phase !== "loading";
   const shownProgress = loaded ? 100 : progress;
+  const p = shownProgress / 100;
+  const station = findStation(choice.station) ?? STATIONS[0];
+  const stationLabel = `${station.name} ${formatFrequency(station.frequency)}`;
   const nextTip = (event: MouseEvent<HTMLButtonElement>) => {
-    setPosition((p) => p + 1);
+    setPosition((n) => n + 1);
     // Safari does not focus a tapped button; focus holds the new tip until she moves on.
     event.currentTarget.focus();
   };
-  const enterFrom = (music: boolean) => (event: MouseEvent<HTMLButtonElement>) =>
-    enter(music, event.detail > 0 ? "pointer" : "key");
+
+  // The slab: on the selected item, as long as its word plus its margins; filled by the load while that item waits.
+  const selectedItem = MENU_ITEMS[selected];
+  const slabWidth = widths ? widths[selected] + SLAB_BEFORE + SLAB_AFTER : 0;
+  const waitingHere = itemState(selectedItem, loading) === "wait";
+  const fillPx = waitingHere ? Math.max(0, Math.min(widths?.[selected] ?? 0, p * slabWidth - SLAB_BEFORE)) : null;
+
+  const describe = (item: MenuItem): string => {
+    const state = itemState(item, loading);
+    const tail = state === "wait" ? dict.menu.waiting : state === "early" ? dict.menu.early : "";
+    const head =
+      item === "newGame"
+        ? choice.on
+          ? `${dict.menu.withMusic}: ${stationLabel}`
+          : dict.menu.radioOff
+        : item === "continue"
+          ? dict.menu.noMusic
+          : dict.menu.settingsSub;
+    return tail ? `${head}, ${tail}.` : `${head}.`;
+  };
 
   return (
     <div
-      ref={dialog}
+      ref={root}
       className={styles.loader}
       data-loader
       data-phase={phase}
       data-slow={slowNow ? "" : undefined}
+      data-ready={loaded ? "" : undefined}
+      data-measured={widths ? "" : undefined}
       role="dialog"
       aria-modal="true"
       aria-labelledby="loader-title"
       aria-describedby="loader-state"
       tabIndex={-1}
+      style={{ "--p": p, "--longest": longestEm(MENU_ITEMS.map((item) => dict.menu[item])) } as CSSProperties}
     >
       <div className={styles.art} aria-hidden="true">
-        <div className={styles.scrim} />
+        {art}
+        <div className={styles.vignette} />
         <div className={styles.grain} />
       </div>
+      <div className={styles.scrim} aria-hidden="true" />
 
-      {/* A div, not a header: inside the dialog a header would be a stray banner landmark. */}
-      <div className={styles.lockup} data-box="lockup">
-        <h2 id="loader-title" className={styles.name}>
-          {name.split(" ").map((word, index) => (
-            <Fragment key={index}>
-              {index > 0 ? " " : null}
-              <span className={styles.word}>{word}</span>
-            </Fragment>
-          ))}
+      <nav className={styles.langs} data-box="langs" aria-label={dict.language}>
+        {locales.map((locale) =>
+          locale === lang ? (
+            <span key={locale} className={styles.lang} aria-current="true" lang={locale}>
+              <span aria-hidden="true">{locale.toUpperCase()}</span>
+              <span className="sr-only">{localeNames[locale]}</span>
+            </span>
+          ) : (
+            <a key={locale} className={styles.lang} href={`/${locale}`} hrefLang={locale} lang={locale}>
+              <span aria-hidden="true">{locale.toUpperCase()}</span>
+              <span className="sr-only">{localeNames[locale]}</span>
+            </a>
+          ),
+        )}
+      </nav>
+
+      <div className={styles.menu} data-box="menu">
+        <h2 id="loader-title" className={styles.kicker}>
+          {dict.title}
         </h2>
-        <p className={styles.kicker}>
-          <span className={styles.dot} aria-hidden="true" />
-          {role}
+        <div className={styles.items}>
+          <div
+            key={nudge}
+            className={styles.slab}
+            aria-hidden="true"
+            data-wait={waitingHere ? "" : undefined}
+            data-nudge={nudge > 0 ? "" : undefined}
+            style={{ "--sel": selected, "--slab-w": `${slabWidth}px` } as CSSProperties}
+          >
+            <i className={styles.slabBar}>
+              <b className={styles.slabFill} />
+            </i>
+          </div>
+          <ul className={styles.list}>
+            {MENU_ITEMS.map((item, i) => {
+              const state = itemState(item, loading);
+              return (
+                <li key={item} className={styles.row}>
+                  <button
+                    ref={(button) => {
+                      buttons.current[i] = button;
+                    }}
+                    type="button"
+                    className={styles.item}
+                    data-item={item}
+                    data-enter={item === "newGame" ? "music" : item === "continue" ? "silent" : "settings"}
+                    data-state={state}
+                    data-selected={selected === i ? "" : undefined}
+                    aria-disabled={state === "wait" ? "true" : undefined}
+                    aria-describedby={`loader-line-${item}`}
+                    onFocus={() => setSelected(i)}
+                    onPointerEnter={(event) => {
+                      if (event.pointerType === "mouse") event.currentTarget.focus({ preventScroll: true });
+                    }}
+                    onClick={(event) => choose(item, event.detail > 0 ? "pointer" : "key")}
+                  >
+                    <span className={styles.index} aria-hidden="true">
+                      {pad2(i + 1)}
+                    </span>
+                    <span
+                      ref={(word) => {
+                        words.current[i] = word;
+                      }}
+                      className={styles.word}
+                      style={selected === i && fillPx !== null ? ({ "--fill": `${fillPx}px` } as CSSProperties) : undefined}
+                    >
+                      {dict.menu[item]}
+                    </span>
+                    <span className={styles.line} aria-hidden="true">
+                      {item === "newGame" ? (
+                        <span
+                          className={styles.station}
+                          data-off={choice.on ? undefined : ""}
+                          data-pending={hydrated ? undefined : ""}
+                          style={{ "--accent": `var(--va-radio-${choice.on ? station.accent : "off"})` } as CSSProperties}
+                        >
+                          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                            <path d={choice.on ? "M2 10v4M6 6v8M10 3v11M14 8v6" : "M2 8h12"} />
+                          </svg>
+                          {choice.on ? stationLabel : dict.menu.radioOff}
+                        </span>
+                      ) : (
+                        <span className={styles.lead}>{item === "continue" ? dict.menu.noMusic : dict.menu.settingsSub}</span>
+                      )}
+                      {item === "settings" ? null : (
+                        <span className={styles.states}>
+                          <span data-when="wait">
+                            {dict.menu.waiting}
+                            <span className={styles.dots}>
+                              <i />
+                              <i />
+                              <i />
+                            </span>
+                          </span>
+                          <span data-when="early">{dict.menu.early}</span>
+                          <span data-when="ready">{item === "newGame" && choice.on ? dict.menu.withMusic : ""}</span>
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  <span id={`loader-line-${item}`} className="sr-only">
+                    {describe(item)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+        <p id="loader-hint" className={styles.legend} aria-hidden="true">
+          <span className={styles.legendPart}>
+            <kbd>↑</kbd>
+            <kbd>↓</kbd>
+            {dict.keys.move}
+          </span>
+          <span className={styles.legendPart}>
+            <kbd>{dict.keys.enter}</kbd>
+            {dict.keys.choose}
+          </span>
         </p>
       </div>
 
       <div
-        ref={card}
         className={styles.card}
         data-box="card"
         onPointerEnter={() => setHovered(true)}
@@ -371,7 +566,7 @@ export function LoadingScreen({ dict, name, role }: Props) {
           </span>
           <button type="button" className={styles.next} aria-label={dict.nextTip} data-next onClick={nextTip}>
             <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-              <path d="M6 3l5 5-5 5" />
+              <path d="M3 8h9M8.5 4 12 8l-3.5 4" />
             </svg>
           </button>
         </div>
@@ -400,43 +595,16 @@ export function LoadingScreen({ dict, name, role }: Props) {
         </div>
       </div>
 
-      <div className={styles.slot} data-box="slot">
-        <div className={styles.status} aria-hidden="true" inert={choosing}>
-          <span className={styles.statusLabel}>
-            <span className={styles.dot} />
-            {dict.loading}
-          </span>
-          <span className={styles.percent}>{percentLabel(shownProgress)}</span>
-        </div>
-        <div ref={choices} className={styles.choices} inert={!choosing}>
-          <Button
-            ref={withMusic}
-            variant="solid"
-            size="lg"
-            className={styles.music}
-            data-enter="music"
-            aria-describedby={touch ? undefined : "loader-hint"}
-            onClick={enterFrom(true)}
-          >
-            <span className={styles.musicLabel}>{dict.withMusic}</span>
-            <span className={styles.station}>
-              <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                <path d="M2 10v4M6 6v8M10 3v11M14 8v6" />
-              </svg>
-              <span className={styles.stationName}>{stationLabel}</span>
-            </span>
-          </Button>
-          <Button variant="ghost" size="md" className={styles.silent} data-enter="silent" onClick={enterFrom(false)}>
-            {dict.withoutMusic}
-          </Button>
-          <p id="loader-hint" className={styles.hint}>
-            {dict.hint}
-          </p>
-        </div>
+      <div className={styles.status} data-box="status" aria-hidden="true">
+        <span data-when="loading">{dict.loading}</span>
+        <span data-when="ready">{dict.readyShort}</span>
+        <span data-when="slow">{dict.slowLabel}</span>
       </div>
-
+      <div className={styles.percent} aria-hidden="true">
+        {percentLabel(shownProgress)}
+      </div>
       <div
-        className={styles.line}
+        className={styles.progress}
         data-box="line"
         role="progressbar"
         aria-label={dict.loading}
@@ -444,15 +612,62 @@ export function LoadingScreen({ dict, name, role }: Props) {
         aria-valuemax={100}
         aria-valuenow={Math.round(shownProgress)}
       >
-        <div className={styles.fill} style={{ transform: `scaleX(${shownProgress / 100})` }} />
+        <div className={styles.fill} />
       </div>
 
       <p id="loader-state" className="sr-only">
         {loaded ? dict.ready : dict.loading}
       </p>
       <p className="sr-only" role="status">
-        {loaded ? dict.ready : slowNow ? dict.slow : ""}
+        {live}
       </p>
+
+      <dialog
+        ref={panel}
+        className={styles.panel}
+        aria-labelledby="start-settings-title"
+        data-settings
+        onClose={() => {
+          setPanelOpen(false);
+          setSelected(2);
+          buttons.current[2]?.focus({ preventScroll: true });
+        }}
+      >
+        <div className={styles.panelInner}>
+          <div className={styles.panelTop}>
+            <p className={styles.crumb}>
+              <span className={styles.mark} aria-hidden="true" />
+              {dict.title}
+            </p>
+            <button type="button" className={styles.back} data-back onClick={() => panel.current?.close()}>
+              <kbd className={styles.escKey} aria-hidden="true">
+                Esc
+              </kbd>
+              {dict.panel.back}
+            </button>
+          </div>
+          <div className={styles.panelTitle}>
+            <h2 id="start-settings-title">{dict.menu.settings}</h2>
+            <p>{dict.panel.lead}</p>
+          </div>
+          <Settings
+            dict={settings}
+            lang={lang}
+            where="start"
+            onLanguage={() => {
+              try {
+                sessionStorage.setItem(REOPEN_KEY, "1");
+              } catch {
+                // Blocked storage: the new page opens on the menu.
+              }
+            }}
+          />
+          <p className={styles.panelFoot}>
+            {dict.panel.saved}
+            <span className={styles.escape}> · {dict.panel.escape}</span>
+          </p>
+        </div>
+      </dialog>
     </div>
   );
 }

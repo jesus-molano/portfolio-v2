@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Loading screen QA: layout shift, fit and frames.
+ * Start menu (the loading screen) QA: layout shift, fit and frames.
  *
  *   node tools/loader/check.mjs [--url http://localhost:3000]
  *     [--only cls|fit|frames] [--out .captures/loader]
@@ -11,18 +11,28 @@
  * - cls: a buffered `layout-shift` observer from the first paint to the
  *   click, at 1440 x 900 and on a 390 x 844 phone. One run loads normally
  *   (loading, ready); one holds every .glb request, so the screen goes
- *   loading, slow, then ready once they are let through. The total must be
- *   exactly 0, and the lockup, the tip card and the action slot must keep
- *   the same box (to half a pixel) in every phase.
- * - fit: fourteen viewports, from 1920 x 1080 down to 360 x 640 and
- *   667 x 375 on its side. Every tip and the slow note must fit their card, the
- *   buttons their labels, and the lockup, card, slot and progress line
- *   must stay apart and inside the safe viewport; Next is clicked through
- *   every tip the visitor would see.
- * - frames: screenshots of loading, slow, ready and leaving (350 ms in) on
- *   desktop and phone, and loading and ready with reduced motion. Look at
- *   them before calling a change done. Leaving and reduced motion run
- *   without WebGL, so their frames are drawn on time.
+ *   loading, slow, then ready once they are let through; both move the
+ *   selection and open and close SETTINGS on the way. The total must be
+ *   exactly 0, and the menu, the tip card, the status and the languages
+ *   must keep the same box (to half a pixel) in every phase. Two more runs
+ *   per device and language are returning visitors (a remembered station,
+ *   the radio cued off in the other language), whose NEW GAME line the
+ *   client changes after the server's first paint.
+ * - fit: fifteen viewports, from 1920 x 1080 down to 360 x 640,
+ *   667 x 375 on its side and 720 x 450 (1440 x 900 at 200 %). Every tip and the slow note must fit their
+ *   card; every item's word (with its slab) and its line must fit the
+ *   menu, its three rows the menu's box; the menu, card, status,
+ *   languages and progress line must stay apart and inside the safe
+ *   viewport; Next and the counter must stay inside the tip card; Next is clicked through every tip the visitor would see.
+ * - frames: screenshots of loading, slow, ready, CONTINUE selected,
+ *   SETTINGS open and leaving (350 ms in) on desktop and phone, and
+ *   loading and ready with reduced motion. On the way it checks the
+ *   menu's keys: NEW GAME has the focus from the start, ↓ and S and W
+ *   move the focus and the slab, a way in chosen too soon says "not yet"
+ *   and stays, SETTINGS opens a modal dialog and Esc brings the focus
+ *   back to SETTINGS. Look at the frames before calling a change done.
+ *   Leaving and reduced motion run without WebGL, so their frames are
+ *   drawn on time.
  *
  * Every screenshot lands in --out. Exits 1 if any check fails.
  */
@@ -68,8 +78,15 @@ const FIT = [
   [667, 375, true],
   [1024, 768, true],
   [800, 600, false],
+  // 1440 x 900 at 200 % zoom.
+  [720, 450, false],
 ];
-const BOXES = ["lockup", "card", "slot"];
+/** Returning visitors: what the client reads after hydration differs from the server's first paint. */
+const RETURNING = [
+  ["a remembered station", { local: { "va-station": "leave-the-gun", "va-music": "on" } }],
+  ["the radio cued off in the other language", { session: { "va-cue": "off:babylon" } }],
+];
+const BOXES = ["menu", "card", "status", "langs"];
 /** On SwiftShader, on a busy machine, the scene can take minutes to compile. */
 const READY_TIMEOUT = 360_000;
 
@@ -143,8 +160,14 @@ function observe(boxes) {
   requestAnimationFrame(tick);
 }
 
-async function newPage(device, { reducedMotion = "no-preference", on = browser } = {}) {
+async function newPage(device, { reducedMotion = "no-preference", on = browser, storage } = {}) {
   const context = await on.newContext({ ...device, reducedMotion });
+  if (storage) {
+    await context.addInitScript(({ local = {}, session = {} }) => {
+      for (const [key, value] of Object.entries(local)) localStorage.setItem(key, value);
+      for (const [key, value] of Object.entries(session)) sessionStorage.setItem(key, value);
+    }, storage);
+  }
   const page = await context.newPage();
   page.on("pageerror", (error) => console.log(`  page error: ${error.message}`));
   await page.addInitScript(observe, BOXES);
@@ -192,6 +215,14 @@ async function clsPass() {
         await page.goto(`${values.url}/${lang}`, { waitUntil: "commit" });
         await page.waitForSelector('[data-loader][data-phase="ready"]', { timeout: READY_TIMEOUT });
         await page.waitForTimeout(1200);
+        // The slab slides, the settings open over the menu and close again: still nothing moves.
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Enter");
+        await page.waitForSelector("[data-loader] dialog[open]", { timeout: 5000 });
+        await page.waitForTimeout(500);
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(500);
         await verifyStill(page, `${name} ${lang} load`);
         await page.locator('[data-enter="silent"]').click();
         await page.waitForSelector("[data-loader]", { state: "detached", timeout: 10_000 });
@@ -209,12 +240,21 @@ async function clsPass() {
         await page.goto(`${values.url}/${lang}`, { waitUntil: "commit" });
         await page.waitForSelector("[data-loader][data-slow]", { timeout: READY_TIMEOUT });
         const focused = await page.evaluate(() => document.activeElement?.getAttribute("data-enter"));
-        if (focused !== "music") fail(`${name} ${lang} slow: focus is on ${focused}, not on Enter with music`);
+        if (focused !== "music") fail(`${name} ${lang} slow: focus is on ${focused}, not on NEW GAME`);
         await page.waitForTimeout(600);
         release();
         await page.waitForSelector('[data-loader][data-phase="ready"]', { timeout: READY_TIMEOUT });
         await page.waitForTimeout(1200);
         await verifyStill(page, `${name} ${lang} slow`);
+        await context.close();
+      }
+      // Returning visitors: her station replaces the server's default without moving anything.
+      for (const [who, storage] of RETURNING) {
+        const { context, page } = await newPage(device, { storage });
+        await page.goto(`${values.url}/${lang}`, { waitUntil: "commit" });
+        await page.waitForSelector('[data-loader][data-phase="ready"]', { timeout: READY_TIMEOUT });
+        await page.waitForTimeout(1200);
+        await verifyStill(page, `${name} ${lang} ${who}`);
         await context.close();
       }
     }
@@ -236,21 +276,37 @@ function measureFit() {
       problems.push(`text ${index} needs ${height.toFixed(1)}px, the card has ${cell.height.toFixed(1)}px: "${p.textContent}"`);
     }
   });
-  for (const button of loader.querySelectorAll("[data-enter]")) {
-    if (button.scrollWidth > button.clientWidth + 0.5) problems.push(`${button.textContent} is wider than its button`);
-  }
-  const label = loader.querySelector('[data-enter="music"] > span');
-  if (label && label.scrollWidth > label.clientWidth + 0.5) problems.push("the music label overflows");
   const vw = loader.clientWidth;
   const vh = loader.clientHeight;
   const rect = (name) => loader.querySelector(`[data-box="${name}"]`).getBoundingClientRect();
-  const boxes = Object.fromEntries(["lockup", "card", "slot", "line"].map((name) => [name, rect(name)]));
+  const boxes = Object.fromEntries(["menu", "card", "status", "langs", "line"].map((name) => [name, rect(name)]));
+  // The menu: each word, slid right on its slab (14 px) with the slab's 40 px after it, inside the
+  // menu's box; each line inside its row; the three rows inside the box's height.
+  const menu = boxes.menu;
+  for (const button of loader.querySelectorAll("[data-item]")) {
+    const word = button.children[1];
+    const right = word.getBoundingClientRect().left + word.offsetWidth + 14 + 40;
+    if (right > menu.right + 0.5) problems.push(`${word.textContent} and its slab end ${(right - menu.right).toFixed(1)}px past the menu`);
+    const line = button.children[2];
+    if (line.scrollWidth > line.clientWidth + 0.5) problems.push(`the line under ${word.textContent} is cut: "${line.textContent}"`);
+    const r = button.getBoundingClientRect();
+    if (r.bottom > menu.bottom + 0.5) problems.push(`${word.textContent} ends ${(r.bottom - menu.bottom).toFixed(1)}px below the menu`);
+  }
+  // The tip card's head (labels, counter, Next) stays inside the card: it clips what leaves it.
+  const card = loader.querySelector('[data-box="card"]').getBoundingClientRect();
+  for (const [what, element] of [["Next", loader.querySelector("[data-next]")], ["the counter", loader.querySelector("[data-next]")?.previousElementSibling]]) {
+    const r = element?.getBoundingClientRect();
+    if (r && (r.left < card.left - 0.5 || r.right > card.right + 0.5 || r.top < card.top - 0.5 || r.bottom > card.bottom + 0.5)) {
+      problems.push(`${what} leaves the tip card: ${Math.round(r.left)}-${Math.round(r.right)} in ${Math.round(card.left)}-${Math.round(card.right)}`);
+    }
+  }
+  const legend = loader.querySelector("#loader-hint");
+  if (legend && legend.getBoundingClientRect().bottom > menu.bottom + 0.5) problems.push("the keys' legend ends below the menu");
   for (const [name, r] of Object.entries(boxes)) {
     if (r.left < -0.5 || r.top < -0.5 || r.right > vw + 0.5 || r.bottom > vh + 0.5) {
       problems.push(`${name} leaves the viewport: ${JSON.stringify(r)}`);
     }
   }
-  // The lockup's own box is its widest word; the name's glyphs stay inside it.
   const names = Object.keys(boxes);
   for (let i = 0; i < names.length; i += 1) {
     for (let j = i + 1; j < names.length; j += 1) {
@@ -260,7 +316,7 @@ function measureFit() {
       if (overlap) problems.push(`${names[i]} overlaps ${names[j]}`);
     }
   }
-  return { problems, cell: [cell.width, cell.height], tallest };
+  return { problems, cell: [cell.width, cell.height], tallest, word: parseFloat(getComputedStyle(loader.querySelector("[data-item] > span + span")).fontSize) };
 }
 
 async function fitPass() {
@@ -270,9 +326,9 @@ async function fitPass() {
       const device = { viewport: { width, height }, deviceScaleFactor: 1, isMobile: touch, hasTouch: touch };
       const { context, page } = await newPage(device, { on: flat });
       await page.goto(`${values.url}/${lang}`, { waitUntil: "commit" });
-      await page.waitForSelector("[data-loader] [data-tips] [data-on]", { timeout: 60_000 });
+      await page.waitForSelector("[data-loader][data-measured] [data-tips] [data-on]", { timeout: 60_000 });
       const label = `${width}x${height} ${lang}`;
-      const { problems, cell, tallest } = await page.evaluate(measureFit);
+      const { problems, cell, tallest, word } = await page.evaluate(measureFit);
       // Next through every tip she would see, checking the one on screen.
       const total = Number((await page.locator("[data-loader] [data-box='card'] span[aria-hidden]").first().textContent()).split("/")[1]);
       const next = page.locator("[data-loader] [data-next]");
@@ -287,11 +343,46 @@ async function fitPass() {
       await page.waitForTimeout(500);
       await shot(page, `fit-${width}x${height}-${lang}`);
       const size = cell.map((v) => Math.round(v)).join("x");
-      console.log(`  ${label}: tip cell ${size}, tallest text ${tallest.toFixed(1)}px, ${total} tips${problems.length ? "" : ", ok"}`);
+      console.log(`  ${label}: words ${word.toFixed(0)}px, tip cell ${size}, tallest text ${tallest.toFixed(1)}px, ${total} tips${problems.length ? "" : ", ok"}`);
       for (const problem of problems) fail(`${label}: ${problem}`);
       await context.close();
     }
   }
+}
+
+/** The menu while the city loads: the focus, the keys, a way in chosen too soon. */
+async function checkMenu(page, label) {
+  const state = () =>
+    page.evaluate(() => ({
+      focus: document.activeElement?.getAttribute("data-item") ?? document.activeElement?.tagName,
+      selected: [...document.querySelectorAll("[data-loader] [data-item]")].findIndex((item) => item.hasAttribute("data-selected")),
+      phase: document.querySelector("[data-loader]")?.dataset.phase,
+      live: document.querySelector('[data-loader] [role="status"]')?.textContent ?? "",
+    }));
+  const first = await state();
+  if (first.focus !== "newGame" || first.selected !== 0) fail(`${label}: the menu starts on ${first.focus} (slab on ${first.selected}), not NEW GAME`);
+  // A printable key enters nothing any more; S and the arrows move the focus, the slab with it.
+  await page.keyboard.press("a");
+  await page.keyboard.press("s");
+  const down = await state();
+  if (down.focus !== "continue" || down.selected !== 1) fail(`${label}: S went to ${down.focus} (slab on ${down.selected}), not CONTINUE`);
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  const wrap = await state();
+  if (wrap.focus !== "settings" || wrap.selected !== 2) fail(`${label}: ↑ from NEW GAME went to ${wrap.focus}, not round to SETTINGS`);
+  await page.keyboard.press("w");
+  await page.keyboard.press("w");
+  // Chosen while the city loads: it stays, and says why. A machine so busy that the wait has
+  // already turned slow offers the way in early, rightly: then there is nothing to try.
+  if (await page.locator("[data-loader][data-slow]").count()) {
+    console.log(`  ${label}: keys move the focus and the slab (the wait was already slow: "not yet" not tried)`);
+    return;
+  }
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(200);
+  const early = await state();
+  if (early.phase !== "loading" || !early.live.trim()) fail(`${label}: NEW GAME chosen too soon left the phase ${early.phase}, live "${early.live}"`);
+  else console.log(`  ${label}: keys move the focus and the slab; too soon says "${early.live.trim()}"`);
 }
 
 async function framesPass() {
@@ -310,7 +401,8 @@ async function framesPass() {
         await route.continue().catch(() => {});
       });
       await page.goto(`${values.url}/${lang}`, { waitUntil: "commit" });
-      await page.waitForSelector("[data-loader] [data-tips] [data-on]", { timeout: 60_000 });
+      await page.waitForSelector("[data-loader][data-measured] [data-tips] [data-on]", { timeout: 60_000 });
+      await checkMenu(page, `${name} ${lang}`);
       await page.waitForTimeout(300);
       await shot(page, `${name}-${lang}-loading`);
       await page.waitForSelector("[data-loader][data-slow]", { timeout: READY_TIMEOUT });
@@ -320,6 +412,22 @@ async function framesPass() {
       await page.waitForSelector('[data-loader][data-phase="ready"]', { timeout: READY_TIMEOUT });
       await page.waitForTimeout(1000);
       await shot(page, `${name}-${lang}-ready`);
+      // CONTINUE selected, then SETTINGS open over the menu.
+      await page.keyboard.press("ArrowDown");
+      await page.waitForTimeout(600);
+      await shot(page, `${name}-${lang}-continue`);
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await page.waitForSelector("[data-loader] dialog[open]", { timeout: 5000 });
+      await page.waitForTimeout(600);
+      await shot(page, `${name}-${lang}-settings`);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(300);
+      const back = await page.evaluate(() => ({
+        open: Boolean(document.querySelector("[data-loader] dialog[open]")),
+        focus: document.activeElement?.getAttribute("data-item"),
+      }));
+      if (back.open || back.focus !== "settings") fail(`${name} ${lang}: Esc left the settings ${back.open ? "open" : "closed"} with the focus on ${back.focus}, not on SETTINGS`);
       await context.close();
 
       // Leaving, 350 ms in. Without WebGL, so a frame is drawn on time (the
@@ -366,7 +474,7 @@ async function framesPass() {
       await still.page.waitForTimeout(600);
       await shot(still.page, `${name}-${lang}-reduced-ready`);
       await still.context.close();
-      console.log(`  ${name} ${lang}: loading, slow, ready, leaving, reduced motion`);
+      console.log(`  ${name} ${lang}: loading, slow, ready, continue, settings, leaving, reduced motion`);
     }
   }
 }

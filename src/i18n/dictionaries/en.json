@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Jesús Molano — Frontend Engineer",
-    "description": "Cinematic portfolio of Jesús Molano, a Frontend Engineer from Tenerife: a sunset film you drive yourself.",
+    "description": "Cinematic portfolio of Jesús Molano, a Frontend Engineer from Tenerife: a sunset game where you do the driving.",
     "imageAlt": "An art-deco cinema at night with “Jesús Molano, Frontend Engineer” on its marquee"
   },
   "nav": {
@@ -41,11 +41,11 @@
       "hintTouch": "Hold the pedal or swipe up",
       "hintKey": "Hold W or Space to drive",
       "ack": "You have the wheel",
-      "model": "You drive. The film waits for you.",
+      "model": "You drive. The game waits for you.",
       "arriving": "Easy, the name's still pulling in.",
       "still": "The script is below",
-      "help": "This intro is a short film that moves as you scroll, swipe or hold the pedal, and stops when you stop. Each line stays until it has been read. Space, a click or tap on the picture, or a press of the pedal brings the next line; holding Space, W or the pedal keeps driving after it. Shift and Space goes back, S or the up arrow backs up, and Escape skips the intro. The full script follows as text.",
-      "helpStill": "This intro is a still from a short film. Its full script follows as text."
+      "help": "This intro is a scene that moves as you scroll, swipe or hold the pedal, and stops when you stop. Each line stays until it has been read. Space, a click or tap on the picture, or a press of the pedal brings the next line; holding Space, W or the pedal keeps driving after it. Shift and Space goes back, S or the up arrow backs up, and Escape skips the intro. The full script follows as text.",
+      "helpStill": "This intro is a still picture. Its full script follows as text."
     },
     "osd": {
       "drive": "You drive",
@@ -152,10 +152,14 @@
     "line": "Officer, I'd take a good look at number three."
   },
   "loader": {
+    "title": "Main menu",
+    "language": "Language",
     "loading": "Loading the city",
     "ready": "All set. Choose how to enter the city.",
+    "readyShort": "All set · choose how to go in",
     "slowLabel": "Slow connection",
     "slow": "Your connection is taking the scenic route. Enter now and the city will catch up, or wait for the full picture.",
+    "notYet": "Not yet: the city is still pulling in. Settings already work.",
     "labels": {
       "tip": "Tip",
       "trivia": "Trivia"
@@ -165,7 +169,7 @@
       {
         "kind": "tip",
         "when": ["motion"],
-        "text": "This film is not suitable for passengers: it won't move on until you scroll or swipe, because you're the one driving."
+        "text": "This game is not suitable for passengers: it won't move on until you scroll or swipe, because you're the one driving."
       },
       {
         "kind": "tip",
@@ -220,7 +224,7 @@
       {
         "kind": "trivia",
         "when": ["motion"],
-        "text": "The film grain changes 24 times a second, like a real reel."
+        "text": "The picture's grain changes 24 times a second: if it seems to shimmer, it isn't your glasses."
       },
       {
         "kind": "trivia",
@@ -233,9 +237,28 @@
         "text": "The cars going your way keep your exact pace, so nobody overtakes you, and you never overtake anyone either."
       }
     ],
-    "withMusic": "Enter with music",
-    "withoutMusic": "Without music",
-    "hint": "or press any key"
+    "menu": {
+      "newGame": "New game",
+      "continue": "Continue",
+      "settings": "Settings",
+      "withMusic": "with music",
+      "noMusic": "No music",
+      "radioOff": "Radio off",
+      "waiting": "waiting for the city",
+      "early": "go now",
+      "settingsSub": "Audio · display · language · controls"
+    },
+    "keys": {
+      "move": "Select",
+      "choose": "Confirm",
+      "enter": "Enter"
+    },
+    "panel": {
+      "lead": "The same settings you'll find in the game. What you choose here applies when you start.",
+      "back": "Back",
+      "saved": "Saved in this browser",
+      "escape": "Esc goes back to the menu"
+    }
   },
   "work": {
     "chapter": {
@@ -697,7 +720,7 @@
             "touch": "Swipe down"
           },
           {
-            "action": "Skip the film",
+            "action": "Skip the intro",
             "keys": [
               ["Esc"],
               ["End"]
@@ -729,7 +752,8 @@
               ["]"]
             ],
             "mouse": "Click a tab",
-            "touch": "Tap a tab"
+            "touch": "Tap a tab",
+            "only": "stats"
           }
         ]
       },
@@ -737,11 +761,12 @@
         "title": "DISPLAY",
         "subtitles": "Subtitle size",
         "sizes": ["Small", "Medium", "Large"],
-        "sample": "Jesús: this is how the film's lines will read."
+        "sample": "Jesús: this is how the subtitles will read."
       },
       "language": {
         "title": "LANGUAGE",
-        "hint": "The other language opens right here, on this tab."
+        "hint": "The other language opens right here, on this tab.",
+        "hintStart": "The other language opens right here, with the settings still at hand."
       }
     }
   },

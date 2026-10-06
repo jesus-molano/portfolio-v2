@@ -1,7 +1,7 @@
 /**
- * The loading screen's tips: which ones a visitor may see, in what order,
- * for how long, when the wait counts as slow, and which keys enter the
- * city. Pure functions, unit tested; LoadingScreen.tsx wires them up.
+ * The start menu's tips: which ones a visitor may see, in what order, for
+ * how long, and when the wait counts as slow. Pure functions, unit
+ * tested; LoadingScreen.tsx wires them up (the menu's keys are menu.ts).
  *
  * The copy lives in the dictionaries (`loader.tips`): the same kinds and
  * conditions at every index in every language, each tip 120 characters at
@@ -123,31 +123,6 @@ export function isSlow({
 }): boolean {
   if (progress >= 100) return false;
   return sinceMountMs >= SLOW_AFTER_MS || sinceProgressMs >= STALLED_AFTER_MS;
-}
-
-export type EnterKey = {
-  key: string;
-  repeat: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  metaKey: boolean;
-  isComposing: boolean;
-};
-
-/**
- * "Press any key": one printable character, typed on purpose. Space and
- * Enter stay with the focused button; arrows, Page Down, Esc, Tab, Caps
- * Lock, F-keys and media keys do nothing (their names are words, not
- * characters), nor does a held key, an IME composition or a shortcut with
- * Ctrl, Alt or Meta (Ctrl+Shift+I, Cmd+L). Shift is fine: it makes a
- * capital letter. The hero ignores the key that entered (KEY_GUARD_MS), so
- * W or S does not also drive.
- */
-export function entersOnKey(event: EnterKey): boolean {
-  if (event.repeat || event.isComposing) return false;
-  if (event.ctrlKey || event.altKey || event.metaKey) return false;
-  if (event.key === " ") return false;
-  return Array.from(event.key).length === 1;
 }
 
 /** "03" */

@@ -317,6 +317,13 @@
   color: var(--va-color-text-muted);
 }
 
+/* A 44 px target around the 40 px segment, without growing it. */
+.segment::after {
+  content: "";
+  position: absolute;
+  inset: -2px 0;
+}
+
 .segment:hover .segmentText {
   color: var(--va-color-cream);
 }
@@ -559,5 +566,46 @@ a.language:hover {
   .station:has(.stationInput:checked),
   .segment:has(.segmentInput:checked) {
     outline: 2px solid Highlight;
+  }
+
+  /* The knob and the track are backgrounds, which forced colours drop: draw them in system colours. */
+  .switchKnob {
+    background: CanvasText;
+    box-shadow: none;
+    forced-color-adjust: none;
+  }
+
+  .switch[aria-checked="true"] .switchTrack {
+    border-color: Highlight;
+  }
+
+  .switch[aria-checked="true"] .switchKnob {
+    background: Highlight;
+  }
+
+  .range {
+    forced-color-adjust: none;
+  }
+
+  .range::-webkit-slider-runnable-track {
+    border: 1px solid CanvasText;
+    background: linear-gradient(90deg, Highlight var(--level), Canvas var(--level));
+  }
+
+  .range::-moz-range-track {
+    border: 1px solid CanvasText;
+    background: linear-gradient(90deg, Highlight var(--level), Canvas var(--level));
+  }
+
+  .range::-webkit-slider-thumb {
+    margin-top: -7px;
+    border-color: Canvas;
+    background: CanvasText;
+    box-shadow: none;
+  }
+
+  .range::-moz-range-thumb {
+    border-color: Canvas;
+    background: CanvasText;
   }
 }

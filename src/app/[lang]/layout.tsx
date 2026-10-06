@@ -100,18 +100,19 @@ const radioDecoFont = Limelight({
 });
 
 /*
- * The finale's changeable marquee letters and ticket stubs. Not preloaded,
- * so it never competes with the hero's faces; the cinema's letters are in
- * the first HTML, so the browser still fetches it early in the first load
- * (about 9 KB). `block`: the letters are decoration (the headings carry
- * the words), and a fallback face of other widths would hang off the board.
+ * The marquee face: the start menu's huge items (NEW GAME, CONTINUE,
+ * SETTINGS), the finale's changeable marquee letters and ticket stubs.
+ * Preloaded: the start menu is the first thing on screen, and its words
+ * are drawn in it (about 9 KB). `block`: a fallback face of other widths
+ * would paint the menu (and hang off the cinema's board) in the wrong
+ * shape; the menu's slab is measured once the faces are in.
  */
 const marqueeFont = Bebas_Neue({
   weight: "400",
   subsets: ["latin"],
   variable: "--font-marquee",
   display: "block",
-  preload: false,
+  preload: true,
 });
 
 /*

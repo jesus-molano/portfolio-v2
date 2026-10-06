@@ -35,8 +35,9 @@ also exists as real DOM for keyboard and screen-reader users.
 - `pnpm typecheck` — `tsc --noEmit`.
 - `pnpm test` — Vitest unit tests (`src/**/*.test.ts`): locale negotiation,
   proxy redirects, the deterministic city layout, the chapter cards'
-  layout, the shader `pow()` rule, the loading screen's tips, keys and
-  key-art budget, the content map (`i18n/contentMap.test.ts`), and the
+  layout, the shader `pow()` rule, the start menu's tips, keys and
+  picture (`loader/horizon.test.ts`: a whole road, lamps at their size),
+  the content map (`i18n/contentMap.test.ts`), and the
   hero's scroll UX acceptance checks (`scroll/acceptance.test.ts`).
   Add a test for every new pure function.
 - `pnpm build` — production build. `next/font/google` downloads fonts at build
@@ -76,10 +77,15 @@ also exists as real DOM for keyboard and screen-reader users.
   `.captures/`. Look at the frames before calling a visual change done.
   `window.__vaJump(p)` (dev only) jumps the film for framing work.
 - `node tools/loader/check.mjs` (dev server running; `--url`, `--only
-  cls|fit|frames`) — the loading screen's QA: layout shift from the first
-  paint to the click (must be exactly 0, also through a slow load), the
-  fit matrix of eleven viewports in both languages, and frames of every
-  state in `.captures/loader/`. Look at them before calling a change done.
+  cls|fit|frames`) — the start menu's QA: layout shift from the first
+  paint to the click (must be exactly 0, also through a slow load, the
+  slab sliding and SETTINGS opening and closing, and for returning
+  visitors whose station the client reads after the first paint), the
+  fit matrix of fifteen viewports in both languages (tips, the menu's
+  words, slab and lines, Next inside the tip card, no box over another), the menu's keys (↓ S W, a way in chosen
+  too soon, Esc back to SETTINGS), and frames of every state (loading,
+  slow, ready, CONTINUE selected, SETTINGS open, leaving, reduced motion)
+  in `.captures/loader/`. Look at them before calling a change done.
 - `node tools/capture/pause.mjs --url http://localhost:3000` (dev server
   running; `--lang`, `--device`, `--frames <dir>`) — STATS's pause in the
   browser: the world frozen and the menu settled as it crosses the middle
@@ -513,9 +519,14 @@ also exists as real DOM for keyboard and screen-reader users.
   only STATS's pause moves; without it the pause ducks the deck's own
   volume. The tracks must stay same-origin, or the bus plays silence.
   `radio.ts` is the store (useSyncExternalStore) and remembers the last
-  station or "off" in localStorage. The loader's "enter with music" plays
-  `entryStation` (the remembered station live, or the first time BABYLON
-  from the top of Disco Music); its button names the same station. `RadioWheel.tsx` opens by holding the right mouse button over
+  station or "off" in localStorage. The start menu's NEW GAME plays
+  `entryChoice`: what she cued in the start menu's settings
+  (`cueEntry`, nothing sounds before she enters; kept for the visit in
+  sessionStorage, so the other language keeps it), else `entryStation`
+  (the remembered station live, or the first time BABYLON from the top
+  of Disco Music), on even if CONTINUE saved "off" last time; with the
+  radio cued off it enters in silence. Its line names the same station,
+  or "Radio off". `RadioWheel.tsx` opens by holding the right mouse button over
   the scene, holding or pressing Q, a long-press on touch, or the music
   button (`RadioButton.tsx`, the obvious way in on touch). The long-press
   never steals a swipe (`touchHold.ts`, tested): it arms after 0.6 s held
@@ -548,24 +559,76 @@ also exists as real DOM for keyboard and screen-reader users.
   own SVG typography in `radio` tokens and `radioFonts`: no trademarks,
   no copied logos. Names stay as written in both languages; taglines live
   in `radio.taglines` in the dictionaries.
-- `src/features/loader` — the loading screen, a cold open in the
-  open-world genre: painted key art, his name as the game logo
-  (`hero.name`, `hero.role` as the kicker), a tip card bottom left, an
-  action slot bottom right (progress, then "enter with music" or
-  "without"; any printable key enters with music, never a shortcut:
-  `entersOnKey`) and a progress line on the bottom edge. A slow wait
-  (`isSlow`) says so in the card and offers the way in early. No layout
-  shift, ever: every box is placed against the viewport with a fixed
-  size, both states of the slot and every tip are in the DOM from the
-  first paint, stacked in one cell, and phases switch only opacity,
-  visibility, transform and inert; device and motion choices are media
-  queries, so the server's HTML paints the right first tip. The page
-  under the screen stays `visibility: hidden` until she chooses (CSS
-  from the first paint): a late web font reflows the hero's title under
-  it, and Chrome counts hidden-from-view shifts too.
-  `tools/loader/check.mjs` measures it.
-  - No picture behind it (the owner rejected a drawn key art): a dusk
-    gradient over night in the tokens, film grain, his name and the tips.
+- `src/features/loader` — the loading screen, made a game's start menu
+  (the owner's call): no name and no role on it (the hero shows them once
+  she starts), three huge items in the marquee face (`loader.menu`): NEW
+  GAME / NUEVA PARTIDA (in with the radio: the station chip under it, or
+  "Radio off"), CONTINUE / CONTINUAR (in without music) and SETTINGS /
+  CONFIGURACIÓN; a game tip card (bottom right; under the menu on a
+  phone), the languages top right, and the load as a status line, a
+  percentage riding the progress line on the bottom edge, the sun
+  sinking and the causeway's lamps lighting toward the city.
+  - The menu (`menu.ts`, pure and tested; `LoadingScreen.tsx`) is a list
+    of real buttons, each named by its word and described by its line.
+    The selection is a painted slab (magenta to amber, skewed, an ink
+    block shade) that slides to the item and is the keyboard focus: ↑ ↓,
+    W S by their place on the keyboard (`code`, so AZERTY works), Home
+    and End move the focus and the slab; a mouse over an item focuses it;
+    Enter or Space (the button's own) or a tap chooses. No other key
+    starts anything (no "press any key": `menuMove`). NEW GAME has the
+    focus from the start. The two ways in wait for the scene ("waiting
+    for the city", the slab filling with the load under a selected one);
+    chosen too soon the slab shakes and the live region says "not yet". A
+    slow wait (`isSlow`) offers them early ("go now", in the items' lines,
+    the status line and the tip card's slow note). The slab is measured
+    once the faces are in (`data-measured`) and only then shown; the
+    marquee face is preloaded for it. The hero ignores the key that
+    entered (KEY_GUARD_MS).
+  - SETTINGS opens the same settings as STATS's pause menu
+    (`features/settings/Settings.tsx`, `where="start"`) in a native modal
+    dialog: focus kept inside, Esc or Back return to the menu with the
+    focus on SETTINGS. All of it works before she enters: the radio is
+    only cued (on or off, the station: NEW GAME's line follows), the
+    volume and the subtitle size are stored as she sets them, and the
+    other language reopens the settings there; it applies when she
+    starts. STATS's pause-only row (its tabs' shoulder keys, `only:
+    "stats"` in the dictionaries) is not shown there.
+  - The picture (`horizon.ts`, pure and tested; `Horizon.tsx`, a server
+    component passed in as `art`, so its geometry never ships to the
+    client) is the causeway at sunset, drawn as SVG from the tokens with
+    one pinhole camera 14 m over the sea, so every element has its size
+    (the owner: "que tenga sentido"): a whole road from below the
+    picture to the vanishing point at the city, both edges, lane marks
+    and parapets; lamps every 34 m on its right parapet that shrink with
+    distance, each with a pool on the road and, past the deck's edge, its
+    reflection on the water; the sun and the city on the horizon; a far
+    islet whose palms are a few pixels tall, in two uneven clumps leaning
+    both ways, with low bushes; and two whole coconut palms on a headland
+    on the right (its coast running on to the horizon under the city, lit
+    sand along its waterline), their feet on the sand and their crowns
+    above the city, inside every window each layout fills (the tests
+    slice the picture as the CSS does: a phone on its side, a 200 %
+    zoom, a 360 x 640 phone). Two layouts in the DOM, picked
+    by the same media queries as the menu: `wide` (sliced from the right)
+    and `tall` (as wide as the screen, its horizon placed above the menu,
+    fading into the night under it). Under forced colours the picture is
+    not drawn (SVG keeps its own colours there): the menu and its focus
+    ring sit on the system's background. Motion is CSS on the drawing: the sun sinks and the lamps
+    light with the load (`--p`), the windows come on when the city is in,
+    stars twinkle, clouds drift, the water glitters, palms sway, birds
+    cross, the grain steps 24 times a second; under reduced motion all of
+    it rests (sun down, lamps lit).
+  - No layout shift, ever: the loader is a size container and every box
+    is placed against it with a fixed size (`cqw`, `cqh`: the menu's
+    height is its rows', the card's its reserved lines'), every state of
+    every line and every tip is in the DOM from the first paint, stacked
+    in one cell, and phases switch only opacity, visibility, transform
+    and inert; device and motion choices are media queries, so the
+    server's HTML paints the right layout and first tip. The page under
+    the screen stays `visibility: hidden` until she chooses (CSS from the
+    first paint): a late web font reflows the hero's title under it, and
+    Chrome counts hidden-from-view shifts too. `tools/loader/check.mjs`
+    measures it.
   - Tips are `loader.tips` in the dictionaries: `{ kind, when, text }`,
     `kind` `tip` (how to drive the site) or `trivia` (a joke about the
     site or him), `when` any of `pointer`, `touch`, `motion` (all must
@@ -927,7 +990,8 @@ also exists as real DOM for keyboard and screen-reader users.
   MAPA · LOGROS · AJUSTES). A server component (`Stats.tsx`), every
   word of every tab DOM text in the server HTML; the client parts are the
   tabs and the pause (`StatsTabs.tsx`), the achievement tree's taps and
-  keys (`AchievementSky.tsx`) and the settings (`StatsSettings.tsx`).
+  keys (`AchievementSky.tsx`) and the settings
+  (`features/settings/Settings.tsx`, shared with the start menu).
   - STATS (`#stats`, the default; `#stats-sheet` opens it too) is the
     player profile: a Cycles render of his driver model with Dante at his
     shoulder (`public/stats/portrait.{avif,webp}`,
@@ -1050,7 +1114,10 @@ also exists as real DOM for keyboard and screen-reader users.
     colours. STATS names no side project (they are the cinema's,
     `statsMarkup.test.ts`) and links nowhere on: the page scrolls on to
     the cinema.
-  - SETTINGS (`#stats-settings`) are real, GTA-style: AUDIO tunes the
+  - SETTINGS (`#stats-settings`) are real, GTA-style, and the same
+    component the start menu opens before she enters
+    (`features/settings/Settings.tsx`; `where="stats"` here: ids under
+    `stats-settings-`, the radio live, the shoulder keys' row). AUDIO tunes the
     radio's own store (`radio.ts`): the radio on or off (a switch), the
     station (radio buttons; tuning crackles as on the wheel) and her
     volume (a range in 5 % steps that really sets the player's level,
@@ -1534,9 +1601,12 @@ the dictionaries and the test: hold it to the map by hand.
 
 What each section is for, and what it owns:
 
-- Loading screen — the trailer: how to drive and what is on the radio,
-  one tip at a time, and trivia about the shoot that no other section
-  tells; it gives nothing away. STATS's SETTINGS hold the full controls
+- Loading screen (the start menu) — the trailer: how to drive and what
+  is on the radio, one tip at a time, and trivia about the shoot that no
+  other section tells; it gives nothing away, and names neither him nor
+  his role. It is a game, never a film: no copy of the start menu, the
+  intro's help, the settings or the description calls the site a film
+  (`dictionaries.test.ts`). STATS's SETTINGS hold the full controls
   reference and the radio's controls, as a game's pause menu does.
 - Hero — who he is, in six lines: his name, his role, Tenerife, and the
   army story with the Gran Canaria joke.

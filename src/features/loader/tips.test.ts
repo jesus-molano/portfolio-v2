@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import { readingSeconds } from "@/features/hero/scroll/film";
 import {
   eligible,
-  entersOnKey,
-  type EnterKey,
   firstTip,
   isSlow,
   type LoaderTip,
@@ -176,65 +174,6 @@ describe("isSlow", () => {
 
   it("is never slow once loaded", () => {
     expect(isSlow({ sinceMountMs: 30000, sinceProgressMs: 30000, progress: 100 })).toBe(false);
-  });
-});
-
-describe("entersOnKey", () => {
-  const key = (value: string, extra: Partial<EnterKey> = {}): EnterKey => ({
-    key: value,
-    repeat: false,
-    ctrlKey: false,
-    altKey: false,
-    metaKey: false,
-    isComposing: false,
-    ...extra,
-  });
-
-  it("enters on a letter, a digit or a sign, with or without Shift", () => {
-    expect(entersOnKey(key("a"))).toBe(true);
-    expect(entersOnKey(key("A"))).toBe(true);
-    expect(entersOnKey(key("7"))).toBe(true);
-    expect(entersOnKey(key("ñ"))).toBe(true);
-    expect(entersOnKey(key("?"))).toBe(true);
-  });
-
-  it("never enters on a shortcut", () => {
-    expect(entersOnKey(key("I", { ctrlKey: true }))).toBe(false); // Ctrl+Shift+I
-    expect(entersOnKey(key("l", { metaKey: true }))).toBe(false); // Cmd+L
-    expect(entersOnKey(key("r", { ctrlKey: true }))).toBe(false);
-    expect(entersOnKey(key("@", { altKey: true }))).toBe(false);
-  });
-
-  it("leaves named keys alone", () => {
-    for (const name of [
-      "F5",
-      "F12",
-      "ArrowDown",
-      "ArrowUp",
-      "PageDown",
-      "Escape",
-      "Tab",
-      "CapsLock",
-      "Enter",
-      "Shift",
-      "Control",
-      "Meta",
-      "MediaPlayPause",
-      "AudioVolumeUp",
-      "Dead",
-      "Unidentified",
-    ]) {
-      expect(entersOnKey(key(name)), name).toBe(false);
-    }
-  });
-
-  it("leaves Space to the focused button", () => {
-    expect(entersOnKey(key(" "))).toBe(false);
-  });
-
-  it("ignores a held key and an IME composition", () => {
-    expect(entersOnKey(key("a", { repeat: true }))).toBe(false);
-    expect(entersOnKey(key("か", { isComposing: true }))).toBe(false);
   });
 });
 

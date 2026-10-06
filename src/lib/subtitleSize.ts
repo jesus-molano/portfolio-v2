@@ -4,11 +4,12 @@
  * career city, and his line to the officer under THE USUAL SUSPECTS.
  * Medium is the cards' own size and sets nothing; small and large set
  * `data-subtitles` and `--va-subtitle-scale` on <html>, which globals.css
- * multiplies into every card ([data-captions] [data-card]). Remembered per visitor in localStorage; read back on
- * hydration by StatsSettings (restoreSubtitleSize, in its effect: the
- * settings panel is on every home page, open or not). A change fires
- * SUBTITLES_EVENT, so every card is fitted to its lines again
- * (hero/fitCards.ts).
+ * multiplies into every card ([data-captions] [data-card]). Remembered
+ * per visitor in localStorage; read back on hydration by the settings
+ * (features/settings/Settings.tsx, restoreSubtitleSize in its effect: the
+ * start menu and the pause menu both carry them on every home page, open
+ * or not). A change fires SUBTITLES_EVENT, so every card is fitted to its
+ * lines again (hero/fitCards.ts).
  */
 
 export const SUBTITLE_SIZES = ["s", "m", "l"] as const;

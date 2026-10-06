@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Jesús Molano — Frontend Engineer",
-    "description": "Portfolio cinematográfico de Jesús Molano, Frontend Engineer de Tenerife: una película al atardecer que conduces tú.",
+    "description": "Portfolio cinematográfico de Jesús Molano, Frontend Engineer de Tenerife: una partida al atardecer en la que conduces tú.",
     "imageAlt": "Un cine art déco de noche con «Jesús Molano, Frontend Engineer» en la marquesina"
   },
   "nav": {
@@ -41,11 +41,11 @@
       "hintTouch": "Pisa el pedal o desliza arriba",
       "hintKey": "Mantén W o Espacio para conducir",
       "ack": "El volante es tuyo",
-      "model": "Tú conduces. La película te espera.",
+      "model": "Tú conduces. La partida te espera.",
       "arriving": "Tranqui, el nombre aún está llegando.",
       "still": "El guion, aquí abajo",
-      "help": "Esta intro es un corto que avanza al hacer scroll, deslizar o pisar el pedal, y se detiene cuando paras. Cada frase espera a que se haya leído. Espacio, un clic o un toque en la imagen, o pisar el pedal, pasa a la siguiente; si mantienes Espacio, W o el pedal, sigues conduciendo. Mayúsculas y Espacio vuelve atrás, S o la flecha arriba retroceden, y Escape salta la intro. Debajo está el guion completo.",
-      "helpStill": "Esta intro es un fotograma de un corto. Debajo está su guion completo."
+      "help": "Esta intro es una escena que avanza al hacer scroll, deslizar o pisar el pedal, y se detiene cuando paras. Cada frase espera a que se haya leído. Espacio, un clic o un toque en la imagen, o pisar el pedal, pasa a la siguiente; si mantienes Espacio, W o el pedal, sigues conduciendo. Mayúsculas y Espacio vuelve atrás, S o la flecha arriba retroceden, y Escape salta la intro. Debajo está el guion completo.",
+      "helpStill": "Esta intro es una imagen fija. Debajo está su guion completo."
     },
     "osd": {
       "drive": "Conduces",
@@ -152,10 +152,14 @@
     "line": "Señor agente, yo me fijaría en el número 3."
   },
   "loader": {
+    "title": "Menú principal",
+    "language": "Idioma",
     "loading": "Cargando la ciudad",
     "ready": "Todo listo. Elige cómo entrar en la ciudad.",
+    "readyShort": "Todo listo · elige cómo entrar",
     "slowLabel": "Conexión lenta",
     "slow": "Tu conexión ha tirado por la carretera de la costa. Entra ya y la ciudad te alcanzará, o espera a verla entera.",
+    "notYet": "Aún no: la ciudad está llegando. La configuración ya funciona.",
     "labels": {
       "tip": "Consejo",
       "trivia": "Curiosidad"
@@ -165,7 +169,7 @@
       {
         "kind": "tip",
         "when": ["motion"],
-        "text": "Esta película no es apta para pasajeros: no avanza hasta que haces scroll o deslizas, porque conduces tú."
+        "text": "Esta partida no es apta para pasajeros: no avanza hasta que haces scroll o deslizas, porque conduces tú."
       },
       {
         "kind": "tip",
@@ -220,7 +224,7 @@
       {
         "kind": "trivia",
         "when": ["motion"],
-        "text": "El grano de la imagen cambia 24 veces por segundo, como el de una película de verdad."
+        "text": "El grano de la imagen cambia 24 veces por segundo: si la ves temblar un poco, no son tus gafas."
       },
       {
         "kind": "trivia",
@@ -233,9 +237,28 @@
         "text": "Los coches de tu sentido van justo a tu ritmo: nadie te adelanta y tú tampoco adelantas a nadie."
       }
     ],
-    "withMusic": "Entrar con música",
-    "withoutMusic": "Sin música",
-    "hint": "o pulsa cualquier tecla"
+    "menu": {
+      "newGame": "Nueva partida",
+      "continue": "Continuar",
+      "settings": "Configuración",
+      "withMusic": "con música",
+      "noMusic": "Sin música",
+      "radioOff": "Radio apagada",
+      "waiting": "esperando a la ciudad",
+      "early": "entra ya",
+      "settingsSub": "Audio · pantalla · idioma · controles"
+    },
+    "keys": {
+      "move": "Elegir",
+      "choose": "Aceptar",
+      "enter": "Intro"
+    },
+    "panel": {
+      "lead": "Los mismos ajustes que te esperan en la partida. Lo que elijas aquí se aplica al empezar.",
+      "back": "Volver",
+      "saved": "Se guarda en este navegador",
+      "escape": "Esc vuelve al menú"
+    }
   },
   "work": {
     "chapter": {
@@ -697,7 +720,7 @@
             "touch": "Desliza hacia abajo"
           },
           {
-            "action": "Saltar la película",
+            "action": "Saltar la intro",
             "keys": [
               ["Esc"],
               ["Fin"]
@@ -729,7 +752,8 @@
               ["]"]
             ],
             "mouse": "Clic en una pestaña",
-            "touch": "Toca una pestaña"
+            "touch": "Toca una pestaña",
+            "only": "stats"
           }
         ]
       },
@@ -737,11 +761,12 @@
         "title": "PANTALLA",
         "subtitles": "Tamaño de los subtítulos",
         "sizes": ["Pequeño", "Mediano", "Grande"],
-        "sample": "Jesús: así se leerán las frases de la película."
+        "sample": "Jesús: así se leerán los subtítulos."
       },
       "language": {
         "title": "IDIOMA",
-        "hint": "El otro idioma se abre justo aquí, en esta pestaña."
+        "hint": "El otro idioma se abre justo aquí, en esta pestaña.",
+        "hintStart": "El otro idioma se abre aquí mismo, con la configuración a mano."
       }
     }
   },

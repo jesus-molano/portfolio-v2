@@ -5,7 +5,7 @@
  * only; translucency is mixed from them. Layout numbers that the caption
  * test relies on (paddings, the missions' width, marker size, caption
  * offsets and fonts) are mirrored in statsLayout.ts: change both together.
- * The settings' own stylesheet is StatsSettings.module.css.
+ * The settings' own stylesheet is features/settings/Settings.module.css.
  *
  * Breakpoints: below 1000 px the square map and a legend (one column on
  * phones, below 700 px); from 1000 px the wide map with its captions; from

@@ -37,7 +37,7 @@ import {
 
 /**
  * STATS's tabs and its pause, the pause menu's client code beside the
- * settings (StatsSettings.tsx): the server component (Stats.tsx) renders
+ * settings (features/settings/Settings.tsx): the server component (Stats.tsx) renders
  * every panel's words, these switch them in place. The server HTML is
  * plain: four links over the four panels, so without JS the panels stay on
  * the page, one under the other (the stacking in Stats.module.css only

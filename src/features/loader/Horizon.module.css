@@ -1,0 +1,165 @@
+/*
+ * The start menu's picture (Horizon.tsx). Both layouts are in the DOM;
+ * LoadingScreen.module.css shows the one for the screen. Every motion here
+ * is CSS on the drawing (transform and opacity) and stops under reduced
+ * motion, where the picture rests as it ends: sun down, lamps and windows
+ * lit.
+ *
+ * `--p` (0 to 1, the load) comes from the loading screen's root.
+ */
+
+.scene {
+  position: absolute;
+  left: 0;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.scene * {
+  transform-box: view-box;
+}
+
+/* The sun sinks as the city loads: a disc's rise above its rest at 0 %, at rest at 100 %. */
+.sun {
+  transform: translateY(calc((var(--p, 1) - 1) * var(--rise)));
+  transition: transform 900ms cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+/* The causeway's lights come on one after another, toward the city, as the load passes them. */
+.light {
+  opacity: clamp(0, calc(var(--p, 1) * var(--lamps) - var(--i)), 1);
+  transition: opacity 500ms ease;
+}
+
+.head {
+  opacity: clamp(0.18, calc(var(--p, 1) * var(--lamps) - var(--i)), 1);
+  transition: opacity 500ms ease;
+}
+
+/* The city's windows once it is in. */
+.windows {
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+:global([data-loader][data-ready]) .windows {
+  opacity: 1;
+}
+
+.twinkle {
+  animation: twinkle var(--dur, 4s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+
+.drift {
+  animation: drift 90s linear infinite alternate;
+}
+
+.shimmer {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: shimmer var(--dur, 3s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+
+.sway {
+  animation: sway var(--dur, 7s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+
+.flock {
+  animation: flock 46s linear -17s infinite;
+}
+
+.bird {
+  transform-box: fill-box;
+  transform-origin: 50% 60%;
+  animation: flap 0.9s ease-in-out var(--delay, 0s) infinite alternate;
+}
+
+@keyframes twinkle {
+  from {
+    opacity: 0.15;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translateX(-24px);
+  }
+  to {
+    transform: translateX(24px);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    opacity: calc(var(--o, 0.5) * 0.25);
+    transform: scaleX(0.7);
+  }
+  to {
+    opacity: var(--o, 0.5);
+    transform: scaleX(1.15);
+  }
+}
+
+@keyframes sway {
+  from {
+    transform: rotate(-1.4deg);
+  }
+  to {
+    transform: rotate(1.4deg);
+  }
+}
+
+@keyframes flock {
+  from {
+    transform: translate(-360px, 40px);
+  }
+  to {
+    transform: translate(1700px, -60px);
+  }
+}
+
+@keyframes flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(-0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twinkle,
+  .drift,
+  .shimmer,
+  .sway,
+  .flock,
+  .bird {
+    animation: none;
+  }
+
+  .sun,
+  .light,
+  .head,
+  .windows {
+    transition: none;
+  }
+
+  .sun {
+    transform: none;
+  }
+
+  .light,
+  .head {
+    opacity: 1;
+  }
+
+  /* The flock rests in the sky, not off the picture's edge. */
+  .flock {
+    transform: translate(420px, -10px);
+  }
+}

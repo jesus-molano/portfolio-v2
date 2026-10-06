@@ -5,7 +5,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { Achievements } from "./Achievements";
 import { StatsIcon } from "./icons";
 import styles from "./Stats.module.css";
-import { StatsSettings } from "./StatsSettings";
+import { Settings } from "@/features/settings/Settings";
 import { StatsPanel, StatsPortrait, StatsSection, StatsTabList } from "./StatsTabs";
 import {
   CAREER_CITY_ON_PAGE,
@@ -77,7 +77,8 @@ function years(from: number, to: number | null): string {
  * - ACHIEVEMENTS: his achievement tree, the favourites and the goals,
  *   unlocked and locked, as constellations in the night sky (Achievements.tsx).
  * - SETTINGS: the radio, the controls, the subtitle size and the language,
- *   all of them working (StatsSettings.tsx).
+ *   all of them working (features/settings/Settings.tsx, the same
+ *   settings the start menu opens before she enters).
  *
  * A server component: every word of every tab is DOM text in the server
  * HTML; the tabs, the settings and the pause are the client parts.
@@ -102,7 +103,7 @@ export function Stats({ dict, lang }: Props) {
           <Achievements dict={dict.achievements} />
         </StatsPanel>
         <StatsPanel tab="settings">
-          <StatsSettings dict={dict.settings} lang={lang} />
+          <Settings dict={dict.settings} lang={lang} where="stats" />
         </StatsPanel>
       </div>
     </StatsSection>

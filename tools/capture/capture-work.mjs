@@ -61,7 +61,7 @@ for (const name of devices) {
   });
   await page.goto(values.url, { waitUntil: "load" });
   await page.waitForSelector('[data-loader][data-phase="ready"]', { timeout: 180_000 });
-  await page.locator("[data-loader] button").nth(1).click();
+  await page.locator('[data-loader] [data-enter="silent"]').click();
   await page.waitForSelector("[data-loader]", { state: "detached", timeout: 10_000 });
   // Run the hero to its end, then come into the work stage.
   await page.evaluate(() => window.__vaJump?.(1));

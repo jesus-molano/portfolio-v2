@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { chapterName, shadeLayers } from "@/components/ChapterCard/chapterLayout";
 import { MISSIONS } from "@/features/stats/statsLayout";
+import { Horizon } from "@/features/loader/Horizon";
 import { LoadingScreen } from "@/features/loader/LoadingScreen";
 import { locales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
@@ -12,7 +13,7 @@ import { HomeMain } from "./HomeMain";
 async function renderHome(lang: (typeof locales)[number]): Promise<string> {
   const dict = await getDictionary(lang);
   return renderToStaticMarkup(
-    createElement("body", null, createElement(LoadingScreen, { dict: dict.loader, name: dict.hero.name, role: dict.hero.role }), createElement(HomeMain, { dict, lang })),
+    createElement("body", null, createElement(LoadingScreen, { dict: dict.loader, settings: dict.stats.settings, lang, art: createElement(Horizon) }), createElement(HomeMain, { dict, lang })),
   );
 }
 

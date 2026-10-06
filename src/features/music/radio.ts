@@ -41,9 +41,17 @@ export type RadioState = {
   wheel: WheelState | null;
   /** Her volume, 0 to 1 (STATS's settings); 1 until she sets it. */
   volume: number;
+  /**
+   * What NEW GAME will play, set in the start menu's settings before she
+   * enters (nothing plays until then); null until she touches the radio there.
+   */
+  cue: EntryChoice | null;
 };
 
-const INITIAL: RadioState = { tuned: "off", playing: false, track: 0, wheel: null, volume: 1 };
+/** The radio NEW GAME starts: a station, on or off (radio off: it enters in silence). */
+export type EntryChoice = { station: StationId; on: boolean };
+
+const INITIAL: RadioState = { tuned: "off", playing: false, track: 0, wheel: null, volume: 1, cue: null };
 
 /** The last station tuned to (never "off"), per visitor. */
 const STATION_KEY = "va-station";
@@ -51,6 +59,12 @@ const STATION_KEY = "va-station";
 const MUSIC_KEY = "va-music";
 /** Her volume, 0 to 1, as a decimal string. */
 const VOLUME_KEY = "va-volume";
+/**
+ * The start menu's radio choice for this visit, as "on:babylon" or
+ * "off:crockett", in sessionStorage: the other language (a new page from
+ * the settings) keeps it until she enters.
+ */
+const CUE_KEY = "va-cue";
 
 /** A stored volume, or full volume when it is missing or not a number from 0 to 1. */
 export function parseVolume(value: string | null): number {
@@ -161,18 +175,87 @@ export function entryStation(memory: RadioMemory): StationId {
   return memory.station ?? DEFAULT_STATION_ID;
 }
 
+/** A stored cue ("on:babylon", "off:crockett") as a choice; null when missing or unreadable. */
+export function parseCue(value: string | null): EntryChoice | null {
+  const match = value?.match(/^(on|off):(.+)$/);
+  const station = match ? findStation(match[2]) : null;
+  return match && station ? { station: station.id, on: match[1] === "on" } : null;
+}
+
 /**
- * The loading screen's choice: "enter with music" plays `entryStation`,
- * live; the first time, from the top of its first track. "Without" turns
- * the radio off.
+ * What NEW GAME plays: what she chose in the start menu's settings, or
+ * else `entryStation`, on. Remembered "off" does not silence it: the
+ * other way in (CONTINUE, without music) saves "off" every time, and NEW
+ * GAME is the way in with music.
+ */
+export function entryChoice(memory: RadioMemory, cue: EntryChoice | null): EntryChoice {
+  return cue ?? { station: entryStation(memory), on: true };
+}
+
+let choice: EntryChoice | null = null;
+
+/**
+ * The start menu's snapshot of `entryChoice` (NEW GAME's subtitle, the
+ * settings' radio before she enters): the same object until it changes,
+ * as useSyncExternalStore needs.
+ */
+export function getEntryChoice(): EntryChoice {
+  if (!state.cue) {
+    let stored: string | null = null;
+    try {
+      stored = sessionStorage.getItem(CUE_KEY);
+    } catch {
+      // Blocked storage: the menu's choice lasts for this page.
+    }
+    const cue = parseCue(stored);
+    if (cue) state = { ...state, cue };
+  }
+  const next = entryChoice(readMemory(), state.cue);
+  if (!choice || choice.station !== next.station || choice.on !== next.on) choice = next;
+  return choice;
+}
+
+const SERVER_CHOICE: EntryChoice = { station: DEFAULT_STATION_ID, on: true };
+
+/** Server render and hydration: BABYLON, on. */
+export function getServerEntryChoice(): EntryChoice {
+  return SERVER_CHOICE;
+}
+
+/**
+ * The start menu's settings set what NEW GAME will play, without playing
+ * it (she has not chosen to enter yet, and the browser would refuse sound
+ * outside her gesture anyway). Saved for this visit, not as her radio
+ * memory: that is written when she enters.
+ */
+export function cueEntry(next: EntryChoice) {
+  try {
+    sessionStorage.setItem(CUE_KEY, `${next.on ? "on" : "off"}:${next.station}`);
+  } catch {
+    // Blocked storage: this page only.
+  }
+  update({ cue: next });
+}
+
+/**
+ * The start menu's choice. NEW GAME (`on`) plays `entryChoice`: the
+ * station she cued in the settings, or the one she last tuned to, live
+ * (the first time BABYLON, from the top of its first track); with the
+ * radio cued off it enters in silence. CONTINUE turns the radio off.
  */
 export function requestMusic(on: boolean) {
-  if (!on) {
+  const memory = readMemory();
+  const next = getEntryChoice();
+  try {
+    sessionStorage.removeItem(CUE_KEY);
+  } catch {
+    // Nothing stored.
+  }
+  if (!on || !next.on) {
     tune("off", { crackle: false });
     return;
   }
-  const memory = readMemory();
-  tune(entryStation(memory), { fromTop: memory.station === null });
+  tune(next.station, { fromTop: memory.station === null && state.cue === null });
 }
 
 /** First gesture on a page without the loading screen: the remembered station, unless turned off. */
