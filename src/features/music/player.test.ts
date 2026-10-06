@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createPlayer, fillStatic, type Program, shouldPrefetch, staticEnvelope, volumeAt } from "./player";
+import { dbToGain, PAUSE_MIX } from "./pauseMix";
+import { createPlayer, deckVolume, fillStatic, type Program, shouldPrefetch, staticEnvelope, volumeAt } from "./player";
 
 describe("volumeAt", () => {
   it("interpolates linearly over the fade", () => {
@@ -337,5 +338,260 @@ describe("createPlayer", () => {
     deck.emit("error");
     expect(onError).toHaveBeenCalledTimes(1);
     expect(onError).toHaveBeenCalledWith("k-calima");
+  });
+});
+
+/** An AudioParam that records what is scheduled on it. */
+class FakeParam {
+  value: number;
+  calls: { method: string; args: unknown[] }[] = [];
+  constructor(value: number) {
+    this.value = value;
+  }
+  cancelScheduledValues(...args: unknown[]) {
+    this.calls.push({ method: "cancel", args });
+  }
+  setValueAtTime(value: number, at: number) {
+    this.calls.push({ method: "set", args: [value, at] });
+    this.value = value;
+  }
+  setValueCurveAtTime(curve: Float32Array, at: number, seconds: number) {
+    this.calls.push({ method: "curve", args: [Array.from(curve), at, seconds] });
+    this.value = curve[curve.length - 1];
+  }
+  exponentialRampToValueAtTime(value: number, at: number) {
+    this.calls.push({ method: "exp", args: [value, at] });
+  }
+  /** The last value scheduled. */
+  get end() {
+    return this.value;
+  }
+}
+
+class FakeNode {
+  outputs: unknown[] = [];
+  connect<T>(node: T): T {
+    this.outputs.push(node);
+    return node;
+  }
+}
+
+/** Just enough of AudioContext for the pause's bus and the blips. */
+class FakeContext {
+  static last: FakeContext | null = null;
+  state: "running" | "suspended" = FakeContext.startState;
+  static startState: "running" | "suspended" = "running";
+  currentTime = 3;
+  destination = new FakeNode();
+  sources = new Map<FakeAudio, FakeNode>();
+  gains: (FakeNode & { gain: FakeParam })[] = [];
+  filters: (FakeNode & { type: string; frequency: FakeParam; Q: FakeParam })[] = [];
+  oscillators: (FakeNode & { frequency: FakeParam })[] = [];
+  private listeners: (() => void)[] = [];
+  constructor() {
+    FakeContext.last = this;
+  }
+  resume() {
+    return Promise.resolve();
+  }
+  close() {
+    return Promise.resolve();
+  }
+  addEventListener(_type: string, listener: () => void) {
+    this.listeners.push(listener);
+  }
+  run() {
+    this.state = "running";
+    this.listeners.forEach((listener) => listener());
+  }
+  createMediaElementSource(media: FakeAudio) {
+    if (this.sources.has(media)) throw new Error("already routed");
+    const node = new FakeNode();
+    this.sources.set(media, node);
+    return node;
+  }
+  createGain() {
+    const node = Object.assign(new FakeNode(), { gain: new FakeParam(1) });
+    this.gains.push(node);
+    return node;
+  }
+  createBiquadFilter() {
+    const node = Object.assign(new FakeNode(), { type: "lowpass", frequency: new FakeParam(350), Q: new FakeParam(1) });
+    this.filters.push(node);
+    return node;
+  }
+  createOscillator() {
+    const node = Object.assign(new FakeNode(), { type: "sine", frequency: new FakeParam(440), start() {}, stop() {} });
+    this.oscillators.push(node);
+    return node;
+  }
+}
+
+describe("the radio behind the pause menu", () => {
+  const finishFades = () => vi.advanceTimersByTime(2_000);
+  const ducked = 0.65 * dbToGain(PAUSE_MIX.duckDb);
+
+  beforeEach(() => {
+    FakeAudio.all = [];
+    FakeContext.last = null;
+    FakeContext.startState = "running";
+    vi.stubGlobal("Audio", FakeAudio);
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout", "performance"] });
+    vi.setSystemTime(new Date(1_010_000));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  describe("without Web Audio", () => {
+    beforeEach(() => vi.stubGlobal("window", {}));
+
+    it("ducks the deck's own volume by about 10 dB, and brings it back", async () => {
+      const player = createPlayer()!;
+      await player.tune(STATION, { crackle: false });
+      finishFades();
+      const [deck] = FakeAudio.all;
+      player.setPaused(true);
+      finishFades();
+      expect(deck.volume).toBeCloseTo(ducked, 5);
+      player.setPaused(false);
+      finishFades();
+      expect(deck.volume).toBeCloseTo(0.65, 5);
+    });
+
+    it("tunes a station in behind the menu when it is already up", async () => {
+      const player = createPlayer()!;
+      player.setPaused(true);
+      await player.tune(STATION, { crackle: false });
+      finishFades();
+      expect(FakeAudio.all[0].volume).toBeCloseTo(ducked, 5);
+    });
+
+    it("blips in silence: no Web Audio, no sound, no error", () => {
+      const player = createPlayer()!;
+      expect(() => player.blip("pause")).not.toThrow();
+    });
+  });
+
+  describe("with Web Audio", () => {
+    beforeEach(() => {
+      vi.stubGlobal("window", { AudioContext: FakeContext, addEventListener() {}, removeEventListener() {} });
+      vi.stubGlobal("navigator", {});
+    });
+
+    const bus = () => {
+      const ctx = FakeContext.last!;
+      // decks -> input gain -> low-pass -> duck gain -> speakers
+      const [input, duck] = ctx.gains;
+      const [filter] = ctx.filters;
+      return { ctx, input, filter, duck };
+    };
+
+    it("plays the decks through a low-pass and a gain that do nothing while the game runs", async () => {
+      const player = createPlayer()!;
+      await player.tune(STATION, { crackle: false });
+      finishFades();
+      const { ctx, input, filter, duck } = bus();
+      const [deck] = FakeAudio.all;
+      expect(ctx.sources.get(deck)?.outputs).toEqual([input]);
+      expect(input.outputs).toEqual([filter]);
+      expect(filter.outputs).toEqual([duck]);
+      expect(duck.outputs).toEqual([ctx.destination]);
+      expect(filter.type).toBe("lowpass");
+      expect(filter.frequency.value).toBe(PAUSE_MIX.open);
+      expect(duck.gain.value).toBe(1);
+      // Her level stays on the deck, as before.
+      expect(deck.volume).toBeCloseTo(0.65, 5);
+    });
+
+    it("muffles and ducks on the bus as the menu arrives, the deck untouched, and eases back", async () => {
+      const player = createPlayer()!;
+      await player.tune(STATION, { crackle: false });
+      finishFades();
+      const { filter, duck } = bus();
+      const [deck] = FakeAudio.all;
+      player.setPaused(true);
+      const curve = filter.frequency.calls.find((call) => call.method === "curve")!;
+      const [points, , seconds] = curve.args as [number[], number, number];
+      expect(points[0]).toBeCloseTo(PAUSE_MIX.open, 0);
+      expect(points.at(-1)).toBeCloseTo(PAUSE_MIX.cutoff, 0);
+      expect(seconds).toBeCloseTo(PAUSE_MIX.inMs / 1000, 5);
+      expect(duck.gain.end).toBeCloseTo(dbToGain(PAUSE_MIX.duckDb), 5);
+      finishFades();
+      expect(deck.volume).toBeCloseTo(0.65, 5);
+      // Halfway back out, she turns round: the new curve starts where the old one is.
+      player.setPaused(false);
+      vi.advanceTimersByTime(PAUSE_MIX.outMs / 2);
+      player.setPaused(true);
+      const last = filter.frequency.calls.filter((call) => call.method === "curve").at(-1)!;
+      const [again] = last.args as [number[]];
+      expect(again[0]).toBeGreaterThan(PAUSE_MIX.cutoff * 2);
+      expect(again[0]).toBeLessThan(PAUSE_MIX.open / 2);
+      expect(again.at(-1)).toBeCloseTo(PAUSE_MIX.cutoff, 0);
+    });
+
+    it("never routes a deck into a stopped context, which would mute it: it waits for it to run", async () => {
+      FakeContext.startState = "suspended";
+      const player = createPlayer()!;
+      await player.tune(STATION, { crackle: false });
+      finishFades();
+      const { ctx } = bus();
+      const [deck] = FakeAudio.all;
+      expect(ctx.sources.size).toBe(0);
+      // Meanwhile the pause ducks the deck itself.
+      player.setPaused(true);
+      finishFades();
+      expect(deck.volume).toBeCloseTo(ducked, 5);
+      ctx.run();
+      expect(ctx.sources.has(deck)).toBe(true);
+      // The bus takes the duck over: the deck goes back to her level.
+      finishFades();
+      expect(deck.volume).toBeCloseTo(0.65, 5);
+      expect(bus().duck.gain.end).toBeCloseTo(dbToGain(PAUSE_MIX.duckDb), 5);
+    });
+
+    it("blips with oscillators straight to the speakers, at her volume, never through the muffle", async () => {
+      const player = createPlayer({}, { volume: 0.5 })!;
+      await player.tune(STATION, { crackle: false });
+      const { ctx } = bus();
+      player.blip("pause");
+      expect(ctx.oscillators).toHaveLength(2);
+      const tone = ctx.filters.at(-1)!;
+      expect(tone.outputs).toEqual([ctx.destination]);
+      // Muted, no blip at all.
+      const silent = createPlayer({}, { volume: 0 })!;
+      const before = FakeContext.last!.oscillators.length;
+      silent.blip("resume");
+      expect(FakeContext.last!.oscillators.length).toBe(before);
+    });
+
+    it("keeps the crossfade: a new station's deck joins the bus too", async () => {
+      const player = createPlayer()!;
+      await player.tune(STATION, { crackle: false });
+      await player.tune(OTHER, { crackle: false });
+      finishFades();
+      const { ctx } = bus();
+      expect(ctx.sources.size).toBe(2);
+      expect(playing().map((deck) => deck.src)).toEqual(["/music/x.mp3"]);
+    });
+  });
+});
+
+const playing = () => FakeAudio.all.filter((deck) => !deck.paused);
+
+describe("deckVolume", () => {
+  it("plays the stations' one level at full volume, scaled by her volume and the pause menu's dip", () => {
+    expect(deckVolume(1, 1)).toBe(0.65);
+    expect(deckVolume(0.5, 1)).toBeCloseTo(0.325, 10);
+    expect(deckVolume(1, 0.4)).toBeCloseTo(0.26, 10);
+    expect(deckVolume(0, 1)).toBe(0);
+  });
+
+  it("never leaves 0 to the stations' level, whatever it is given", () => {
+    expect(deckVolume(2, 1)).toBe(0.65);
+    expect(deckVolume(-1, 1)).toBe(0);
+    expect(deckVolume(Number.NaN, 1)).toBe(0.65);
   });
 });

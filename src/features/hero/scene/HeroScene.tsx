@@ -88,6 +88,9 @@ export function HeroScene({ tier, reducedMotion, active, billboards }: Props) {
       key={tier}
       flat
       dpr={quality.dpr}
+      // Measured on resize only: by default R3F re-measures its box on every scroll (a layout read) and,
+      // as the box moves with the page, re-renders the whole scene tree about twenty times a second.
+      resize={{ scroll: false }}
       frameloop={animate && active ? "always" : "demand"}
       gl={{ antialias: false, powerPreference: "high-performance", alpha: false, stencil: false }}
       camera={{

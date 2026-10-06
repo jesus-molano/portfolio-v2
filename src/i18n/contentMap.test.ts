@@ -53,10 +53,19 @@ const RULES: Rule[] = [
     owners: [/^stats\.missions\.items\./, /^work\./],
   },
   {
-    // Metal Gear's box is the Masca blip's alone.
+    // Metal Gear's box is its star's wink in STATS's achievement tree, and nowhere else (the map has no hobbies).
     subject: "the cardboard box",
     pattern: /cart[oó]n|cardboard/i,
-    owners: [/^stats\.map\./],
+    owners: [/^stats\.achievements\.nodes\.metalGear\.line$/],
+    max: 1,
+  },
+  {
+    // How the jobs were done: the owner lifted his "never remote" rule for the main missions' work-mode
+    // labels, «Presencial» / «En remoto», and only for them (career.ts holds each job's mode).
+    subject: "remote work",
+    pattern: /\bremot|teletrabajo/i,
+    owners: [/^stats\.missions\.modes\.remote$/],
+    max: 1,
   },
   {
     // Said once, under RACECRAFT on the STATS sheet.
@@ -66,12 +75,11 @@ const RULES: Rule[] = [
     max: 1,
   },
   {
-    // STATS is him off the clock, and its chapter card's ribbon says so (it
-    // carries what the pause menu's subtitle said). The cinema's marquee
-    // bills free admission instead, and no other card or line borrows it.
+    // STATS was him off the clock; its card now says the game is paused (Player profile). The words may
+    // come back as a wink inside STATS, once at most; the cinema's marquee bills free admission instead.
     subject: "off the clock",
     pattern: /off the clock|fuera de horario/i,
-    owners: [/^stats\.chapter\.ribbon$/],
+    owners: [/^stats\./],
     max: 1,
   },
   {
@@ -116,7 +124,7 @@ describe("the content map", () => {
     }
 
     // The patterns have to bite: each owner still says what it owns.
-    it(`${locale}: still names the side projects in the cinema, the employers and the army's unit in the career index, and STATS off the clock`, () => {
+    it(`${locale}: still names the side projects in the cinema, the employers and the army's unit in the career index, and the remote jobs as such`, () => {
       const text = (owner: RegExp) =>
         copy
           .filter(([path]) => owner.test(path))
@@ -130,9 +138,9 @@ describe("the content map", () => {
       for (const employer of ["PwC", "Cloud District", "Logixs", "Heuristik"]) expect(missions).toContain(employer);
       expect(missions).toMatch(/Batall[oó]n de Zapadores/);
       expect(text(/^hero\.lines\./)).toMatch(/Gran Canaria/);
-      expect(text(/^stats\.map\./)).toMatch(/cart[oó]n|cardboard/i);
+      expect(text(/^stats\.achievements\.nodes\.metalGear\./)).toMatch(/cart[oó]n|cardboard/i);
       expect(text(/^stats\.bars\./)).toMatch(/desde el sof[aá]|from the sofa/i);
-      expect(text(/^stats\.chapter\./)).toMatch(/off the clock|fuera de horario/i);
+      expect(text(/^stats\.missions\.modes\./)).toMatch(/remot/i);
     });
   }
 });

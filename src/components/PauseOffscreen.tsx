@@ -5,8 +5,9 @@ import { isOnScreen, ON_SCREEN_THRESHOLDS } from "@/lib/onScreen";
 
 /**
  * Stops the looping CSS animations of the sections marked `data-loops`
- * while they are off screen: the cinema's chasing bulbs, the booth's
- * ring. A running animation costs a style pass every frame wherever
+ * while they are off screen: the cinema's chasing bulbs, the pause
+ * menu's clock, whose colon ticks while the game runs. A running
+ * animation costs a style pass every frame wherever
  * the visitor is, and during the hero that time comes out of the scene's
  * frame budget. The section gets `data-offscreen`, and globals.css pauses
  * every animation under it. Without JS they simply run.

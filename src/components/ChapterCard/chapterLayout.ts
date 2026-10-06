@@ -28,9 +28,13 @@ import { scriptBoxes, scriptDepth, scriptRun, SCRIPT_FACE } from "./scriptFace";
 /** The card's tunables, in viewBox units unless noted. */
 export const CARD = {
   width: 1000,
-  /** The longest words' ink width; shorter words stop growing at maxSize. */
+  /**
+   * The longest words' ink width; shorter words stop growing at maxSize, so
+   * a short word (Pausa) stands as tall as THE CREW's, never taller, and
+   * its card keeps a third of a phone's landscape screen free.
+   */
   maxInk: 760,
-  maxSize: 250,
+  maxSize: 240,
   /** Degrees; negative leans the card up to the right. */
   tilt: -5,
   /** Extra space between the words, in em: the script's own space is tight. */
@@ -77,11 +81,14 @@ const PAD = 4;
 /**
  * How far each straddling card rises over the cut from the section above,
  * as a share of the way to its edge line, the word's middle
- * (--chapter-straddle in the section's stylesheet): PLAYER ONE all the way
- * over the line-up's floor, THE LATE SHOW only the top of its word over
- * STATS's prompts row, and only from 1000 px (under it, none).
+ * (--chapter-straddle in the section's stylesheet): PAUSED most of the way
+ * over the career city's last frame (its short word is set large, so its
+ * middle stands high: 0.8 of the way keeps its rise at most 0.124 of the
+ * card's width, which STATS's landing counts); THE LATE SHOW only the top
+ * of its word, into the room at STATS's foot, and only from 1000 px (under
+ * it, none).
  */
-export const STRADDLE = { stats: 1, projects: 0.55 } as const;
+export const STRADDLE = { stats: 0.8, projects: 0.55 } as const;
 
 /** A CSS rem in px, at the browser's default text size. */
 const REM_PX = 16;

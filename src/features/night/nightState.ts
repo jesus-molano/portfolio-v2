@@ -14,6 +14,8 @@ export const night = {
   p: 0,
   /** Index of the stop on screen (0..4). */
   stop: 0,
+  /** A jump the camera must not glide through (a capture's or a deep link's): NightRig cuts to its pose once. */
+  snap: false,
   /** The board's armed level: `armTarget` is 0 or 1, `armed` eases toward it. */
   armTarget: 0,
   armed: 0,

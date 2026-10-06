@@ -14,16 +14,18 @@ import {
   Matrix4,
   Quaternion,
   Shape,
+  ShapeGeometry,
   UniformsLib,
   UniformsUtils,
   Vector3,
 } from "three";
 import { palette } from "@/design/tokens";
+import { createRandom } from "@/features/hero/scene/world";
 import { glowFragmentShader, glowVertexShader } from "@/features/hero/shaders/neon";
 import { fonts, forTier, loadFaces, toTexture } from "../artCanvas";
 import { cloneBare } from "../cloneBare";
 import { createFloods } from "../floods";
-import { LENS, type Vec3 } from "../frame";
+import type { Vec3 } from "../frame";
 import { night } from "../nightState";
 import { type BoxItem, Boxes } from "../parts/Boxes";
 import { type Pane, Windows } from "../parts/Windows";
@@ -35,10 +37,11 @@ import { buildPrism } from "../prismGeometry";
 import { structureFragmentShader } from "../shaders/board";
 import { signFragmentShader, signVertexShader } from "../shaders/sign";
 import { trivisionFragmentShader, trivisionVertexShader } from "../shaders/trivision";
-import { beatP, keyAt } from "../timelineKeys";
+import { beatP } from "../timelineKeys";
 import { prismAngle, rippleAngle, TRIVISION } from "../trivision";
-import { paintCloudSigns, paintTrivision } from "./art/cloud";
-import { PANE } from "./art/windows";
+import { paintCafeRoom, paintCafeSign, ROOM, SIGN } from "./art/cafe";
+import { paintCloudSigns, paintPiece, paintTrivision, PIECE } from "./art/cloud";
+import { pickPane } from "./art/windows";
 import { instancedBoardVertexShader } from "./instanced";
 import type { NightSet, SetProps } from "./types";
 
@@ -52,11 +55,26 @@ import type { NightSet, SetProps } from "./types";
  */
 
 const BOARD = { x: 1, y: 15.5, z: -11, w: 18, h: 7.5 } as const;
+/** Naturgy's bolt: a glyph in metres (centred), where it breaks out over the face's top right corner, its colour hot enough to bloom. */
+const BOLT: [number, number][] = [
+  [-0.1, 1.65],
+  [0.75, 1.65],
+  [0.2, 0.3],
+  [0.7, 0.3],
+  [-0.6, -1.65],
+  [-0.1, -0.12],
+  [-0.6, -0.12],
+];
+const BOLT_AT: Vec3 = [BOARD.x + BOARD.w / 2 - 1.3, BOARD.y + BOARD.h / 2 + 0.35, BOARD.z + 0.6];
+const BOLT_HOT = new Color("#ffb35a").multiplyScalar(2.6);
+const BOLT_GLOW: Glow[] = [{ position: [0, 0, 0.05], size: 3.4, color: "#ff8a2a", intensity: 1.4 }];
 /** The Telpark car's bay: on the roof's front edge, right of the nameplate. */
 const CAR_BAY = { x: BOARD.x + 7.6 } as const;
 /** Where Pangea's missing piece (the last continent) fits on the face (see art/cloud.ts). */
 const SLOT = { x: BOARD.x + 0.4, y: BOARD.y } as const;
 const PRISM = BOARD.w / TRIVISION.prisms;
+/** The prism under the piece's middle: once it starts to turn away, the piece goes with the face it completes. */
+const PIECE_PRISM = Math.floor((SLOT.x - (BOARD.x - BOARD.w / 2)) / PRISM);
 const TELPARK_CAR = "/models/quaternius-cars/SportsCar2.glb";
 
 /** The corner block: a footprint with a rounded prow, extruded to the cornice. */
@@ -76,6 +94,35 @@ function buildBlock(): ExtrudeGeometry {
   return geometry;
 }
 
+/**
+ * Pangea's missing piece: the same cut as the hole on the face (a square,
+ * one knob on its right), a card's thickness, printed with its own patch of
+ * the picture (`paintPiece`): its UVs span the square and its knob, as
+ * `PIECE_BOX` does on the face, so once home it completes the photo.
+ */
+function buildPiece(): ExtrudeGeometry {
+  const half = PIECE.size / 2;
+  const { offset, radius } = PIECE.knob;
+  const chord = Math.sqrt(radius * radius - offset * offset);
+  const shape = new Shape();
+  shape.moveTo(-half, -half);
+  shape.lineTo(half, -half);
+  shape.lineTo(half, -chord);
+  const from = Math.atan2(-chord, -offset);
+  const to = Math.atan2(chord, -offset);
+  // Round the far side of the knob, from just below the edge's middle to just above it.
+  shape.absarc(half + offset, 0, radius, from, to, false);
+  shape.lineTo(half, half);
+  shape.lineTo(-half, half);
+  shape.closePath();
+  const geometry = new ExtrudeGeometry(shape, { depth: 0.14, bevelEnabled: false, curveSegments: 16 });
+  const position = geometry.getAttribute("position");
+  const uv = geometry.getAttribute("uv");
+  const wide = PIECE.size + offset + radius;
+  for (let i = 0; i < uv.count; i += 1) uv.setXY(i, (position.getX(i) + half) / wide, (position.getY(i) + half) / PIECE.size);
+  return geometry;
+}
+
 /** The island's palms along the kerb: every stop is the same island at night. */
 const CLOUD_PALMS: NightPalm[] = [
   { position: [-24, 0, 4.8] as Vec3, rotation: 0.4, scale: 1.1, variant: 0 },
@@ -87,6 +134,13 @@ const CLOUD_PALMS: NightPalm[] = [
 /** The block's front, just behind the far pavement. */
 const BLOCK_FRONT = -6.6;
 
+/** The café: its room behind the glass (centre x), the door's bay, the canopy, the sign over it, the ribbon windows upstairs. */
+const ROOM_X = -15 - 1.05 + ROOM.w / 2;
+const DOOR_X = -4;
+const CANOPY_Y = 3.2;
+const CAFE_SIGN = { x: -3.6, y: 4.45, w: 10.5 } as const;
+const RIBBON_Y = 6.1;
+
 const LAMPS: Vec3[] = [
   [-14, 0.15, 2.6],
   [12, 0.15, 2.6],
@@ -95,25 +149,31 @@ const LAMPS: Vec3[] = [
 function CloudSet({ work, tier, timeline, index }: SetProps) {
   const high = tier === "high";
   const board = work.stops["cloud-district"].board;
-  const [art, setArt] = useState<{ faces: CanvasTexture; signs: CanvasTexture } | null>(null);
+  const [art, setArt] = useState<{ faces: CanvasTexture; piece: CanvasTexture; signs: CanvasTexture; cafe: CanvasTexture; room: CanvasTexture } | null>(null);
   const { scene: carScene } = useGLTF(TELPARK_CAR);
   const telpark = useMemo(() => cloneBare(carScene), [carScene]);
 
   useEffect(() => {
     let cancelled = false;
-    let made: { faces: CanvasTexture; signs: CanvasTexture } | null = null;
-    loadFaces([`800 200px ${fonts.display()}`, `700 60px ${fonts.mono()}`, `400 180px ${fonts.script()}`, `italic 600 60px ${fonts.body()}`]).then(() => {
+    let made: { faces: CanvasTexture; piece: CanvasTexture; signs: CanvasTexture; cafe: CanvasTexture; room: CanvasTexture } | null = null;
+    loadFaces([`800 200px ${fonts.display()}`, `700 60px ${fonts.mono()}`, `400 180px ${fonts.script()}`, `italic 600 60px ${fonts.body()}`, `600 60px ${fonts.body()}`, `italic 600 60px ${fonts.serif()}`]).then(() => {
       if (cancelled) return;
       made = {
         faces: toTexture(forTier(paintTrivision(board.faces, board.pieces), !high), 8),
-        signs: toTexture(paintCloudSigns(board.nameplate, board.cafe), 4),
+        piece: toTexture(paintPiece(board.faces[1], board.pieces), 4),
+        signs: toTexture(paintCloudSigns(board.nameplate), 4),
+        cafe: toTexture(paintCafeSign(board.cafe), 4),
+        room: toTexture(forTier(paintCafeRoom(), !high), 4),
       };
       setArt(made);
     });
     return () => {
       cancelled = true;
       made?.faces.dispose();
+      made?.piece.dispose();
       made?.signs.dispose();
+      made?.cafe.dispose();
+      made?.room.dispose();
     };
   }, [board, high]);
 
@@ -124,24 +184,31 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
   );
   const uniforms = useMemo(() => {
     const fog = () => UniformsUtils.clone(UniformsLib.fog);
+    const prisms = {
+      ...fog(),
+      ...floods,
+      uMap: { value: art?.faces ?? null },
+      uAmbient: { value: new Color("#9a90c0") },
+      uLift: { value: 0.9 },
+      uFront: { value: new Vector3(0, 0, 1) },
+      uSlices: { value: TRIVISION.prisms },
+    };
     return {
-      prisms: {
-        ...fog(),
-        ...floods,
-        uMap: { value: art?.faces ?? null },
-        uAmbient: { value: new Color("#9a90c0") },
-        uLift: { value: 0.9 },
-        uFront: { value: new Vector3(0, 0, 1) },
-        uSlices: { value: TRIVISION.prisms },
-      },
+      prisms,
       frame: { ...fog(), ...floods, uColor: { value: new Color("#2b2340") }, uAmbient: { value: new Color("#3a2d58") }, uRim: { value: new Color("#5a2a6a") }, uLift: { value: 0.8 } },
       block: { ...fog(), ...floods, uColor: { value: new Color("#cdb8c9") }, uAmbient: { value: new Color("#30254c") }, uRim: { value: new Color("#ff6fb8") }, uLift: { value: 0.25 } },
       signs: { ...fog(), uMap: { value: art?.signs ?? null }, uLevel: { value: 1 }, uIntensity: { value: 1.6 }, uFogAmount: { value: 0.3 } },
+      cafe: { ...fog(), uMap: { value: art?.cafe ?? null }, uLevel: { value: 1 }, uIntensity: { value: 2.2 }, uFogAmount: { value: 0.2 } },
+      room: { ...fog(), uMap: { value: art?.room ?? null }, uLevel: { value: 0.95 }, uIntensity: { value: 1.25 }, uFogAmount: { value: 0.25 } },
+      // The piece is lit, capped and fogged by the face's own shader and uniforms, its own picture in uMap: once home it is the photo.
+      piece: { ...prisms, uMap: { value: art?.piece ?? null } },
       glow: { ...fog(), uIntensity: { value: 1 }, uFogAmount: { value: 0.3 } },
     };
   }, [floods, art]);
 
   const prism = useMemo(() => buildPrism(PRISM, BOARD.h), []);
+  const pieceGeo = useMemo(() => buildPiece(), []);
+  useEffect(() => () => pieceGeo.dispose(), [pieceGeo]);
   const block = useMemo(() => buildBlock(), []);
   useEffect(() => () => {
     prism.dispose();
@@ -189,16 +256,36 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
     () => [7.4, 7.9, 8.4].map((y, i) => ({ p: [-4.5, y, BLOCK_FRONT + 0.12] as Vec3, s: [27, 0.12, 0.12] as Vec3, color: i === 1 ? "#ff2d95" : "#ff8fd0" })),
     [],
   );
-  const cafeWindows = useMemo<Pane[]>(() => {
+  const ribbon = useMemo<Pane[]>(() => {
+    // Upstairs: the consultancy's ribbon windows, some of its rooms still lit, no two alike side by side.
+    const random = createRandom(2024);
     const panes: Pane[] = [];
-    // The café's panes at street level, ribbon windows upstairs behind blinds, a few lit.
-    for (let x = -15; x <= 7; x += 2.2) panes.push({ p: [x, 1.9, BLOCK_FRONT + 0.08], s: [2.1, 2.3], cell: Math.round(x * 3) % 2 ? PANE.cafeCounter : PANE.cafeTable });
+    let beside = -1;
     for (let x = -15; x <= 7; x += 2.2) {
-      const lit = Math.round(x * 7) % 3 === 0;
-      panes.push({ p: [x, 5.6, BLOCK_FRONT + 0.08], s: [2.1, 1.3], cell: lit ? PANE.blinds : PANE.blindsDark });
+      const look = pickPane(random, "office", 0.5, beside);
+      beside = look.cell;
+      panes.push({ p: [x, RIBBON_Y, BLOCK_FRONT + 0.08], s: [2.1, 1.3], ...look });
     }
     return panes;
   }, []);
+  const storefront = useMemo<BoxItem[]>(() => {
+    // The café's glass: mullions between the bays, a transom, the kick plate, the door's brass bar; the canopy over it.
+    const items: BoxItem[] = [];
+    const left = ROOM_X - ROOM.w / 2;
+    for (let k = 0; k <= 11; k += 1) items.push({ p: [left + k * 2.2 - (k === 11 ? 0.1 : 0), 1.9, BLOCK_FRONT + 0.1], s: [0.1, 2.36, 0.1], color: "#2a2036" });
+    items.push({ p: [ROOM_X, 2.62, BLOCK_FRONT + 0.1], s: [ROOM.w, 0.07, 0.08], color: "#2a2036" });
+    items.push({ p: [ROOM_X, 0.8, BLOCK_FRONT + 0.1], s: [ROOM.w, 0.12, 0.08], color: "#2a2036" });
+    items.push({ p: [DOOR_X - 0.18, 1.55, BLOCK_FRONT + 0.16], s: [0.04, 0.8, 0.04], color: "#8a7050" });
+    items.push({ p: [DOOR_X + 0.18, 1.55, BLOCK_FRONT + 0.16], s: [0.04, 0.8, 0.04], color: "#8a7050" });
+    items.push({ p: [DOOR_X, 1.9, BLOCK_FRONT + 0.11], s: [0.05, 2.3, 0.08], color: "#2a2036" });
+    items.push({ p: [ROOM_X, CANOPY_Y, BLOCK_FRONT + 0.75], s: [ROOM.w + 0.6, 0.16, 1.5], color: "#231a33" });
+    items.push({ p: [ROOM_X, CANOPY_Y + 0.1, BLOCK_FRONT + 1.5], s: [ROOM.w + 0.6, 0.06, 0.04], color: "#c8a060" });
+    return items;
+  }, []);
+  const downlights = useMemo<Glow[]>(
+    () => Array.from({ length: 11 }, (_, k) => ({ position: [ROOM_X - ROOM.w / 2 + 1.1 + k * 2.2, CANOPY_Y - 0.12, BLOCK_FRONT + 1.0] as Vec3, size: 0.45, color: "#ffd9a0", intensity: 1.6 })),
+    [],
+  );
   const signal = useRef<GlowHandle | null>(null);
   const signalGlows = useMemo<Glow[]>(
     () => [
@@ -245,10 +332,11 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
     // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
     angles.needsUpdate = true;
     const shown = face + Math.round(flip);
-    // The bolt while Naturgy is up; the piece flies home during the Pangea hold.
-    if (bolt.current) bolt.current.visible = shown === 0;
+    // The bolt while Naturgy is up, gone as soon as the board starts to turn; the piece flies home during the Pangea hold.
+    if (bolt.current) bolt.current.visible = p < beats.flip1[0];
     if (piece.current) {
-      piece.current.visible = shown === 1;
+      // Up from the moment Pangea shows until the prism under it turns away (never floating over a turning board).
+      piece.current.visible = shown === 1 && (face === 0 || prismAngle(PIECE_PRISM, 1, flip) <= prismAngle(PIECE_PRISM, 1, 0) + 1e-4);
       const k = u(beats.pangea);
       const e = k * k * (3 - 2 * k);
       // From floating off the top-right corner, along an arc, into its slot.
@@ -275,24 +363,14 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
     for (let i = 0; i < 4; i += 1) floods.uFloodLevel.value[i] = 1 + 0.45 * night.armed;
   });
 
-  const boltPoints: BoxItem[] = useMemo(() => {
-    const pts: Vec3[] = [
-      [-5.6, 17.6, -10.5],
-      [-5.0, 19.6, -10.4],
-      [-6.2, 20.4, -10.3],
-      [-5.2, 22.0, -10.2],
-    ];
-    const items: BoxItem[] = [];
-    for (let i = 0; i < pts.length - 1; i += 1) {
-      const a = new Vector3(...pts[i]);
-      const b = new Vector3(...pts[i + 1]);
-      const mid = a.clone().add(b).multiplyScalar(0.5);
-      const len = a.distanceTo(b);
-      const angle = Math.atan2(b.y - a.y, b.x - a.x);
-      items.push({ p: [mid.x, mid.y, mid.z], s: [len, 0.16, 0.16], r: [0, 0, angle], color: "#ff8a2a" });
-    }
-    return items;
+  // Naturgy's breakout: a lightning bolt out of the face's top right corner, over the gauge, hot and glowing.
+  const boltGeo = useMemo(() => {
+    const shape = new Shape();
+    BOLT.forEach(([x, y], i) => (i === 0 ? shape.moveTo(x, y) : shape.lineTo(x, y)));
+    shape.closePath();
+    return new ShapeGeometry(shape);
   }, []);
+  useEffect(() => () => boltGeo.dispose(), [boltGeo]);
 
   return (
     <group>
@@ -313,19 +391,24 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
       <Boxes items={speedLines}>
         <shaderMaterial uniforms={uniforms.glow} vertexShader={glowVertexShader} fragmentShader={glowFragmentShader} fog />
       </Boxes>
-      <Windows panes={cafeWindows} />
+      <Windows panes={ribbon} />
+      <Boxes items={storefront}>
+        <meshStandardMaterial roughness={0.45} metalness={0.6} />
+      </Boxes>
+      <Glows glows={downlights} />
       {art ? (
         <>
-          <mesh position={[-9, 3.9, BLOCK_FRONT + 0.2]}>
-            <planeGeometry args={[7, 1.75]}>
-              <AtlasUv rect={[0, 0, 1, 0.5]} />
-            </planeGeometry>
-            <shaderMaterial uniforms={uniforms.signs} vertexShader={signVertexShader} fragmentShader={signFragmentShader} fog />
+          {/* The café's room behind the glass, and its sign over the canopy. */}
+          <mesh position={[ROOM_X, 1.9, BLOCK_FRONT + 0.06]}>
+            <planeGeometry args={[ROOM.w, ROOM.h]} />
+            <shaderMaterial uniforms={uniforms.room} vertexShader={signVertexShader} fragmentShader={signFragmentShader} fog />
+          </mesh>
+          <mesh position={[CAFE_SIGN.x, CAFE_SIGN.y, BLOCK_FRONT + 0.3]}>
+            <planeGeometry args={[CAFE_SIGN.w, (CAFE_SIGN.w * SIGN.h) / SIGN.w]} />
+            <shaderMaterial uniforms={uniforms.cafe} vertexShader={signVertexShader} fragmentShader={signFragmentShader} fog />
           </mesh>
           <mesh position={[BOARD.x, BOARD.y - BOARD.h / 2 - 1.2, BOARD.z + 1.82]}>
-            <planeGeometry args={[11, 0.9]}>
-              <AtlasUv rect={[0, 1 - 200 / 512, 1, 1]} />
-            </planeGeometry>
+            <planeGeometry args={[11, 0.9]} />
             <shaderMaterial uniforms={uniforms.signs} vertexShader={signVertexShader} fragmentShader={signFragmentShader} fog />
           </mesh>
           <instancedMesh ref={prisms} args={[prism, undefined, TRIVISION.prisms]} frustumCulled={false}>
@@ -341,20 +424,21 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
       <NightPalms palms={high ? CLOUD_PALMS : CLOUD_PALMS.slice(0, 2)} />
       <Glows glows={lampHeads} />
       {/* Breakouts: Naturgy's bolt, Pangea's last piece, Telpark's car. */}
-      <group ref={bolt}>
-        <Boxes items={boltPoints}>
-          <shaderMaterial uniforms={{ ...uniforms.glow, uIntensity: { value: 3.2 } }} vertexShader={glowVertexShader} fragmentShader={glowFragmentShader} fog />
-        </Boxes>
+      <group ref={bolt} position={BOLT_AT} rotation-z={-0.14}>
+        <mesh geometry={boltGeo} scale={1.22} position-z={-0.03}>
+          <meshBasicMaterial color="#ff7a1a" transparent opacity={0.4} depthWrite={false} />
+        </mesh>
+        <mesh geometry={boltGeo}>
+          <meshBasicMaterial color={BOLT_HOT} />
+        </mesh>
+        <Glows glows={BOLT_GLOW} />
       </group>
       <group ref={piece} visible={false}>
-        <mesh>
-          <boxGeometry args={[1.5, 1.5, 0.14]} />
-          <meshStandardMaterial color="#9fe0c9" roughness={0.6} />
-        </mesh>
-        <mesh position={[0.78, 0, 0]} rotation-x={Math.PI / 2}>
-          <cylinderGeometry args={[0.22, 0.22, 0.14, 16]} />
-          <meshStandardMaterial color="#9fe0c9" roughness={0.6} />
-        </mesh>
+        {art ? (
+          <mesh geometry={pieceGeo} position-z={-0.07}>
+            <shaderMaterial uniforms={uniforms.piece} vertexShader={pieceVertexShader} fragmentShader={trivisionFragmentShader} fog />
+          </mesh>
+        ) : null}
       </group>
       <group ref={car} visible={false}>
         <primitive object={telpark} scale={0.75} />
@@ -374,11 +458,23 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
   );
 }
 
-/** Points a plane's uv at one rectangle of an atlas (u0, v0, u1, v1). */
-function AtlasUv({ rect }: { rect: number[] }) {
-  const array = useMemo(() => new Float32Array([rect[0], rect[3], rect[2], rect[3], rect[0], rect[1], rect[2], rect[1]]), [rect]);
-  return <bufferAttribute attach="attributes-uv" args={[array, 2]} />;
-}
+/** The piece is one plain mesh: the varyings the trivision's fragment shader reads, its own UVs as they are. */
+const pieceVertexShader = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  varying vec3 vWorld;
+  varying float vFogDepth;
+
+  void main() {
+    vec4 world = modelMatrix * vec4(position, 1.0);
+    vWorld = world.xyz;
+    vNormal = normalize(mat3(modelMatrix) * normal);
+    vUv = uv;
+    vec4 mvPosition = viewMatrix * world;
+    vFogDepth = -mvPosition.z;
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
 
 /** The block is one mesh, not instanced: the board vertex shader as it is. */
 const blockVertexShader = instancedBoardVertexShader.replace("modelMatrix * instanceMatrix * vec4", "modelMatrix * vec4").replace(
@@ -397,21 +493,17 @@ export const cloud: NightSet = {
     [BOARD.x - BOARD.w / 2 - 0.3, BOARD.y - BOARD.h / 2 - 1.6, BOARD.z + 0.5],
   ],
   boardNormal: [0, 0, 1],
-  shots: (timeline) => [
-    // From the far pavement: the board over the corner, the car waiting at the light lower right.
-    keyAt(timeline, "cloud.open", 0, { position: [-14, 3.0, 45], look: [-2, 9.4, -11], fov: LENS.mm40 }),
-    keyAt(timeline, "cloud.leave", 0, { position: [-4, 3.1, 45], look: [1, 9.6, -11], fov: LENS.mm40 }),
-  ],
   maxBack: 34,
   lights: [
     { position: [1, 10.5, -8], color: palette.sodiumNight, intensity: 120, distance: 40 },
-    { position: [-6, 7, 3], color: "#ff4fa8", intensity: 60, distance: 30 },
+    { position: [-3.6, 4.6, -2.5], color: "#ff7ac0", intensity: 60, distance: 30 },
   ],
   streaks: [
     { position: [-14, 7.3, 1.2], color: "#ffd9a0", level: 0.8 },
     { position: [12, 7.3, 1.2], color: "#ffd9a0", level: 0.8 },
     { position: [-4, 7.9, 0.2], color: "#ff2d95", level: 0.9 },
     { position: [-9, 1.9, 0.2], color: "#ffbf7a", level: 0.6 },
+    { position: [-3.6, 4.45, 0.2], color: "#ffd8ee", level: 0.7 },
     { position: [4.1, 3.9, 2.6], color: "#ff3a5c", level: 0.5 },
     { position: [1, 11, -9.5], color: palette.sodiumNight, level: 0.6 },
   ],

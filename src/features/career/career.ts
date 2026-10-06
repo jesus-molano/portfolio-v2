@@ -11,7 +11,9 @@ import type { Locale } from "@/i18n/config";
  * Facts the owner fixed (career.test.ts): no city for a civilian job, Las
  * Palmas de Gran Canaria for the army only, never Madrid; the roles in
  * English in both languages, the army's in each language; the job on air
- * (Heuristik) tagged LIVE, in English everywhere.
+ * (Heuristik) tagged LIVE, in English everywhere; and how each job was
+ * done, on site or remote, which STATS's main missions say in words and
+ * its map shows by where the badge stands.
  *
  * Dependency-free on purpose: statsLayout.ts imports it, and
  * tools/art/stats/map.mjs imports that file with Node's type stripping
@@ -19,6 +21,14 @@ import type { Locale } from "@/i18n/config";
  */
 
 export type JobId = "army" | "pwc" | "cloud-district" | "logixs" | "heuristik";
+
+/**
+ * How a job was done: on site (the army in Las Palmas, PwC at the dock)
+ * or remote, from home base. The owner's words for the main missions'
+ * labels, «Presencial» / «En remoto» (stats.missions.modes); the only
+ * place the copy may say "remote".
+ */
+export type WorkMode = "onSite" | "remote";
 
 export type Job = {
   id: JobId;
@@ -34,6 +44,8 @@ export type Job = {
   years: readonly [number, number | null];
   /** Where he was posted, for the army only: no civilian job names a city. */
   place: string | null;
+  /** On site or remote. */
+  mode: WorkMode;
 };
 
 /** A name or a title written the same in every language. */
@@ -56,6 +68,7 @@ export const CAREER: readonly Job[] = [
     role: { en: "Combat engineer", es: "Zapador" },
     years: [2018, 2021],
     place: "Las Palmas de Gran Canaria",
+    mode: "onSite",
   },
   {
     id: "pwc",
@@ -65,6 +78,7 @@ export const CAREER: readonly Job[] = [
     role: everywhere("Frontend Developer"),
     years: [2023, 2024],
     place: null,
+    mode: "onSite",
   },
   {
     id: "cloud-district",
@@ -74,6 +88,7 @@ export const CAREER: readonly Job[] = [
     role: everywhere("Frontend Developer"),
     years: [2024, 2025],
     place: null,
+    mode: "remote",
   },
   {
     id: "logixs",
@@ -83,6 +98,7 @@ export const CAREER: readonly Job[] = [
     role: everywhere("Full Stack Developer"),
     years: [2025, 2026],
     place: null,
+    mode: "remote",
   },
   {
     id: "heuristik",
@@ -92,6 +108,7 @@ export const CAREER: readonly Job[] = [
     role: everywhere("Frontend Engineer"),
     years: [2026, null],
     place: null,
+    mode: "remote",
   },
 ];
 

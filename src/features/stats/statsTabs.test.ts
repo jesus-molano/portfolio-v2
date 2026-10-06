@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { idFromHash } from "@/lib/hash";
 import {
+  PANEL_ALIASES,
   PANEL_IDS,
   STATS_ID,
   STATS_TABS,
@@ -24,42 +25,55 @@ const key = (k: string, mods: Partial<ShoulderKey> = {}): ShoulderKey => ({
 });
 
 describe("the STATS tabs' fragments", () => {
-  it("opens MAP from #stats and STATS from #stats-sheet", () => {
-    expect(STATS_TABS).toEqual(["map", "sheet"]);
-    expect(tabForId(idFromHash("#stats"))).toBe("map");
+  it("lists STATS first, then MAP, ACHIEVEMENTS and SETTINGS", () => {
+    expect(STATS_TABS).toEqual(["sheet", "map", "achievements", "settings"]);
+  });
+
+  it("opens STATS from #stats, and every other tab from its panel's fragment", () => {
+    expect(tabForId(idFromHash("#stats"))).toBe("sheet");
+    expect(tabForId(idFromHash("#stats-map"))).toBe("map");
+    expect(tabForId(idFromHash("#stats-achievements"))).toBe("achievements");
+    expect(tabForId(idFromHash("#stats-settings"))).toBe("settings");
+    // STATS's own panel id opens it too, so an old link to #stats-sheet still lands on it.
     expect(tabForId(idFromHash("#stats-sheet"))).toBe("sheet");
-    // MAP's own panel id opens it too.
-    expect(tabForId(PANEL_IDS.map)).toBe("map");
+    // The achievement tree took the favourites' place: a link shared before still opens it.
+    expect(tabForId(idFromHash("#stats-favorites"))).toBe("achievements");
+    expect(PANEL_ALIASES).toEqual({ "stats-favorites": "achievements" });
   });
 
   it("opens nothing for a fragment that is not the section's or a panel's", () => {
-    for (const hash of ["", "#", "#projects", "#stats-records", "#stats-map-tab", "#Stats"]) expect(tabForId(idFromHash(hash)), hash).toBeNull();
+    for (const hash of ["", "#", "#projects", "#stats-records", "#stats-map-tab", "#Stats", "#stats-favourites", "#stats-achievements-title"]) {
+      expect(tabForId(idFromHash(hash)), hash).toBeNull();
+    }
   });
 
-  it("shares MAP as #stats and STATS as #stats-sheet, and reads each back as its tab", () => {
-    expect(hashForTab("map")).toBe("#stats");
-    expect(hashForTab("sheet")).toBe("#stats-sheet");
+  it("shares STATS as #stats and the others by their panels, and reads each back as its tab", () => {
+    expect(hashForTab("sheet")).toBe("#stats");
+    expect(hashForTab("map")).toBe("#stats-map");
+    expect(hashForTab("achievements")).toBe("#stats-achievements");
+    expect(hashForTab("settings")).toBe("#stats-settings");
     for (const tab of STATS_TABS) expect(tabForId(idFromHash(hashForTab(tab)))).toBe(tab);
   });
 
   it("gives every tab and panel its own id, none of them the section's", () => {
-    const ids = [STATS_ID, ...Object.values(PANEL_IDS), ...Object.values(TAB_IDS)];
+    const ids = [STATS_ID, ...Object.values(PANEL_IDS), ...Object.values(TAB_IDS), ...Object.keys(PANEL_ALIASES)];
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
 
 describe("the tab bar's keys", () => {
   it("steps with the arrows and wraps round at both ends", () => {
-    expect(tabListKey("ArrowRight", "map")).toBe("sheet");
     expect(tabListKey("ArrowRight", "sheet")).toBe("map");
-    expect(tabListKey("ArrowLeft", "sheet")).toBe("map");
+    expect(tabListKey("ArrowRight", "map")).toBe("achievements");
+    expect(tabListKey("ArrowRight", "settings")).toBe("sheet");
     expect(tabListKey("ArrowLeft", "map")).toBe("sheet");
+    expect(tabListKey("ArrowLeft", "sheet")).toBe("settings");
   });
 
   it("goes to the ends with Home and End", () => {
     for (const tab of STATS_TABS) {
-      expect(tabListKey("Home", tab)).toBe("map");
-      expect(tabListKey("End", tab)).toBe("sheet");
+      expect(tabListKey("Home", tab)).toBe("sheet");
+      expect(tabListKey("End", tab)).toBe("settings");
     }
   });
 
@@ -75,10 +89,10 @@ describe("the tab bar's keys", () => {
   });
 
   it("steps any distance, wrapping", () => {
-    expect(stepTab("map", 1)).toBe("sheet");
-    expect(stepTab("map", 2)).toBe("map");
-    expect(stepTab("map", -1)).toBe("sheet");
-    expect(stepTab("sheet", -3)).toBe("map");
+    expect(stepTab("sheet", 1)).toBe("map");
+    expect(stepTab("sheet", 4)).toBe("sheet");
+    expect(stepTab("sheet", -1)).toBe("settings");
+    expect(stepTab("map", -6)).toBe("settings");
   });
 });
 

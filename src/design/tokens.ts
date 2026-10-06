@@ -230,6 +230,32 @@ export const motion = {
 } as const;
 
 /**
+ * STATS's achievement tree (src/features/stats/Achievements.tsx): one
+ * colour per constellation, the colour its lit stars and links glow in.
+ * Locked stars are drawn from `locked`; the white flag of the one he gave
+ * up on is `flag`. Never the on-air red, which is Heuristik's alone.
+ * Emitted as `--va-tree-*`.
+ */
+export const achievementTree = {
+  /** SPORT: the track's sodium lights. */
+  sport: palette.sodium,
+  /** GAMES: a console's standby glow. */
+  games: palette.cyan,
+  /** FILM: the projector's warm beam. */
+  film: palette.orange,
+  /** SERIES: the late-night pink of the TV. */
+  series: palette.pink,
+  /** A locked star: unlit lilac. */
+  locked: palette.lilac,
+  /** The white flag. */
+  flag: palette.cream,
+  /** His two favourites (The Godfather, The Sopranos): a deeper gold than SPORT's sodium. */
+  favourite: palette.sodiumNight,
+  /** The sky behind the constellations, a shade deeper than the menu's panels. */
+  sky: mixHex(palette.night, palette.letterbox, 0.32),
+} as const;
+
+/**
  * The finale (src/features/finale): The Afterglow, a deco picture palace
  * at night, then the end credits at dawn. The plates are pre-drawn
  * (tools/art/finale); these are the colours of the live DOM laid on them.
@@ -383,6 +409,9 @@ export function tokensToCssVariables(): string {
   }
   for (const [key, value] of Object.entries(lineup)) {
     entries.push(`--va-lineup-${kebab(key)}: ${value};`);
+  }
+  for (const [key, value] of Object.entries(achievementTree)) {
+    entries.push(`--va-tree-${kebab(key)}: ${value};`);
   }
   for (const [key, value] of Object.entries(finale)) {
     entries.push(`--va-finale-${kebab(key)}: ${value};`);

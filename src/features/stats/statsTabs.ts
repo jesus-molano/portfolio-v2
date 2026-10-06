@@ -1,29 +1,51 @@
 /**
- * The pause menu's tabs, MAP and STATS, switched in place like a game's:
- * which fragment opens which tab, and what a key does. Pure, so the tests
- * hold it; StatsTabs.tsx does the DOM.
+ * The pause menu's tabs, STATS, MAP, ACHIEVEMENTS and SETTINGS, switched in
+ * place like a game's: which fragment opens which tab, and what a key
+ * does. Pure, so the tests hold it; StatsTabs.tsx does the DOM.
  */
 
-export const STATS_TABS = ["map", "sheet"] as const;
+/** In the menu's order: the player profile first, as a game's pause menu opens on it. */
+export const STATS_TABS = ["sheet", "map", "achievements", "settings"] as const;
 export type StatsTab = (typeof STATS_TABS)[number];
 
-/** The section's id: a link to it (#stats) opens the first tab, MAP. */
+/** The section's id: a link to it (#stats) opens the first tab, STATS. */
 export const STATS_ID = "stats";
 
-/** Each tab's panel; STATS's is also the fragment that opens it (#stats-sheet). */
-export const PANEL_IDS: Record<StatsTab, string> = { map: "stats-map", sheet: "stats-sheet" };
+/** Each tab's panel; also the fragment that opens it (#stats-map, #stats-achievements, #stats-settings; #stats-sheet too). */
+export const PANEL_IDS: Record<StatsTab, string> = {
+  sheet: "stats-sheet",
+  map: "stats-map",
+  achievements: "stats-achievements",
+  settings: "stats-settings",
+};
+
+/**
+ * Old fragments that still open a tab: the achievement tree took the
+ * FAVOURITES tab's place, so a link shared as #stats-favorites lands on
+ * it. Each alias is an element at the top of its panel (Stats.tsx), so the
+ * browser and PageEntry find it, and it lands like the panel.
+ */
+export const PANEL_ALIASES: Readonly<Record<string, StatsTab>> = {
+  "stats-favorites": "achievements",
+};
 
 /** Each tab's own id, which names its panel. */
-export const TAB_IDS: Record<StatsTab, string> = { map: "stats-map-tab", sheet: "stats-sheet-tab" };
+export const TAB_IDS: Record<StatsTab, string> = {
+  sheet: "stats-sheet-tab",
+  map: "stats-map-tab",
+  achievements: "stats-achievements-tab",
+  settings: "stats-settings-tab",
+};
 
-/** The fragment that shares a tab: the section's for MAP (#stats), the panel's for STATS (#stats-sheet). */
+/** The fragment that shares a tab: the section's for the first one (#stats), the panel's for the others. */
 export function hashForTab(tab: StatsTab): string {
   return tab === STATS_TABS[0] ? `#${STATS_ID}` : `#${PANEL_IDS[tab]}`;
 }
 
-/** The tab an element id opens: the section or a panel; any other id opens none. */
+/** The tab an element id opens: the section, a panel or an old panel's alias; any other id opens none. */
 export function tabForId(id: string | null): StatsTab | null {
   if (id === STATS_ID) return STATS_TABS[0];
+  if (id !== null && Object.hasOwn(PANEL_ALIASES, id)) return PANEL_ALIASES[id];
   return STATS_TABS.find((tab) => PANEL_IDS[tab] === id) ?? null;
 }
 

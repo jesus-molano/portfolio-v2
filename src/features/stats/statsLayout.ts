@@ -7,13 +7,18 @@
  * so at runtime it imports only the career's facts (career.ts, as
  * dependency-free), by the file's full name, as Node resolves it.
  *
+ * The map is career geography only: where he has worked and where he is.
+ * The army on site in Las Palmas (the Gran Canaria box), PwC on site at
+ * the dock on the north-east coast, and the three jobs since done remote
+ * from home base. No hobby on it: his favourites are a tab of their own.
+ *
  * Coordinates are real ([longitude, latitude], WGS 84): the towns stand
  * where the real ones do, under their parody names. The home glyph (HQ) is
  * the exception that proves it: it sits in the Teide's caldera, a national
  * park where nobody lives, so it never points at a real home.
  */
 
-import { CAREER, isLive, type JobId } from "../career/career.ts";
+import { CAREER, isLive, type JobId, type WorkMode } from "../career/career.ts";
 
 /** [longitude, latitude] in degrees. */
 export type LonLat = readonly [number, number];
@@ -54,9 +59,9 @@ export type FrameId = "wide" | "square";
 
 /**
  * Two crops of the same map: `wide` (16:11) with captions from 1000 px up,
- * `square` with keyed pins and a legend below that. The island keeps sea around it for the captions
- * (north and west) and the Gran Canaria box (south-east, where Gran Canaria
- * really is).
+ * `square` below that, its words in a legend under it. The island keeps sea
+ * around it for the captions (north and west) and the Gran Canaria box
+ * (south-east, where Gran Canaria really is).
  */
 export const FRAMES: Record<FrameId, MapFrame> = {
   wide: {
@@ -141,7 +146,8 @@ export type Place = {
 };
 
 export const PLACES: readonly Place[] = [
-  { id: "santaCruz", kind: "town", town: [-16.252, 28.466], label: [-16.068, 28.422] },
+  // Off the coast south of the town, below the ferry's line in to the dock (tested clear of the route).
+  { id: "santaCruz", kind: "town", town: [-16.252, 28.466], label: [-16.205, 28.366] },
   { id: "laLaguna", kind: "town", town: [-16.316, 28.487], label: [-16.379, 28.504] },
   { id: "puerto", kind: "town", town: [-16.548, 28.413], label: [-16.54, 28.37] },
   { id: "icod", kind: "town", town: [-16.715, 28.366], label: [-16.674, 28.33], minor: true },
@@ -152,7 +158,8 @@ export const PLACES: readonly Place[] = [
   { id: "cristianos", kind: "town", town: [-16.715, 28.052], label: [-16.83, 27.96], minor: true },
   { id: "medano", kind: "town", town: [-16.537, 28.046], minor: true },
   { id: "guimar", kind: "town", town: [-16.41, 28.315], label: [-16.285, 28.29], minor: true },
-  { id: "teresitas", kind: "town", town: [-16.188, 28.508], label: [-16.134, 28.452], minor: true },
+  // Off the beach, north-east of the dock and above the ferry's line: the name the dock is read by.
+  { id: "teresitas", kind: "town", town: [-16.188, 28.508], label: [-16.086, 28.534], minor: true },
   { id: "esperanza", kind: "town", town: [-16.372, 28.452], label: [-16.384, 28.398], minor: true },
   { id: "anaga", kind: "region", label: [-16.25, 28.6], minor: true },
   { id: "teide", kind: "summit", label: [-16.6425, 28.302] },
@@ -164,19 +171,10 @@ export const PLACES: readonly Place[] = [
 export const TEIDE: LonLat = [-16.6425, 28.2723];
 
 // ---------------------------------------------------------------------------
-// Blips
+// Markers
 
-export type IconId =
-  | "pit"
-  | "box"
-  | "pizza"
-  | "arena"
-  | "carWash"
-  | "law"
-  | "betting"
-  | "booth"
-  | "you"
-  | "hq";
+/** The pictograms (icons.tsx): home base, and the ring of a job done on site. */
+export type IconId = "hq" | "site";
 
 /**
  * Where a caption sits around its marker on the wide map: beside it
@@ -184,47 +182,19 @@ export type IconId =
  */
 export type CaptionSide = "left" | "right" | "top" | "bottom" | "topLeft" | "topRight" | "bottomLeft" | "bottomRight";
 
-export type SideId = "pit" | "box" | "pizza" | "arena" | "carWash" | "law" | "betting" | "booth";
+/** The dock's caption stands this far right of its badge's centre, clear of the badge's tick (Stats.module.css .dock). */
+const DOCK_GAP_PX = 26;
 
-export type SideBlip = {
-  id: SideId;
-  /** The key on a phone, where the map shows letters and the legend the captions. */
-  key: string;
-  icon: IconId;
-  at: LonLat;
-  /** The town it stands in, named in the phone legend. */
-  place: PlaceId;
-  side: CaptionSide;
-};
+/** Home base, in the caldera: a villain's lair, not an address. The remote jobs' badges stand beside it. */
+export const HQ = { at: [-16.585, 28.236] as LonLat, side: "bottom" as CaptionSide };
 
 /**
- * The side activities: the favourites as places a fan recognises (the nods
- * are in AGENTS.md, never on screen). At most eight (tested).
+ * The dock on Santa Cruz's north-east waterfront, at the level of Las
+ * Teresitas (LAS SAHARITAS on the map): where PwC's job was done on site.
+ * A point just inland of the 40 m coast ring the map draws, so the badge
+ * stands on land (tested).
  */
-export const SIDE_BLIPS: readonly SideBlip[] = [
-  // The motor circuit Tenerife has planned at Atogo for decades.
-  { id: "pit", key: "A", icon: "pit", at: [-16.565, 28.122], place: "medano", side: "right" },
-  // Masca, the pirates' hideout in the Teno ravines: a place to hide in a box.
-  { id: "box", key: "B", icon: "box", at: [-16.842, 28.306], place: "masca", side: "bottom" },
-  // Puerto de la Cruz, all pizzerias and flip-flops.
-  { id: "pizza", key: "C", icon: "pizza", at: [-16.545, 28.405], place: "puerto", side: "topRight" },
-  // Las Teresitas: Sahara sand, and "arena" is sand in Spanish.
-  { id: "arena", key: "D", icon: "arena", at: [-16.175, 28.525], place: "teresitas", side: "right" },
-  // The edge of the Malpaís de Güímar, a lava desert.
-  { id: "carWash", key: "E", icon: "carWash", at: [-16.39, 28.29], place: "guimar", side: "topRight" },
-  // A strip mall on the tourist coast.
-  { id: "law", key: "F", icon: "law", at: [-16.722, 28.09], place: "americas", side: "left" },
-  // An old harbour town.
-  { id: "betting", key: "G", icon: "betting", at: [-16.762, 28.368], place: "garachico", side: "top" },
-  // Next to the player: the way on to the projects.
-  { id: "booth", key: "H", icon: "booth", at: [-16.525, 28.072], place: "medano", side: "bottomRight" },
-];
-
-/** The player arrow at the south airport: everyone wakes up on arrival. */
-export const PLAYER = { at: [-16.6, 28.045] as LonLat, heading: -38, side: "bottomLeft" as CaptionSide };
-
-/** Home base, in the caldera: a villain's lair, not an address. */
-export const HQ = { at: [-16.585, 28.236] as LonLat, side: "bottom" as CaptionSide };
+export const DOCK = { at: [-16.224, 28.497] as LonLat, side: "right" as CaptionSide, gap: DOCK_GAP_PX };
 
 export type MissionId = JobId;
 
@@ -235,13 +205,14 @@ export type Mission = {
   anchor: `work-${MissionId}`;
   years: readonly [number, number | null];
   /**
-   * Where the mission was: a place on the map, or `home` for the jobs done
-   * from home base, which stack beside the HQ glyph instead of pointing at
-   * any place.
+   * Where the mission was: a place on the map for a job done on site, or
+   * `home` for the jobs done remote, whose badges stack beside the HQ glyph.
    */
   at: LonLat | "home";
   /** In the Gran Canaria box. */
   inset: boolean;
+  /** On site or remote (career.ts), said in words on the missions list. */
+  mode: WorkMode;
   /** Still going: the only red blip. */
   live: boolean;
 };
@@ -256,13 +227,14 @@ export type Mission = {
 export const CAREER_CITY_ON_PAGE = true;
 
 /**
- * Where each mission sits on the map. The army in Las Palmas (in the box),
- * then four jobs, every one of them done from home base, so no job points
- * at an office.
+ * Where each mission sits on the map: the jobs done on site where they
+ * were (the army in Las Palmas, in the box; PwC at the dock), the remote
+ * ones at home base. Tested against career.ts's modes: a badge on a place
+ * is a job done on site.
  */
 const MISSION_PLACES: Record<MissionId, Pick<Mission, "at" | "inset">> = {
   army: { at: [-15.43, 28.11], inset: true },
-  pwc: { at: "home", inset: false },
+  pwc: { at: DOCK.at, inset: false },
   "cloud-district": { at: "home", inset: false },
   logixs: { at: "home", inset: false },
   heuristik: { at: "home", inset: false },
@@ -279,8 +251,80 @@ export const MISSIONS: readonly Mission[] = CAREER.map((job) => ({
   anchor: job.anchor,
   years: job.years,
   ...MISSION_PLACES[job.id],
+  mode: job.mode,
   live: isLive(job),
 }));
+
+// ---------------------------------------------------------------------------
+// The career route (drawn by tools/art/stats/map.mjs, kept clear of the
+// names by the tests)
+
+/**
+ * The career route on Tenerife: from the dock (where the ferry from Las
+ * Palmas comes in, PwC's badge), along the waterfront into Santa Cruz,
+ * then up the ridge road to home base.
+ */
+export const CAREER_ROAD: readonly LonLat[] = [
+  DOCK.at, [-16.238, 28.487], [-16.255, 28.472], [-16.3, 28.478], [-16.31, 28.48], [-16.372, 28.45], [-16.43, 28.398],
+  [-16.48, 28.345], [-16.51, 28.3], [-16.553, 28.296], [-16.585, 28.262], HQ.at,
+];
+
+/** A Catmull-Rom curve through `points`, `samples` points a segment, ending on the last one. */
+export function catmullRom(points: readonly MapPoint[], samples = 8): MapPoint[] {
+  const out: MapPoint[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+    for (let s = 0; s < samples; s++) {
+      const t = s / samples;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const at = (k: 0 | 1) =>
+        0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3);
+      out.push([at(0), at(1)]);
+    }
+  }
+  out.push(points[points.length - 1]);
+  return out;
+}
+
+/**
+ * The ferry's crossing in a frame, as the map draws it: out of the Gran
+ * Canaria box by its right side (clear of its title), across the strait
+ * above Santa Cruz's name and below Las Teresitas', and in to the dock
+ * from the sea. It never crosses a word or a marker (tested): the dock is
+ * read by those names.
+ */
+export function ferryRoute(frame: MapFrame): MapPoint[] {
+  const army = MISSIONS.find((mission) => mission.inset)!;
+  const [ax, ay] = projectInset(frame, army.at as LonLat);
+  const [dx, dy] = project(frame, DOCK.at);
+  return catmullRom(
+    [
+      [ax, ay],
+      [ax + 57, ay - 41],
+      [ax + 67, ay - 136],
+      [dx + 40, dy + 60],
+      [dx, dy],
+    ],
+    16,
+  );
+}
+
+/** The road from the dock to home base in a frame. It may touch a place's name, never a caption. */
+export function roadRoute(frame: MapFrame): MapPoint[] {
+  return catmullRom(
+    CAREER_ROAD.map((point) => project(frame, point)),
+    10,
+  );
+}
+
+/** The whole career route in a frame: the ferry, then the road. */
+export function careerRoute(frame: MapFrame): MapPoint[] {
+  return [...ferryRoute(frame), ...roadRoute(frame).slice(1)];
+}
 
 /** The home missions' badges, in a row to the right of the HQ marker (CSS px). */
 export const HOME_STACK = { gap: 4, badge: 24, step: 34, liveTag: 40 };
@@ -301,26 +345,26 @@ export const SCREEN_MAX = 1680;
 /** The wide map never gets narrower than this, however short the screen. */
 export const MAP_MIN = 740;
 /**
- * Everything on the MAP tab's screen above and below the map, in CSS px
- * (Stats.module.css): the screen's top padding (64, .screen), the menu
- * bar (46), the gap (24), the map's title (23), its source line (27), the
- * gap (24), the button prompts (24) and the bottom padding (24). The map
- * is never taller than the rest of the screen, so from 1280 px, where the
- * missions stand beside it, the whole tab fits on one. Below that the
- * missions run above the map and the tab scrolls on.
+ * The screen's bottom padding in CSS px (Stats.module.css .screen): the
+ * room at STATS's foot, under the open tab's last line, that THE LATE
+ * SHOW's word rises into from 1000 px, never up to that line. On the MAP
+ * tab that last line is the map's source line; beside the map (from
+ * 1280 px) the main missions end with the map's frame, a source line (27)
+ * higher still. Nothing else stands there (the button prompts it once
+ * held are gone, the owner's call).
  */
-export const MAP_CHROME_PX = 256;
+export const FOOT_PX = 72;
 
 /**
- * The button prompts' row (24) and the screen's bottom padding (24) in CSS
- * px (Stats.module.css .foot, .screen): the prompts' top stands this far
- * over STATS's bottom edge. The MAP tab's last line, the map's source line,
- * ends a row gap (24) higher; beside the map (from 1280 px) the main
- * missions end with the map's frame, a source line (27) higher still.
- * THE LATE SHOW's word rises over that edge between the prompts, never
- * above their row.
+ * Everything on the MAP tab's screen above and below the map, in CSS px
+ * (Stats.module.css): the screen's top padding (64, .screen), the menu
+ * bar (46), the gap (24), the map's title (23), its source line (27) and
+ * the room at the foot (FOOT_PX). The map is never taller than the rest of
+ * the screen, so from 1280 px, where the missions stand beside it, the
+ * whole tab fits on one. Below that the missions run above the map and the
+ * tab scrolls on.
  */
-export const FOOT_PX = 48;
+export const MAP_CHROME_PX = 64 + 46 + 24 + 23 + 27 + FOOT_PX;
 
 /**
  * The map's rendered width in CSS pixels in a viewport (mirrors the CSS
@@ -336,23 +380,21 @@ export function mapWidthAt(viewport: number, viewportHeight = Infinity): number 
 }
 
 /**
- * STATS's menu bar on a phone (Stats.module.css, under 700 px): the title
- * (the pause bars, their gap and the word) on its own row and, under it,
- * the tabs and the clock, at least `gap` apart; under `clockUpBelow` px the
- * clock goes up beside the title instead (in Spanish ESTADÍSTICAS ran into
- * it at 360 px). Widths as Chromium measures them: the tabs and the clock
- * are JetBrains Mono, 7 px a character at 12 px plus the letter spacing
- * after each one, a tab adds its padding and border (34); the title is
- * Unbounded ExtraBold, under 0.9 em a capital with its tracking.
+ * STATS's menu bar under 1000 px (Stats.module.css): the pause glyph and
+ * the clock on the first row, the tabs on their own row under it; under
+ * 560 px the tabs are a grid of two columns of equal cells. Widths as
+ * Chromium measures them: the tabs and the clock are JetBrains Mono, 7 px a
+ * character at 12 px plus the letter spacing after each one, and a tab adds
+ * its padding and border (34).
  */
 export const PHONE_MENU = {
   pad: 16,
-  gap: 24,
-  clockUpBelow: 390,
+  gap: 8,
+  gridBelow: 560,
   monoEm: 7 / 12,
-  tab: { fontPx: 12, tracking: 0.22, inset: 34, gap: 8 },
+  tab: { fontPx: 12, tracking: 0.22, inset: 34 },
   clock: { fontPx: 12, tracking: 0.24 },
-  title: { fontPx: 22, em: 0.9, bars: 38 },
+  pause: 22,
 } as const;
 
 /** A line of JetBrains Mono, in CSS px: `tracking` in ems after every character. */
@@ -360,23 +402,28 @@ export function monoWidth(text: string, fontPx: number, tracking: number): numbe
   return Array.from(text).length * fontPx * (PHONE_MENU.monoEm + tracking);
 }
 
+/** A tab's width in the menu bar, in CSS px. */
+export function tabWidth(name: string): number {
+  const { tab } = PHONE_MENU;
+  return monoWidth(name, tab.fontPx, tab.tracking) + tab.inset;
+}
+
 /**
- * The phone menu's rows at a viewport width: what each row needs (the
- * title's, then the tabs'; the clock in whichever it shares) and the room
- * the screen's paddings leave them.
+ * The menu bar's rows under 1000 px at a viewport width: what each row
+ * needs (the pause glyph and the clock; the tabs, in one row or, under
+ * `gridBelow`, two equal columns) and the room the screen's paddings
+ * leave them.
  */
-export function phoneMenuRows(
-  viewport: number,
-  menu: { title: string; tabs: readonly string[]; clock: string },
-): { room: number; rows: number[] } {
-  const { pad, gap, clockUpBelow, tab, clock, title } = PHONE_MENU;
-  const who = title.bars + Array.from(menu.title).length * title.fontPx * title.em;
+export function phoneMenuRows(viewport: number, menu: { tabs: readonly string[]; clock: string }): { room: number; rows: number[] } {
+  const { pad, gap, gridBelow, clock, pause } = PHONE_MENU;
+  const widths = menu.tabs.map(tabWidth);
   const tabs =
-    menu.tabs.reduce((sum, name) => sum + monoWidth(name, tab.fontPx, tab.tracking) + tab.inset, 0) +
-    tab.gap * (menu.tabs.length - 1);
-  const time = gap + monoWidth(menu.clock, clock.fontPx, clock.tracking);
-  const up = viewport < clockUpBelow;
-  return { room: viewport - 2 * pad, rows: [who + (up ? time : 0), tabs + (up ? 0 : time)] };
+    viewport < gridBelow
+      ? 2 * Math.max(...widths) + gap
+      : widths.reduce((sum, width) => sum + width, 0) + gap * (widths.length - 1);
+  const top = pause + 16 + monoWidth(menu.clock, clock.fontPx, clock.tracking);
+  const room = viewport - 2 * (viewport < 700 ? pad : 32);
+  return { room, rows: [top, tabs] };
 }
 
 /** Caption font size on the wide map: 1.6% of the map width, between 12 and 13.5 px. */
@@ -397,9 +444,8 @@ export const CAPTION_GAP_PX = 17;
 export const CAPTION_CORNER_PX = 11;
 /** A caption's line height (Stats.module.css, .caption): its bands meet without covering descenders. */
 export const CAPTION_LINE_HEIGHT = 1.4;
-/** Captions wrap at this many ems; the booth's call to action gets more room. */
+/** Captions wrap at this many ems. */
 export const CAPTION_MAX_EM = 11;
-export const BOOTH_MAX_EM = 16;
 
 export type Box = { left: number; top: number; right: number; bottom: number };
 
@@ -435,18 +481,18 @@ export function captionBox(
   lines: readonly string[],
   side: CaptionSide,
   maxEm = CAPTION_MAX_EM,
+  g = CAPTION_GAP_PX,
 ): Box {
   const k = mapWidth / frame.width;
   const [x, y] = [at[0] * k, at[1] * k];
   const font = captionFontPx(mapWidth);
-  // Each string starts a new line (the booth's call to action is a block of its own).
+  // Each string starts a new line.
   const maxWidth = maxEm * font;
   const widths = lines.flatMap((line) => wrap(line, font, maxWidth));
   // A caption that wraps takes the full max-width (CSS max-content, capped).
   const wraps = lines.some((line) => textWidth(line, font) > maxWidth);
   const width = (wraps ? maxWidth : Math.max(...widths)) + 14;
   const height = widths.length * font * CAPTION_LINE_HEIGHT + 6;
-  const g = CAPTION_GAP_PX;
   const c = CAPTION_CORNER_PX;
   switch (side) {
     case "right":
@@ -507,10 +553,8 @@ export function blipPoint(frame: MapFrame, at: LonLat, inset = false): MapPoint 
 /** The words on the map, from the dictionaries (stats.map and stats.missions). */
 export type MapTexts = {
   places: Record<PlaceId, string>;
-  blips: Record<Exclude<SideId, "booth">, string>;
-  booth: { caption: string; action: string };
-  you: string;
   hq: string;
+  dock: string;
   live: string;
   inset: { name: string; city: string };
   north: string;
@@ -523,37 +567,30 @@ export type MapItem = {
   box: Box;
 };
 
-/** Every caption, marker, mission, label and note on the wide map at a width, in CSS px. */
 /** What the map places: the defaults below, or a candidate while tuning. */
 export type MapLayout = {
-  side: readonly SideBlip[];
   places: readonly Place[];
-  player: { at: LonLat; side: CaptionSide };
   hq: { at: LonLat; side: CaptionSide };
+  dock: { at: LonLat; side: CaptionSide; gap: number };
   missions: readonly Mission[];
 };
 
-export const MAP_LAYOUT: MapLayout = { side: SIDE_BLIPS, places: PLACES, player: PLAYER, hq: HQ, missions: MISSIONS };
+export const MAP_LAYOUT: MapLayout = { places: PLACES, hq: HQ, dock: DOCK, missions: MISSIONS };
 
 /** Labels marked `minor` show only on a map at least this wide (a container query in the CSS). */
 export const MINOR_LABELS_FROM = 820;
 
+/** Every caption, marker, mission, label and note on the wide map at a width, in CSS px. */
 export function wideMapItems(texts: MapTexts, mapWidth: number, layout: MapLayout = MAP_LAYOUT): MapItem[] {
   const frame = FRAMES.wide;
   const k = mapWidth / frame.width;
   const items: MapItem[] = [];
 
-  const caption = (id: string, at: MapPoint, side: CaptionSide, lines: string[], maxEm = CAPTION_MAX_EM) => {
-    items.push({ id: `${id}:caption`, kind: "caption", box: captionBox(at, frame, mapWidth, lines, side, maxEm) });
-    items.push({ id: `${id}:marker`, kind: "marker", box: markerBox(at, frame, mapWidth) });
+  const caption = (id: string, at: MapPoint, side: CaptionSide, lines: string[], marker = true, gap = CAPTION_GAP_PX) => {
+    items.push({ id: `${id}:caption`, kind: "caption", box: captionBox(at, frame, mapWidth, lines, side, CAPTION_MAX_EM, gap) });
+    if (marker) items.push({ id: `${id}:marker`, kind: "marker", box: markerBox(at, frame, mapWidth) });
   };
 
-  for (const blip of layout.side) {
-    const at = project(frame, blip.at);
-    if (blip.id === "booth") caption(blip.id, at, blip.side, [texts.booth.caption, `${texts.booth.action} ▼`], BOOTH_MAX_EM);
-    else caption(blip.id, at, blip.side, [texts.blips[blip.id]]);
-  }
-  caption("you", project(frame, layout.player.at), layout.player.side, [texts.you]);
   caption("hq", project(frame, layout.hq.at), layout.hq.side, [texts.hq]);
 
   for (const mission of layout.missions) {
@@ -561,8 +598,11 @@ export function wideMapItems(texts: MapTexts, mapWidth: number, layout: MapLayou
     const at = blipPoint(frame, mission.at, mission.inset);
     const box = markerBox(at, frame, mapWidth, 24);
     // The tick badge at its top right.
-    items.push({ id: `mission${mission.number}`, kind: "mission", box: { ...box, right: box.right + 8, top: box.top - 7 } });
+    const id = mission.id === "pwc" ? "dock" : `mission${mission.number}`;
+    items.push({ id: `${id}:badge`, kind: "mission", box: { ...box, right: box.right + 8, top: box.top - 7 } });
   }
+  // The dock's name beside PwC's badge (the badge is its marker).
+  caption("dock", project(frame, layout.dock.at), layout.dock.side, [texts.dock], false, layout.dock.gap);
   // Home base's missions: a row of badges right of the HQ marker, the last with its LIVE tag.
   const home = layout.missions.filter((m) => m.at === "home");
   if (home.length) {

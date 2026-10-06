@@ -5,7 +5,8 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
 import { Stats } from "./Stats";
-import { PLACES, SIDE_BLIPS } from "./statsLayout";
+import { ACHIEVEMENTS } from "./achievements";
+import { PLACES } from "./statsLayout";
 
 /** Every string under a value, with its path. */
 function strings(value: unknown, path = ""): [string, string][] {
@@ -33,18 +34,52 @@ describe("STATS copy", () => {
     expect(es.stats.map.inset.city).toBe(en.stats.map.inset.city);
   });
 
-  it("names every place the map or the legend uses", () => {
+  it("names every place the map uses", () => {
     const names = Object.keys(en.stats.map.places);
     for (const place of PLACES) expect(names).toContain(place.id);
-    for (const blip of SIDE_BLIPS) expect(names).toContain(blip.place);
   });
 
-  it("has a caption for every side activity, short enough for the map", () => {
+  it("keeps the favourites' winks on their stars, the owner's fixed lines among them", () => {
+    const nodes = (dict: typeof en) => dict.stats.achievements.nodes;
+    // Pulp Fiction (the owner swapped it in for Gladiator): its burger, never Mr. Wolf, a radio station's name.
+    expect(nodes(es).pulpFiction.line).toBe("Royale con queso.");
+    expect(nodes(en).pulpFiction.line).toBe("Royale with cheese.");
+    expect(nodes(es).skyrim.line).toBe("Eh, tú, al fin has despertado.");
+    expect(nodes(en).skyrim.line).toBe("Hey, you. You're finally awake.");
+    expect(nodes(es).godfather.line).toBe("Le haré una oferta que no podrá rechazar.");
+    expect(nodes(en).godfather.line).toBe("I'm gonna make him an offer he can't refuse.");
     for (const dict of [en, es]) {
-      for (const blip of SIDE_BLIPS) {
-        const caption = blip.id === "booth" ? dict.stats.map.booth.caption : dict.stats.map.blips[blip.id];
-        expect(caption, blip.id).toBeTruthy();
-        expect(Array.from(caption).length, blip.id).toBeLessThanOrEqual(42);
+      expect(nodes(dict).devilMayCry.line).toMatch(/olive|aceituna/i);
+      expect(nodes(dict).breakingBad.line).toMatch(/cash|efectivo/i);
+      expect(nodes(dict).peakyBlinders.line).toMatch(/caps|gorra/i);
+      expect(nodes(dict).metalGear.line).toMatch(/cardboard|cartón/i);
+      expect(nodes(dict).matrix.line).toMatch(/booth|cabina/i);
+    }
+  });
+
+  it("winks at no radio station in the tree, and keeps out what the owner took out", () => {
+    // The owner: people may never open the radio, so the tree never leans on it. Every station's name, and the word.
+    const stations = /K-CALIMA|CROCKETT|MR\.? WOLF|LEAVE THE GUN|LOVE DADDY|BABYLON|\bradio\b|emisora|station/i;
+    // Not his: the radio winks (Mr. Wolf for MR. WOLF, the cannoli for LEAVE THE GUN, Miami Vice for CROCKETT,
+    // which he has not seen), Box 33 and Gladiator, which he swapped for Pulp Fiction.
+    const removed = /Wolfe?\b|Lobo|cannoli|Miami|Corrupción|Crockett|Box 33|Gladiator|Fuerza y honor|Strength and honour/i;
+    for (const dict of [en, es]) {
+      for (const [path, text] of strings(dict.stats.achievements)) {
+        expect(stations.test(text), `${path}: ${text}`).toBe(false);
+        expect(removed.test(text), `${path}: ${text}`).toBe(false);
+      }
+    }
+    const ids: string[] = ACHIEVEMENTS.map((item) => item.id);
+    for (const id of ["gladiator", "miamiVice", "box33"]) expect(ids).not.toContain(id);
+  });
+
+  it("puts no hobby on the map: no star's title or line is said under the map's keys", () => {
+    for (const dict of [en, es]) {
+      const map = JSON.stringify(dict.stats.map);
+      for (const item of ACHIEVEMENTS) {
+        const { title, line } = dict.stats.achievements.nodes[item.id];
+        expect(map, line).not.toContain(line);
+        expect(map, title).not.toContain(title);
       }
     }
   });
@@ -59,18 +94,43 @@ describe("STATS copy", () => {
     }
   });
 
-  it("gives the F1 nod by the number 33, never by a current car number", () => {
+  it("keeps the F1 stars to the owner's two: up at 4 for a race, and Alonso's 33rd, pending since 2013", () => {
     for (const dict of [en, es]) {
-      expect(dict.stats.map.blips.pit).toMatch(/\b33\b/);
-      expect(dict.stats.map.blips.pit).not.toMatch(/\b[13]\b/);
+      const { f1Dawn, alonso33 } = dict.stats.achievements.nodes;
+      expect(f1Dawn.title).toMatch(/\b4\b/);
+      expect(f1Dawn.title).toMatch(/F1/);
+      expect(f1Dawn.line).toMatch(/dormir|sleep/i);
+      expect(alonso33.title).toMatch(/\b33(rd)?\b/);
+      expect(alonso33.line).toMatch(/2013/);
     }
   });
 
-  it("never places him in Madrid, never says he works remotely and never shows an email", () => {
+  it("never places him in Madrid, says remote only in the missions' work-mode labels, and never shows an email", () => {
     for (const dict of [en, es]) {
       for (const [path, text] of strings(dict.stats)) {
-        expect(/madrid|remot|teletrabajo|home office|@/i.test(text), `${path}: ${text}`).toBe(false);
+        expect(/madrid|teletrabajo|home office|@/i.test(text), `${path}: ${text}`).toBe(false);
+        if (path !== "missions.modes.remote") expect(/remot/i.test(text), `${path}: ${text}`).toBe(false);
       }
+    }
+  });
+
+  it("gives him the owner's final bio under his name, word for word, in both languages", () => {
+    expect(es.stats.player.bio).toBe(
+      "Cuido la experiencia de usuario al detalle: interfaces fluidas, responsive de verdad y sin nada hecho en serie. Uso la IA como herramienta, no como piloto automático, siempre dentro de mi propia capa de seguridad, restricciones y configuración.",
+    );
+    expect(en.stats.player.bio).toBe(
+      "I sweat the user experience: smooth interfaces, truly responsive, nothing mass-produced. I use AI as a tool, not an autopilot, always inside my own layer of security, restrictions and configuration.",
+    );
+    // The owner dropped the opening "who and where": the page already says both.
+    for (const bio of [es.stats.player.bio, en.stats.player.bio]) {
+      expect(/Frontend Engineer|Tenerife/i.test(bio), bio).toBe(false);
+    }
+  });
+
+  it("says pause once: the chapter card, never a second PAUSED title in the menu", () => {
+    for (const dict of [en, es]) {
+      const pause = strings(dict.stats).filter(([, text]) => /\bpaused?\b|\bpausa\b/i.test(text));
+      expect(pause.map(([path]) => path).filter((path) => path !== "description" && path !== "tabsLabel")).toEqual(["chapter.word"]);
     }
   });
 

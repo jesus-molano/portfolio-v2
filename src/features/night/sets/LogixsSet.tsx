@@ -13,60 +13,119 @@ import {
   type InstancedMesh,
   Matrix4,
   type Mesh,
+  type MeshBasicMaterial,
   Quaternion,
+  type ShaderMaterial,
   UniformsLib,
   UniformsUtils,
   Vector3,
 } from "three";
 import { palette } from "@/design/tokens";
-import { fonts, loadFaces, toTexture } from "../artCanvas";
-import { LENS, type Vec3 } from "../frame";
+import { fonts, loadFaces, makeCanvas, toTexture } from "../artCanvas";
+import type { Vec3 } from "../frame";
 import { night } from "../nightState";
 import { type BoxItem, Boxes } from "../parts/Boxes";
 import { NightPalms, type NightPalm } from "../parts/NightPalms";
+import { type Pane, Windows } from "../parts/Windows";
 import { type Glow, type GlowHandle, Glows } from "../parts/Glows";
 import { pasteUpFragmentShader, pasteUpVertexShader, wallFragmentShader, wallVertexShader } from "../shaders/pasteUp";
-import { beatP, keyAt } from "../timelineKeys";
-import { LOGIXS_ATLAS, paintLogixs, RECTS, TREE } from "./art/logixs";
+import { beatP } from "../timelineKeys";
+import { COLLAGE, LOGIXS_ATLAS, paintLogixs, RECTS } from "./art/logixs";
+import { PANE } from "./art/windows";
 import type { NightSet, SetProps } from "./types";
 
 /**
- * Stop 4, Logixs (2025-2026): a brick wall of torn wheat-paste posters,
- * filmed frontally like a drive past a wall of bills. Full stack is the
- * whole wall: the paper, the paste and what is under it. Bytetravel's
- * travel posters and Retech's day-glo bills, the snipe over them, older
- * bills from the earlier stops showing through the tears. During the first
- * card a poster's corner flies off as a paper plane; during the second the
- * light tree's ambers count down, and it goes green with the street light.
+ * Stop 4, Logixs (2025-2026): a brick wall of wheat-paste bills, filmed
+ * frontally like a drive past a wall of bills. Full stack is the whole
+ * wall: the paper, the paste and what is under it. Years of scraped and
+ * torn bills underneath; this season's run on top: Bytetravel's travel
+ * poster and its three extras, Retech's official portal, the snipe with
+ * the role and the years, and the street's painted ban above it all.
+ * During the first card the corner of the lounge bill folds off as a paper
+ * plane; during the second the newest bill, the FULL STACK gig, is pasted
+ * up from the top, wet, by a roll of paper coming down the wall; the
+ * crossing light at the corner turns green as the car leaves.
  */
 
 const WALL_Z = -6.4;
 const BRICK_TOP = 4.2;
-const LANTERN: Vec3 = [-3, 4.6, WALL_Z + 0.9];
+// Over the ban (y 4.38 to 4.98), between two balconies: its glare never sits on a word, its pool falls on the run.
+const LANTERN: Vec3 = [-3, 5.65, WALL_Z + 0.9];
 const SIGNAL: Vec3 = [9.6, 3.1, -5.9];
+/** The crossing light's lenses (red, amber, green) above and below the head's centre, and their face toward the street. */
+const LENS_Y = [0.47, 0.12, -0.23] as const;
+const LENS_FRONT = SIGNAL[2] + 0.11;
+const LENS_OFF = ["#3a1820", "#3a2a14", "#14301f"] as const;
+const LENS_ON = [new Color("#ff3a5c").multiplyScalar(2.2), new Color("#4dffb0").multiplyScalar(2.2)] as const;
 
-type Poster = { x: number; y: number; w: number; h: number; rect: readonly number[]; layer: number; lift: number };
+type Poster = { x: number; y: number; w: number; h: number; rect: readonly number[]; layer: number; lift: number; turn?: number; fresh?: boolean };
 
-const PW = 1.8;
-const PH = 2.6;
+const C = COLLAGE;
 const POSTERS: Poster[] = [
-  { x: 6.0, y: 2.0, w: PW, h: PH, rect: RECTS.fragments, layer: 0, lift: 0 },
-  { x: -8.4, y: 2.0, w: PW, h: PH, rect: RECTS.bytetravel, layer: 1, lift: 0.4 },
-  { x: -6.5, y: 2.0, w: PW, h: PH, rect: RECTS.bytetravelCut, layer: 1, lift: 0 },
-  { x: -4.6, y: 2.0, w: PW, h: PH, rect: RECTS.bytetravel, layer: 1, lift: 0 },
-  { x: -1.6, y: 2.0, w: PW, h: PH, rect: RECTS.retech, layer: 1, lift: 0 },
-  { x: 0.3, y: 2.0, w: PW, h: PH, rect: RECTS.retech, layer: 1, lift: 0.5 },
-  { x: 2.2, y: 2.0, w: PW, h: PH, rect: RECTS.retechTorn, layer: 1, lift: 0 },
-  { x: 4.6, y: 2.05, w: PW, h: PH, rect: RECTS.retechTorn, layer: 2, lift: 0.3 },
-  { x: -2.6, y: 3.55, w: 13.4, h: 0.42, rect: RECTS.snipe, layer: 3, lift: 0 },
-  { x: -1.0, y: 4.05, w: 13, h: 0.44, rect: RECTS.ban, layer: 0, lift: 0 },
+  { x: (C.x0 + C.x1) / 2, y: (C.y0 + C.y1) / 2, w: C.x1 - C.x0, h: C.y1 - C.y0, rect: RECTS.collage, layer: 0, lift: 0 },
+  { x: -2.0, y: 4.68, w: 7.2, h: 0.6, rect: RECTS.ban, layer: 0, lift: 0 },
+  { x: -8.9, y: 2.75, w: 1.04, h: 1.41, rect: RECTS.visa, layer: 1, lift: 0, turn: 1.2 },
+  { x: -7.78, y: 2.8, w: 1.04, h: 1.41, rect: RECTS.esim, layer: 1, lift: 0.25, turn: -0.8 },
+  { x: -6.66, y: 2.73, w: 1.04, h: 1.41, rect: RECTS.lounge, layer: 1, lift: 0, turn: 0.6 },
+  { x: -4.45, y: 2.2, w: 2.3, h: 2.95, rect: RECTS.bytetravel, layer: 1, lift: 0.35, turn: -0.5 },
+  { x: 0.3, y: 2.22, w: 2.2, h: 2.94, rect: RECTS.gig, layer: 1, lift: 0, turn: 0.4, fresh: true },
+  { x: 4.7, y: 2.2, w: 2.3, h: 2.95, rect: RECTS.retech, layer: 1, lift: 0.3, turn: 0.7 },
+  // Across the Bytetravel bill and the gig, the two the lines are about: whole in a phone's frame too.
+  { x: -2.0, y: 3.98, w: 7.6, h: 0.35, rect: RECTS.snipe, layer: 2, lift: 0, turn: -0.25 },
+  { x: -6.66, y: 2.73, w: 1.04, h: 1.41, rect: RECTS.corner, layer: 2, lift: 0, turn: 0.6 },
 ];
-/** The Bytetravel poster whose corner becomes the plane, and the Retech bill whose tree counts down. */
-const PLANE_POSTER = POSTERS[2];
-const TREE_POSTER = POSTERS[5];
+/** A poster's band from `top` to `bottom` (shares of its height from its top edge), on the wall. */
+function band(poster: Poster, top: number, bottom: number): Vec3[] {
+  const y1 = poster.y + poster.h / 2 - top * poster.h;
+  const y0 = poster.y + poster.h / 2 - bottom * poster.h;
+  return [
+    [poster.x - poster.w / 2, y1, WALL_Z],
+    [poster.x + poster.w / 2, y1, WALL_Z],
+    [poster.x + poster.w / 2, y0, WALL_Z],
+    [poster.x - poster.w / 2, y0, WALL_Z],
+  ];
+}
+
+/**
+ * What the camera must frame whole at Logixs (direction.test.ts): the snipe
+ * with the role and the years, the ban, and the headline of each bill a
+ * line is about (Bytetravel for the first, the gig for the second).
+ */
+export const LOGIXS_FRAMING = {
+  snipe: band(POSTERS[8], 0, 1),
+  ban: band(POSTERS[1], 0, 1),
+  bytetravel: band(POSTERS[5], 0, 0.22),
+  gig: band(POSTERS[6], 0, 0.3),
+  retech: band(POSTERS[7], 0, 0.22),
+};
+
+/** The lounge bill whose corner becomes the plane; the flap that covers its cut until then; the fresh gig bill. */
+const PLANE_POSTER = POSTERS[4];
+const FLAP_INDEX = POSTERS.length - 1;
+const GIG = POSTERS[6];
+
+/** Sets a scalar uniform on a material that exists, the frame's way into a shader. */
+function setUniform(material: ShaderMaterial | null, name: string, value: number): void {
+  const uniform = material?.uniforms[name];
+  if (uniform) uniform.value = value;
+}
 
 function uvRect(rect: readonly number[]): [number, number, number, number] {
   return [rect[0] / LOGIXS_ATLAS.w, 1 - (rect[1] + rect[3]) / LOGIXS_ATLAS.h, (rect[0] + rect[2]) / LOGIXS_ATLAS.w, 1 - rect[1] / LOGIXS_ATLAS.h];
+}
+
+function posterMatrix(poster: Poster, m: Matrix4, shown = true): Matrix4 {
+  const q = new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), ((poster.turn ?? 0) * Math.PI) / 180);
+  return m.compose(new Vector3(poster.x, poster.y, WALL_Z + 0.02 + poster.layer * 0.012), q, shown ? new Vector3(poster.w, poster.h, 1) : new Vector3(1e-4, 1e-4, 1));
+}
+
+/** The low tier keeps three quarters of the atlas: a phone never shows a bill wider than about 600 device pixels. */
+function scaled(canvas: HTMLCanvasElement, scale: number): HTMLCanvasElement {
+  if (scale === 1) return canvas;
+  const [small, ctx] = makeCanvas(Math.round(canvas.width * scale), Math.round(canvas.height * scale));
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(canvas, 0, 0, small.width, small.height);
+  return small;
 }
 
 /** A folded paper plane, four triangles, nose along +x. */
@@ -94,10 +153,28 @@ function planeGeometry(): BufferGeometry {
 /** The island's palms along the kerb: every stop is the same island at night. */
 const LOGIXS_PALMS: NightPalm[] = [
   { position: [-13.5, 0, -4.6] as Vec3, rotation: 0.7, scale: 0.9, variant: 1 },
-  { position: [11.5, 0, -4.6] as Vec3, rotation: 2.4, scale: 0.95, variant: 0 },
+  { position: [13.2, 0, -4.6] as Vec3, rotation: 2.4, scale: 0.95, variant: 0 },
   { position: [-20, 0, 4.8] as Vec3, rotation: 1.6, scale: 1.05, variant: 3 },
   { position: [16, 0, 5.2] as Vec3, rotation: 0.2, scale: 1.0, variant: 2 },
 ];
+
+/** The flats over the wall: three floors of windows, the rooms behind them, never anyone at them. */
+const ROOMS = [PANE.kitchen, PANE.dark, PANE.roomTv, PANE.curtained, PANE.dark, PANE.records, PANE.rollerBlind, PANE.dark, PANE.roomRight, PANE.dark, PANE.study, PANE.roomPink, PANE.dark, PANE.reader, PANE.dark];
+
+/**
+ * The run the lines are about, for a phone's fit: the snipe and the ban over
+ * the Bytetravel bill and the gig (art/logixs.ts SNIPE, BAN), down to the
+ * bills' feet.
+ */
+const RUN: Vec3[] = [
+  [-6.0, 5.05, WALL_Z],
+  [2.0, 5.05, WALL_Z],
+  [2.0, 0.65, WALL_Z],
+  [-6.0, 0.65, WALL_Z],
+];
+
+/** The closed shop beside the wall: a roller shutter's slats, its box, the plinth's stone. */
+const SHUTTER = { x: 10.6, w: 2.8, h: 2.7 } as const;
 
 function LogixsSet({ work, tier, timeline, index }: SetProps) {
   const high = tier === "high";
@@ -107,16 +184,24 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
   useEffect(() => {
     let cancelled = false;
     let made: CanvasTexture | null = null;
-    loadFaces([`800 90px ${fonts.display()}`, `400 60px ${fonts.deco()}`, `400 100px ${fonts.condensed()}`, `700 30px ${fonts.serif()}`, `400 40px ${fonts.script()}`, `700 30px ${fonts.mono()}`]).then(() => {
+    loadFaces([
+      `800 90px ${fonts.display()}`,
+      `400 60px ${fonts.deco()}`,
+      `400 100px ${fonts.condensed()}`,
+      `700 30px ${fonts.serif()}`,
+      `italic 700 30px ${fonts.serif()}`,
+      `400 60px ${fonts.block()}`,
+      `700 30px ${fonts.mono()}`,
+    ]).then(() => {
       if (cancelled) return;
-      made = toTexture(paintLogixs(board), 8);
+      made = toTexture(scaled(paintLogixs(board), high ? 1 : 0.75), 8);
       setAtlas(made);
     });
     return () => {
       cancelled = true;
       made?.dispose();
     };
-  }, [board]);
+  }, [board, high]);
 
   const light = useMemo(
     () => ({
@@ -134,28 +219,27 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     const fog = () => UniformsUtils.clone(UniformsLib.fog);
     return {
       wall: { ...fog(), ...light, uBrickTop: { value: BRICK_TOP } },
-      posters: { ...fog(), ...light, uMap: { value: atlas }, uTime: { value: 0 }, uLiftExtra: { value: 0 } },
+      posters: { ...fog(), ...light, uMap: { value: atlas }, uTime: { value: 0 }, uLiftExtra: { value: 0 }, uReveal: { value: 0 }, uWet: { value: 0 } },
     };
   }, [light, atlas]);
+  // R3F copies a uniform object into the material, so the frame writes through the materials themselves.
+  const wallMaterial = useRef<ShaderMaterial>(null);
+  const posterMaterial = useRef<ShaderMaterial>(null);
 
   const posters = useRef<InstancedMesh>(null);
   const attributes = useMemo(() => {
     const rects = new InstancedBufferAttribute(new Float32Array(POSTERS.flatMap((p) => uvRect(p.rect))), 4);
-    const lifts = new InstancedBufferAttribute(new Float32Array(POSTERS.map((p) => (high || p === POSTERS[5] ? p.lift : 0))), 1);
+    const lifts = new InstancedBufferAttribute(new Float32Array(POSTERS.map((p) => (high ? p.lift : 0))), 1);
     const seeds = new InstancedBufferAttribute(new Float32Array(POSTERS.map((_, i) => (i * 0.37) % 1)), 1);
-    return { rects, lifts, seeds };
+    const fresh = new InstancedBufferAttribute(new Float32Array(POSTERS.map((p) => (p.fresh ? 1 : 0))), 1);
+    return { rects, lifts, seeds, fresh };
   }, [high]);
 
   useLayoutEffect(() => {
     const mesh = posters.current;
     if (!mesh) return;
     const m = new Matrix4();
-    const q = new Quaternion();
-    const s = new Vector3();
-    POSTERS.forEach((poster, i) => {
-      m.compose(new Vector3(poster.x, poster.y, WALL_Z + 0.02 + poster.layer * 0.012), q, s.set(poster.w, poster.h, 1));
-      mesh.setMatrixAt(i, m);
-    });
+    POSTERS.forEach((poster, i) => mesh.setMatrixAt(i, posterMatrix(poster, m)));
     mesh.instanceMatrix.needsUpdate = true;
   }, [atlas]);
 
@@ -164,37 +248,41 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     for (const y of [5.6, 8.8, 12.0]) {
       for (const x of [-12, -6, 0, 6, 12]) {
         items.push({ p: [x, y, WALL_Z + 0.55], s: [2.6, 0.14, 1.1] });
-        items.push({ p: [x, y + 0.55, WALL_Z + 1.08], s: [2.6, 0.04, 0.04] });
-        for (let k = -1.2; k <= 1.21; k += 0.3) items.push({ p: [x + k, y + 0.3, WALL_Z + 1.08], s: [0.03, 0.5, 0.03] });
+        items.push({ p: [x, y + 0.95, WALL_Z + 1.08], s: [2.6, 0.05, 0.05] });
+        for (let k = -1.25; k <= 1.26; k += 0.125) items.push({ p: [x + k, y + 0.5, WALL_Z + 1.08], s: [0.025, 0.9, 0.025] });
+        // The window's lintel and sill, in the plaster.
+        items.push({ p: [x, y + 2.15, WALL_Z + 0.05], s: [1.7, 0.16, 0.1] });
       }
     }
+    // The cornice over the brick, the plinth under it, two downpipes.
+    items.push({ p: [0, BRICK_TOP + 0.06, WALL_Z + 0.08], s: [60, 0.14, 0.16] });
+    items.push({ p: [0, 0.2, WALL_Z + 0.04], s: [60, 0.4, 0.08] });
+    for (const x of [-11.3, 8.95]) {
+      items.push({ p: [x, 7.5, WALL_Z + 0.16], s: [0.11, 15, 0.11] });
+      for (let y = 1.2; y < 15; y += 2.4) items.push({ p: [x, y, WALL_Z + 0.12], s: [0.16, 0.05, 0.16] });
+    }
+    // The shutter's box over the shop, and its slats.
+    items.push({ p: [SHUTTER.x, SHUTTER.h + 0.62, WALL_Z + 0.16], s: [SHUTTER.w + 0.3, 0.36, 0.3] });
+    for (let y = 0.48; y < SHUTTER.h + 0.42; y += 0.085) items.push({ p: [SHUTTER.x, y, WALL_Z + 0.08], s: [SHUTTER.w, 0.06, 0.04] });
     return items;
   }, []);
-  const windows = useMemo<BoxItem[]>(() => {
-    const items: BoxItem[] = [];
+  const rooms = useMemo<Pane[]>(() => {
+    const panes: Pane[] = [];
     let k = 0;
     for (const y of [6.7, 9.9, 13.1]) {
       for (const x of [-12, -6, 0, 6, 12]) {
-        const lit = (k * 7) % 5 < 2;
-        items.push({ p: [x, y, WALL_Z + 0.02], s: [1.3, 1.9, 1], color: lit ? "#d98a55" : "#1f1634" });
+        panes.push({ p: [x, y, WALL_Z + 0.03], s: [1.4, 2.0], cell: ROOMS[k % ROOMS.length], flip: k % 3 === 1, gain: k % 4 === 2 ? 0.6 : 1 });
         k += 1;
       }
     }
-    return items;
+    return panes;
   }, []);
 
-  // The light tree on its bill: three ambers and GO; then the crossing light, red and green.
-  const treeGlows = useMemo<Glow[]>(
+  // The crossing light at the corner, red and green; the lantern and its pool; a pink sign down the street.
+  const glowList = useMemo<Glow[]>(
     () => [
-      ...TREE.ys.map((fy, i) => ({
-        position: [TREE_POSTER.x - TREE_POSTER.w / 2 + TREE.x * TREE_POSTER.w, TREE_POSTER.y + TREE_POSTER.h / 2 - fy * TREE_POSTER.h, WALL_Z + 0.12] as Vec3,
-        size: 0.42,
-        color: i === 3 ? "#4dffb0" : "#ffb347",
-        intensity: 2.5,
-        level: 0,
-      })),
-      { position: [SIGNAL[0], SIGNAL[1] + 0.35, SIGNAL[2]], size: 0.55, color: "#ff3a5c", intensity: 2.4, level: 1 },
-      { position: [SIGNAL[0], SIGNAL[1] - 0.1, SIGNAL[2]], size: 0.55, color: "#4dffb0", intensity: 2.4, level: 0 },
+      { position: [SIGNAL[0], SIGNAL[1] + LENS_Y[0], LENS_FRONT + 0.12], size: 0.6, color: "#ff3a5c", intensity: 2.4, level: 1 },
+      { position: [SIGNAL[0], SIGNAL[1] + LENS_Y[2], LENS_FRONT + 0.12], size: 0.6, color: "#4dffb0", intensity: 2.4, level: 0 },
       { position: LANTERN, size: 1.3, color: palette.sodiumNight, intensity: 2.6 },
       { position: [LANTERN[0], LANTERN[1] - 0.4, LANTERN[2]], size: 5, color: palette.sodiumNight, intensity: 0.2 },
       { position: [26, 6, -40], size: 4, color: "#ff2d95", intensity: 1.2 },
@@ -202,16 +290,18 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     [],
   );
   const glows = useRef<GlowHandle | null>(null);
+  const lenses = useRef<(MeshBasicMaterial | null)[]>([null, null, null]);
   const plane = useRef<Mesh>(null);
+  const roll = useRef<Mesh>(null);
   const planeGeo = useMemo(() => planeGeometry(), []);
   useEffect(() => () => planeGeo.dispose(), [planeGeo]);
   const curve = useMemo(() => {
-    const cx = PLANE_POSTER.x + PLANE_POSTER.w / 2 - 0.2;
-    const cy = PLANE_POSTER.y + PLANE_POSTER.h / 2 - 0.2;
+    const cx = PLANE_POSTER.x + PLANE_POSTER.w / 2 - 0.16;
+    const cy = PLANE_POSTER.y + PLANE_POSTER.h / 2 - 0.16;
     return new CatmullRomCurve3([
       new Vector3(cx, cy, WALL_Z + 0.08),
-      new Vector3(cx + 0.8, cy + 1.2, WALL_Z + 0.9),
-      new Vector3(LANTERN[0] + 1.8, LANTERN[1] + 1.4, WALL_Z + 2.2),
+      new Vector3(cx + 0.8, cy + 1.0, WALL_Z + 0.9),
+      new Vector3(LANTERN[0] + 1.8, LANTERN[1] + 1.2, WALL_Z + 2.2),
       new Vector3(2.5, 3.6, 2.5),
       new Vector3(9, 3.2, 5.5),
     ]);
@@ -220,45 +310,66 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     () => ({
       card0: [beatP(timeline, "logixs.card0"), beatP(timeline, "logixs.card0", 1)],
       card1: [beatP(timeline, "logixs.card1"), beatP(timeline, "logixs.card1", 1)],
-      signal: beatP(timeline, "logixs.signal"),
+      signal: [beatP(timeline, "logixs.signal"), beatP(timeline, "logixs.signal", 1)],
     }),
     [timeline],
   );
   const armedAt = useRef(-1);
+  const flapShown = useRef(true);
   const tangent = useMemo(() => new Vector3(), []);
+  const scratch = useMemo(() => new Matrix4(), []);
 
-  // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
   useFrame((state) => {
     if (night.stop !== index) return;
     const t = state.clock.elapsedTime;
     const p = night.p;
-    // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
-    uniforms.posters.uTime.value = t;
-    uniforms.posters.uLiftExtra.value = 0.35 * night.armed;
+    setUniform(posterMaterial.current, "uTime", t);
+    setUniform(posterMaterial.current, "uLiftExtra", 0.35 * night.armed);
     if (night.armTarget > 0 && armedAt.current < 0) armedAt.current = t;
     if (night.armTarget === 0) armedAt.current = -1;
     // Armed: a passing car's headlights rake the run under the pointer.
     const since = armedAt.current >= 0 ? t - armedAt.current : -1;
     const sweepFrom = Number.isFinite(night.pointerU) ? -9.5 + night.pointerU * 13 - 3 : -12;
-    // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
-    light.uSweep.value = since >= 0 ? sweepFrom + ((since * 9) % 14) : -100;
-    light.uSweepLevel.value = 0.9 * night.armed;
-    // The plane flies with card 0, 1:1 with the scroll, and leaves frame right.
+    const sweep = since >= 0 ? sweepFrom + ((since * 9) % 14) : -100;
+    for (const material of [wallMaterial.current, posterMaterial.current]) {
+      setUniform(material, "uSweep", sweep);
+      setUniform(material, "uSweepLevel", 0.9 * night.armed);
+    }
+    // The plane folds off the lounge bill with card 0, 1:1 with the scroll, and leaves frame right.
     const k = Math.min(1, Math.max(0, (p - beats.card0[0]) / Math.max(1e-6, beats.card0[1] - beats.card0[0])));
+    const flying = k > 0.02;
     if (plane.current) {
-      plane.current.visible = k > 0.02 && k < 0.999;
+      plane.current.visible = flying && k < 0.999;
       const e = k * k * (3 - 2 * k);
       curve.getPointAt(e, plane.current.position);
       curve.getTangentAt(e, tangent);
       plane.current.rotation.set(0, Math.atan2(-tangent.z, tangent.x), Math.atan2(tangent.y, Math.hypot(tangent.x, tangent.z)) + Math.sin(e * 9) * 0.25);
     }
-    // The tree counts down through card 1 (one amber per third) and goes green with the street light.
+    const mesh = posters.current;
+    if (mesh && flapShown.current === flying) {
+      flapShown.current = !flying;
+      mesh.setMatrixAt(FLAP_INDEX, posterMatrix(POSTERS[FLAP_INDEX], scratch, !flying));
+      mesh.instanceMatrix.needsUpdate = true;
+    }
+    // The gig bill goes up during card 1: laid from the top in its first 60 %, wet until the light changes.
     const c = (p - beats.card1[0]) / Math.max(1e-6, beats.card1[1] - beats.card1[0]);
-    const green = p >= beats.signal;
-    for (let i = 0; i < 3; i += 1) glows.current?.setLevel(i, !green && c >= i / 3 && c <= 1.05 ? 1 : 0);
-    glows.current?.setLevel(3, green ? 1 : 0);
-    glows.current?.setLevel(4, green ? 0 : 1);
-    glows.current?.setLevel(5, green ? 1 : 0);
+    const r = Math.min(1, Math.max(0, c / 0.6));
+    const reveal = r * r * (3 - 2 * r);
+    setUniform(posterMaterial.current, "uReveal", reveal);
+    const dryFrom = beats.card1[0] + 0.6 * (beats.card1[1] - beats.card1[0]);
+    const dry = Math.min(1, Math.max(0, (p - dryFrom) / Math.max(1e-6, beats.signal[1] - dryFrom)));
+    setUniform(posterMaterial.current, "uWet", reveal > 0 ? 1 - dry : 0);
+    if (roll.current) {
+      roll.current.visible = reveal > 0.001 && reveal < 0.999;
+      roll.current.position.y = GIG.y + GIG.h / 2 - reveal * GIG.h;
+      roll.current.rotation.x = -reveal * 18;
+    }
+    // The crossing light goes green as the car is let go.
+    const green = p >= beats.signal[0];
+    glows.current?.setLevel(0, green ? 0 : 1);
+    glows.current?.setLevel(1, green ? 1 : 0);
+    lenses.current[0]?.color.set(green ? LENS_OFF[0] : LENS_ON[0]);
+    lenses.current[2]?.color.set(green ? LENS_ON[1] : LENS_OFF[2]);
     light.uSignalColor.value.set(green ? "#4dffb0" : "#ff3a5c").multiplyScalar(0.6);
   });
 
@@ -267,41 +378,62 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
       {/* The wall: brick to the first floor, plaster above, balconies and windows. */}
       <mesh position={[0, 7.5, WALL_Z]}>
         <planeGeometry args={[60, 15]} />
-        <shaderMaterial uniforms={uniforms.wall} vertexShader={wallVertexShader} fragmentShader={wallFragmentShader} fog />
+        <shaderMaterial ref={wallMaterial} uniforms={uniforms.wall} vertexShader={wallVertexShader} fragmentShader={wallFragmentShader} fog />
       </mesh>
       <Boxes items={balconies}>
-        <meshStandardMaterial color="#1d1630" roughness={0.6} metalness={0.4} />
+        <meshStandardMaterial color="#2a2140" roughness={0.55} metalness={0.45} />
       </Boxes>
-      <Boxes items={windows} geometry={<planeGeometry args={[1, 1]} />}>
-        <meshBasicMaterial toneMapped={false} />
-      </Boxes>
+      <Windows panes={rooms} gain={1} />
       {atlas ? (
         <instancedMesh ref={posters} args={[undefined, undefined, POSTERS.length]} frustumCulled={false}>
-          <planeGeometry args={[1, 1, high ? 6 : 4, high ? 8 : 6]}>
+          <planeGeometry args={[1, 1, high ? 6 : 4, high ? 24 : 16]}>
             <primitive object={attributes.rects} attach="attributes-aUvRect" />
             <primitive object={attributes.lifts} attach="attributes-aLift" />
             <primitive object={attributes.seeds} attach="attributes-aSeed" />
+            <primitive object={attributes.fresh} attach="attributes-aFresh" />
           </planeGeometry>
-          <shaderMaterial uniforms={uniforms.posters} vertexShader={pasteUpVertexShader} fragmentShader={pasteUpFragmentShader} side={DoubleSide} fog />
+          <shaderMaterial ref={posterMaterial} uniforms={uniforms.posters} vertexShader={pasteUpVertexShader} fragmentShader={pasteUpFragmentShader} side={DoubleSide} fog />
         </instancedMesh>
       ) : null}
+      {/* The roll of the fresh bill, coming down the wall as it is pasted. */}
+      <mesh ref={roll} position={[GIG.x, GIG.y, WALL_Z + 0.1]} rotation-z={Math.PI / 2} visible={false}>
+        <cylinderGeometry args={[0.075, 0.075, GIG.w + 0.06, 18]} />
+        <meshStandardMaterial color="#e9d9b4" roughness={0.9} />
+      </mesh>
       {/* The lantern on its bracket, the crossing light at the corner. */}
       <mesh position={[LANTERN[0], LANTERN[1] + 0.35, (LANTERN[2] + WALL_Z) / 2]}>
         <boxGeometry args={[0.08, 0.08, LANTERN[2] - WALL_Z]} />
         <meshStandardMaterial color="#1d1630" />
       </mesh>
-      <mesh position={[SIGNAL[0], SIGNAL[1] / 2 - 0.2, SIGNAL[2]]}>
-        <boxGeometry args={[0.14, SIGNAL[1] - 0.4, 0.14]} />
+      {/* The crossing light: a post, a head of three lenses toward the street, each under its visor. */}
+      <mesh position={[SIGNAL[0], SIGNAL[1] / 2 - 0.2, SIGNAL[2] - 0.1]}>
+        <boxGeometry args={[0.12, SIGNAL[1] - 0.4, 0.12]} />
         <meshStandardMaterial color={palette.asphalt} />
       </mesh>
-      <mesh position={[SIGNAL[0], SIGNAL[1] + 0.12, SIGNAL[2] - 0.1]}>
-        <boxGeometry args={[0.4, 1.0, 0.25]} />
-        <meshStandardMaterial color="#141020" />
+      <mesh position={[SIGNAL[0], SIGNAL[1] + LENS_Y[1], SIGNAL[2] - 0.03]}>
+        <boxGeometry args={[0.4, 1.16, 0.26]} />
+        <meshStandardMaterial color="#17121f" roughness={0.5} metalness={0.3} />
       </mesh>
+      <mesh position={[SIGNAL[0], SIGNAL[1] + LENS_Y[1], SIGNAL[2] - 0.17]}>
+        <boxGeometry args={[0.62, 1.42, 0.02]} />
+        <meshStandardMaterial color="#0e0b14" roughness={0.6} />
+      </mesh>
+      {LENS_Y.map((dy, i) => (
+        <group key={i} position={[SIGNAL[0], SIGNAL[1] + dy, LENS_FRONT]}>
+          <mesh>
+            <circleGeometry args={[0.13, 20]} />
+            <meshBasicMaterial ref={(m) => void (lenses.current[i] = m)} color={LENS_OFF[i]} />
+          </mesh>
+          <mesh position={[0, 0.15, 0.1]}>
+            <boxGeometry args={[0.32, 0.025, 0.2]} />
+            <meshStandardMaterial color="#17121f" roughness={0.5} />
+          </mesh>
+        </group>
+      ))}
       <NightPalms palms={high ? LOGIXS_PALMS : LOGIXS_PALMS.slice(0, 2)} />
-      <Glows glows={treeGlows} handle={glows} />
+      <Glows glows={glowList} handle={glows} />
       <mesh ref={plane} geometry={planeGeo} visible={false}>
-        <meshStandardMaterial color="#d9c6ff" emissive="#4a2a74" side={DoubleSide} roughness={0.7} />
+        <meshStandardMaterial color="#f2c46a" emissive="#4a2a24" side={DoubleSide} roughness={0.7} />
       </mesh>
       {/* The pavement under the wall. */}
       <mesh position={[0, 0.1, (WALL_Z - 5.4) / 2]}>
@@ -321,21 +453,8 @@ export const logixs: NightSet = {
     [-9.5, 0.6, WALL_Z + 0.05],
   ],
   boardNormal: [0, 0, 1],
-  shots: (timeline) => [
-    // The car stays in the foreground while the camera tracks the wall past it.
-    keyAt(timeline, "logixs.open", 0, { position: [0.5, 1.6, 7.5], look: [-5.5, 2.3, -6], fov: LENS.mm28 }),
-    keyAt(timeline, "logixs.card0", 0.5, { position: [1.5, 1.6, 7], look: [-4, 2.3, -6], fov: LENS.mm28 }),
-    keyAt(timeline, "logixs.card1", 0.5, { position: [0.3, 1.6, 7], look: [0.3, 2.3, -6], fov: LENS.mm40 }),
-    keyAt(timeline, "logixs.signal", 1, { position: [4.8, 1.8, 10], look: [4.8, 2.4, -6], fov: LENS.mm28 }),
-  ],
-  // On a phone, the poster in front of the camera (and its neighbour's edge), not the whole run.
-  subject: (pose, _p, car) => [
-    [pose.look[0] - 1.7, 3.5, WALL_Z],
-    [pose.look[0] + 1.7, 3.5, WALL_Z],
-    [pose.look[0] + 1.7, 0.7, WALL_Z],
-    [pose.look[0] - 1.7, 0.7, WALL_Z],
-    ...car,
-  ],
+  // On a phone: the run the lines are about, the ban over it to the bills' feet (RUN), and the car at its line.
+  subject: (_pose, _p, car) => [...RUN, ...car],
   maxBack: 12,
   lights: [
     { position: [LANTERN[0], LANTERN[1], LANTERN[2] + 0.4], color: palette.sodiumNight, intensity: 70, distance: 25 },

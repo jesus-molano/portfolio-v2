@@ -532,24 +532,42 @@
   list-style: none;
 }
 
+/*
+ * The box sits on its item's first line at any size, wrap or face: the
+ * tick column is a line of the slip's own type (the same font, size and
+ * line height as the words), the two columns share their first baseline,
+ * and in that line the box stands with its middle on the x-height's
+ * centre (vertical-align: middle), where a form's printed box sits.
+ */
 .damages li {
   display: grid;
   grid-template-columns: 1.85rem minmax(0, 1fr);
-  align-items: start;
+  align-items: baseline;
   text-wrap: pretty;
 }
 
-.tick {
-  display: grid;
-  place-items: center;
-  width: 0.85rem;
-  height: 0.85rem;
-  margin-top: calc((1lh - 0.85rem) / 2);
-  border: 1px solid color-mix(in srgb, var(--va-color-ink) 55%, transparent);
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 0;
-  color: var(--va-lineup-stamp);
+.box {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  overflow: visible;
+  vertical-align: middle;
+}
+
+.boxLine {
+  fill: none;
+  stroke: color-mix(in srgb, var(--va-color-ink) 55%, transparent);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The pen: one quick stroke in the stamp's ink, overshooting the box. */
+.pen {
+  fill: none;
+  stroke: var(--va-lineup-stamp);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* The tally, typed under a dashed rule at the foot of the form. */
@@ -565,34 +583,48 @@
 
 /* ---------------------------------------------------------------- the caption */
 
-/* The hero's subtitle card: the speaker in pink, the line in cream. */
+/*
+ * His line to the officer, the section's last word: a row of its own under
+ * the plates and their descriptions, with the room of a pause above it, so
+ * it reads as his line and not as one more description. The row spans the
+ * section (FitLine observes it); the card is centred in it.
+ *
+ * Under it the section simply ends: the career city follows, its card in
+ * the middle of a screen of night, and nothing rises over this floor.
+ */
 .caption {
   grid-area: 3 / 1 / 4 / -1;
-  justify-self: center;
+  justify-self: stretch;
   z-index: 2;
-  max-width: 44rem;
-  /*
-   * The next card (STATS, PLAYER ONE) rises over this section's floor by
-   * the top of its drawing down to its word's middle (Stats.module.css):
-   * at most 0.124 of its width (chapterLayout.test.ts), with 0.5rem clear
-   * above it.
-   */
-  padding: 1.25rem 1rem max(2.25rem, 5 * var(--va-svh), calc(min(100vw - 2rem, var(--va-chapter-span)) * 0.124 + 0.5rem));
+  padding: clamp(2.5rem, 6 * var(--va-svh), 4rem) 1rem max(2.25rem, 5 * var(--va-svh));
   font-family: var(--va-font-body);
   font-size: clamp(0.95rem, 1.35vw, 1.2rem);
   font-weight: 500;
-  line-height: 1.75;
+  line-height: 1.4;
   text-align: center;
-  text-wrap: balance;
   color: var(--va-color-cream);
 }
 
+/*
+ * The hero's subtitle card (Hero.module.css .subtitleText): one solid block
+ * around the whole line, never a pill per line, balanced (no word alone on
+ * a line) and as wide as its widest line (--fit, FitLine.tsx). The hero's
+ * card sits on a bright picture; on this night floor its dark glass would
+ * vanish, so it keeps its edge with a hairline and lifts off the floor
+ * with the plates' shadow.
+ */
 .captionText {
-  padding: 0.2em 0.55em;
-  border-radius: 0.4em;
+  display: block;
+  box-sizing: content-box;
+  width: var(--fit, fit-content);
+  max-width: min(44rem, 100% - 1.7em - 2px);
+  margin-inline: auto;
+  padding: 0.4em 0.85em 0.45em;
+  border: 1px solid color-mix(in srgb, var(--va-color-cream) 16%, transparent);
+  border-radius: 0.55em;
   background: var(--va-color-osd);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+  box-shadow: 0 0.6rem 1.4rem var(--va-color-glass);
+  text-wrap: balance;
   text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
 }
 
@@ -810,10 +842,10 @@
     font-size: 0.8125rem;
   }
 
-  /* PLAYER ONE's rise under it, as on wide screens: a tablet's card is nearly as wide as the screen. */
+  /* After the slip, a pause's room above his line, as on wide screens. */
   .caption {
     grid-area: auto;
-    padding: 2.25rem 1rem max(3rem, 6 * var(--va-svh), calc(min(100vw - 2rem, var(--va-chapter-span)) * 0.124 + 0.5rem));
+    padding: 3rem 1rem max(3rem, 6 * var(--va-svh));
     font-size: 1rem;
   }
 }

@@ -1,0 +1,1125 @@
+/*
+ * The ACHIEVEMENTS tab: the achievement tree as constellations in the
+ * island's night sky (Achievements.tsx). From 1000 px the stars sit on the
+ * sky's plane, 1200 × 640 units (achievements.ts SKY), in percentages,
+ * over the links drawn in SVG; under 1000 px each branch is a vertical
+ * list with its own spine. The type, the stars' size and the details'
+ * width are mirrored in achievements.ts TYPE and DETAIL, whose tests keep
+ * every title, star and link clear of the others: change both together.
+ * Colours: the --va-tree-* tokens and the palette.
+ */
+
+.tree {
+  --tree-line: color-mix(in srgb, var(--va-color-cream) 14%, transparent);
+  display: grid;
+  gap: 14px;
+}
+
+/* An old fragment (#stats-favorites) lands where the panel does. */
+.alias {
+  display: block;
+  height: 0;
+  scroll-margin-top: calc(var(--panel-rise, 0px) + var(--landing, 0px));
+}
+
+/* ── The head: title and count, his line, the key ─────────────────── */
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 24px;
+  row-gap: 6px;
+}
+
+.title {
+  font: 500 11px/1 var(--va-font-mono);
+  letter-spacing: 0.26em;
+  color: var(--va-color-text-muted);
+}
+
+.count {
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--va-color-sodium);
+}
+
+.intro {
+  font: 400 15px/1.4 var(--va-font-body);
+  color: var(--va-color-text-muted);
+}
+
+.legend {
+  display: flex;
+  gap: 18px;
+  margin-left: auto;
+  font: 500 10px/1 var(--va-font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend i {
+  display: inline-grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.legendLit i {
+  background: radial-gradient(circle, var(--va-color-cream) 0 22%, var(--va-tree-sport) 40%, transparent 72%);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--va-tree-sport) 60%, transparent);
+}
+
+.legendFavourite svg {
+  width: 12px;
+  fill: var(--va-tree-favourite);
+}
+
+.legendLocked i {
+  border: 1px solid color-mix(in srgb, var(--va-tree-locked) 85%, var(--va-color-cream));
+  color: color-mix(in srgb, var(--va-tree-locked) 70%, var(--va-color-cream));
+}
+
+.legendLocked .padlock {
+  width: 8px;
+}
+
+/* ── Branch colours ───────────────────────────────────────────────── */
+
+.tint_sport {
+  --c: var(--va-tree-sport);
+}
+
+.tint_games {
+  --c: var(--va-tree-games);
+}
+
+.tint_film {
+  --c: var(--va-tree-film);
+}
+
+.tint_series {
+  --c: var(--va-tree-series);
+}
+
+.tint_crossover {
+  --c: var(--va-tree-flag);
+}
+
+/* ── The stars (both layouts) ─────────────────────────────────────── */
+
+.branches,
+.groups,
+.stars {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.button:focus-visible {
+  outline: none;
+}
+
+.star {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--star);
+  height: var(--star);
+  border-radius: 50%;
+  transition: transform 180ms var(--va-motion-ease);
+}
+
+/* Lit: a hot core in the branch's colour and a four-point glint. */
+.node[data-lock="none"] .star {
+  background: radial-gradient(
+    circle,
+    var(--va-color-cream) 0 17%,
+    var(--c) 33%,
+    color-mix(in srgb, var(--c) 32%, transparent) 58%,
+    transparent 72%
+  );
+  box-shadow: 0 0 calc(var(--star) * 0.9) color-mix(in srgb, var(--c) 45%, transparent);
+}
+
+.node[data-lock="none"] .star::before,
+.node[data-lock="none"] .star::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 230%;
+  height: 1.5px;
+  translate: -50% -50%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--va-color-cream) 85%, var(--c)), transparent);
+}
+
+.node[data-lock="none"] .star::after {
+  rotate: 90deg;
+  width: 190%;
+}
+
+/* Locked: an unlit ring with its padlock. */
+.node:not([data-lock="none"]) .star {
+  border: 1.5px solid color-mix(in srgb, var(--va-tree-locked) 85%, var(--va-color-cream));
+  background: var(--va-tree-sky);
+  color: color-mix(in srgb, var(--va-tree-locked) 60%, var(--va-color-cream));
+}
+
+.padlock {
+  display: block;
+  width: 64%;
+  height: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.padlock rect {
+  fill: currentColor;
+  stroke: none;
+}
+
+.padlock .keyhole {
+  stroke: var(--va-tree-sky);
+  stroke-width: 1.4;
+}
+
+/* Locked hardest: three padlocks on a crossed chain, a bigger, colder ring. */
+/* achievements.ts TYPE.maxStarScale, for both hard locks */
+.node[data-lock="max"],
+.node[data-lock="surrendered"] {
+  --star: calc(var(--star-base) * 1.6);
+}
+
+/* His two favourites: a bigger star, gold, with a five-pointed star on its light (TYPE.favouriteStarScale). */
+.node[data-favourite] {
+  --star: calc(var(--star-base) * 1.4);
+}
+
+.node[data-favourite] .star {
+  background: radial-gradient(
+    circle,
+    var(--va-color-cream) 0 12%,
+    var(--va-tree-favourite) 30%,
+    color-mix(in srgb, var(--va-tree-favourite) 34%, transparent) 56%,
+    transparent 72%
+  );
+  box-shadow:
+    0 0 calc(var(--star) * 0.9) color-mix(in srgb, var(--va-tree-favourite) 55%, transparent),
+    0 0 0 calc(var(--star) * 0.08) color-mix(in srgb, var(--va-tree-favourite) 30%, transparent);
+}
+
+.favStar {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 78%;
+  height: auto;
+  fill: var(--va-tree-favourite);
+  stroke: var(--va-color-cream);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--va-tree-favourite) 80%, transparent));
+}
+
+.node[data-lock="max"] .star {
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--va-color-magenta) 55%, var(--va-tree-locked));
+  box-shadow: inset 0 0 0 3px var(--va-tree-sky), inset 0 0 0 4px color-mix(in srgb, var(--va-tree-locked) 60%, transparent);
+}
+
+.maxLock {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.chain {
+  position: absolute;
+  inset: -22%;
+  width: 144%;
+  height: 144%;
+  fill: none;
+  stroke: color-mix(in srgb, var(--va-tree-locked) 75%, var(--va-color-cream));
+  stroke-width: 2.4;
+  stroke-dasharray: 3.2 2.2;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+
+.maxLock .padlock {
+  position: absolute;
+  width: 48%;
+  color: color-mix(in srgb, var(--va-tree-locked) 45%, var(--va-color-cream));
+  filter: drop-shadow(0 0 2px var(--va-tree-sky));
+}
+
+.lockA {
+  left: 4%;
+  top: 8%;
+  rotate: -14deg;
+}
+
+.lockB {
+  right: 4%;
+  top: 8%;
+  rotate: 14deg;
+}
+
+.lockC {
+  left: 26%;
+  bottom: 2%;
+}
+
+/* Given up: a big cold ring, a monument to it, with the white flag planted in its middle. */
+.node[data-lock="surrendered"] .star {
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--va-tree-flag) 55%, var(--va-tree-locked));
+  background: radial-gradient(circle, color-mix(in srgb, var(--va-tree-flag) 16%, var(--va-tree-sky)) 0 30%, var(--va-tree-sky) 70%);
+  box-shadow:
+    inset 0 0 0 3px var(--va-tree-sky),
+    inset 0 0 0 4px color-mix(in srgb, var(--va-tree-locked) 60%, transparent),
+    0 0 calc(var(--star) * 0.7) color-mix(in srgb, var(--va-tree-flag) 18%, transparent);
+}
+
+/*
+ * Planted in the star: the pole (x 5 of the flag's 24, mirrored to 19)
+ * stands on the star's centre, the cloth flying away from the title on
+ * its right.
+ */
+.flag {
+  position: absolute;
+  left: calc(50% - 115% * 19 / 24);
+  bottom: calc(50% - 115% * 4 / 24);
+  width: 115%;
+  height: auto;
+  overflow: visible;
+  scale: -1 1;
+}
+
+.pole {
+  fill: none;
+  stroke: color-mix(in srgb, var(--va-tree-flag) 80%, var(--va-tree-locked));
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.cloth {
+  fill: var(--va-tree-flag);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--va-tree-flag) 45%, transparent));
+}
+
+.name {
+  display: block;
+  font-weight: 600;
+  color: var(--va-color-cream);
+  text-wrap: balance;
+}
+
+.node:not([data-lock="none"]) .name {
+  color: color-mix(in srgb, var(--va-color-cream) 60%, transparent);
+}
+
+/* BLOQUEO MÁXIMO / MAXIMUM LOCK and RENDIDO / SURRENDERED, under their titles. */
+.tag {
+  display: block;
+  margin-top: 0.25em;
+  font: 700 0.72em/1.2 var(--va-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--va-color-magenta) 55%, var(--va-color-pink));
+}
+
+.node[data-lock="surrendered"] .tag {
+  color: var(--va-tree-flag);
+}
+
+.node[data-favourite] .tag {
+  color: var(--va-tree-favourite);
+}
+
+/* The details: whether it is unlocked, and his line or what it requires. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+}
+
+.chip {
+  padding: 0.3em 0.55em 0.25em;
+  border-radius: 4px;
+  font: 700 0.68em/1 var(--va-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--va-tree-sky);
+  background: var(--c);
+}
+
+.node:not([data-lock="none"]) .chip {
+  color: color-mix(in srgb, var(--va-tree-locked) 40%, var(--va-color-cream));
+  background: color-mix(in srgb, var(--va-tree-locked) 28%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--va-tree-locked) 70%, transparent);
+}
+
+.node:not([data-lock="none"]) .chipHard {
+  color: var(--va-tree-sky);
+  background: color-mix(in srgb, var(--va-color-magenta) 45%, var(--va-color-pink));
+  box-shadow: none;
+}
+
+.node[data-lock="surrendered"] .chipHard {
+  background: var(--va-tree-flag);
+}
+
+.chipFavourite {
+  background: var(--va-tree-favourite);
+}
+
+.line {
+  display: block;
+  margin-top: 0.45em;
+  font: 400 0.95em/1.35 var(--va-font-body);
+  color: var(--va-color-cream);
+  text-wrap: pretty;
+}
+
+/* ── From 1000 px: the sky ────────────────────────────────────────── */
+
+@media (min-width: 1000px) {
+  .sky {
+    /* One unit of the sky's plane (achievements.ts SKY.width), for the children: the sky is their container. */
+    --u: calc(100cqi / 1200);
+    position: relative;
+    container-type: inline-size;
+    /*
+     * As wide as the panel, but never taller than the screen leaves it
+     * under the menu bar and the head (the chrome, 224 px), and never
+     * narrower than achievements.ts TYPE.minSkyPx: a shorter window scrolls.
+     */
+    width: max(min(100%, 904px), min(100%, calc((100 * var(--va-svh) - 224px) * 1200 / 640)));
+    aspect-ratio: 1200 / 640;
+    margin-inline: auto;
+    border: 1px solid var(--tree-line);
+    border-radius: 18px;
+    background:
+      radial-gradient(60% 46% at 50% 100%, color-mix(in srgb, var(--va-color-magenta) 14%, transparent), transparent 70%),
+      radial-gradient(30% 40% at 93% 92%, color-mix(in srgb, var(--va-color-orange) 12%, transparent), transparent 70%),
+      radial-gradient(50% 50% at 12% 0%, color-mix(in srgb, var(--va-color-violet) 16%, transparent), transparent 70%),
+      linear-gradient(var(--va-tree-sky), color-mix(in srgb, var(--va-tree-sky) 55%, var(--va-color-night)));
+    box-shadow: 0 20px 60px color-mix(in srgb, var(--va-color-letterbox) 50%, transparent);
+  }
+
+  .drawing {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+  }
+
+  .field {
+    fill: var(--va-color-cream);
+  }
+
+  .nebulaCore {
+    stop-color: var(--c);
+    stop-opacity: 0.075;
+  }
+
+  .nebulaEdge {
+    stop-color: var(--c);
+    stop-opacity: 0;
+  }
+
+  .rings circle {
+    fill: none;
+    stroke: color-mix(in srgb, var(--va-color-cream) 7%, transparent);
+    stroke-width: 1;
+    stroke-dasharray: 2 7;
+  }
+
+  .ridge {
+    fill: color-mix(in srgb, var(--va-color-ink) 55%, var(--va-color-letterbox));
+    stroke: color-mix(in srgb, var(--va-color-haze) 30%, transparent);
+    stroke-width: 1;
+  }
+
+  /* Links: lit in the branch's colour, or dotted and dim toward a locked star. */
+  .link {
+    stroke: color-mix(in srgb, var(--c) 55%, transparent);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+
+  .link:not([data-lit]) {
+    stroke: color-mix(in srgb, var(--va-tree-locked) 75%, transparent);
+    stroke-width: 1.6;
+    stroke-dasharray: 0.1 7;
+  }
+
+  /* The glow: one bright dash per link, out from the player, wave after wave. Hidden at rest. */
+  .flow {
+    fill: none;
+    stroke: color-mix(in srgb, var(--c) 40%, var(--va-color-cream));
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 12 188;
+    stroke-dashoffset: 12;
+    filter: drop-shadow(0 0 3px var(--c));
+  }
+
+  .hubDot {
+    fill: var(--c);
+    filter: drop-shadow(0 0 4px var(--c));
+  }
+
+  /* Him: the player, standing on the ridge. */
+  .player {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    display: grid;
+    justify-items: center;
+    translate: -50% calc(-1 * 13 * var(--u));
+    pointer-events: none;
+  }
+
+  .player i {
+    width: calc(26 * var(--u));
+    height: calc(26 * var(--u));
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--va-color-cream) 0 26%, var(--va-color-pink) 42%, transparent 70%);
+    box-shadow:
+      0 0 0 calc(5 * var(--u)) color-mix(in srgb, var(--va-color-cream) 9%, transparent),
+      0 0 calc(30 * var(--u)) color-mix(in srgb, var(--va-color-magenta) 55%, transparent);
+  }
+
+  .player b {
+    margin-top: calc(3 * var(--u));
+    font: 700 clamp(9px, 0.85cqi, 11px) / 1 var(--va-font-mono);
+    letter-spacing: 0.2em;
+    color: var(--va-color-cream);
+  }
+
+  /* A branch's name and count, beside its hub (achievements.ts BRANCHES caption). */
+  .hub {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    translate: -50% -50%;
+    white-space: nowrap;
+    font: 700 clamp(8px, 0.75cqi, 10.5px) / 1.3 var(--va-font-mono);
+    letter-spacing: 0.2em;
+    color: var(--c);
+    text-shadow: 0 0 10px var(--va-tree-sky);
+  }
+
+  .hubCount {
+    font-weight: 500;
+    color: var(--va-color-text-muted);
+  }
+
+  .merge {
+    display: none;
+  }
+
+  /* The crossover is the two links that meet in Marvel's star; its name is for screen readers. */
+  .branch[data-branch="crossover"] .hub {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .groupName {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    translate: -50% -50%;
+    white-space: nowrap;
+    font: 500 clamp(8px, 0.75cqi, 10.5px) / 1.3 var(--va-font-mono);
+    letter-spacing: 0.2em;
+    color: color-mix(in srgb, var(--c) 70%, var(--va-color-cream));
+    opacity: 0.85;
+  }
+
+  /* A star: its item is a point on the plane; the button is centred on it. */
+  .node {
+    --star-base: calc(18 * var(--u));
+    --star: var(--star-base);
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    z-index: 1;
+    width: 0;
+    height: 0;
+  }
+
+  .node:hover,
+  .node:focus-within,
+  .node[data-open] {
+    z-index: 3;
+  }
+
+  .button {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: grid;
+    place-items: center;
+    width: max(24px, calc(var(--star) + 12 * var(--u)));
+    height: max(24px, calc(var(--star) + 12 * var(--u)));
+    border-radius: 50%;
+    translate: -50% -50%;
+    font-size: clamp(11px, 1.04cqi, 14px);
+    line-height: 1.2;
+  }
+
+  /* The title beside its star (achievements.ts labelBox): TYPE.starRadius + TYPE.gap from its centre, wrapping at TYPE.maxEm. */
+  .label {
+    position: absolute;
+    top: 50%;
+    width: max-content;
+    max-width: 8em;
+    translate: 0 -50%;
+  }
+
+  .node[data-side="right"] .label {
+    left: calc(50% + var(--star) / 2 + 8 * var(--u));
+    text-align: left;
+  }
+
+  .node[data-side="left"] .label {
+    right: calc(50% + var(--star) / 2 + 8 * var(--u));
+    text-align: right;
+  }
+
+  .button:hover .star,
+  .button:focus-visible .star,
+  .node[data-open] .star {
+    transform: scale(1.18);
+  }
+
+  .button:focus-visible .star {
+    outline: 2px solid var(--va-color-cream);
+    outline-offset: 5px;
+  }
+
+  .button:hover .name,
+  .button:focus-visible .name,
+  .node[data-open] .name {
+    color: var(--va-color-cream);
+    text-shadow: 0 0 12px color-mix(in srgb, var(--c, var(--va-color-cream)) 60%, transparent);
+  }
+
+  /* The details (achievements.ts detailBox): a card on the title's side, under it up the sky, over it low down. */
+  .detail {
+    position: absolute;
+    width: 17em;
+    padding: 0.6em 0.8em 0.7em;
+    border: 1px solid color-mix(in srgb, var(--c, var(--va-tree-locked)) 50%, transparent);
+    border-radius: 10px;
+    background: var(--va-tree-sky);
+    box-shadow: 0 14px 34px color-mix(in srgb, var(--va-color-letterbox) 55%, transparent);
+    text-align: left;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 160ms ease,
+      translate 160ms var(--va-motion-ease);
+  }
+
+  .node[data-align="start"] .detail {
+    left: 0;
+  }
+
+  .node[data-align="end"] .detail {
+    right: 0;
+  }
+
+  .node[data-v="down"] .detail {
+    top: calc(100% + 4px);
+    translate: 0 -4px;
+  }
+
+  .node[data-v="up"] .detail {
+    bottom: calc(100% + 4px);
+    translate: 0 4px;
+  }
+
+  .button:focus-visible .detail,
+  .node[data-open] .detail {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  /* The hard lock's word is under its title already: the details only say locked. */
+  .chipHard {
+    display: none;
+  }
+}
+
+@media (min-width: 1000px) and (hover: hover) {
+  .button:hover .detail {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* ── Under 1000 px: a vertical list per branch ────────────────────── */
+
+@media (max-width: 999.98px) {
+  .legend {
+    margin-left: 0;
+  }
+
+  .drawing,
+  .player {
+    display: none;
+  }
+
+  .branches {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .branch {
+    padding: 14px 16px 10px;
+    border: 1px solid var(--tree-line);
+    border-radius: 16px;
+    background: linear-gradient(color-mix(in srgb, var(--c) 7%, var(--va-tree-sky)), var(--va-tree-sky) 120px);
+  }
+
+  .hub {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    font: 700 12px/1.3 var(--va-font-mono);
+    letter-spacing: 0.22em;
+    color: var(--c);
+  }
+
+  .hubCount {
+    margin-left: auto;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--va-color-text-muted);
+  }
+
+  /* FILM's and SERIES' links meeting in the crossover's star. */
+  .merge {
+    width: 40px;
+    height: 18px;
+    flex: none;
+    fill: none;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-dasharray: 0.1 5;
+  }
+
+  .mergeFilm {
+    stroke: var(--va-tree-film);
+  }
+
+  .mergeSeries {
+    stroke: var(--va-tree-series);
+  }
+
+  .groupName {
+    margin: 8px 0 0 40px;
+    font: 500 10.5px/1.3 var(--va-font-mono);
+    letter-spacing: 0.2em;
+    color: color-mix(in srgb, var(--c) 70%, var(--va-color-cream));
+  }
+
+  .group + .group {
+    margin-top: 2px;
+  }
+
+  /*
+   * A star a row, on its branch's spine: the segment over each star is its
+   * own link (lit if it is unlocked), the one under it the next star's.
+   */
+  .node {
+    --star-base: 18px;
+    --star: var(--star-base);
+    --mid: 19px;
+    position: relative;
+  }
+
+  .node::before,
+  .node::after {
+    content: "";
+    position: absolute;
+    left: 13px;
+    width: 2px;
+    z-index: 0;
+    border-radius: 1px;
+    background: repeating-linear-gradient(
+      color-mix(in srgb, var(--va-tree-locked) 80%, transparent) 0 2px,
+      transparent 2px 7px
+    );
+  }
+
+  .node::before {
+    top: 0;
+    height: var(--mid);
+  }
+
+  .node::after {
+    top: var(--mid);
+    bottom: 0;
+  }
+
+  .node:last-child::after {
+    display: none;
+  }
+
+  .node[data-lock="none"]::before,
+  .node:has(+ .node[data-lock="none"])::after {
+    background: color-mix(in srgb, var(--c) 55%, transparent);
+  }
+
+  .button {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    column-gap: 12px;
+    align-items: start;
+    width: calc(100% + 16px);
+    margin-inline: -8px;
+    padding: 10px 8px;
+    border-radius: 10px;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+
+  .star {
+    justify-self: center;
+    margin-top: calc(var(--mid) - 10px - var(--star) / 2);
+  }
+
+  .button:focus-visible {
+    outline: 2px solid var(--va-color-cream);
+    outline-offset: 2px;
+  }
+
+  .node[data-open] .button {
+    background: color-mix(in srgb, var(--c, var(--va-tree-locked)) 12%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c, var(--va-tree-locked)) 40%, transparent);
+  }
+
+  .detail {
+    display: block;
+    margin-top: 5px;
+    font-size: 14px;
+  }
+
+  /* A lit star says unlocked; its chip is for screen readers. The hard locks' tag is in their chips. */
+  .node[data-lock="none"] .chips,
+  .node:not([data-favourite]) .tag {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* On the list the flag flies toward the title, short of it, so it stays in its card. */
+  .flag {
+    left: calc(50% - 80% * 5 / 24);
+    bottom: calc(50% - 80% * 4 / 24);
+    width: 80%;
+    scale: 1 1;
+  }
+
+  /* A favourite's tag heads its row, over the title: ★ FAVORITA. */
+  .label {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .node[data-favourite] .tag {
+    order: -1;
+    margin: 0 0 0.3em;
+    font-size: 11px;
+  }
+
+  /* A star that forks off an earlier one starts a path of its own: the spine breaks before it. */
+  .node[data-fork]::before,
+  .node:has(+ .node[data-fork])::after {
+    display: none;
+  }
+
+  .node[data-fork] {
+    margin-top: 10px;
+  }
+
+  /* The stars that hang straight from SPORT's hub, under its constellations: a path of their own too. */
+  .groupLoose {
+    margin-top: 10px;
+  }
+
+  .groupLoose .node:first-child::before {
+    display: none;
+  }
+
+  .line {
+    margin-top: 6px;
+    color: color-mix(in srgb, var(--va-color-cream) 82%, transparent);
+  }
+
+  .node:not([data-lock="none"]) .line {
+    color: var(--va-color-text-muted);
+  }
+
+  .node[data-lock="max"] {
+    --mid: 23px;
+  }
+}
+
+/* Tablets: two columns, SPORT down the first, the rest (the crossover last) down the second. */
+@media (min-width: 700px) and (max-width: 999.98px) {
+  .branches {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .branch[data-branch="sport"] {
+    grid-row: span 4;
+  }
+}
+
+/* ── Motion: the glow, the hover and the shake ────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Only while the tab is open (the panel's data-active), and paused off screen (data-loops, PauseOffscreen). */
+  [data-active="true"] .flow {
+    animation: tree-flow 5.2s linear infinite;
+    animation-delay: calc(var(--d) * 0.55s);
+  }
+
+  [data-active="true"] .node[data-lock="none"]::before {
+    background:
+      linear-gradient(transparent 35%, color-mix(in srgb, var(--c) 30%, var(--va-color-cream)) 50%, transparent 65%) 0 100% / 100% 300% no-repeat,
+      color-mix(in srgb, var(--c) 55%, transparent);
+    animation: tree-spine 2.6s linear infinite;
+  }
+
+  @media (hover: hover) {
+    .node:not([data-lock="none"]) .button:hover .padlock {
+      animation: tree-wiggle 420ms ease-in-out;
+    }
+  }
+
+  .node[data-shake] .button {
+    animation: tree-shake 380ms ease-in-out;
+  }
+}
+
+@media (scripting: none) and (prefers-reduced-motion: no-preference) {
+  .flow {
+    animation: tree-flow 5.2s linear infinite;
+    animation-delay: calc(var(--d) * 0.55s);
+  }
+}
+
+@keyframes tree-flow {
+  0% {
+    stroke-dashoffset: 12;
+  }
+
+  34%,
+  100% {
+    stroke-dashoffset: -100;
+  }
+}
+
+@keyframes tree-spine {
+  to {
+    background-position:
+      0 0,
+      0 0;
+  }
+}
+
+@keyframes tree-wiggle {
+  25% {
+    rotate: -10deg;
+  }
+
+  60% {
+    rotate: 8deg;
+  }
+}
+
+@keyframes tree-shake {
+  15% {
+    transform: translateX(-4px);
+  }
+
+  35% {
+    transform: translateX(4px);
+  }
+
+  55% {
+    transform: translateX(-3px);
+  }
+
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+/* ── Forced colours: the system's colours, every word kept ────────── */
+
+@media (forced-colors: active) {
+  .drawing {
+    forced-color-adjust: none;
+  }
+
+  .field,
+  .nebula,
+  .rings,
+  .ridge,
+  .flows {
+    display: none;
+  }
+
+  .player i {
+    forced-color-adjust: none;
+    background: CanvasText;
+    box-shadow: none;
+  }
+
+  .link {
+    stroke: GrayText;
+  }
+
+  .link[data-lit] {
+    stroke: CanvasText;
+    stroke-dasharray: none;
+  }
+
+  .hubDot {
+    fill: CanvasText;
+    filter: none;
+  }
+
+  .node .star,
+  .node:not([data-lock="none"]) .star,
+  .node[data-lock="max"] .star {
+    forced-color-adjust: none;
+    background: Canvas;
+    border: 2px solid GrayText;
+    box-shadow: none;
+    color: GrayText;
+  }
+
+  .node[data-lock="none"] .star {
+    background: CanvasText;
+    border-color: CanvasText;
+  }
+
+  .maxLock .padlock {
+    color: GrayText;
+    filter: none;
+  }
+
+  .node[data-lock="none"] .star::before,
+  .node[data-lock="none"] .star::after,
+  .chain {
+    display: none;
+  }
+
+  .padlock .keyhole {
+    stroke: Canvas;
+  }
+
+  .cloth {
+    fill: CanvasText;
+    filter: none;
+  }
+
+  .legendLit i {
+    forced-color-adjust: none;
+    background: CanvasText;
+    box-shadow: none;
+  }
+
+  /* On a lit star's CanvasText disc. */
+  .favStar {
+    forced-color-adjust: none;
+    fill: Canvas;
+    stroke: CanvasText;
+    filter: none;
+  }
+
+  .legendFavourite svg {
+    forced-color-adjust: none;
+    fill: CanvasText;
+  }
+
+  .pole {
+    stroke: CanvasText;
+  }
+
+  .button:focus-visible .star {
+    outline: 2px solid Highlight;
+  }
+
+  .node:not([data-lock="none"]) .name {
+    color: GrayText;
+  }
+
+  .chip,
+  .node:not([data-lock="none"]) .chip,
+  .node:not([data-lock="none"]) .chipHard {
+    border: 1px solid CanvasText;
+  }
+
+  .detail {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .node::before,
+  .node::after {
+    background: GrayText;
+  }
+
+  .node[data-lock="none"]::before,
+  .node:has(+ .node[data-lock="none"])::after {
+    background: CanvasText;
+  }
+}

@@ -4,8 +4,9 @@
  * direction of travel), the board stands at z < 0 and the camera at z > 0.
  *
  * A shot is a list of keys on the film (a beat and a position inside it);
- * the pose between two keys eases with a smoothstep, and a stop's first key
- * is a hard cut. On a portrait screen a pose is fitted to its board: the
+ * the pose between two keys eases with a smoothstep, so a change of framing
+ * is a camera move that starts and lands softly; the change of stop happens
+ * under a dip to night (work/dip.ts). On a portrait screen a pose is fitted to its board: the
  * camera dollies back along its view axis until the board fits the safe
  * rectangle, and only then widens the lens (never past 70 degrees).
  */
@@ -13,17 +14,35 @@ import { MathUtils, PerspectiveCamera, Vector3 } from "three";
 
 export type Vec3 = readonly [number, number, number];
 
-export type Pose = { position: Vec3; look: Vec3; fov: number };
+export type Pose = {
+  position: Vec3;
+  look: Vec3;
+  fov: number;
+  /**
+   * How much the look follows the car as it drives (0 the key's look, 1 the
+   * car): an arrival pans with the car and settles on the board, one
+   * continuous move however the car brakes (rig.ts).
+   */
+  track?: number;
+  /** On a portrait screen, how much of the fitted pose the shot takes (0 the key as written, 1 fitted; default 1). */
+  fit?: number;
+};
 
-/** A key on the film: p is the film position (0..1) where the pose is reached. */
-export type Key = Pose & { p: number };
+/**
+ * A key on the film: p is the film position (0..1) where the pose is
+ * reached. A `pass` key is not stopped at: the move from the key before it
+ * to the key after it curves through it (a quadratic through its pose at
+ * the move's middle), one ease from end to end.
+ */
+export type Key = Pose & { p: number; pass?: boolean };
 
 /** The rectangle (fractions of the viewport, y down) a board must sit in. */
 export type SafeRect = { x0: number; x1: number; y0: number; y1: number };
 
 export const SAFE = {
   desktop: { x0: 0.06, x1: 0.94, y0: 0.12, y1: 0.78 },
-  portrait: { x0: 0.04, x1: 0.96, y0: 0.14, y1: 0.62 },
+  // Under the route and the stop's super, over the subtitles and the chip.
+  portrait: { x0: 0.04, x1: 0.96, y0: 0.25, y1: 0.68 },
 } as const satisfies Record<string, SafeRect>;
 
 /** Widest lens a fitted pose may take (vertical field of view, degrees). */
@@ -41,16 +60,37 @@ function mix3(a: Vec3, b: Vec3, t: number): Vec3 {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
 
+/** Two poses mixed: positions, looks, lenses, tracking and fit, each linearly. */
+export function mixPose(a: Pose, b: Pose, t: number): Pose {
+  const track = (a.track ?? 0) + ((b.track ?? 0) - (a.track ?? 0)) * t;
+  const fit = (a.fit ?? 1) + ((b.fit ?? 1) - (a.fit ?? 1)) * t;
+  return { position: mix3(a.position, b.position, t), look: mix3(a.look, b.look, t), fov: a.fov + (b.fov - a.fov) * t, track, fit };
+}
+
+/** A quadratic from a to c through `via` at its middle, at t. */
+function curve(a: Pose, via: Pose, c: Pose, t: number): Pose {
+  const ac = mixPose(a, c, 0.5);
+  // The control point that puts the curve's middle on `via`: 2 via - (a + c) / 2.
+  const ctrl = mixPose(ac, via, 2);
+  return mixPose(mixPose(a, ctrl, t), mixPose(ctrl, c, t), t);
+}
+
 /** The pose at film position p from keys sorted by p (held before the first and after the last). */
 export function poseAt(keys: readonly Key[], p: number): Pose {
   if (keys.length === 0) throw new Error("A shot needs at least one key");
   if (p <= keys[0].p) return keys[0];
   for (let i = 1; i < keys.length; i += 1) {
     const b = keys[i];
+    const c = keys[i + 1];
+    if (b.pass && c) {
+      if (p > c.p) continue;
+      const a = keys[i - 1];
+      return curve(a, b, c, smooth((p - a.p) / Math.max(1e-6, c.p - a.p)));
+    }
     if (p <= b.p) {
       const a = keys[i - 1];
       const t = smooth((p - a.p) / Math.max(1e-6, b.p - a.p));
-      return { position: mix3(a.position, b.position, t), look: mix3(a.look, b.look, t), fov: a.fov + (b.fov - a.fov) * t };
+      return mixPose(a, b, t);
     }
   }
   return keys[keys.length - 1];
@@ -102,13 +142,15 @@ function fits(b: { x0: number; x1: number; y0: number; y1: number }, safe: SafeR
  * dolly back until the subject's size fits `safe` (at most `maxBack`
  * metres), then widen the lens if it still does not, then pan and tilt
  * so the subject sits in the middle of `safe`.
- * A subject that already fits stays as the shot was composed.
+ * A subject that already fits stays as the shot was composed, unless
+ * `centre` is set: a moving shot is always centred, or the frame it starts
+ * centring on would jump by the subject's offset (rig.ts).
  */
-export function fitPose(pose: Pose, subject: readonly Vec3[], aspect: number, safe: SafeRect, maxBack: number): Pose {
+export function fitPose(pose: Pose, subject: readonly Vec3[], aspect: number, safe: SafeRect, maxBack: number, centre = false): Pose {
   place(pose, 0, pose.fov, aspect);
   const initial = bounds(subject);
   const inside = initial.x0 >= safe.x0 && initial.x1 <= safe.x1 && initial.y0 >= safe.y0 && initial.y1 <= safe.y1;
-  if (inside) return pose;
+  if (inside && !centre) return pose;
 
   let back = 0;
   let fov = pose.fov;
@@ -165,7 +207,7 @@ export function fitPose(pose: Pose, subject: readonly Vec3[], aspect: number, sa
     .addScaledVector(forward, depth)
     .addScaledVector(right, dx)
     .addScaledVector(up, dy);
-  return { position: [position.x, position.y, position.z], look: [look.x, look.y, look.z], fov };
+  return { position: [position.x, position.y, position.z], look: [look.x, look.y, look.z], fov, track: pose.track, fit: pose.fit };
 }
 
 /** Where world points land on screen for a pose, as viewport fractions (x right, y down). */
@@ -177,9 +219,12 @@ export function projectPose(pose: Pose, points: readonly Vec3[], aspect: number)
   });
 }
 
-/** The car's bounding box (its eight corners) at x along the street, for framing. */
-export function carBox(x: number): Vec3[] {
+/** The car's whole length, and its cabin (where he sits) for a phone's tight framing. */
+export const CAR_HALF = { body: 2.3, cabin: 1.4 } as const;
+
+/** The car's bounding box (its eight corners) at x along the street, for framing; `half` is half its length. */
+export function carBox(x: number, half: number = CAR_HALF.body): Vec3[] {
   const corners: Vec3[] = [];
-  for (const dx of [-2.3, 2.3]) for (const y of [0, 1.35]) for (const z of [-1, 1]) corners.push([x + dx, y, z]);
+  for (const dx of [-half, half]) for (const y of [0, 1.35]) for (const z of [-1, 1]) corners.push([x + dx, y, z]);
   return corners;
 }

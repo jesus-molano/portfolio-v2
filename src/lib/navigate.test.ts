@@ -4,6 +4,7 @@ import {
   getPassage,
   goTo,
   INPUT_WINDOW_MS,
+  FLING_WINDOW_MS,
   isNavigation,
   landingY,
   landsPast,
@@ -114,6 +115,11 @@ describe("isNavigation", () => {
     expect(isNavigation(1000, 1000 + INPUT_WINDOW_MS)).toBe(true);
     expect(isNavigation(Number.NEGATIVE_INFINITY, 0)).toBe(true);
   });
+
+  it("never counts a finger's fling as navigation: its momentum records no input", () => {
+    expect(isNavigation(0, 5000, 5000 - FLING_WINDOW_MS + 1)).toBe(false);
+    expect(isNavigation(0, 5000, 5000 - FLING_WINDOW_MS)).toBe(true);
+  });
 });
 
 describe("goTo", () => {
@@ -198,7 +204,7 @@ describe("goTo", () => {
 
   it("opens the hero, then moves the page with Lenis standing where it lands, then focuses", () => {
     const p = page(6300);
-    // The booth's link: the cinema, 900 px down, after the hero.
+    // A link to the cinema, 900 px down, after the hero.
     goTo(p.element(900, true));
     expect(p.log).toEqual(["open", "resize", "reset", "page 7136", "focus"]);
     expect(p.lenis()).toEqual([7136, 7136]);

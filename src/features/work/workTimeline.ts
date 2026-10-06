@@ -14,9 +14,10 @@ export type BeatKind = "title" | "travel" | "hold" | "card";
 
 /**
  * - title: the title card on night, a held wall.
- * - travel: no wall (fades, cut-ins, the car leaving).
+ * - travel: no wall.
  * - hold: a wall that holds for its seconds once the picture reaches it
- *   (the arrival, the trivision flips, the crane).
+ *   (every arrival and leave, the trivision flips, the signal, the crane,
+ *   the iris).
  * - card: a subtitle card, held for its reading time.
  */
 export type BeatInput =
@@ -49,17 +50,29 @@ export type StageTimeline = {
   seconds: number;
 };
 
-/** Natural seconds of the beats that carry no text (section 6.0 of the spec). */
+/**
+ * Natural seconds of the beats that carry no text. The drive between two
+ * stops (a leave, the dip to night, the next stop's arrival) is held like
+ * the hero's crane: at the scroll's density a 0.6 s travel beat was less
+ * than one notch of a wheel, so a stop changed in one frame and the car
+ * jumped. Held, the car pulls away and the next one rolls in at a drive's
+ * pace, however hard she scrolls, and the board is up before the line.
+ */
 export const BEAT_SECONDS = {
   title: 1.2,
-  fadeIn: 0.6,
-  arrive: 1.2,
-  open: 0.6,
-  leave: 0.6,
+  /** The first stop: the car brakes to the army's board (it has rolled in under the bridge line). */
+  arrive: 2.2,
+  /** Every other stop: up out of the dip, the car rolls in and brakes at the board. */
+  open: 2.4,
+  /** The car pulls away and the picture dips to night. */
+  leave: 1.5,
+  /** PwC: from the hotel's whole blade down to its marquee, whose readerboard the lines are about. */
+  marquee: 2.4,
   flip: 0.8,
   signal: 0.8,
-  crane: 2.0,
-  end: 1.0,
+  /** Up the landmark at a crane's pace (the facade never streams past at more than about half a screen a second). */
+  crane: 4.8,
+  end: 1.6,
 } as const;
 
 /** Scroll density, viewport heights per natural second: the hero's own (600vh over about 46 s). */
@@ -159,9 +172,8 @@ export function workBeats(work: WorkDict): BeatInput[] {
   const S = BEAT_SECONDS;
   const beats: BeatInput[] = [
     { kind: "title", id: "title", seconds: S.title, stop: -1 },
-    // From the cats to the work: a line over the title card.
+    // From the cats to the work: a line over the title card, while the night fades in and the car rolls up.
     { kind: "card", id: "bridge", text: work.bridge, stop: -1 },
-    { kind: "travel", id: "fadeIn", seconds: S.fadeIn, stop: 0 },
   ];
   const cards = (stop: number, key: string, texts: readonly string[], from = 0) =>
     texts.map((text, i): BeatInput => ({ kind: "card", id: `${key}.card${from + i}`, text, stop }));
@@ -170,7 +182,7 @@ export function workBeats(work: WorkDict): BeatInput[] {
     const key = STOP_KEY[def.id];
     const copy = work.stops[def.id];
     if (def.id === "army") beats.push({ kind: "hold", id: `${key}.arrive`, seconds: S.arrive, stop: s });
-    else beats.push({ kind: "travel", id: `${key}.open`, seconds: S.open, stop: s });
+    else beats.push({ kind: "hold", id: `${key}.open`, seconds: S.open, stop: s });
 
     if (def.id === "cloud-district") {
       const board = work.stops["cloud-district"].board;
@@ -179,6 +191,9 @@ export function workBeats(work: WorkDict): BeatInput[] {
       beats.push({ kind: "hold", id: `${key}.pangea`, seconds: readingSeconds(board.hold), stop: s });
       beats.push({ kind: "hold", id: `${key}.flip2`, seconds: S.flip, stop: s });
       beats.push(...cards(s, key, copy.cards.slice(1), 1));
+    } else if (def.id === "pwc") {
+      beats.push({ kind: "hold", id: `${key}.marquee`, seconds: S.marquee, stop: s });
+      beats.push(...cards(s, key, copy.cards));
     } else if (def.id === "heuristik") {
       beats.push({ kind: "hold", id: `${key}.crane`, seconds: S.crane, stop: s });
       beats.push(...cards(s, key, copy.cards));
@@ -187,9 +202,10 @@ export function workBeats(work: WorkDict): BeatInput[] {
     }
 
     if (def.id === "logixs") beats.push({ kind: "hold", id: `${key}.signal`, seconds: S.signal, stop: s });
-    if (def.id !== "heuristik") beats.push({ kind: "travel", id: `${key}.leave`, seconds: S.leave, stop: s });
+    if (def.id !== "heuristik") beats.push({ kind: "hold", id: `${key}.leave`, seconds: S.leave, stop: s });
   });
-  beats.push({ kind: "travel", id: "end", seconds: S.end, stop: STOPS.length - 1 });
+  // The iris closes on the LIVE tally at its own pace too.
+  beats.push({ kind: "hold", id: "end", seconds: S.end, stop: STOPS.length - 1 });
   return beats;
 }
 

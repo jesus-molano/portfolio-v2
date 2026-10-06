@@ -183,7 +183,7 @@ describe("loading screen copy", () => {
       // cinema and the credits keep their own jokes. The career city's tip names no
       // employer: the city tells them.
       const later =
-        /(?<!\p{L})(cats?|gatos?|line-?up|rueda de reconocimiento|suspects?|sospechosos?|culprit|culpable|appetite|apetito|stats|estadísticas|Metal Gear|cardboard|cartón|Godfather|Padrino|Sopranos?|Breaking Bad|Gladiator|Matrix|Skyrim|cinema|cine|posters?|carteles?|credits|créditos|employers?|currículum|CV)(?!\p{L})/iu;
+        /(?<!\p{L})(cats?|gatos?|line-?up|rueda de reconocimiento|suspects?|sospechosos?|culprit|culpable|appetite|apetito|stats|estadísticas|Metal Gear|cardboard|cartón|Godfather|Padrino|Sopranos?|Breaking Bad|Pulp Fiction|Matrix|Skyrim|cinema|cine|posters?|carteles?|credits|créditos|employers?|currículum|CV)(?!\p{L})/iu;
       for (const tip of tips) expect(tip.text).not.toMatch(later);
     });
 
@@ -307,19 +307,24 @@ describe("chapter cards (each static section's heading)", () => {
     const cards = (dict: typeof en) => SECTIONS.map((section) => [dict[section].chapter.word, dict[section].chapter.ribbon]);
     expect(cards(es)).toEqual([
       ["La banda", "Sospechosos habituales"],
-      ["Jugador uno", "Fuera de horario"],
+      ["Pausa", "Ficha del jugador"],
       ["Sesión golfa", "Proyectos personales"],
       ["¡Y corten!", "Créditos y contacto"],
     ]);
     expect(cards(en)).toEqual([
       ["The crew", "The usual suspects"],
-      ["Player one", "Off the clock"],
+      ["Paused", "Player profile"],
       ["The late show", "Side projects"],
       ["That’s a wrap", "Credits and contact"],
     ]);
     // "El conductor" / "The driver" is his role in the credits' cast, not a ribbon.
     expect(es.credits.cast.driver).toBe("El conductor");
     expect(en.credits.cast.driver).toBe("The driver");
+  });
+
+  it("opens the career city on the owner's card: the career and the race at once, on air since 2018", () => {
+    expect(es.work.chapter).toEqual({ word: "La carrera", ribbon: "Trayectoria · 2018 — LIVE" });
+    expect(en.work.chapter).toEqual({ word: "The road so far", ribbon: "Career · 2018 — LIVE" });
   });
 
   it("pays off the hero's last line: the crew it promised", () => {

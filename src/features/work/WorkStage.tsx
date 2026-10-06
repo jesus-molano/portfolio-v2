@@ -34,6 +34,8 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { goTo, isNavigation, registerPassage } from "@/lib/navigate";
 import { stableScreen } from "@/lib/screen";
+import { newDipView, stepDipView } from "./dip";
+import { openingAt } from "./opening";
 import { DISARMED, insideQuad, quadClipPath, quadIsTargetable, stepArm, type ArmEvent } from "./hotspot";
 import { stageGate } from "./stageGate";
 import { STOPS } from "./stops";
@@ -78,6 +80,8 @@ const READY_IDLE = 0.4;
 const CUE_IDLE = 1;
 /** The card wears the push for this long after the last held input (ms). */
 const HOLDING_MS = 220;
+/** How often the board's hit area follows a moving camera (ms). */
+const HOTSPOT_MS = 100;
 /** The pedal's knock flash (ms), as in the hero. */
 const KNOCK_MS = 300;
 /** Seconds the held pedal glides on into the next section at the end. */
@@ -137,7 +141,12 @@ function attrSetter() {
   };
 }
 
-type DevWindow = Window & { __vaStage?: (at: number | string) => void; __vaArm?: (on?: boolean) => void };
+type DevWindow = Window & {
+  __vaStage?: (at: number | string) => void;
+  __vaArm?: (on?: boolean) => void;
+  /** The stage's wall, read by tools/capture/scrollux.mjs (cityswipe). */
+  __vaStageGate?: typeof stageGate;
+};
 
 /**
  * The work stage: the career as a night drive, pinned like the hero. The
@@ -209,7 +218,10 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       const q = (selector: string) => stage.querySelector<HTMLElement>(selector);
       const el = {
         title: q("[data-title]"),
+        barTop: q("[data-bar='top']"),
+        barBottom: q("[data-bar='bottom']"),
         fade: q("[data-fade]"),
+        dip: q("[data-dip]"),
         captions: q("[data-captions]"),
         cue: q("[data-cue]"),
         skip: q("[data-skip]"),
@@ -238,11 +250,15 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       let lastStop = -1;
       let arm = DISARMED;
       let quadPath = "";
+      let quadPathAt = 0;
+      /** A press that rides a held drive on to its next line; any input of hers since lets it go. */
+      let carry: { to: number; at: number } | null = null;
       let lastPushedAt = scrollGate.pushedAt;
       let pushFlash = 0;
       const drawnOpacity = el.cards.map(() => -1);
       const titleBeat = timeline.beats[0];
-      const fadeInBeat = timeline.beats[1];
+      const openState = { titleOut: 0, sceneIn: 0, chrome: false };
+      const view = newDipView();
       const endBeat = timeline.beats[timeline.beats.length - 1];
 
       const fire = (event: ArmEvent) => {
@@ -267,7 +283,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         }
         const over = scroll - max;
         if (over <= SLOP) return;
-        if (!isNavigation(scrollInput.at, now)) {
+        // A finger's fling records no input as it glides: it is still hers, never a jump that opens walls.
+        if (!isNavigation(scrollInput.at, now, scrollGate.touchEndAt)) {
           scrollGate.pressure += Math.min(over, geom.vh * 0.3);
           scrollGate.pushedAt = now;
           lenis.scrollTo(max, { immediate: true, force: true });
@@ -335,8 +352,11 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         const k = stageFrontierIndex(story);
         const beatIndex = beatIndexAt(timeline, p);
         const beat = timeline.beats[beatIndex];
-        const stop = Math.max(0, beat.stop);
-        night.p = p;
+        // The scene's stop and picture, and the dip over them (dip.ts): across a cut the set changes only
+        // under night, and a fast pass still dissolves rather than cuts.
+        stepDipView(view, timeline, p, Math.max(0, beat.stop), ready ? dt : 0);
+        const stop = view.stop;
+        night.p = view.p;
         if (stop !== night.stop || lastStop < 0) {
           night.stop = stop;
           fire({ type: "stopChanged" });
@@ -360,20 +380,32 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         const idle = (now - scrollInput.at) / 1000;
 
         // ---- draw ----
-        // The title card on night, lifting away as the first stop fades in.
-        const titleOut = clamp01((p - titleBeat.end) / Math.max(1e-6, fadeInBeat.end - fadeInBeat.start));
+        // The title card on night, lifting away early in the bridge line (opening.ts): it scrolls up
+        // with the page, and gone before it reaches the top band, it never sits on the route.
+        const { titleOut, sceneIn, chrome: showChrome } = openingAt(timeline, p, openState);
         set(el.title, "opacity", (1 - titleOut).toFixed(3));
         set(el.title, "transform", `translate3d(0, ${(-14 * titleOut - (k === 0 ? nudge : 0)).toFixed(2)}px, 0)`);
         // Night covers the scene until it is ready and through the title; the iris closes it at the end.
-        const opening = ready ? titleOut : 0;
+        const opening = ready ? sceneIn : 0;
         const endT = clamp01((p - endBeat.start) / Math.max(1e-6, endBeat.end - endBeat.start));
         set(el.fade, "opacity", (1 - opening).toFixed(3));
-        const [tx, ty] = night.tally;
-        set(el.fade, "--ix", `${(((tx + 1) / 2) * 100).toFixed(2)}%`);
-        set(el.fade, "--iy", `${(((1 - ty) / 2) * 100).toFixed(2)}%`);
-        set(el.fade, "--ir", `${(150 * (1 - easeOutCubic(endT))).toFixed(2)}vmax`);
+        // The letterbox slides away as the drive starts, as in the hero.
+        const bars = Math.round(easeOutCubic(opening) * 500) / 500;
+        set(el.barTop, "transform", `translate3d(0, ${(-100 * bars).toFixed(1)}%, 0)`);
+        set(el.barBottom, "transform", `translate3d(0, ${(100 * bars).toFixed(1)}%, 0)`);
+        // The iris follows the tally only while it closes: before that the camera's life would restyle the cover every frame.
+        if (endT > 0) {
+          const [tx, ty] = night.tally;
+          set(el.fade, "--ix", `${(((tx + 1) / 2) * 100).toFixed(2)}%`);
+          set(el.fade, "--iy", `${(((1 - ty) / 2) * 100).toFixed(2)}%`);
+          // Closed, the circle's soft edge goes below zero too: no pinpoint of the tally is left over the next section.
+          set(el.fade, "--ir", `${(150 * (1 - easeOutCubic(endT)) - 1.6 * endT * endT).toFixed(2)}vmax`);
+        }
         attr(el.fade, "data-iris", endT > 0 && opening >= 1);
         attr(el.waking, "data-visible", !ready && inStage);
+        // Between two stops the picture dips to night and back (dip.ts): the cut happens under it.
+        const dip = view.dip;
+        set(el.dip, "opacity", dip.toFixed(3));
 
         el.cards.forEach((card, i) => {
           const opacity = story.opacity[i];
@@ -408,7 +440,6 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           el.articles.forEach((node, i) => attr(node, "data-active", i === stop));
           lastStop = stop;
         }
-        const showChrome = p > titleBeat.end && p < endBeat.start + 0.002;
         attr(stage, "data-chrome", showChrome);
         timeline.stops.forEach((range, i) => {
           const f = clamp01((p - range.from) / Math.max(1e-6, range.to - range.from));
@@ -417,21 +448,29 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         attr(el.skip, "data-visible", inStage && p < endBeat.start && k >= 0);
 
         // The hotspot over the active board, and the reticle on its corners.
-        const targetable = showChrome && night.quadOnScreen && quadIsTargetable(night.quad, night.facing);
+        const targetable = showChrome && dip < 0.35 && night.quadOnScreen && quadIsTargetable(night.quad, night.facing);
         const path = targetable ? quadClipPath(night.quad) : "";
-        if (path !== quadPath && el.hotspot) {
+        // The camera never quite rests (its hand-held life): the hit area follows it ten times a second, not every frame.
+        const toggled = Boolean(path) !== Boolean(quadPath);
+        if (path !== quadPath && el.hotspot && (toggled || now - quadPathAt > HOTSPOT_MS)) {
           quadPath = path;
+          quadPathAt = now;
           el.hotspot.style.clipPath = path || "none";
           attr(el.hotspot, "data-live", Boolean(path));
         }
         if (!targetable && arm.via === "pointer") fire({ type: "pointermove", overQuad: false, resting: false });
         if (el.reticle) {
-          night.quad.forEach(([x, y], i) => {
-            set(el.reticle, `--c${i}x`, `${(((x + 1) / 2) * 100).toFixed(2)}%`);
-            set(el.reticle, `--c${i}y`, `${(((1 - y) / 2) * 100).toFixed(2)}%`);
-          });
-          attr(el.reticle, "data-visible", targetable && night.armTarget > 0);
-          attr(el.reticle, "data-hint", targetable && touch && active >= 0);
+          const shown = targetable && night.armTarget > 0;
+          const hint = targetable && touch && active >= 0;
+          // Its corners move with the camera: written only while it shows, so a moving shot lays nothing out.
+          if (shown || hint) {
+            night.quad.forEach(([x, y], i) => {
+              set(el.reticle, `--c${i}x`, `${(((x + 1) / 2) * 100).toFixed(1)}%`);
+              set(el.reticle, `--c${i}y`, `${(((1 - y) / 2) * 100).toFixed(1)}%`);
+            });
+          }
+          attr(el.reticle, "data-visible", shown);
+          attr(el.reticle, "data-hint", hint);
         }
         attr(stage, "data-input", scrollInput.source);
         attr(stage, "data-armed", night.armTarget > 0);
@@ -512,6 +551,16 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           );
         }
 
+        // A press riding a drive: the page follows the frontier as the drive plays, up to the next line.
+        if (carry) {
+          const frontierNow = stageFrontier(walls, story);
+          if (scrollInput.at !== carry.at || rewinding || !lenis || lenis.isStopped || p >= carry.to - 0.0005) carry = null;
+          else {
+            const want = scrollFor(Math.min(carry.to, frontierNow));
+            if (want > lenis.targetScroll + 0.5) lenis.scrollTo(want, { programmatic: false, lerp: motion.scrollLerp });
+          }
+        }
+
         gate(stageFrontier(walls, story), scroll, now);
       };
 
@@ -543,7 +592,13 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         const from = Math.min(fr, Math.max(night.p, lenis ? progressFor(lenis.targetScroll) : 0));
         const to = stageLineStep(dir, from, timeline, fr);
         recordInput(dir * 0.12 * geom.vh, source, now, geom.vh);
-        const knocked = dir > 0 && (to === null || to < (stageLineStep(dir, from, timeline, Number.POSITIVE_INFINITY) ?? 1));
+        const line = dir > 0 ? (stageLineStep(dir, from, timeline, Number.POSITIVE_INFINITY) ?? 1) : 0;
+        const short = dir > 0 && (to === null || to < line);
+        const k = stageFrontierIndex(story);
+        // A drive between two stops (a held beat, not a line) is no unread line: the press rides it
+        // to the next line at the drive's own pace (update), instead of knocking at its wall.
+        carry = short && k >= 0 && walls[k].kind === "hold" ? { to: line, at: scrollInput.at } : null;
+        const knocked = short && carry === null;
         if (knocked) {
           scrollGate.pressure += ELASTIC.knock * geom.vh;
           scrollGate.pushedAt = now;
@@ -790,7 +845,10 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           if (lenis) lenis.scrollTo(y, { immediate: true, force: true });
           else window.scrollTo(0, y);
           update(0);
+          // The capture sees the shot itself, not the camera still gliding to it.
+          night.snap = true;
         };
+        (window as DevWindow).__vaStageGate = stageGate;
         (window as DevWindow).__vaArm = (on = true) => {
           arm = on ? { armed: true, armedAt: performance.now(), via: "focus" } : DISARMED;
           night.armTarget = on ? 1 : 0;
@@ -825,6 +883,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         actions.current = null;
         delete (window as DevWindow).__vaStage;
         delete (window as DevWindow).__vaArm;
+        delete (window as DevWindow).__vaStageGate;
       };
     },
     { scope: root, dependencies: [reducedMotion, timeline, walls, lenis], revertOnUpdate: true },
@@ -850,7 +909,11 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       </p>
       <div className={styles.sticky} data-sticky data-radio-surface data-work-sticky>
         {reducedMotion ? null : <NightCanvas timeline={timeline} work={work} locale={locale} />}
+        {/* The dip to night between two stops, over the picture and under the chrome. */}
+        <div className={styles.dip} data-dip aria-hidden="true" />
         <div className={styles.sceneLabel} role="img" aria-label={work.sceneLabel} />
+        <div className={`${styles.scrim} ${styles.scrimTop}`} aria-hidden="true" />
+        <div className={`${styles.scrim} ${styles.scrimBottom}`} aria-hidden="true" />
         <div className={`${styles.bar} ${styles.barTop}`} data-bar="top" aria-hidden="true" />
         <div className={`${styles.bar} ${styles.barBottom}`} data-bar="bottom" aria-hidden="true" />
 

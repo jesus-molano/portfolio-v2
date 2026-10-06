@@ -1,0 +1,563 @@
+/*
+ * SETTINGS, the pause menu's last tab (StatsSettings.tsx): four blocks in
+ * the menu's panels, GTA style. From 1000 px AUDIO, DISPLAY and LANGUAGE
+ * stack on the left and CONTROLS takes the right; below, one column.
+ * Colours come from the tokens only; translucency is mixed from them.
+ */
+
+.settings {
+  --panel: color-mix(in srgb, var(--va-color-night) 84%, transparent);
+  --panel-line: color-mix(in srgb, var(--va-color-cream) 14%, transparent);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (min-width: 1000px) {
+  .settings {
+    grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.4fr);
+    gap: 24px;
+  }
+}
+
+.column {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.block {
+  min-width: 0;
+  padding: 18px 22px 20px;
+  border: 1px solid var(--panel-line);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--va-color-letterbox) 50%, transparent);
+}
+
+.blockTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font: 500 11px/1 var(--va-font-mono);
+  letter-spacing: 0.26em;
+  color: var(--va-color-text-muted);
+}
+
+.blockTitle::before {
+  content: "";
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--va-color-magenta);
+  box-shadow: 0 0 8px var(--va-color-magenta);
+}
+
+.label {
+  font: 600 13px/1.3 var(--va-font-display);
+  letter-spacing: 0.06em;
+  color: var(--va-color-cream);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+}
+
+.note {
+  margin-top: 10px;
+  font: 400 13px/1.4 var(--va-font-body);
+  color: var(--va-color-text-muted);
+}
+
+/* ── The radio's switch ───────────────────────────────────────────── */
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--va-color-cream);
+  font: 600 12px/1 var(--va-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.switchTrack {
+  position: relative;
+  width: 46px;
+  height: 24px;
+  border: 1px solid var(--va-color-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--va-color-night) 70%, transparent);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.switchKnob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--va-color-text-muted);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+
+.switch[aria-checked="true"] .switchTrack {
+  border-color: var(--va-color-pink);
+  background: color-mix(in srgb, var(--va-color-magenta) 45%, var(--va-color-night));
+}
+
+.switch[aria-checked="true"] .switchKnob {
+  transform: translateX(22px);
+  background: var(--va-color-cream);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--va-color-pink) 70%, transparent);
+}
+
+.switch:hover .switchTrack {
+  border-color: var(--va-color-cream);
+}
+
+.switch:focus-visible {
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ── The stations ─────────────────────────────────────────────────── */
+
+.stations,
+.sizes {
+  margin: 8px 0 6px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.stations legend,
+.sizes legend {
+  margin-bottom: 10px;
+}
+
+.stationGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 419.98px) {
+  .stationGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.station {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid var(--panel-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--va-color-night) 60%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.station:hover {
+  border-color: var(--va-color-cream);
+}
+
+/* The native radio stays in the accessibility tree and takes the focus; the chip shows it. */
+.stationInput,
+.segmentInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.frequency {
+  font: 600 11px/1 var(--va-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--accent, var(--va-color-sodium));
+}
+
+.stationName {
+  font: 700 12px/1.15 var(--va-font-display);
+  letter-spacing: 0.04em;
+  color: var(--va-color-cream);
+  overflow-wrap: anywhere;
+}
+
+.station:has(.stationInput:checked) {
+  border-color: var(--accent, var(--va-color-pink));
+  background: color-mix(in srgb, var(--accent, var(--va-color-magenta)) 18%, var(--va-color-night));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent, var(--va-color-magenta)) 35%, transparent);
+}
+
+/* The radio is off: the station it comes back on stays marked, quietly. */
+.stationGrid[data-off] .station:has(.stationInput:checked) {
+  background: color-mix(in srgb, var(--va-color-night) 60%, transparent);
+  box-shadow: none;
+}
+
+.station:has(.stationInput:focus-visible),
+.segment:has(.segmentInput:focus-visible) {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 2px;
+}
+
+/* ── The volume ───────────────────────────────────────────────────── */
+
+.volume {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  max-width: 260px;
+}
+
+.range {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--va-color-magenta) var(--level), color-mix(in srgb, var(--va-color-cream) 14%, transparent) var(--level));
+}
+
+.range::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--va-color-magenta) var(--level), color-mix(in srgb, var(--va-color-cream) 14%, transparent) var(--level));
+}
+
+.range::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+  border: 2px solid var(--va-color-night);
+  border-radius: 50%;
+  background: var(--va-color-cream);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--va-color-pink) 70%, transparent);
+  appearance: none;
+}
+
+.range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--va-color-night);
+  border-radius: 50%;
+  background: var(--va-color-cream);
+}
+
+.range:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.value {
+  min-width: 3.2em;
+  text-align: right;
+  font: 600 12px/1 var(--va-font-mono);
+  color: var(--va-color-text-muted);
+}
+
+/* ── The subtitle size ────────────────────────────────────────────── */
+
+.segmented {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--va-color-line);
+  border-radius: 999px;
+}
+
+.segment {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.segmentText {
+  font: 600 12px/1 var(--va-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.segment:hover .segmentText {
+  color: var(--va-color-cream);
+}
+
+.segment:has(.segmentInput:checked) {
+  background: var(--va-color-cream);
+}
+
+.segment:has(.segmentInput:checked) .segmentText {
+  color: var(--va-color-night);
+  font-weight: 700;
+}
+
+/* A card as the film shows it: the same block and the same size (Hero.module.css .subtitle), scaled. */
+.sample {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 76px;
+  margin-top: 12px;
+  padding: 8px;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--va-color-dusk) 40%, transparent), color-mix(in srgb, var(--va-color-night) 80%, transparent)),
+    var(--va-color-ink);
+  text-align: center;
+}
+
+.sampleText {
+  padding: 0.4em 0.85em 0.45em;
+  border-radius: 0.55em;
+  background: var(--va-color-osd);
+  font: 500 calc(clamp(0.95rem, 1.35vw, 1.2rem) * var(--scale, 1)) / 1.4 var(--va-font-body);
+  color: var(--va-color-cream);
+  text-wrap: balance;
+}
+
+.speaker {
+  margin-right: 0.25em;
+  font-weight: 700;
+  color: var(--va-color-pink);
+}
+
+/* ── The language ─────────────────────────────────────────────────── */
+
+.languages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.language {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px 0 6px;
+  border: 1px solid var(--va-color-line);
+  border-radius: 999px;
+  font: 600 14px/1 var(--va-font-body);
+  color: var(--va-color-cream);
+  text-decoration: none;
+}
+
+a.language:hover {
+  border-color: var(--va-color-pink);
+  color: var(--va-color-pink);
+}
+
+.languageCode {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--va-color-cream) 10%, transparent);
+  font: 700 11px/1 var(--va-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.languageOn {
+  border-color: var(--va-color-cream);
+  background: var(--va-color-cream);
+  color: var(--va-color-night);
+}
+
+.languageOn .languageCode {
+  background: var(--va-color-night);
+  color: var(--va-color-cream);
+}
+
+/* ── The controls ─────────────────────────────────────────────────── */
+
+.controls {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 13px/1.35 var(--va-font-body);
+  color: var(--va-color-text-muted);
+}
+
+.controls th,
+.controls td {
+  padding: 10px 10px 10px 0;
+  border-bottom: 1px solid var(--panel-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.controls tr:last-child th,
+.controls tr:last-child td {
+  border-bottom: 0;
+}
+
+.controls thead th {
+  padding-top: 0;
+  font: 500 10px/1 var(--va-font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.controls tbody th {
+  font: 600 13px/1.3 var(--va-font-display);
+  letter-spacing: 0.04em;
+  color: var(--va-color-cream);
+}
+
+.keys {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.or {
+  margin-right: 2px;
+  font: 400 12px/1 var(--va-font-body);
+  color: var(--va-color-text-muted);
+}
+
+.keycap {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border: 1px solid var(--va-color-line);
+  border-bottom-width: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--va-color-cream) 8%, transparent);
+  font: 600 11px/1 var(--va-font-mono);
+  color: var(--va-color-cream);
+  white-space: nowrap;
+}
+
+/* Each cell's column name, for the stacked rows on a phone. */
+.cellLabel {
+  display: none;
+}
+
+/* Phones: every action a card of its own, its three ways one under the other. */
+@media (max-width: 699.98px) {
+  .controls thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .controls tr {
+    display: grid;
+    gap: 6px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--panel-line);
+  }
+
+  .controls tr:last-child {
+    border-bottom: 0;
+  }
+
+  .controls th,
+  .controls td {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    align-items: center;
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .controls tbody th {
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .cellLabel {
+    display: block;
+    font: 500 10px/1.2 var(--va-font-mono);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .block {
+    padding: 16px 16px 18px;
+  }
+}
+
+/*
+ * A touch screen with no mouse (a phone, a tablet in hand): the touch
+ * column only, so a phone never reads about the keyboard or the mouse.
+ */
+@media (hover: none) and (pointer: coarse) {
+  .controls thead th:nth-child(2),
+  .controls thead th:nth-child(3),
+  .controls tbody td:nth-of-type(1),
+  .controls tbody td:nth-of-type(2) {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .switchTrack,
+  .station,
+  .segment,
+  .language,
+  .keycap {
+    border: 1px solid CanvasText;
+  }
+
+  .station:has(.stationInput:checked),
+  .segment:has(.segmentInput:checked) {
+    outline: 2px solid Highlight;
+  }
+}

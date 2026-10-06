@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * Draws the STATS map: Tenerife at night, in our palette, with Gran Canaria
- * in a box in the corner. Two crops of the same art:
+ * in a box in the corner, and the career's route across them (the ferry
+ * from Las Palmas to the dock, then up to home base). Career geography
+ * only: no hobby on it. Two crops of the same art:
  *
  *   public/stats/map.svg         16:11, with captions (1000 px and up)
  *   public/stats/map-square.svg  1:1, keyed pins (below 1000 px)
@@ -242,12 +244,6 @@ const LIGHTS_GRAN_CANARIA = [
   [-15.65, 28.14, 1.2], [-15.7, 28.1, 0.6], [-15.755, 27.82, 0.8], [-15.5, 27.92, 1],
 ];
 
-/** The career route: the ferry from Las Palmas, then up the ridge road to home base. */
-const ROUTE_ON_TENERIFE = [
-  [-16.236, 28.47], [-16.255, 28.468], [-16.3, 28.478], [-16.31, 28.48], [-16.372, 28.45], [-16.43, 28.398],
-  [-16.48, 28.345], [-16.51, 28.3], [-16.553, 28.296], [-16.585, 28.262], [-16.585, 28.236],
-];
-
 // ---------------------------------------------------------------------------
 // Drawing
 
@@ -388,7 +384,7 @@ function render(frameId) {
       `</g>`,
   );
 
-  // The two airports' runways (centre, length in km, heading): where the player wakes up.
+  // The two airports' runways (centre, length in km, heading).
   for (const [lon, lat, length, heading] of [
     [-16.5725, 28.0445, 3.2, 70],
     [-16.3415, 28.4827, 3.4, 120],
@@ -404,17 +400,6 @@ function render(frameId) {
         `<path d="${d}" stroke="${palette.cream}" stroke-opacity=".8" stroke-width="1" stroke-dasharray="3 4"/>`,
     );
   }
-
-  // The circuit Tenerife has been planning for decades, by the pit blip.
-  const pit = layout.SIDE_BLIPS.find((b) => b.id === "pit");
-  const [px, py] = P(pit.at);
-  out.push(
-    `<g transform="translate(${n1(px)} ${n1(py)}) rotate(-14)">` +
-      `<rect x="-6" y="-11" width="58" height="22" rx="11" fill="none" stroke="${TONES.roadCase}" stroke-width="6"/>` +
-      `<rect x="-6" y="-11" width="58" height="22" rx="11" fill="none" stroke="${palette.cream}" stroke-opacity=".8" stroke-width="2"/>` +
-      `<path d="M22 -14v6" stroke="${palette.cream}" stroke-width="3" stroke-dasharray="1.5 1.5"/>` +
-      `</g>`,
-  );
 
   // The summit glyph.
   out.push(
@@ -463,15 +448,9 @@ function render(frameId) {
   out.push(`<path d="${dotPath(gcDots)}" stroke="${palette.sodium}" stroke-width="2.2" stroke-linecap="round" fill="none"/>`);
   out.push(`</g>`);
 
-  // The career route: the ferry out of the box, then up to home base.
-  const army = layout.MISSIONS.find((m) => m.id === "army");
-  const [ax, ay] = PI(army.at);
-  const route = ROUTE_ON_TENERIFE.map(P);
-  // Straight up out of the box first, clear of its title, then across the strait.
-  const ferry = [[ax, ay], [ax + 6, ay - 170], route[0]];
-  const ferryPts = simplify(catmullRom(ferry, 16), 0.4);
-  const roadPts = simplify(catmullRom(route, 10), 0.4);
-  const routeD = pathData([...ferryPts, ...roadPts.slice(1)], false);
+  // The career route: the ferry out of the box to the dock, then up to home base.
+  // (statsLayout.ts careerRoute: the same curve the tests keep clear of the names.)
+  const routeD = pathData(simplify(layout.careerRoute(frame), 0.4), false);
   defs.push(`<path id="route" d="${routeD}"/>`);
   out.push(
     `<g fill="none" stroke-linecap="round" stroke-linejoin="round">` +

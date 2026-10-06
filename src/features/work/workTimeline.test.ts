@@ -80,13 +80,27 @@ describe("the work stage", () => {
     }
   });
 
-  it("is as long as the hero, at the hero's scroll density", () => {
+  // A little longer than the hero: the drives between the stops are held at a drive's pace, the
+  // camera reads PwC's blade down to its marquee, and the crane climbs the landmark at a crane's pace.
+  it("runs about as long as the hero, at the hero's scroll density", () => {
     const seconds = Math.max(...timelines.map((t) => t.seconds));
     expect(seconds).toBeGreaterThan(38);
-    expect(seconds).toBeLessThan(60);
+    expect(seconds).toBeLessThan(76);
     const vh = stageHeightVh(timelines);
     expect(vh % 10).toBe(0);
     expect(vh).toBeGreaterThanOrEqual(13 * seconds);
+  });
+
+  it("holds every drive between two stops, so no fling passes a stop in one frame", () => {
+    for (const timeline of timelines) {
+      for (const beat of timeline.beats) {
+        if (beat.id.endsWith(".open") || beat.id.endsWith(".leave") || beat.id.endsWith(".arrive")) {
+          expect(beat.kind, beat.id).toBe("hold");
+          expect(beat.seconds, beat.id).toBeGreaterThanOrEqual(1.4);
+        }
+      }
+      expect(timeline.beats.some((beat) => beat.kind === "travel")).toBe(false);
+    }
   });
 
   it("holds the crane before Heuristik's first card", () => {

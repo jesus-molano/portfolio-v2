@@ -26,6 +26,7 @@ import { createDashPainter, Dash } from "./Dash";
 import { createPedalDriver } from "./scroll/pedalDriver";
 import { Pedal } from "./Pedal";
 import { fitWidth } from "./cardFit";
+import { SUBTITLES_EVENT } from "@/lib/subtitleSize";
 import { getSceneLoading, markOnScreen, markOnStage, markQuiet, markSettled } from "./sceneLoading";
 import { titleIntro } from "./titleIntro";
 import { decay, ELASTIC, rubberBand, touchStretchMax } from "./scroll/elastic";
@@ -1715,6 +1716,8 @@ export function HeroStage({
       window.addEventListener("keydown", onKey);
       window.addEventListener("keyup", onKeyUp);
       window.addEventListener("resize", remeasure);
+      // The subtitle size changed in STATS's settings: each card fits its line again.
+      window.addEventListener(SUBTITLES_EVENT, fitCards);
       document.addEventListener("visibilitychange", onVisibility);
       root.addEventListener("pointerdown", onFinger, true);
       root.addEventListener("pointerup", onFinger, true);
@@ -1764,6 +1767,7 @@ export function HeroStage({
         window.removeEventListener("keydown", onKey);
         window.removeEventListener("keyup", onKeyUp);
         window.removeEventListener("resize", remeasure);
+        window.removeEventListener(SUBTITLES_EVENT, fitCards);
         document.removeEventListener("visibilitychange", onVisibility);
         resizeObserver?.disconnect();
         root.removeEventListener("pointerdown", onFinger, true);

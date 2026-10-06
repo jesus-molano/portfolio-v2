@@ -30,6 +30,9 @@ export const wetRoadFragmentShader = /* glsl */ `
   uniform float uKerbNear;
   uniform float uKerbFar;
   uniform float uWet;
+  uniform float uCarX;
+  uniform vec3 uHeadColor;
+  uniform float uHeadLevel;
   uniform vec3 fogColor;
   uniform float fogNear;
   uniform float fogFar;
@@ -90,6 +93,17 @@ export const wetRoadFragmentShader = /* glsl */ `
       float dist = length(p - L.xz);
       float pool = exp(-dist * dist / 9.0) * 0.35;
       color += uLightColor[i] * level * (streak * along * wet * 1.6 + pool);
+    }
+
+    // The headlights' fans: each widens ahead of its lamp and fades with distance.
+    float ahead = vWorld.x - (uCarX + 2.1);
+    if (ahead > 0.0 && uHeadLevel > 0.0) {
+      float spread = 0.45 + ahead * 0.3;
+      float left = (vWorld.z + 0.62) / spread;
+      float right = (vWorld.z - 0.62) / spread;
+      float fan = exp(-left * left) + exp(-right * right);
+      float reach = smoothstep(0.0, 1.2, ahead) * exp(-ahead * 0.16);
+      color += uHeadColor * uHeadLevel * fan * reach * (0.35 + 0.65 * wet);
     }
 
     float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);

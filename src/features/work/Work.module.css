@@ -31,7 +31,11 @@
   pointer-events: none;
 }
 
-/* Thin letterbox bars: the card and the super sit in the bottom one. */
+/*
+ * The letterbox bars frame the title on night and slide away as the first
+ * stop fades in, as in the hero (WorkStage): the drive runs full frame,
+ * with no hard band cutting the picture at its top and bottom.
+ */
 .bar {
   position: absolute;
   left: 0;
@@ -40,6 +44,41 @@
   z-index: var(--va-z-ui);
   background: var(--va-color-letterbox);
   pointer-events: none;
+  will-change: transform;
+}
+
+/*
+ * In their place, the night itself darkens toward the frame's edges, soft,
+ * so the route, the stop's super and the subtitles read over any shot.
+ */
+.scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: var(--va-z-haze);
+  pointer-events: none;
+}
+
+.scrimTop {
+  top: 0;
+  height: max(18vh, 8rem);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--va-color-night) 72%, transparent),
+    color-mix(in srgb, var(--va-color-night) 30%, transparent) 55%,
+    transparent
+  );
+}
+
+.scrimBottom {
+  bottom: 0;
+  height: max(26vh, 11rem);
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--va-color-night) 80%, transparent),
+    color-mix(in srgb, var(--va-color-night) 34%, transparent) 50%,
+    transparent
+  );
 }
 
 .barTop {
@@ -238,15 +277,35 @@
 }
 
 .super {
+  position: relative;
   grid-area: 1 / 1;
   margin: 0;
   font-family: var(--va-font-mono);
   font-size: 0.68rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--va-color-cream) 82%, transparent);
+  color: color-mix(in srgb, var(--va-color-cream) 88%, transparent);
+  /* The hero's legibility treatment: a tight shadow under the letters and a soft one round them. */
+  text-shadow:
+    0 1px 2px color-mix(in srgb, var(--va-color-night) 90%, transparent),
+    0 0 12px color-mix(in srgb, var(--va-color-night) 70%, transparent);
   opacity: 0;
   transition: opacity 300ms ease;
+}
+
+/* A soft scrim of night behind the super, so busy art (neon, a lit balcony) never runs through its words. */
+.super::before {
+  content: "";
+  position: absolute;
+  inset: -0.8rem -2rem -0.8rem -1.25rem;
+  z-index: -1;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--va-color-night) 62%, transparent),
+    color-mix(in srgb, var(--va-color-night) 30%, transparent) 70%,
+    transparent
+  );
+  pointer-events: none;
 }
 
 /* What he did there, one line, while the car is stopped. */
@@ -472,15 +531,47 @@
   line-height: 1.1;
 }
 
+/* A touch screen has no Esc: the hero's Skip drops its keycap there too. */
+@media (pointer: coarse) {
+  .skipKey {
+    display: none;
+  }
+}
+
+/* ---- the dip to night between two stops: over the picture, under the chrome ---- */
+
+.dip {
+  position: absolute;
+  inset: 0;
+  z-index: var(--va-z-haze);
+  background: var(--va-color-night);
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+
 /* ---- night cover: the title card, the wait for the scene, the iris ---- */
 
+/*
+ * The cover's night meets the sections around the city without a line:
+ * its top starts on the line-up's floor (THE USUAL SUSPECTS ends on it)
+ * and its bottom ends on it again, where STATS' own glow rises from the
+ * same floor, so the chapter card sits on one dark and the iris closes
+ * into the next section's first colour.
+ */
 .fade {
   position: absolute;
   inset: 0;
   z-index: var(--va-z-fade);
   display: grid;
   place-items: center;
-  background: var(--va-color-night);
+  background: linear-gradient(
+    to bottom,
+    var(--va-lineup-floor),
+    var(--va-color-night) 30%,
+    var(--va-color-night) 70%,
+    var(--va-lineup-floor)
+  );
   pointer-events: none;
 }
 

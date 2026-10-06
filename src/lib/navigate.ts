@@ -1,6 +1,6 @@
 /**
  * Every move of the page that is not her scrolling goes through here: an
- * in-page link (the STATS booth, a mission, the skip link), a deep link or
+ * in-page link (a STATS mission, the cinema's box office, the skip link), a deep link or
  * a fragment change (components/PageEntry.tsx), back to top, the STATS
  * tabs, Skip, Esc and End, the still hero keeping her place, the loading
  * screen starting at the top.
@@ -10,7 +10,7 @@
  *   the browser following a link) leaves Lenis where it was whenever it
  *   misses the scroll event (it drops the one after its own landing or an
  *   immediate jump, and ignores them while it glides), and her next wheel
- *   notch or swipe then scrolls on from there: one notch after the booth
+ *   notch or swipe then scrolls on from there: one notch after a link
  *   took her to the cinema, the page flew back up to the hero's end. So
  *   Lenis is re-measured and stopped, the page moved, and Lenis stood
  *   where the page landed, in the same task.
@@ -55,10 +55,19 @@ export type Passage = {
 
 /** A move with wheel, touch or a handled key this recent (ms) is her scrolling; any other is navigation. */
 export const INPUT_WINDOW_MS = 250;
+/**
+ * A move this soon (ms) after a finger lifted from a stroke is that
+ * stroke's momentum, hers too: a native fling records no input as it
+ * glides, and read as navigation it opened walls over unread lines.
+ */
+export const FLING_WINDOW_MS = 1500;
 
-/** Whether a move of the page at `now` is navigation: no scrolling input in the window before it. */
-export function isNavigation(lastInputAt: number, now: number): boolean {
-  return now - lastInputAt >= INPUT_WINDOW_MS;
+/**
+ * Whether a move of the page at `now` is navigation: no scrolling input in
+ * the window before it, and no finger lifted from a stroke just before.
+ */
+export function isNavigation(lastInputAt: number, now: number, liftedAt = Number.NEGATIVE_INFINITY): boolean {
+  return now - lastInputAt >= INPUT_WINDOW_MS && now - liftedAt >= FLING_WINDOW_MS;
 }
 
 let scroller: Scroller | null = null;

@@ -14,80 +14,112 @@ import {
   Vector3,
 } from "three";
 import { palette } from "@/design/tokens";
-import { createRandom } from "@/features/hero/scene/world";
-import { fonts, forTier, loadFaces, toTexture } from "../artCanvas";
+import { forTier, loadFaces, toTexture } from "../artCanvas";
 import { type BoardFrame, boardCorners, boardNormal, toSet } from "../boardFrame";
 import { createFloods } from "../floods";
-import { LENS, type Vec3 } from "../frame";
+import type { Vec3 } from "../frame";
 import { night } from "../nightState";
 import { type BoxItem, Boxes } from "../parts/Boxes";
 import { type Glow, type GlowHandle, Glows } from "../parts/Glows";
 import { NightPalms } from "../parts/NightPalms";
 import { beamFragmentShader, beamVertexShader } from "../shaders/beam";
 import { boardFragmentShader, boardVertexShader, structureFragmentShader } from "../shaders/board";
-import { beatP, keyAt } from "../timelineKeys";
-import { ARMY_HOLE, ARMY_POSTER, paintArmyPoster, paintCrate } from "./art/army";
+import { ARMY_GIRDER, ARMY_HOLE, ARMY_POSTER, ARMY_STEEL, armyFaces, paintArmyPoster } from "./art/army";
+import { ArmyProps } from "./army/props";
 import { instancedBoardVertexShader } from "./instanced";
 import type { NightSet, SetProps } from "./types";
+import { ArmySite } from "./army/Site";
 
 /**
  * Stop 1, the army (Las Palmas de Gran Canaria, 2018-2021): a roadside
  * poster on a sandy lot at the edge of the city, the only printed board in
  * a city of neon, lit by four sodium floods on its catwalk. A 1940s
- * propaganda poster: two sappers push a bridge girder up into the torn
- * corner under a vermilion sky (art/army.ts). The painted girder breaks
- * out of the paper as a real launching nose; armed,
- * the floods come up one after another and the nose launches one more bay.
- * The striped barrier across the lane is the stop's signal.
+ * recruiting poster: two sappers heave a bridge girder out over a river
+ * at dawn, up into the torn corner (art/army.ts). The painted girder
+ * breaks out of the paper as a real launching nose; armed, the floods
+ * come up one after another and the nose launches half a bay more.
+ * The checkpoint boom across the lane (army/Site.tsx) is the stop's signal.
  */
 
 const FRAME: BoardFrame = { centre: [11, 7, -13], yaw: -Math.PI / 9, w: 16, h: 7 };
-const OLIVE = "#5d6a33";
-const KHAKI = "#a48d58";
 
 /** Flood heads on the catwalk, and where each one aims, in board-local metres. */
-const HEADS_LOCAL: Vec3[] = [-6, -2, 2, 6].map((x) => [x, -4.1, 1.5] as Vec3);
-const AIMS_LOCAL: Vec3[] = [-6, -2, 2, 6].map((x) => [x * 0.95, -0.4, 0] as Vec3);
+/**
+ * The catwalk hangs 1.15 m under the face, so from the low camera its rail
+ * and lamp heads pass below the foot band's copy instead of through it.
+ */
+const CATWALK_DROP = 1.15;
+const HEADS_LOCAL: Vec3[] = [-6, -2, 2, 6].map((x) => [x, -FRAME.h / 2 - CATWALK_DROP - 0.05, 1.5] as Vec3);
+/** Aimed above the middle of the face, so each pool reaches the headline and fades up into the sky. */
+const AIMS_LOCAL: Vec3[] = [-6, -2, 2, 6].map((x) => [x * 0.95, 0.6, 0] as Vec3);
 const HEADS = HEADS_LOCAL.map((p) => toSet(FRAME, p));
 const AIMS = AIMS_LOCAL.map((p) => toSet(FRAME, p));
+/**
+ * The same heads seen by the paper: tighter cones aimed higher, so each
+ * lamp paints its own warm pool from the foot band up into the headline,
+ * with the night between the pools.
+ */
+const POSTER_AIMS = AIMS_LOCAL.map(([x]) => toSet(FRAME, [x, 2.6, 0]));
+/** Warm, but whiter than the lamps' sodium haze: on the paper it reads as light, not as orange ink. */
+const POSTER_FLOOD = "#ffd9a6";
 
-/** The launching nose: two side panels of 1.6 m bays, out of the torn corner, turned toward the road. */
-const NOSE = { bay: 1.6, bays: 5, height: 1.4, width: 1.2, hidden: 1 } as const;
+/** Metres per poster pixel. */
+const PX = FRAME.w / ARMY_POSTER.w;
+
+/**
+ * The launching nose: the painted girder's next panels, out of the tear
+ * over the far bank. Same depth and bay as the painted part (a
+ * Bailey-type panel twice as long as it is deep), the same V of braces
+ * round a middle post, so the paper girder and the steel one are one
+ * girder. It starts one bay back, behind the paper, with an end post
+ * where the painted girder's sixth bay ends (the hole's centre); narrow
+ * enough, at its yaw, that it crosses the paper inside the tear's dark
+ * middle and nowhere else.
+ */
+const NOSE = { bay: ARMY_GIRDER.bay * PX, bays: 3, height: ARMY_GIRDER.depth * PX, width: 0.62, hidden: 1 } as const;
+/** The tear's centre, on the paper (the poster plane sits at z -0.15). */
 const HOLE_LOCAL: Vec3 = [
   (ARMY_HOLE.x / ARMY_POSTER.w - 0.5) * FRAME.w,
   (0.5 - ARMY_HOLE.y / ARMY_POSTER.h) * FRAME.h,
-  -0.3,
+  -0.15,
 ];
 
 /** Truss members along the nose axis (local frame of the nose: x along, y up, z across). */
 function noseMembers(): BoxItem[] {
   const items: BoxItem[] = [];
   const { bay, bays, height, width } = NOSE;
+  const chord = 0.19;
   const t = 0.12;
+  const half = bay / 2;
+  const diag = Math.hypot(half, height);
+  const angle = Math.atan2(height, half);
   for (const side of [-width / 2, width / 2]) {
+    items.push({ p: [(bays * bay) / 2, height / 2, side], s: [bays * bay, chord, chord] });
+    items.push({ p: [(bays * bay) / 2, -height / 2, side], s: [bays * bay, chord, chord] });
     for (let i = 0; i < bays; i += 1) {
       const x0 = i * bay;
-      // Top and bottom chords, a vertical and a diagonal per bay.
-      items.push({ p: [x0 + bay / 2, height / 2, side], s: [bay, t, t] });
-      items.push({ p: [x0 + bay / 2, -height / 2, side], s: [bay, t, t] });
-      items.push({ p: [x0, 0, side], s: [t, height, t] });
-      const diag = Math.hypot(bay, height);
-      const angle = Math.atan2(height, bay) * (i % 2 ? 1 : -1);
-      items.push({ p: [x0 + bay / 2, 0, side], s: [diag, t * 0.8, t * 0.8], r: [0, 0, angle] });
+      // End post, middle post, and the V: bottom corners up to the middle of the top chord.
+      items.push({ p: [x0, 0, side], s: [t * 1.3, height, t * 1.3] });
+      items.push({ p: [x0 + half, 0, side], s: [t, height, t] });
+      items.push({ p: [x0 + half / 2, 0, side], s: [diag, t, t], r: [0, 0, angle] });
+      items.push({ p: [x0 + half * 1.5, 0, side], s: [diag, t, t], r: [0, 0, -angle] });
     }
-    items.push({ p: [bays * bay, 0, side], s: [t, height, t] });
+    items.push({ p: [bays * bay, 0, side], s: [t * 1.6, height, t * 1.6] });
   }
-  for (let i = 0; i <= bays; i += 1) {
-    items.push({ p: [i * bay, -height / 2, 0], s: [t, t, width] });
-    items.push({ p: [i * bay, height / 2, 0], s: [t, t, width] });
-  }
+  // Transoms under the deck every half bay, top ties at the posts.
+  for (let i = 0; i <= bays * 2; i += 1) items.push({ p: [i * half, -height / 2, 0], s: [t, t, width] });
+  for (let i = 0; i <= bays; i += 1) items.push({ p: [i * bay, height / 2, 0], s: [t, t, width] });
   return items;
 }
 
 const NOSE_ITEMS = noseMembers();
-/** The nose turns 30 degrees toward the road and lifts 14 degrees, like a nose on its rollers. */
-const NOSE_YAW = (30 * Math.PI) / 180;
-const NOSE_PITCH = (14 * Math.PI) / 180;
+/**
+ * The nose turns 16 degrees toward the road (enough to stand out of the
+ * board, little enough that on screen it carries on along the painted
+ * line) and keeps the painted girder's own pitch, a few degrees nose-up.
+ */
+const NOSE_YAW = (16 * Math.PI) / 180;
+const NOSE_PITCH = ARMY_GIRDER.pitch;
 
 /** Posts, bracing, backing, catwalk, railing and gooseneck arms, in board-local metres. */
 function structureItems(): BoxItem[] {
@@ -109,78 +141,59 @@ function structureItems(): BoxItem[] {
   }
   // The backing stands 15 cm behind the paper: closer, the two z-fight at 20 m.
   items.push({ p: [0, 0, -0.45], s: [w + 0.5, h + 0.5, 0.3] });
-  items.push({ p: [0, -h / 2 - 0.55, 0.65], s: [w + 0.6, 0.08, 1.3] });
-  items.push({ p: [0, -h / 2 + 0.45, 1.28], s: [w + 0.6, 0.06, 0.06] });
-  for (let x = -8; x <= 8; x += 2) items.push({ p: [x, -h / 2 - 0.05, 1.28], s: [0.05, 1.0, 0.05] });
+  // The catwalk, its rail (a metre high) and posts, and the brackets up to the face.
+  const deck = -h / 2 - CATWALK_DROP;
+  items.push({ p: [0, deck, 0.65], s: [w + 0.6, 0.08, 1.3] });
+  items.push({ p: [0, deck + 1.0, 1.28], s: [w + 0.6, 0.06, 0.06] });
+  for (let x = -8; x <= 8; x += 2) items.push({ p: [x, deck + 0.5, 1.28], s: [0.05, 1.0, 0.05] });
+  for (const x of [-7, -3, 3, 7]) items.push({ p: [x, deck + CATWALK_DROP / 2, 0.05], s: [0.08, CATWALK_DROP, 0.08] });
   HEADS_LOCAL.forEach(([x, y, z]) => {
     items.push({ p: [x, y - 0.25, (z + 0.65) / 2], s: [0.08, 0.08, z - 0.4] });
   });
   return items;
 }
 
-function sandbags(count: number): BoxItem[] {
-  const random = createRandom(1918);
-  const items: BoxItem[] = [];
-  const groundY = -FRAME.centre[1];
-  const perPost = Math.floor(count / 3);
-  for (const px of [-6, 0, 6]) {
-    for (let i = 0; i < perPost; i += 1) {
-      const layer = Math.floor(i / 8);
-      const a = -Math.PI * 0.1 + ((i % 8) / 7) * Math.PI * 1.2;
-      const r = 1.05 - layer * 0.18;
-      items.push({
-        p: [px + Math.cos(a) * r, groundY + 0.13 + layer * 0.24, -0.55 + Math.sin(a) * r * 0.8],
-        s: [0.62, 0.24, 0.36],
-        r: [0, -a + (random() - 0.5) * 0.3, (random() - 0.5) * 0.08],
-      });
-    }
-  }
-  return items;
-}
-
 function ArmySet({ work, tier, timeline, index }: SetProps) {
   const high = tier === "high";
   const board = work.stops.army.board;
-  const [art, setArt] = useState<{ poster: CanvasTexture; crate: CanvasTexture } | null>(null);
+  const [art, setArt] = useState<{ poster: CanvasTexture } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    let made: { poster: CanvasTexture; crate: CanvasTexture } | null = null;
-    loadFaces([`800 160px ${fonts.display()}`, `700 40px ${fonts.mono()}`]).then(() => {
+    let made: { poster: CanvasTexture } | null = null;
+    loadFaces(armyFaces()).then(() => {
       if (cancelled) return;
-      made = { poster: toTexture(forTier(paintArmyPoster(board), !high), 8), crate: toTexture(paintCrate(board.crate)) };
+      made = { poster: toTexture(forTier(paintArmyPoster(board), !high), 8) };
       setArt(made);
     });
     return () => {
       cancelled = true;
       made?.poster.dispose();
-      made?.crate.dispose();
     };
   }, [board, high]);
 
   const floods = useMemo(() => createFloods(HEADS, AIMS, palette.sodiumNight, [78, 30]), []);
+  const posterFloods = useMemo(() => createFloods(HEADS, POSTER_AIMS, POSTER_FLOOD, [50, 14]), []);
   const uniforms = useMemo(() => {
     const fog = () => UniformsUtils.clone(UniformsLib.fog);
     return {
-      poster: { ...fog(), ...floods, uMap: { value: art?.poster ?? null }, uAmbient: { value: new Color("#3b2d5c") }, uEmissive: { value: 0 }, uLift: { value: 0.75 } },
+      // A low, near-neutral night on the paper, so the cream stays cream and the sodium pools carry the face.
+      poster: { ...fog(), ...posterFloods, uMap: { value: art?.poster ?? null }, uAmbient: { value: new Color("#2f2a4a") }, uEmissive: { value: 0.05 }, uLift: { value: 2.1 } },
       structure: { ...fog(), ...floods, uColor: { value: new Color(palette.asphalt) }, uAmbient: { value: new Color("#3a2c5a") }, uRim: { value: new Color("#5a2a5a") }, uLift: { value: 1.2 } },
-      truss: { ...fog(), ...floods, uColor: { value: new Color(OLIVE) }, uAmbient: { value: new Color("#4a3c66") }, uRim: { value: new Color("#c2508f") }, uLift: { value: 1.4 } },
-      bags: { ...fog(), ...floods, uColor: { value: new Color(KHAKI) }, uAmbient: { value: new Color("#3a2f55") }, uRim: { value: new Color("#4a2a55") }, uLift: { value: 0.9 } },
+      // The painted girder's olive, its top chord catching a warm light like the painted one.
+      truss: { ...fog(), ...floods, uColor: { value: new Color(ARMY_STEEL.base) }, uAmbient: { value: new Color("#4a4652") }, uRim: { value: new Color(ARMY_STEEL.light).multiplyScalar(0.55) }, uLift: { value: 1.3 } },
       beam: { ...fog(), uColor: { value: new Color(palette.sodiumNight).multiplyScalar(0.16) }, uLevel: { value: 1 } },
     };
-  }, [floods, art]);
+  }, [floods, posterFloods, art]);
 
   const structure = useMemo(() => structureItems(), []);
-  const bags = useMemo(() => sandbags(high ? 44 : 22), [high]);
   const lampGlows = useMemo<Glow[]>(
     () => HEADS.map((position) => ({ position, size: 1.3, color: palette.sodiumNight, intensity: 2.8 })),
     [],
   );
   const glowHandle = useRef<GlowHandle | null>(null);
   const nose = useRef<Group>(null);
-  const barrier = useRef<Group>(null);
   const beams = useRef<(Mesh | null)[]>([]);
-  const leave = useMemo(() => ({ from: beatP(timeline, "army.leave"), to: beatP(timeline, "army.leave", 1) }), [timeline]);
   const armedAt = useRef(-1);
 
   /** The nose's pose: out of the torn corner, along its axis by `out` metres. */
@@ -206,22 +219,19 @@ function ArmySet({ work, tier, timeline, index }: SetProps) {
       const level = 0.7 + 0.55 * armed * on * sputter;
       // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
       floods.uFloodLevel.value[i] = level;
+      // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
+      posterFloods.uFloodLevel.value[i] = level;
       glowHandle.current?.setLevel(i, 0.75 + 0.4 * armed * on * sputter);
       const beam = beams.current[i];
       if (beam) (beam.material as unknown as { uniforms: { uLevel: { value: number } } }).uniforms.uLevel.value = 0.6 + 0.8 * armed * on;
     }
-    // The nose launches one more bay when armed, and settles back on its roller.
+    // The nose launches half a bay more when armed, and settles back on its roller.
     if (nose.current) {
-      const out = NOSE.bay * armed - 0.04 * Math.max(0, armed - 0.9) * 10;
+      const out = NOSE.bay * 0.5 * armed - 0.04 * Math.max(0, armed - 0.9) * 10;
       const { axis } = nosePose;
       const [sx, sy, sz] = nosePose.start;
       const back = -NOSE.bay * NOSE.hidden;
       nose.current.position.set(sx + axis.x * (back + out), sy + axis.y * (back + out), sz + axis.z * (back + out));
-    }
-    // The barrier lifts with the scroll in the leave beat (the first 40% of it).
-    if (barrier.current) {
-      const u = Math.min(1, Math.max(0, (night.p - leave.from) / Math.max(1e-6, (leave.to - leave.from) * 0.4)));
-      barrier.current.rotation.x = (80 * Math.PI) / 180 * u * u * (3 - 2 * u);
     }
   });
 
@@ -235,16 +245,6 @@ function ArmySet({ work, tier, timeline, index }: SetProps) {
         const centre = new Vector3(...head).addScaledVector(dir, length / 2);
         return { centre, q, length };
       }),
-    [],
-  );
-
-  const barrierStripes = useMemo<BoxItem[]>(
-    () =>
-      Array.from({ length: 7 }, (_, i) => ({
-        p: [0, 0, -0.3 - i * 0.6] as Vec3,
-        s: [0.12, 0.16, 0.6] as Vec3,
-        color: i % 2 ? palette.cream : palette.sodiumNight,
-      })),
     [],
   );
 
@@ -294,32 +294,20 @@ function ArmySet({ work, tier, timeline, index }: SetProps) {
         <Boxes items={structure}>
           <shaderMaterial uniforms={uniforms.structure} vertexShader={instancedBoardVertexShader} fragmentShader={structureFragmentShader} fog />
         </Boxes>
-        <Boxes items={bags} geometry={<sphereGeometry args={[0.5, 8, 6]} />}>
-          <shaderMaterial uniforms={uniforms.bags} vertexShader={instancedBoardVertexShader} fragmentShader={structureFragmentShader} fog />
-        </Boxes>
         {art ? (
           <mesh position={[0, 0, -0.15]}>
             <planeGeometry args={[FRAME.w, FRAME.h, 4, 2]} />
             <shaderMaterial uniforms={uniforms.poster} vertexShader={boardVertexShader} fragmentShader={boardFragmentShader} fog />
           </mesh>
         ) : null}
-        {/* The launching nose, out of the torn corner. */}
+        {/* The launching nose, out of the tear over the far bank. */}
         <group ref={nose} quaternion={nosePose.q}>
           <Boxes items={NOSE_ITEMS}>
             <shaderMaterial uniforms={uniforms.truss} vertexShader={instancedBoardVertexShader} fragmentShader={structureFragmentShader} fog />
           </Boxes>
-          <mesh position={[NOSE.bay * NOSE.bays + 0.2, -NOSE.height / 2 - 0.25, 0]} rotation-x={Math.PI / 2}>
-            <cylinderGeometry args={[0.25, 0.25, NOSE.width + 0.3, 12]} />
-            <meshStandardMaterial color="#2a2238" roughness={0.5} metalness={0.6} />
-          </mesh>
         </group>
-        {art ? (
-          <mesh position={[3.2, -FRAME.centre[1] + 0.42, 2.6]} rotation-y={0.4}>
-            <boxGeometry args={[1.2, 0.84, 0.84]} />
-            <meshStandardMaterial map={art.crate} roughness={0.85} />
-          </mesh>
-        ) : null}
       </group>
+      <ArmyProps frame={FRAME} tier={tier} />
 
       <Glows glows={lampGlows} handle={glowHandle} />
       {beamItems.slice(0, high ? 4 : 2).map((beam, i) => (
@@ -346,16 +334,8 @@ function ArmySet({ work, tier, timeline, index }: SetProps) {
         </mesh>
       ))}
 
-      {/* The stop's signal: a striped road-works barrier across the lane. */}
-      <mesh position={[3, 0.55, 2.35]}>
-        <boxGeometry args={[0.18, 1.1, 0.18]} />
-        <meshStandardMaterial color={palette.asphalt} roughness={0.6} />
-      </mesh>
-      <group ref={barrier} position={[3, 1.05, 2.3]}>
-        <Boxes items={barrierStripes}>
-          <meshStandardMaterial roughness={0.5} emissive="#2a1a10" />
-        </Boxes>
-      </group>
+      {/* The ground, the perimeter and the checkpoint, whose boom is the stop's signal (army/Site.tsx). */}
+      <ArmySite tier={tier} timeline={timeline} index={index} />
 
       <NightPalms
         palms={(high
@@ -373,24 +353,6 @@ export const army: NightSet = {
   Set: ArmySet,
   board: boardCorners(FRAME, 0.2),
   boardNormal: boardNormal(FRAME),
-  shots: (timeline) => {
-    const wide = { position: [-15, 2.4, 17] as Vec3, look: [6, 4.6, -10] as Vec3, fov: LENS.mm28 };
-    // Low behind the car's rear quarter: his head and shoulder a dark shape lower left, looking up at the board.
-    const readFrom = { position: [-8.6, 1.7, 3.0] as Vec3, look: [10.5, 4.6, -13] as Vec3, fov: LENS.mm28 };
-    const readTo = { position: [-7.4, 1.75, 2.6] as Vec3, look: [10.5, 4.8, -13] as Vec3, fov: LENS.mm28 };
-    return [
-      keyAt(timeline, "title", 0, wide),
-      keyAt(timeline, "army.arrive", 1, wide),
-      keyAt(timeline, "army.card0", 0, readFrom),
-      keyAt(timeline, "army.card1", 1, readTo),
-    ];
-  },
-  // On a phone the camera turns within 10 degrees of square to the board, then pulls back.
-  portrait: (timeline) => {
-    // From down the road, so the car sits in front of the board's foot rather than beside it.
-    const square = { position: [-9, 2.2, 13] as Vec3, look: [9, 5.2, -13] as Vec3, fov: LENS.mm35 };
-    return [keyAt(timeline, "title", 0, square), keyAt(timeline, "army.card1", 1, { ...square, position: [-8, 2.3, 12] })];
-  },
   maxBack: 18,
   lights: [
     { position: [11, 3.4, -9], color: palette.sodiumNight, intensity: 90, distance: 40 },

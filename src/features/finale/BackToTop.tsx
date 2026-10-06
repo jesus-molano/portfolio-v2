@@ -12,8 +12,8 @@ const GLIDE = 1.2;
  * with it, a 1.2 s glide (Lenis, through lib/navigate.ts, so Lenis and the
  * page stay together) that rewinds the hero film on the way, then the
  * keyboard focus on the hero's title, so the next Tab starts from the top
- * as well. It drops the old fragment from the address (#projects after
- * the STATS booth), so a reload lands at the top too.
+ * as well. It drops the old fragment from the address (a deep link such
+ * as #projects), so a reload lands at the top too.
  */
 export function BackToTop({ label, className }: { label: string; className?: string }) {
   const reducedMotion = usePrefersReducedMotion();

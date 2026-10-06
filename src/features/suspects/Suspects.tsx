@@ -4,6 +4,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import manifest from "../../../public/interlude/manifest.json";
 import { CulpritPlate } from "./CulpritPlate";
+import { FitLine } from "./FitLine";
 import { CULPRIT, isCatId, parseManifest, placeLineup, placementStyle, plateNumber, PHONE_CHART, WIDE_CHART } from "./lineup";
 import styles from "./Suspects.module.css";
 
@@ -23,10 +24,12 @@ function marks(topCm: number): number[] {
 /**
  * THE USUAL SUSPECTS: a police line-up of Jesús's four cats against a
  * height chart, right after the hero. A server component with no canvas
- * and no looping animation; its one piece of script is the culprit's
- * plate (CulpritPlate), whose GUILTY stamp hover, focus or a tap brings
- * up. The cats are images on one scale (lineup.ts), the wall, chart,
- * plates and his complaint are HTML, and every word is real text.
+ * and no looping animation; its script is the culprit's plate
+ * (CulpritPlate), whose GUILTY stamp hover, focus or a tap brings up, and
+ * the fit of his line's card (FitLine). The cats are images on one scale
+ * (lineup.ts), the wall, chart, plates and his complaint are HTML, and
+ * every word is real text. It ends on his line to the officer, pointing at
+ * number 3, in the hero's subtitle card.
  *
  * It opens on its chapter card, THE CREW, the payoff of the hero's last
  * line ("Come and meet the crew"), over the wall's night lead-in; the
@@ -123,8 +126,17 @@ export function Suspects({ dict, lang }: Props) {
           <ul className={styles.damages}>
             {dict.complaint.items.map((item) => (
               <li key={item}>
-                <span className={styles.tick} aria-hidden="true">
-                  ✓
+                {/*
+                  The printed box and the pen's tick, drawn: a ✓ glyph came
+                  from whatever fallback face the system had, each at its own
+                  height. The box stands in the item's first line, on its
+                  x-height centre (Suspects.module.css).
+                */}
+                <span aria-hidden="true">
+                  <svg className={styles.box} viewBox="0 0 16 16" focusable="false">
+                    <rect className={styles.boxLine} x="0.5" y="0.5" width="15" height="15" />
+                    <path className={styles.pen} d="M3.4 8.4c1.3.9 2.4 2.2 3.3 3.9C8.9 7.6 12 3 16.4-1.4" />
+                  </svg>
                 </span>
                 <span>{item}</span>
               </li>
@@ -133,10 +145,11 @@ export function Suspects({ dict, lang }: Props) {
           <p className={styles.tally}>{dict.complaint.tally}</p>
         </div>
 
+        {/* His line to the officer, on a row of its own: the hero's subtitle card, as wide as its widest line. */}
         <p className={styles.caption}>
-          <span className={styles.captionText}>
+          <FitLine className={styles.captionText}>
             <span className={styles.speaker}>{dict.speaker}:</span> {dict.line}
-          </span>
+          </FitLine>
         </p>
       </div>
     </section>

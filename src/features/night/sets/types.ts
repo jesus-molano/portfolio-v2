@@ -3,7 +3,7 @@ import type { QualityTier } from "@/features/hero/useQualityTier";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { StageTimeline } from "@/features/work/workTimeline";
-import type { Key, Pose, Vec3 } from "../frame";
+import type { Pose, Vec3 } from "../frame";
 
 /** A light the wet road mirrors as a streak (see shaders/wetRoad.ts). */
 export type Streak = { position: Vec3; color: string; level: number };
@@ -33,12 +33,8 @@ export type NightSet = {
   /** The board's corners (top left, top right, bottom right, bottom left) and its facing. */
   board: readonly [Vec3, Vec3, Vec3, Vec3];
   boardNormal: Vec3;
-  /** Camera keys on the film, from the timeline. */
-  shots: (timeline: StageTimeline) => Key[];
-  /** Keys for a portrait screen, where the landscape shot cannot be fitted (default: `shots`). */
-  portrait?: (timeline: StageTimeline) => Key[];
-  /** What a portrait fit frames for a pose at film position p (default: the board and the car). */
-  subject?: (pose: Pose, p: number, car: Vec3[]) => Vec3[];
+  /** What a portrait fit frames for a pose at film position p (default: the board and the car at its line; the shots are direction.ts'). */
+  subject?: (pose: Pose, p: number, car: readonly Vec3[]) => readonly Vec3[];
   /** How far a portrait fit may pull the camera back (m). */
   maxBack: number;
   lights: readonly [StopLight, StopLight];

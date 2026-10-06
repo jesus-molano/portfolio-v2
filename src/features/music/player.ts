@@ -7,11 +7,39 @@
  *
  * Only the track on air is fetched; the next one starts loading in the last
  * PREFETCH_SECONDS of it, on a deck of its own, so it starts without a gap.
+ *
+ * Behind the pause menu (pauseMix.ts) the music is muffled and ducked: the
+ * decks play through one Web Audio bus, a low-pass filter and a gain,
+ * built in the gesture that first tunes the radio. A deck joins the bus
+ * only once the AudioContext runs (a media element routed into a stopped
+ * context would go silent); until then, or without Web Audio, the pause
+ * ducks the deck's own volume instead and nothing is filtered. The decks'
+ * crossfades, her volume and the hidden tab's pause stay on the elements,
+ * as before; the bus only shapes what comes out of them. The tracks are
+ * same-origin files, so the graph hears them (a cross-origin file would
+ * play silence through it).
  */
+import { BLIP_LEVEL, type MixRamp, mixAt, mixTarget, PAUSE_BLIPS, rampCurve, rampTo } from "./pauseMix";
 import { livePosition, nextTrack, type Station, type Track } from "./stations";
 
-/** Every track is normalised to -16 LUFS, so one level suits them all. */
+/** Every track is normalised to -16 LUFS, so one level suits them all: her volume at 100 %. */
 const VOLUME = 0.65;
+
+/** How fast her volume reaches the deck on air. */
+const LEVEL_MS = 180;
+
+/**
+ * The level a deck on air plays at: the stations' one level, times her
+ * volume (STATS's settings, 0 to 1) and a duck (1 when nothing ducks it:
+ * the pause menu's, where the decks do not go through Web Audio).
+ */
+/** The events that carry a user activation, on which a stopped AudioContext may resume. */
+const WAKE_EVENTS = ["pointerdown", "pointerup", "touchend", "keydown"] as const;
+
+export function deckVolume(volume: number, duck: number): number {
+  const clamp = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1);
+  return VOLUME * clamp(volume) * clamp(duck);
+}
 const FADE_IN_MS = 900;
 const FADE_OUT_MS = 450;
 /** Tuning static: length and peak level (linear, before the master). */
@@ -103,13 +131,19 @@ export type Player = {
   tune(station: Program | null, options?: { crackle?: boolean; fromTop?: boolean }): Promise<void>;
   /** Pauses while the tab is hidden; back on air, at the live position, when it shows. */
   setHidden(hidden: boolean): void;
+  /** Her volume, 0 to 1 (STATS's settings). */
+  setVolume(volume: number): void;
+  /** The pause menu is on screen: the music goes behind it (muffled, ducked), and comes back. */
+  setPaused(paused: boolean): void;
+  /** The pause menu's blip as the game pauses or resumes, at her volume. */
+  blip(kind: keyof typeof PAUSE_BLIPS): void;
   dispose(): void;
 };
 
 type AudioContextClass = typeof AudioContext;
 
 /** Null outside the browser. */
-export function createPlayer(events: PlayerEvents = {}): Player | null {
+export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Player | null {
   if (typeof window === "undefined" || typeof Audio === "undefined") return null;
   const decks: HTMLAudioElement[] = [];
   const timers = new Map<HTMLAudioElement, ReturnType<typeof setTimeout>>();
@@ -124,6 +158,18 @@ export function createPlayer(events: PlayerEvents = {}): Player | null {
   let failures = 0;
   let hidden = false;
   let context: AudioContext | null = null;
+  let level = volume;
+  /** The pause menu is on screen, and the mix's move toward it or away (pauseMix.ts). */
+  let paused = false;
+  let ramp: MixRamp | null = null;
+  /** The pause's bus: decks -> input -> low-pass -> duck -> speakers. */
+  let bus: { input: GainNode; filter: BiquadFilterNode; duck: GainNode } | null = null;
+  /** Decks that play through the bus (an element joins a graph once, for good). */
+  const routed = new WeakSet<HTMLAudioElement>();
+  /** The pause's duck on the deck itself, for a deck the bus does not carry. */
+  const ownDuck = (media: HTMLAudioElement | undefined) => (media && routed.has(media) ? 1 : mixTarget(paused).gain);
+  /** What the deck on air plays at now. */
+  const target = () => deckVolume(level, ownDuck(live?.deck));
 
   const elapsed = (station: Program) => Date.now() / 1000 - (epochs.get(station.id) ?? 0);
 
@@ -185,7 +231,7 @@ export function createPlayer(events: PlayerEvents = {}): Player | null {
   /** Plays the live deck and brings it up to full volume. */
   const onAir = async (media: HTMLAudioElement, ms: number) => {
     await media.play();
-    if (live?.deck === media && !hidden) fade(media, VOLUME, ms);
+    if (live?.deck === media && !hidden) fade(media, target(), ms);
   };
 
   /** The next track of the live station: on the deck that preloaded it, or on the same one. */
@@ -201,7 +247,7 @@ export function createPlayer(events: PlayerEvents = {}): Player | null {
       media.pause();
       media = next;
       stopFade(media);
-      media.volume = VOLUME;
+      media.volume = target();
     } else {
       dropQueue();
       load(media, track, 0);
@@ -266,17 +312,99 @@ export function createPlayer(events: PlayerEvents = {}): Player | null {
     deck.addEventListener("playing", () => onPlaying(deck));
     deck.addEventListener("error", () => onError(deck));
     decks.push(deck);
+    route(deck);
     return deck;
   };
 
-  const crackle = () => {
+  /** The page's one AudioContext, made on the first sound that needs it; null without Web Audio. */
+  const audio = (): AudioContext | null => {
     const Context =
       window.AudioContext ?? (window as unknown as { webkitAudioContext?: AudioContextClass }).webkitAudioContext;
-    if (!Context) return;
+    if (!Context) return null;
+    context ??= new Context();
+    if (context.state === "suspended") void context.resume().catch(() => {});
+    return context;
+  };
+
+  /** Moves the bus's params along the current ramp, from where they are now. */
+  const schedule = () => {
+    if (!bus || !context || !ramp) return;
+    const now = performance.now();
+    const left = Math.max(0, ramp.start + ramp.ms - now);
+    const rest: MixRamp = { from: mixAt(ramp, now), to: ramp.to, start: now, ms: left };
+    const at = context.currentTime;
+    for (const [param, key] of [
+      [bus.duck.gain, "gain"],
+      [bus.filter.frequency, "cutoff"],
+    ] as const) {
+      param.cancelScheduledValues(0);
+      try {
+        if (left > 0) param.setValueCurveAtTime(rampCurve(rest, key), at, left / 1000);
+        else param.setValueAtTime(rest.to[key], at);
+      } catch {
+        param.value = rest.to[key];
+      }
+    }
+  };
+
+  /** Routes a deck into the bus, once the context runs; never into a stopped one, which would mute it. */
+  const route = (media: HTMLAudioElement) => {
+    if (!bus || !context || context.state !== "running" || routed.has(media)) return;
     try {
-      context ??= new Context();
-      if (context.state === "suspended") void context.resume();
-      const ctx = context;
+      context.createMediaElementSource(media).connect(bus.input);
+      routed.add(media);
+    } catch {
+      // Already in a graph, or no media element source: it plays on its own, ducked by its volume.
+    }
+    // Its own duck comes off as the bus's takes over.
+    if (media === live?.deck && !hidden && !fading.has(media)) fade(media, target(), LEVEL_MS);
+  };
+
+  /**
+   * A context stopped by the browser (iOS after a call, a long hidden tab)
+   * starts again on her next gesture: a key, a click, or a tap, which only
+   * carries the activation on its way up (touchend, a touch's pointerup;
+   * a touch's pointerdown does not, RadioButton.tsx lists the same).
+   */
+  const wake = () => {
+    if (context && context.state !== "running" && !hidden) void context.resume().catch(() => {});
+  };
+
+  /** The pause's bus, built in the gesture that first tunes the radio. */
+  const ensureBus = () => {
+    if (bus) return;
+    try {
+      const ctx = audio();
+      if (!ctx) return;
+      // Playback, as an <audio> plays, not the ringer's: iOS's silent switch must not mute the radio once it runs through Web Audio.
+      const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+      if (session?.type === "auto") session.type = "playback";
+      const input = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.Q.value = 0.9;
+      const duck = ctx.createGain();
+      const mix = ramp ? mixAt(ramp, performance.now()) : mixTarget(false);
+      filter.frequency.value = mix.cutoff;
+      duck.gain.value = mix.gain;
+      input.connect(filter).connect(duck).connect(ctx.destination);
+      bus = { input, filter, duck };
+      schedule();
+      const routeAll = () => {
+        if (ctx.state === "running") decks.forEach(route);
+      };
+      ctx.addEventListener("statechange", routeAll);
+      routeAll();
+      for (const type of WAKE_EVENTS) window.addEventListener(type, wake, true);
+    } catch {
+      bus = null;
+    }
+  };
+
+  const crackle = () => {
+    try {
+      const ctx = audio();
+      if (!ctx) return;
       const now = ctx.currentTime;
       const seconds = STATIC_MS / 1000;
       const buffer = ctx.createBuffer(1, Math.round(ctx.sampleRate * seconds), ctx.sampleRate);
@@ -291,7 +419,9 @@ export function createPlayer(events: PlayerEvents = {}): Player | null {
       band.frequency.exponentialRampToValueAtTime(3400, now + seconds);
       const level = ctx.createGain();
       level.gain.value = STATIC_LEVEL;
-      noise.connect(band).connect(level).connect(ctx.destination);
+      // The static is the radio's too: behind the pause menu it is muffled with the music.
+      const out = bus?.input ?? ctx.destination;
+      noise.connect(band).connect(level).connect(out);
       // A faint heterodyne whistle gliding down under the noise.
       const whistle = ctx.createOscillator();
       whistle.frequency.setValueAtTime(2400, now);
@@ -300,7 +430,7 @@ export function createPlayer(events: PlayerEvents = {}): Player | null {
       whistleLevel.gain.setValueAtTime(0.0001, now);
       whistleLevel.gain.exponentialRampToValueAtTime(STATIC_LEVEL * 0.12, now + 0.04);
       whistleLevel.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
-      whistle.connect(whistleLevel).connect(ctx.destination);
+      whistle.connect(whistleLevel).connect(out);
       noise.start(now);
       whistle.start(now);
       whistle.stop(now + seconds);
@@ -311,6 +441,8 @@ export function createPlayer(events: PlayerEvents = {}): Player | null {
 
   return {
     async tune(station, { crackle: withStatic = true, fromTop = false } = {}) {
+      // Called in her gesture: the one moment a new AudioContext is sure to run.
+      if (station) ensureBus();
       if (withStatic) crackle();
       const previous = live?.deck ?? null;
       if (!station || station.tracks.length === 0) {
@@ -347,6 +479,8 @@ export function createPlayer(events: PlayerEvents = {}): Player | null {
         media.pause();
         return;
       }
+      // A context the browser stopped while hidden plays again (the bus carries the decks).
+      wake();
       // Back on air where the broadcast is now, which may be a later track.
       const { station } = live;
       const { index, offset } = livePosition(station.tracks, elapsed(station));
@@ -362,13 +496,57 @@ export function createPlayer(events: PlayerEvents = {}): Player | null {
         // Blocked: the music button still shows the station; the wheel plays it.
       });
     },
+    setVolume(next) {
+      level = next;
+      if (live && !hidden && !fading.has(live.deck)) fade(live.deck, target(), LEVEL_MS);
+    },
+    setPaused(next) {
+      if (next === paused) return;
+      paused = next;
+      ramp = rampTo(ramp, paused, performance.now());
+      schedule();
+      // A deck outside the bus ducks on its own volume, over the same time.
+      if (live && !routed.has(live.deck) && !hidden && !fading.has(live.deck)) fade(live.deck, target(), ramp.ms);
+    },
+    blip(kind) {
+      if (hidden) return;
+      const peak = BLIP_LEVEL * Math.min(1, Math.max(0, level));
+      if (!(peak > 0)) return;
+      // Only on a running context: notes scheduled on a stopped one would sound late, whenever it resumes.
+      if (!context || context.state !== "running") return;
+      try {
+        const ctx = context;
+        const now = ctx.currentTime;
+        // Triangles through a gentle low-pass: round, never a beep.
+        const tone = ctx.createBiquadFilter();
+        tone.type = "lowpass";
+        tone.frequency.value = 2600;
+        tone.connect(ctx.destination);
+        PAUSE_BLIPS[kind].forEach(({ frequency, at, length, level: share }) => {
+          const note = ctx.createOscillator();
+          note.type = "triangle";
+          note.frequency.setValueAtTime(frequency, now + at);
+          const gain = ctx.createGain();
+          gain.gain.setValueAtTime(0.0001, now + at);
+          gain.gain.exponentialRampToValueAtTime(peak * share, now + at + 0.008);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + at + length);
+          note.connect(gain).connect(tone);
+          note.start(now + at);
+          note.stop(now + at + length + 0.02);
+        });
+      } catch {
+        // No Web Audio: the pause is silent.
+      }
+    },
     dispose() {
+      for (const type of WAKE_EVENTS) window.removeEventListener(type, wake, true);
       decks.forEach(unload);
       decks.length = 0;
       live = null;
       queued = null;
       void context?.close().catch(() => {});
       context = null;
+      bus = null;
     },
   };
 }

@@ -14,13 +14,13 @@ import { reveal } from "@/lib/reveal";
  * - A link to a section (/en#contact, /es#projects) lands there. The
  *   browser's own jump cannot: the loading screen starts the page at the
  *   top, and the hero holds the scroll for its film. A target in a closed
- *   tab (STATS's #stats-sheet) opens its tab first; the page goes there
+ *   tab (STATS's #stats-map, #stats-settings) opens its tab first; the page goes there
  *   through lib/navigate.ts, which opens the hero's walls on the way past
  *   it and moves Lenis with the page; the target takes the focus. A later
  *   change of the fragment (the address bar) does the same.
- * - An in-page link (the STATS booth, a mission, the skip link) goes the
- *   same way instead of the browser's own jump, which left Lenis behind:
- *   one notch after the booth took her to the cinema, the page flew back
+ * - An in-page link (a STATS mission, the cinema's box office, the skip
+ *   link) goes the same way instead of the browser's own jump, which left
+ *   Lenis behind: one notch after a link took her to the cinema, the page flew back
  *   up to the hero's end. The address still names the target, with a new
  *   history entry, as the browser's jump would leave it, and the entry she
  *   left remembers where she was: Back returns there, Forward to the
@@ -42,7 +42,8 @@ export function PageEntry() {
       const target = id ? document.getElementById(id) : null;
       if (!target) return false;
       // A target in a closed tab opens it first (lib/reveal.ts), and may be seen from its section.
-      goTo(reveal(target), { focus: target });
+      const { view, focus } = reveal(target);
+      goTo(view, { focus });
       return true;
     };
 

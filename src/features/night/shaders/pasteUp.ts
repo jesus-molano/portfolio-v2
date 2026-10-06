@@ -52,6 +52,16 @@ export const wallFragmentShader = /* glsl */ `
     return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
   }
 
+  // Value noise, smoothly interpolated between the cells' hashes.
+  float valueNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    float a = mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x);
+    float b = mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x);
+    return mix(a, b, u.y);
+  }
+
   void main() {
     vec3 albedo;
     if (vWorld.y < uBrickTop) {
@@ -64,7 +74,10 @@ export const wallFragmentShader = /* glsl */ `
       vec3 brick = mix(vec3(0.36, 0.13, 0.12), vec3(0.5, 0.22, 0.17), tone);
       albedo = mix(brick, vec3(0.42, 0.38, 0.4), mortar);
     } else {
-      float stain = hash(floor(vWorld.xy * 2.0)) * 0.08;
+      // Damp and soot that run into each other: one hash per half-metre cell
+      // painted the plaster as a grid of flat squares, which a phone's close
+      // shot read as a low-resolution texture.
+      float stain = (valueNoise(vWorld.xy * 1.3) * 0.65 + valueNoise(vWorld.xy * 4.1 + 7.0) * 0.35) * 0.08;
       albedo = vec3(0.62, 0.55, 0.62) - stain;
     }
     vec3 color = albedo * wallLight(vWorld);
@@ -77,15 +90,21 @@ export const wallFragmentShader = /* glsl */ `
  * The posters: instanced planes, each showing its own rectangle of the
  * atlas (`aUvRect`), standing 3 mm per layer off the wall. A loose corner
  * lifts (`aLift`) and flutters on time; torn paper is cut out by the
- * atlas alpha so the older bill beneath shows.
+ * atlas alpha so the older bill beneath shows. The fresh sheet (`aFresh`)
+ * shows only down to `uReveal` of its height, lifted where it is still
+ * being laid, and shines with wet paste while `uWet` lasts.
  */
 export const pasteUpVertexShader = /* glsl */ `
   attribute vec4 aUvRect;
   attribute float aLift;
   attribute float aSeed;
+  attribute float aFresh;
   uniform float uTime;
   uniform float uLiftExtra;
+  uniform float uReveal;
   varying vec2 vUv;
+  varying vec2 vLocal;
+  varying float vFresh;
   varying vec3 vWorld;
   varying float vFogDepth;
 
@@ -97,6 +116,12 @@ export const pasteUpVertexShader = /* glsl */ `
     float flutter = sin(uTime * 3.1 + aSeed * 6.28) * 0.5 + sin(uTime * 5.3 + aSeed * 3.1) * 0.25;
     p.z += curl * (0.25 + 0.08 * flutter);
     p.x -= curl * 0.05;
+    // The fresh sheet stands off the wall just above the brush, where it is still being laid down.
+    float edge = 1.0 - uReveal;
+    float laying = aFresh * (1.0 - smoothstep(0.0, 0.12, local.y - edge)) * step(edge, local.y) * step(uReveal, 0.999);
+    p.z += laying * 0.06;
+    vLocal = local;
+    vFresh = aFresh;
     vUv = vec2(mix(aUvRect.x, aUvRect.z, uv.x), mix(aUvRect.y, aUvRect.w, uv.y));
     vec4 world = modelMatrix * instanceMatrix * vec4(p, 1.0);
     vWorld = world.xyz;
@@ -108,19 +133,28 @@ export const pasteUpVertexShader = /* glsl */ `
 
 export const pasteUpFragmentShader = /* glsl */ `
   uniform sampler2D uMap;
+  uniform float uReveal;
+  uniform float uWet;
   uniform vec3 fogColor;
   uniform float fogNear;
   uniform float fogFar;
   ${wallLight}
   varying vec2 vUv;
+  varying vec2 vLocal;
+  varying float vFresh;
   varying vec3 vWorld;
   varying float vFogDepth;
 
   void main() {
+    // The fresh sheet exists only as far down as the brush has laid it.
+    if (vFresh > 0.5 && vLocal.y < 1.0 - uReveal) discard;
     vec4 art = texture2D(uMap, vUv);
     if (art.a < 0.5) discard;
     // Day-glo stays under the bloom threshold: the bills read, only bulbs bloom.
     vec3 color = min(art.rgb * wallLight(vWorld), vec3(0.8));
+    // Wet paste: the brush's diagonal strokes catch the lantern until the sheet dries.
+    float strokes = 0.5 + 0.5 * sin((vLocal.x * 3.0 + vLocal.y * 1.4) * 7.0 + sin(vLocal.y * 11.0) * 1.2);
+    color += vFresh * uWet * (0.03 + 0.04 * strokes * strokes) * vec3(1.0, 0.86, 0.7);
     float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);
     gl_FragColor = vec4(mix(color, fogColor, fogFactor), 1.0);
   }

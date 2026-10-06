@@ -4,6 +4,8 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { Color, type Mesh, UniformsLib, UniformsUtils, Vector3 } from "three";
 import { palette } from "@/design/tokens";
+import type { StageTimeline } from "@/features/work/workTimeline";
+import { carAt, type CarState, HEADLIGHT } from "./carPath";
 import { night } from "./nightState";
 import type { NightSet } from "./sets/types";
 import { WET_ROAD_LIGHTS, wetRoadFragmentShader, wetRoadVertexShader } from "./shaders/wetRoad";
@@ -15,13 +17,15 @@ const KERB = { h: 0.16, d: 0.35 } as const;
 
 /**
  * The wet street every stop shares: dark violet asphalt that mirrors the
- * stop's lights as long streaks, its lane lines, and the two kerbs. Its
- * uniforms switch with the stop, so one draw serves the whole drive.
+ * stop's lights as long streaks, its lane lines, the two kerbs, and the
+ * car's headlights on the asphalt ahead of it. Its uniforms switch with the
+ * stop, so one draw serves the whole drive.
  */
-export function Street({ sets }: { sets: readonly NightSet[] }) {
+export function Street({ sets, timeline }: { sets: readonly NightSet[]; timeline: StageTimeline }) {
   const near = useRef<Mesh>(null);
   const far = useRef<Mesh>(null);
   const lastStop = useRef(-1);
+  const car = useRef<CarState>({ x: 0, brake: 1, stop: 0 });
   const uniforms = useMemo(
     () =>
       UniformsUtils.merge([
@@ -35,6 +39,9 @@ export function Street({ sets }: { sets: readonly NightSet[] }) {
           uKerbNear: { value: 1.9 },
           uKerbFar: { value: -5.4 },
           uWet: { value: 1 },
+          uCarX: { value: 0 },
+          uHeadColor: { value: new Color(HEADLIGHT) },
+          uHeadLevel: { value: 0.55 },
         },
       ]),
     [],
@@ -42,13 +49,14 @@ export function Street({ sets }: { sets: readonly NightSet[] }) {
 
   // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
   useFrame(() => {
+    // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
+    uniforms.uCarX.value = carAt(timeline, night.p, car.current).x;
     if (night.stop === lastStop.current) return;
     lastStop.current = night.stop;
     const set = sets[night.stop];
     if (!set) return;
     for (let i = 0; i < WET_ROAD_LIGHTS; i += 1) {
       const streak = set.streaks[i];
-      // eslint-disable-next-line react-hooks/immutability -- per-frame scene state, the R3F pattern
       uniforms.uLightLevel.value[i] = streak ? streak.level : 0;
       if (!streak) continue;
       (uniforms.uLightPos.value[i] as Vector3).set(...streak.position);

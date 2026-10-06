@@ -1,14 +1,15 @@
 /*
- * STATS: a pause menu, one screen with two tabs (MAP and STATS) that switch
- * in place (StatsTabs.tsx); without JS the two panels simply follow each
- * other down the page. Colours come from
- * the tokens only; translucency is mixed from them. Layout numbers that the
- * caption test relies on (paddings, the missions' width, marker size, caption
+ * STATS: the pause menu, one screen with four tabs (STATS, MAP, ACHIEVEMENTS,
+ * SETTINGS) that switch in place (StatsTabs.tsx); without JS the panels
+ * simply follow each other down the page. Colours come from the tokens
+ * only; translucency is mixed from them. Layout numbers that the caption
+ * test relies on (paddings, the missions' width, marker size, caption
  * offsets and fonts) are mirrored in statsLayout.ts: change both together.
+ * The settings' own stylesheet is StatsSettings.module.css.
  *
- * Breakpoints: below 1000 px the square map with keyed pins and a legend
- * (one column on phones, below 700 px); from 1000 px the wide map with its
- * captions; from 1280 px the map and the main missions side by side.
+ * Breakpoints: below 1000 px the square map and a legend (one column on
+ * phones, below 700 px); from 1000 px the wide map with its captions; from
+ * 1280 px the map and the main missions side by side.
  */
 
 .stats {
@@ -21,16 +22,15 @@
   /*
    * A link lands the whole chapter card under the page controls (the html
    * scroll-padding, globals.css): its rise over the section's top edge, a
-   * share (--chapter-edge, set on the section) of the card's width
+   * share (--chapter-edge, set on the section, times --chapter-straddle) of the card's width
    * (ChapterCard.module.css; scroll-margin takes no percentages, and 100vw
    * counts a classic scrollbar too, a harmless few pixels on a window
-   * under 50rem). The menu starts just under the card. Under 52rem the
-   * line-up's last line, centred just over the card, would land under the
-   * controls at the top right: it lands below them too (--landing-room,
-   * two of its lines).
+   * under 50rem). The menu starts just under the card. Above the card is
+   * only the career city's last frame, the night it rises over: nothing of
+   * it needs to land with the card.
    */
-  --landing-room: 0rem;
-  scroll-margin-top: calc(min(100vw - 2rem, var(--va-chapter-span)) * var(--chapter-edge) + var(--landing-room));
+  --landing: calc(min(100vw - 2rem, var(--va-chapter-span)) * var(--chapter-edge) * var(--chapter-straddle));
+  scroll-margin-top: var(--landing);
   /* The appetite bar breaks out of its panel; the page never scrolls sideways (only sideways: the card rises over the top). */
   overflow-x: clip;
   color: var(--va-color-text);
@@ -54,26 +54,20 @@
     var(--va-color-night);
 }
 
-@media (max-width: 51.98rem) {
-  .stats {
-    --landing-room: 3.5rem;
-  }
-}
-
 /*
- * PLAYER ONE straddles the cut: its word's upper half rises over the
- * line-up's floor, clear of Jesús' line there (Suspects.module.css keeps
- * the room under the caption).
+ * PAUSED straddles the cut: the top of its word rises over the section
+ * before, the career city's last frame (STRADDLE.stats in
+ * chapterLayout.ts). Set on the section, so its scroll margin counts it.
  */
-.chapter {
-  --chapter-straddle: 1;
+.stats {
+  --chapter-straddle: 0.8;
 }
 
 /*
- * The menu bar, the open tab's panel, the button prompts: one screen,
- * under the card. Its paddings and gaps are in statsLayout.ts
- * MAP_CHROME_PX: scrolled to the top of the screen, it fits as it did
- * before the card.
+ * The menu bar and the open tab's panel: one screen, under the card. Its
+ * paddings and gaps are in statsLayout.ts MAP_CHROME_PX: scrolled to the
+ * top of the screen, it fits. The bottom padding (FOOT_PX) is where THE
+ * LATE SHOW's word rises in from the cinema below.
  */
 .screen {
   display: grid;
@@ -83,25 +77,33 @@
   /*
    * 16 px clear of the fixed page controls (music, language) at the top
    * right. The content stops growing at 1680 px (statsLayout.ts
-   * SCREEN_MAX), centred; the glows behind it span the page.
+   * SCREEN_MAX), centred; the glows behind it span the page. At the foot,
+   * the room THE LATE SHOW's word rises into from 1000 px, clear of the
+   * tab's last line (statsLayout.ts FOOT_PX, tested).
    */
-  padding: 64px max(var(--pad), calc((100% - 1680px) / 2 + var(--pad))) 24px;
+  padding: 64px max(var(--pad), calc((100% - 1680px) / 2 + var(--pad))) 72px;
 }
 
-/* Film grain over the menu, like the hero's. */
+/*
+ * Film grain over the menu, like the hero's. Not blended: a blend mode
+ * would isolate the section, and the pause's veil (below) would no longer
+ * see the world behind STATS.
+ */
 .stats::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.07;
-  mix-blend-mode: overlay;
+  opacity: 0.022;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ── Menu bar ─────────────────────────────────────────────────────── */
 
-/* 46 px tall, as MAP_CHROME_PX counts it, now that the card above has the subtitle's words. */
+/*
+ * 46 px tall, as MAP_CHROME_PX counts it: the paused glyph and the clock on
+ * the left, the tabs in the middle. The chapter card above says the word.
+ */
 .menu {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -113,27 +115,32 @@
 .who {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .pause {
+  position: relative;
   display: inline-flex;
-  gap: 6px;
+  gap: 5px;
 }
 
 .pause i {
-  width: 8px;
-  height: 30px;
+  width: 7px;
+  height: 22px;
   border-radius: 2px;
   background: var(--va-color-pink);
   box-shadow: 0 0 14px color-mix(in srgb, var(--va-color-magenta) 70%, transparent);
 }
 
-.title {
-  font: 800 28px/1 var(--va-font-display);
-  letter-spacing: 0.04em;
-  color: var(--va-color-cream);
-  text-shadow: 0 2px 18px color-mix(in srgb, var(--va-color-magenta) 30%, transparent);
+/* The flare of the glyph's one pulse as the game pauses (the pause, below). */
+.pause::after {
+  content: "";
+  position: absolute;
+  inset: -12px -14px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--va-color-magenta) 55%, transparent), transparent);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* The tab bar between the shoulder buttons' key caps. */
@@ -234,10 +241,14 @@
 }
 
 .clock {
-  justify-self: end;
   font: 500 12px/1 var(--va-font-mono);
   letter-spacing: 0.24em;
   color: var(--va-color-text-muted);
+}
+
+/* The clock's colon: it ticks while the game runs and stops with it (the pause, below). */
+.clockTick {
+  display: inline-block;
 }
 
 /* ── The tabs' panels ─────────────────────────────────────────────── */
@@ -246,6 +257,14 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /*
+   * A panel's fragment (#stats-map...) lands the section's top, the card
+   * and the tab bar in view, like #stats: --panel-rise is the panel's
+   * distance under the section's top (StatsTabs.tsx measures it). As the
+   * address changes, the browser scrolls to the fragment itself in the
+   * next frame, after PageEntry has landed it.
+   */
+  scroll-margin-top: calc(var(--panel-rise, 0px) + var(--landing));
 }
 
 /* The panel takes the focus after its tab: a ring round the whole of it. */
@@ -262,21 +281,19 @@
  */
 @media (scripting: enabled) {
   .screen {
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto 1fr;
   }
 
   .tabPanel {
     grid-row: 2;
     grid-column: 1;
     /*
-     * The shorter panel centres its content in the part of the cell the
-     * screen shows (100svh less the paddings, the menu bar, the gaps and the
-     * prompts: statsLayout.ts MAP_CHROME_PX without the map's title and
-     * source line), not in all of it: where the map tab runs past the screen
-     * (1024 x 768, 1366 x 768) the sheet would sit low, cut off at its foot.
+     * Every panel starts right under the tab bar, a shorter one too: the
+     * tallest keeps the cell's room below it. Centred in that room, a
+     * short tab opened on a band of empty night under the
+     * tabs, a different one from tab to tab.
      */
     align-self: start;
-    min-height: min(100%, calc(100 * var(--va-svh) - 206px));
   }
 
   .tabPanel[data-active="false"] {
@@ -368,11 +385,51 @@
   margin: 0 auto;
 }
 
+/* The map's title and its key on one row, 23 px with its margin (MAP_CHROME_PX). */
+.mapHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 24px;
+  row-gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mapKey {
+  display: flex;
+  gap: 18px;
+  font: 500 11px/1 var(--va-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.keyOnSite,
+.keyRemote {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.keyBadge {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--va-color-sodium);
+  border-radius: 50%;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--va-color-sodium) 45%, transparent);
+}
+
+.keyHq {
+  width: 15px;
+  height: 15px;
+  color: var(--va-color-cream);
+}
+
 .mapTitle {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
   font: 500 11px/1 var(--va-font-mono);
   letter-spacing: 0.26em;
   color: var(--va-color-text-muted);
@@ -621,10 +678,6 @@
   text-wrap: balance;
 }
 
-.booth .caption {
-  max-width: 16em;
-}
-
 .text {
   padding: 1px 6px;
   margin: 0 -6px;
@@ -693,37 +746,6 @@
   display: none;
 }
 
-/* The town is on the map as a label; screen readers get it here. */
-.where {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-}
-
-.you .marker {
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
-  color: var(--va-color-cream);
-}
-
-.youArrow {
-  transform: rotate(var(--heading, 0deg));
-  filter: drop-shadow(0 0 5px var(--va-color-magenta));
-}
-
-.you .marker svg {
-  width: 22px;
-  height: 22px;
-}
-
-.you .caption {
-  font-style: italic;
-}
-
 .hq .marker {
   border-color: var(--va-color-cream);
   background: var(--va-color-cream);
@@ -733,94 +755,9 @@
     0 0 14px color-mix(in srgb, var(--va-color-cream) 45%, transparent);
 }
 
-/* The booth: the way on to the projects, and the only link on the map. */
-.boothLink {
-  position: absolute;
-  inset: 0;
-  color: inherit;
-  text-decoration: none;
-  pointer-events: auto;
-}
-
-.boothLink:focus-visible {
-  outline: none;
-}
-
-.boothLink:focus-visible .marker,
-.boothLink:focus-visible .caption {
-  outline: 2px solid var(--va-color-cyan);
-  outline-offset: 3px;
-}
-
-.booth .marker {
-  border-color: var(--va-color-cream);
-  background: var(--va-color-magenta);
-  pointer-events: auto;
-}
-
-.booth .caption {
-  pointer-events: auto;
-}
-
-.booth .text {
-  background: color-mix(in srgb, var(--va-color-magenta) 22%, var(--va-color-night));
-}
-
-.boothLink:hover .text {
-  background: color-mix(in srgb, var(--va-color-magenta) 40%, var(--va-color-night));
-}
-
-.action {
-  display: block;
-  margin-top: 3px;
-  font-weight: 700;
-  color: var(--va-color-pink);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .booth .marker {
-    animation: ring 4s ease-in-out infinite;
-  }
-
-  .booth .marker::after {
-    content: "";
-    position: absolute;
-    inset: -7px;
-    border: 2px solid var(--va-color-pink);
-    border-radius: 50%;
-    opacity: 0;
-    animation: ringPulse 4s ease-out infinite;
-  }
-}
-
-/* A 2 Hz wiggle for 0.6 s, every 4 s. */
-@keyframes ring {
-  0%,
-  15%,
-  100% {
-    transform: rotate(0deg);
-  }
-  3.75% {
-    transform: rotate(-14deg);
-  }
-  7.5% {
-    transform: rotate(14deg);
-  }
-  11.25% {
-    transform: rotate(-8deg);
-  }
-}
-
-@keyframes ringPulse {
-  0% {
-    opacity: 0.9;
-    transform: scale(0.8);
-  }
-  30%,
-  100% {
-    opacity: 0;
-    transform: scale(1.5);
-  }
+/* The dock's name: right of PwC's badge, clear of its tick (statsLayout.ts DOCK). */
+.dock .caption {
+  left: 26px;
 }
 
 /* Gran Canaria's box: the island's name and its city's at the top, like a map's inset. */
@@ -963,10 +900,45 @@ a.missionRow:focus-visible {
   min-width: 0;
 }
 
+.missionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+}
+
 .years {
   font: 500 11px/1.2 var(--va-font-mono);
   letter-spacing: 0.12em;
   color: var(--va-color-text-muted);
+}
+
+/* How the job was done: a pin for on site, home base for remote (the map's key). */
+.mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px 2px 5px;
+  border-radius: 999px;
+  font: 600 10px/1.2 var(--va-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.modeIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.modeOnSite {
+  background: color-mix(in srgb, var(--va-color-sodium) 16%, transparent);
+  color: var(--va-color-sodium);
+}
+
+.modeRemote {
+  background: color-mix(in srgb, var(--va-color-cream) 10%, transparent);
+  color: var(--va-color-cream);
 }
 
 .missionName {
@@ -1086,23 +1058,24 @@ a.missionRow:focus-visible {
   }
 }
 
-/* ── Tab 2: the character sheet ───────────────────────────────────── */
+/* ── Tab 1: the player profile ────────────────────────────────────── */
 
 .sheet {
   display: grid;
   grid-template-columns: minmax(250px, 330px) minmax(0, 1fr) minmax(250px, 320px);
   align-items: start;
   gap: 28px;
-  /* Centred in its panel: the room the map tab keeps, as much of it as the screen shows. */
-  margin-block: auto;
 }
 
+/*
+ * The character card: the portrait, then About me, how he works in his
+ * words, on the plate under it; from 1000 px the plate comes first, so
+ * landing on STATS shows it before the portrait's foot.
+ */
 .card {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  aspect-ratio: 330 / 520;
   margin: 0;
   overflow: hidden;
   border: 1px solid var(--panel-line);
@@ -1113,18 +1086,23 @@ a.missionRow:focus-visible {
   box-shadow: 0 20px 60px var(--shadow);
 }
 
+.portraitBox {
+  position: relative;
+  aspect-ratio: 330 / 400;
+}
+
 .portrait {
   position: absolute;
-  inset: 0 0 74px;
+  inset: 0;
   width: 100%;
-  height: calc(100% - 74px);
+  height: 100%;
   object-fit: cover;
   object-position: 50% 100%;
 }
 
 .player2 {
   position: absolute;
-  top: calc((100% - 74px) * 0.5);
+  top: 50%;
   left: 12px;
   padding: 5px 8px;
   border: 1px solid color-mix(in srgb, var(--va-color-cyan) 55%, transparent);
@@ -1136,12 +1114,13 @@ a.missionRow:focus-visible {
   box-shadow: 0 0 12px color-mix(in srgb, var(--va-color-cyan) 25%, transparent);
 }
 
+/*
+ * Headed like the panels beside it (ABOUT ME, SKILLS, RECORDS), its title
+ * as far from the card's top as theirs from their panels' tops.
+ */
 .plate {
   position: relative;
-  display: grid;
-  align-content: center;
-  height: 74px;
-  padding: 0 20px;
+  padding: 22px 22px 20px;
   border-top: 1px solid var(--panel-line);
   background: linear-gradient(
     180deg,
@@ -1150,9 +1129,11 @@ a.missionRow:focus-visible {
   );
 }
 
-.plateName {
-  font: 800 20px/1 var(--va-font-display);
-  color: var(--va-color-cream);
+/* How he works, in his words. */
+.bio {
+  font: 400 14px/1.45 var(--va-font-body);
+  color: color-mix(in srgb, var(--va-color-cream) 82%, transparent);
+  text-wrap: pretty;
 }
 
 .skills {
@@ -1335,52 +1316,326 @@ a.missionRow:focus-visible {
   color: var(--va-color-text-muted);
 }
 
-/* The button prompts: the other tab on the left, on down the page on the right. */
-.foot {
+/* ── The pause ────────────────────────────────────────────────────── */
+
+/*
+ * The game pauses as the menu arrives, like pressing pause in a game
+ * (StatsTabs.tsx sets data-paused, a or b each arrival, while STATS
+ * crosses the middle of the screen, data-pause-from-below when its top
+ * came up to that line, and data-pause-live once it watches):
+ *
+ * - A big pause sign punches in over the middle of the screen with a
+ *   ring and a faint flash, holds for a beat and gets out of the way: the
+ *   one moment nobody misses, whatever is behind the menu (the career
+ *   city has closed to flat night by then). Only when the menu came up
+ *   from below: coming back up from the cinema, its top would cut the
+ *   sign in two.
+ * - The world behind the menu dims: a veil from a screen above STATS down
+ *   to its foot, under everything in STATS (z-index -1 in the section's
+ *   stacking context, so the card and the panels stay sharp over it) and
+ *   over everything before it. It fades out over STATS's last 10rem, the
+ *   same band the background fades into the cinema with, so no line
+ *   shows where the cinema starts (it paints over STATS, a later sibling
+ *   in the same layer). No backdrop filter: there is nothing behind it to
+ *   blur, and the night canvas above would redraw a blur every frame. It
+ *   sees the page under STATS only because nothing in STATS blends (the
+ *   grain above does not): a blend would isolate the section.
+ * - The menu settles in: a short eased rise to its place as it comes up.
+ * - The pause glyph pulses once and stays lit; the clock's colon, which
+ *   ticked while the game ran, stops.
+ *
+ * Leaving undoes it, faster than it came. Only opacity and transforms
+ * move (no layout shift), and nothing runs once it has settled: the veil
+ * and the sign are hidden, not merely transparent, while the game runs.
+ * Under reduced motion nothing moves and no sign shows: the paused state
+ * simply holds, dimmed and still. Pointer events pass through both.
+ */
+.freeze {
+  position: absolute;
+  inset: calc(-100 * var(--va-lvh)) 0 0;
+  z-index: -1;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  /* The world above darker than the menu's own glows, all of it fading out over STATS's foot. */
+  background: linear-gradient(
+    color-mix(in srgb, var(--va-color-letterbox) 62%, transparent),
+    color-mix(in srgb, var(--va-color-letterbox) 48%, transparent) calc(100 * var(--va-lvh)),
+    color-mix(in srgb, var(--va-color-letterbox) 34%, transparent) calc(100 * var(--va-lvh) + 24rem)
+  );
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 10rem), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 10rem), transparent);
+  transition:
+    opacity 220ms cubic-bezier(0.4, 0, 1, 1),
+    visibility 0s linear 220ms;
+}
+
+.freeze[data-paused] {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity 480ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    visibility 0s;
+}
+
+/* The pause sign: two bars as tall as a fifth of the screen, cream over a soft shade. */
+.stinger {
+  --bar: clamp(22px, 4.2vmin, 44px);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  min-height: 24px;
+  gap: calc(var(--bar) * 0.9);
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: translate(-50%, -50%);
 }
 
-/* Both prompts are links: a 44 px target that lays out as 24 px (the foot's row, MAP_CHROME_PX). */
-.otherTab,
-.hint {
-  display: inline-flex;
-  align-items: center;
-  /* Between the arrow and the word: as flex items, the space in the markup collapses. */
-  gap: 0.6em;
-  min-height: 44px;
-  margin-block: -10px;
-  font: 600 12px/1 var(--va-font-mono);
-  letter-spacing: 0.26em;
-  text-decoration: none;
+.stinger i {
+  width: var(--bar);
+  height: clamp(96px, 20vmin, 200px);
+  border-radius: calc(var(--bar) * 0.22);
+  background: var(--va-color-cream);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--va-color-letterbox) 55%, transparent),
+    0 0 48px color-mix(in srgb, var(--va-color-pink) 40%, transparent);
 }
 
-.otherTab {
-  color: var(--va-color-cream);
+/* The ring that bursts out from behind the sign. */
+.stinger::before {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: clamp(180px, 36vmin, 360px);
+  aspect-ratio: 1;
+  border: 3px solid color-mix(in srgb, var(--va-color-cream) 70%, transparent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
 }
 
-.otherTab span {
-  color: var(--va-color-pink);
+/* The faint flash of the frame freezing, over the whole screen. */
+.stinger::after {
+  content: "";
+  position: fixed;
+  inset: -200vw; /* far past every edge, in widths: the page sizes nothing in viewport heights */
+  z-index: -1;
+  background: var(--va-color-cream);
+  opacity: 0;
 }
 
-.otherTab:hover {
-  color: var(--va-color-pink);
+/* Lit while paused; a running game's glyph is a dim promise. */
+.stats[data-pause-live] .pause i {
+  opacity: 0.45;
+  transition: opacity 200ms ease-out;
 }
 
-.hint {
-  margin-left: auto;
-  color: var(--va-color-text-muted);
+.stats[data-pause-live][data-paused] .pause i {
+  opacity: 1;
 }
 
-.hint:hover {
-  color: var(--va-color-pink);
+@media (prefers-reduced-motion: no-preference) {
+  /* The menu settles in as the game pauses, and sinks back a little as she leaves. */
+  .stats[data-pause-live] .screen {
+    transform: translateY(18px) scale(0.992);
+    opacity: 0.8;
+    transform-origin: 50% 0;
+    transition:
+      transform 240ms cubic-bezier(0.4, 0, 1, 1),
+      opacity 240ms cubic-bezier(0.4, 0, 1, 1);
+  }
+
+  .stats[data-pause-live][data-paused] .screen {
+    transform: none;
+    opacity: 1;
+    transition:
+      transform 520ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 360ms ease-out;
+  }
+
+  /* The glyph's one pulse, again on each arrival (a, b). */
+  .stats[data-paused="a"] .pause i {
+    animation: pause-pulse-a 620ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
+  }
+
+  .stats[data-paused="b"] .pause i {
+    animation: pause-pulse-b 620ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
+  }
+
+  .stats[data-paused="a"] .pause::after {
+    animation: pause-flare-a 700ms ease-out both;
+  }
+
+  .stats[data-paused="b"] .pause::after {
+    animation: pause-flare-b 700ms ease-out both;
+  }
+
+  /* The pause sign punches in once per arrival from below (a, b), then gets out of the way. */
+  .stats[data-paused="a"][data-pause-from-below] .stinger {
+    animation: stinger-a 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .stats[data-paused="b"][data-pause-from-below] .stinger {
+    animation: stinger-b 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .stats[data-pause-from-below][data-paused] .stinger::before {
+    animation: stinger-ring 620ms cubic-bezier(0.1, 0.7, 0.3, 1) both;
+  }
+
+  .stats[data-pause-from-below][data-paused] .stinger::after {
+    animation: stinger-flash 320ms ease-out both;
+  }
+
+  /* The clock ticks while the game runs, and stops as it pauses. */
+  .stats[data-pause-live]:not([data-paused]) .clockTick {
+    animation: clock-tick 1s steps(1, end) infinite;
+  }
 }
 
-.hintArrow {
-  color: var(--va-color-pink);
+@keyframes pause-pulse-a {
+  0% {
+    transform: scaleY(1);
+    opacity: 0.45;
+  }
+  30% {
+    transform: scaleY(1.32);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pause-pulse-b {
+  0% {
+    transform: scaleY(1);
+    opacity: 0.45;
+  }
+  30% {
+    transform: scaleY(1.32);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pause-flare-a {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes pause-flare-b {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes stinger-a {
+  0% {
+    visibility: visible;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+  16% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  26% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  68% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  99.9% {
+    visibility: visible;
+  }
+  100% {
+    visibility: hidden;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+@keyframes stinger-b {
+  0% {
+    visibility: visible;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+  16% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  26% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  68% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  99.9% {
+    visibility: visible;
+  }
+  100% {
+    visibility: hidden;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+@keyframes stinger-ring {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.25);
+  }
+}
+
+@keyframes stinger-flash {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.14;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes clock-tick {
+  50% {
+    opacity: 0.15;
+  }
 }
 
 /* ── Narrower screens ─────────────────────────────────────────────── */
@@ -1425,31 +1680,16 @@ a.missionRow:focus-visible {
   }
 }
 
-/* Below 1000 px: the square map with keyed pins, the words in a legend under it. */
+/* Below 1000 px: the square map, the words in a legend under it. */
 @media (max-width: 999.98px) {
   /*
-   * The title on its own row, the tabs and the clock under it: in three
-   * columns the tabs, with their key caps, could not sit centred (in
-   * Spanish, from 700 to 768 px, the title would come within 24 to 26 px of
-   * them), and a phone has no room for three at all.
+   * The paused glyph and the clock on their own row, the four tabs under
+   * it (statsLayout.ts PHONE_MENU): beside them, with their key caps, the
+   * tabs would not fit in Spanish.
    */
   .menu {
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 18px;
-  }
-
-  .who {
-    grid-column: 1 / -1;
-  }
-
-  .tabs {
-    grid-row: 2;
-    grid-column: 1;
-  }
-
-  .clock {
-    grid-row: 2;
-    grid-column: 2;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 14px;
   }
 
   .map {
@@ -1506,16 +1746,6 @@ a.missionRow:focus-visible {
     height: 14px;
   }
 
-  .pinYou {
-    border-color: transparent;
-    background: transparent;
-  }
-
-  .pinYou svg {
-    width: 20px;
-    height: 20px;
-  }
-
   .pinHq {
     border-color: var(--va-color-cream);
     background: var(--va-color-cream);
@@ -1556,7 +1786,6 @@ a.missionRow:focus-visible {
     display: none;
   }
 
-  .you .marker,
   .hq .marker {
     position: static;
     display: grid;
@@ -1564,15 +1793,16 @@ a.missionRow:focus-visible {
     height: 26px;
   }
 
+  /* The dock's row: PwC's badge, as on the map. */
   .key {
     display: grid;
     place-items: center;
     width: 26px;
     height: 26px;
-    border: 2px solid var(--va-color-pink);
+    border: 2px solid var(--va-color-sodium);
     border-radius: 50%;
     font: 700 12px/1 var(--va-font-display);
-    color: var(--va-color-cream);
+    color: var(--va-color-sodium);
   }
 
   .caption,
@@ -1586,20 +1816,7 @@ a.missionRow:focus-visible {
     font-size: 14px;
   }
 
-  .where {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
-    white-space: normal;
-    font: 600 12px/1 var(--va-font-mono);
-    letter-spacing: 0.08em;
-    color: var(--va-color-text-muted);
-  }
-
-  .text,
-  .booth .text {
+  .text {
     padding: 0;
     margin: 0;
     background: none;
@@ -1613,37 +1830,7 @@ a.missionRow:focus-visible {
     text-align: left;
   }
 
-  /*
-   * The whole legend row is the booth's link. Not display: contents: a
-   * link without a box drops out of the tab order and, in some browsers,
-   * out of the accessibility tree.
-   */
-  .boothLink {
-    position: static;
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: 26px minmax(0, 1fr);
-    align-items: center;
-    gap: 12px;
-    min-height: 44px;
-    border-radius: 10px;
-  }
-
-  .boothLink:focus-visible {
-    outline: 2px solid var(--va-color-cyan);
-    outline-offset: 2px;
-  }
-
-  .boothLink:focus-visible .caption {
-    outline: none;
-  }
-
-  .booth .key {
-    border-color: var(--va-color-cream);
-    background: var(--va-color-magenta);
-  }
-
-  /* Gran Canaria joins the legend after a little box like the map's: the island, then its city. */
+  /* Gran Canaria joins the legend after the army's badge, 1, as on the map: the island, then its city. */
   .inset {
     position: relative;
     flex-flow: row wrap;
@@ -1654,17 +1841,10 @@ a.missionRow:focus-visible {
     padding: 12px 0 12px 38px;
   }
 
-  /* A little map box with Las Palmas lit in its corner. */
-  .inset::before {
-    content: "";
+  .inset .key {
     position: absolute;
-    top: 13px;
-    left: 2px;
-    width: 22px;
-    height: 18px;
-    border: 1.5px solid color-mix(in srgb, var(--va-color-cream) 60%, transparent);
-    border-radius: 4px;
-    background: radial-gradient(circle 3px at 70% 35%, var(--va-color-sodium) 90%, transparent 100%);
+    top: 9px;
+    left: 0;
   }
 
   .insetName {
@@ -1695,23 +1875,21 @@ a.missionRow:focus-visible {
 }
 
 /*
- * The narrowest phones: the tabs and the clock no longer fit one row (in
- * Spanish ESTADÍSTICAS ran into the clock at 360 px), so the clock goes up
- * beside the title, which has room to spare, and the tabs take the row
- * under it (statsLayout.ts PHONE_MENU, tested).
+ * Narrow screens: the four tabs in two columns of equal cells
+ * (statsLayout.ts PHONE_MENU gridBelow), every name on one line.
  */
-@media (max-width: 389.98px) {
-  .who {
-    grid-column: 1;
-  }
-
+@media (max-width: 559.98px) {
   .tabs {
-    grid-column: 1 / -1;
+    display: block;
   }
 
-  .clock {
-    grid-row: 1;
-    grid-column: 2;
+  .tabList {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tab {
+    justify-content: center;
   }
 }
 
@@ -1720,6 +1898,50 @@ a.missionRow:focus-visible {
   .places {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     column-gap: 24px;
+  }
+}
+
+/* Desktops: About me over the portrait, in view as STATS lands. */
+@media (min-width: 1000px) {
+  .plate {
+    order: -1;
+    border-top: 0;
+    border-bottom: 1px solid var(--panel-line);
+  }
+}
+
+/*
+ * 1000 to 1279 px: the records go back beside the skills, as on wider
+ * screens, and the portrait is square, so the profile fits a 1100 × 800
+ * screen under the menu bar (stacked, the records ran past it).
+ */
+@media (min-width: 1000px) and (max-width: 1279.98px) {
+  .sheet {
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(200px, 236px);
+    gap: 20px;
+  }
+
+  .portraitBox {
+    aspect-ratio: 1;
+  }
+
+  .records {
+    grid-column: auto;
+    padding: 18px 20px 4px;
+  }
+
+  .recordList {
+    display: block;
+    --value: 34px;
+  }
+
+  .recordList li {
+    padding: 12px 0 14px;
+    border-bottom: 1px solid var(--panel-line);
+  }
+
+  .recordList li:last-child {
+    border-bottom: 0;
   }
 }
 
@@ -1733,10 +1955,6 @@ a.missionRow:focus-visible {
   .screen {
     row-gap: 20px;
     padding-top: 32px;
-  }
-
-  .title {
-    font-size: 22px;
   }
 
   .mapTitle,
@@ -1756,14 +1974,12 @@ a.missionRow:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .card {
-    aspect-ratio: 3 / 4;
+  /* The portrait a little shorter, so About me comes up with it. */
+  .portraitBox {
+    aspect-ratio: 1;
   }
 
-  .portrait {
-    object-position: 50% 100%;
-  }
-
+  .plate,
   .skills {
     padding: 18px 18px 20px;
   }
@@ -1792,3 +2008,19 @@ a.missionRow:focus-visible {
     --below: var(--va-finale-vitrolite);
   }
 }
+
+@media (forced-colors: active) {
+  .freeze,
+  .stinger {
+    display: none !important;
+  }
+
+  /* The selected tab without its cream fill, which forced colours drop: a thick Highlight ring and the Highlight fill. */
+  .tabOn {
+    forced-color-adjust: none;
+    border: 3px solid Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+

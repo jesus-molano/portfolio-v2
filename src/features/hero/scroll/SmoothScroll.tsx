@@ -39,8 +39,9 @@ gsap.registerPlugin(ScrollTrigger);
  * scrolling is synced too (`syncTouch`), so phones get the same gate and no
  * native momentum runs past it: every move of a stroke is cancelled, by
  * Lenis or by the gate, so the browser never takes a stroke over. Below
- * the hero, with its walls open, a stroke is the browser's own from its
- * first move (gate.ts browserStroke): nothing to gate there, and the
+ * the hero, with every wall open (the hero's and the career city's), a
+ * stroke is the browser's own from its first move (gate.ts
+ * browserStroke): nothing to gate there, and the
  * browser, not Lenis, owns a phone's bars coming and going. A
  * finger moves the page once past its slop, so a resting thumb that
  * trembles is still, and its fling flies up to the wall and no further.
@@ -150,8 +151,14 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       if (event.type === "touchstart") {
         scrollGate.touching = true;
         strokeMoved.current = false;
-        // Below the hero, the walls open, the stroke is the browser's (gate.ts browserStroke).
-        browserOwns.current = browserStroke(window.scrollY, scrollGate.heroEnd, scrollGate.maxScroll);
+        // Below the hero with every wall open, the stroke is the browser's (gate.ts browserStroke). A
+        // closed wall of the career city's binds as the hero's does: a native stroke there ran past it
+        // on every move, and the stage pulled the page back a frame later.
+        browserOwns.current = browserStroke(
+          window.scrollY,
+          scrollGate.heroEnd,
+          Math.min(scrollGate.maxScroll, stageGate.maxScroll),
+        );
         // A second finger landing beside a held pedal: Lenis would take it for a tap that stops the
         // scroll (reset), dropping the pedal's glide. Its strokes still scroll as ever. Otherwise
         // the tap stops any glide of Lenis' under her finger, the browser's strokes included.

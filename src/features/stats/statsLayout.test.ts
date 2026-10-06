@@ -5,7 +5,9 @@ import canaries from "../../../tools/art/stats/canaries.json";
 import { cardWidth, chapterLayout, inkRise, ribbonCaps, STRADDLE } from "@/components/ChapterCard/chapterLayout";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
+import { CAREER } from "@/features/career/career";
 import {
+  DOCK,
   FOOT_PX,
   FRAMES,
   HQ,
@@ -14,19 +16,21 @@ import {
   MISSIONS,
   PHONE_MENU,
   PLACES,
-  PLAYER,
-  SIDE_BLIPS,
   SIDE_BY_SIDE_FROM,
   TEIDE,
   WIDE_FROM,
   blipPoint,
   captionBox,
+  careerRoute,
+  ferryRoute,
+  roadRoute,
   collisions,
   mapWidthAt,
   monoWidth,
   overlaps,
   phoneMenuRows,
   project,
+  tabWidth,
   projectInset,
   toPercent,
   wideMapItems,
@@ -53,6 +57,22 @@ function inside([x, y]: LonLat, ring: [number, number][]): boolean {
   return hit;
 }
 
+/** Whether the segment a-b comes within `pad` of the box (sampled every pixel or so). */
+function segmentHitsBox(
+  a: readonly [number, number],
+  b: readonly [number, number],
+  box: { left: number; right: number; top: number; bottom: number },
+  pad: number,
+): boolean {
+  const steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1])));
+  for (let i = 0; i <= steps; i++) {
+    const x = a[0] + ((b[0] - a[0]) * i) / steps;
+    const y = a[1] + ((b[1] - a[1]) * i) / steps;
+    if (x > box.left - pad && x < box.right + pad && y > box.top - pad && y < box.bottom + pad) return true;
+  }
+  return false;
+}
+
 /** Kilometres between two points (equirectangular, fine at island scale). */
 function km([lon1, lat1]: LonLat, [lon2, lat2]: LonLat): number {
   const k = Math.cos((((lat1 + lat2) / 2) * Math.PI) / 180);
@@ -63,10 +83,8 @@ function textsOf(dict: typeof en): MapTexts {
   const { map, missions } = dict.stats;
   return {
     places: map.places as MapTexts["places"],
-    blips: map.blips,
-    booth: map.booth,
-    you: map.you,
     hq: map.hq,
+    dock: map.dock,
     live: missions.live,
     inset: map.inset,
     north: map.north,
@@ -93,18 +111,38 @@ describe("the map's geography", () => {
   const tenerife = coastOf(islands.tenerife);
   const granCanaria = coastOf(islands.granCanaria);
 
-  it("puts every blip, the player and home base on Tenerife's land", () => {
-    for (const blip of SIDE_BLIPS) expect(inside(blip.at, tenerife), blip.id).toBe(true);
-    expect(inside(PLAYER.at, tenerife)).toBe(true);
+  it("puts home base and the dock on Tenerife's land", () => {
     expect(inside(HQ.at, tenerife)).toBe(true);
+    expect(inside(DOCK.at, tenerife)).toBe(true);
   });
 
-  it("puts the army in Gran Canaria and every job since at home base: no office on the map", () => {
-    const [army, ...jobs] = MISSIONS;
-    expect(army.inset).toBe(true);
-    expect(inside(army.at as LonLat, granCanaria)).toBe(true);
-    expect(jobs.map((mission) => mission.id)).toEqual(["pwc", "cloud-district", "logixs", "heuristik"]);
-    for (const mission of jobs) expect(mission.at, mission.id).toBe("home");
+  it("puts the army on site in Gran Canaria, PwC on site at the dock, and the remote jobs at home base", () => {
+    const at = Object.fromEntries(MISSIONS.map((mission) => [mission.id, mission]));
+    expect(at.army.inset).toBe(true);
+    expect(inside(at.army.at as LonLat, granCanaria)).toBe(true);
+    expect(at.pwc.inset).toBe(false);
+    expect(at.pwc.at).toEqual(DOCK.at);
+    for (const id of ["cloud-district", "logixs", "heuristik"]) expect(at[id].at, id).toBe("home");
+  });
+
+  it("stands a badge on a place exactly for the jobs done on site (career.ts), and says the same mode", () => {
+    for (const job of CAREER) {
+      const mission = MISSIONS.find((m) => m.id === job.id)!;
+      expect(mission.mode, job.id).toBe(job.mode);
+      expect(mission.at === "home", job.id).toBe(job.mode === "remote");
+    }
+  });
+
+  it("puts the dock on the north-east waterfront, at the level of Las Teresitas (LAS SAHARITAS)", () => {
+    const teresitas = PLACES.find((place) => place.id === "teresitas")!.town!;
+    const santaCruz = PLACES.find((place) => place.id === "santaCruz")!.town!;
+    // Between Santa Cruz's centre and the beach, closer to the beach's latitude than the city's.
+    expect(km(DOCK.at, teresitas)).toBeLessThan(4);
+    expect(km(DOCK.at, santaCruz)).toBeLessThan(5);
+    expect(DOCK.at[1]).toBeGreaterThan(santaCruz[1]);
+    expect(DOCK.at[0]).toBeGreaterThan(santaCruz[0]);
+    // On the coast: a few hundred metres inland of the 40 m ring at most (its sea lies a short step east).
+    expect(inside([DOCK.at[0] + 0.015, DOCK.at[1]], tenerife)).toBe(false);
   });
 
   it("keeps home base away from every town: it never points at a real home", () => {
@@ -125,9 +163,8 @@ describe("projection and frames", () => {
   it("keeps every point inside both crops (the names only on the wide one, where they show)", () => {
     for (const [id, frame] of Object.entries(FRAMES)) {
       const points = [
-        ...SIDE_BLIPS.map((b) => project(frame, b.at)),
-        project(frame, PLAYER.at),
         project(frame, HQ.at),
+        project(frame, DOCK.at),
         ...MISSIONS.filter((m) => m.at !== "home").map((m) => blipPoint(frame, m.at as LonLat, m.inset)),
         ...(id === "wide" ? PLACES.filter((p) => p.label).map((p) => project(frame, p.label!)) : []),
       ];
@@ -167,8 +204,9 @@ describe("projection and frames", () => {
 
 describe("the page geometry", () => {
   it("gives the map its column beside the main missions from 1280 px, the whole width below", () => {
-    // 1440 less the paddings (2 x 48), the gap (32) and the missions (28% of 1440).
+    // 1440 less the paddings (2 x 48), the gap (32) and the missions (28% of 1440); 900 px tall allows 970.
     expect(mapWidthAt(1440, 900)).toBeCloseTo(908.8, 5);
+    expect(((900 - MAP_CHROME_PX) * 16) / 11).toBeGreaterThan(908.8);
     expect(mapWidthAt(SIDE_BY_SIDE_FROM - 1, 2000)).toBe(SIDE_BY_SIDE_FROM - 1 - 64);
     expect(mapWidthAt(1024, 768)).toBeCloseTo(((768 - MAP_CHROME_PX) * 16) / 11, 5);
   });
@@ -177,7 +215,17 @@ describe("the page geometry", () => {
     expect(mapWidthAt(1100, 500)).toBe(MAP_MIN);
   });
 
-  it("keeps THE LATE SHOW's word under the prompts row where it straddles the cut, clear of the MAP tab's last line", () => {
+  it("mirrors the stylesheet: the room at the foot and the chrome round the map", () => {
+    const css = readFileSync(path.join(process.cwd(), "src/features/stats/Stats.module.css"), "utf8");
+    // The screen's padding ends on the room at the foot; nothing follows the panel in its grid.
+    expect(css).toMatch(new RegExp(`\\.screen \\{[^}]*padding: 64px [^;]* ${FOOT_PX}px;`));
+    expect(css).toMatch(/@media \(scripting: enabled\) \{\s*\.screen \{\s*grid-template-rows: auto 1fr;/);
+    // The map's height cap counts all of it.
+    expect(css.match(/100 \* var\(--va-svh\) - (\d+)px\) \* 16 \/ 11/g)?.length).toBeGreaterThan(0);
+    for (const [, px] of css.matchAll(/100 \* var\(--va-svh\) - (\d+)px\) \* 16 \/ 11/g)) expect(Number(px)).toBe(MAP_CHROME_PX);
+  });
+
+  it("keeps THE LATE SHOW's word in the room at STATS's foot where it straddles the cut, clear of the MAP tab's last line", () => {
     for (const [lang, dict] of [
       ["en", en],
       ["es", es],
@@ -189,16 +237,16 @@ describe("the page geometry", () => {
         const rise = inkRise(layout, STRADDLE.projects) * cardWidth(viewport);
         // The word does straddle: its top shows over the edge.
         expect(rise, `${lang} ${viewport}`).toBeGreaterThan(16);
-        // 8 px under the prompts' top, so 32 px under the map's source line, which ends a row gap over them
+        // 32 px under the map's source line, which ends at the top of that room at the lowest
         // (and 59 px under the main missions beside the map, which end with the map's frame, a source line higher).
-        expect(rise, `${lang} ${viewport}`).toBeLessThanOrEqual(FOOT_PX - 8);
+        expect(rise, `${lang} ${viewport}`).toBeLessThanOrEqual(FOOT_PX - 32);
       }
     }
   });
 
-  it("lets STATS's prompts keep their clicks under THE LATE SHOW's box where it straddles, its text still selectable", () => {
-    // The ink stays under their row (above), but from 1000 px, where the card straddles the cut, its box can reach
-    // their 44 px targets (in Spanish up to about 1125 px, wider with a larger text size), and the cinema paints on top.
+  it("lets what STATS ends on keep its clicks under THE LATE SHOW's box where it straddles, its text still selectable", () => {
+    // The ink stays in the room at the foot (above), but from 1000 px, where the card straddles the cut, its box can
+    // reach above it (in Spanish up to about 1125 px, wider with a larger text size), and the cinema paints on top.
     const css = readFileSync(path.join(process.cwd(), "src/features/finale/Projects.module.css"), "utf8");
     expect(css).toMatch(/@media \(max-width: 999\.98px\) \{\s*\.projects \{\s*--chapter-straddle: 0;/);
     expect(css).toMatch(
@@ -207,36 +255,35 @@ describe("the page geometry", () => {
   });
 });
 
-describe("the menu bar on a phone", () => {
-  const menuOf = (dict: typeof en) => ({ title: dict.stats.title, tabs: dict.stats.tabs, clock: dict.stats.clock });
+describe("the menu bar under 1000 px", () => {
+  const menuOf = (dict: typeof en) => ({ tabs: dict.stats.tabs, clock: dict.stats.clock });
 
   it("measures the mono words as Chromium does", () => {
-    // Measured at 360 px: ESTADÍSTICAS's tab 149.69 px, MAP's 62.92, the clock 88.92; PAUSED 117.28 (the model errs wide).
-    expect(monoWidth("ESTADÍSTICAS", 12, 0.22) + PHONE_MENU.tab.inset).toBeCloseTo(149.69, 1);
-    expect(monoWidth("MAP", 12, 0.22) + PHONE_MENU.tab.inset).toBeCloseTo(62.92, 1);
+    // Measured at 360 px: ESTADÍSTICAS's tab 149.69 px, MAP's 62.92, the clock 88.92.
+    expect(tabWidth("ESTADÍSTICAS")).toBeCloseTo(149.69, 1);
+    expect(tabWidth("MAP")).toBeCloseTo(62.92, 1);
     expect(monoWidth("DOM 23:47", 12, 0.24)).toBeCloseTo(88.92, 1);
-    expect(Array.from("PAUSED").length * PHONE_MENU.title.fontPx * PHONE_MENU.title.em).toBeGreaterThan(117.28);
   });
 
-  it("fits every row from 360 to 699 px in both languages: the clock beside the title under 390 px", () => {
+  it("fits every row from 360 to 999 px in both languages: the four tabs in two columns under 560 px", () => {
     for (const dict of [en, es]) {
-      for (let viewport = 360; viewport < 700; viewport += 1) {
+      for (let viewport = 360; viewport < 1000; viewport += 1) {
         const { room, rows } = phoneMenuRows(viewport, menuOf(dict));
-        for (const row of rows) expect(row, `${dict.stats.title} at ${viewport} px`).toBeLessThanOrEqual(room);
+        for (const row of rows) expect(row, `${dict.stats.tabs.join(" ")} at ${viewport} px`).toBeLessThanOrEqual(room);
       }
     }
   });
 
-  it("needs the clock up there: in Spanish at 360 px the tabs, the gap and the clock overrun the row", () => {
-    const { pad, gap, tab, clock } = PHONE_MENU;
-    const tabs = es.stats.tabs.reduce<number>((sum, name) => sum + monoWidth(name, tab.fontPx, tab.tracking) + tab.inset, tab.gap);
-    expect(tabs + gap + monoWidth(es.stats.clock, clock.fontPx, clock.tracking)).toBeGreaterThan(360 - 2 * pad);
+  it("needs the two columns: in Spanish the four tabs in one row overrun a 390 px phone's", () => {
+    const { pad, gap } = PHONE_MENU;
+    const row = es.stats.tabs.reduce((sum, name) => sum + tabWidth(name), gap * (es.stats.tabs.length - 1));
+    expect(row).toBeGreaterThan(390 - 2 * pad);
   });
 
-  it("moves the clock at the stylesheet's breakpoint", () => {
+  it("breaks into two columns at the stylesheet's breakpoint", () => {
     const css = readFileSync(path.join(process.cwd(), "src/features/stats/Stats.module.css"), "utf8");
     expect(css).toMatch(
-      new RegExp(`@media \\(max-width: ${PHONE_MENU.clockUpBelow - 1}\\.98px\\) \\{[^@]*\\.clock \\{\\s*grid-row: 1;`),
+      new RegExp(`@media \\(max-width: ${PHONE_MENU.gridBelow - 1}\\.98px\\) \\{[^@]*\\.tabList \\{\\s*display: grid;\\s*grid-template-columns: repeat\\(2, minmax\\(0, 1fr\\)\\);`),
     );
   });
 });
@@ -285,24 +332,41 @@ describe("the wide map's words", () => {
     }
   }
 
-  it("shows every caption: one per side blip, the player and home base", () => {
+  it("keeps the ferry off every word on the map, and the road off the captions, at every width", () => {
+    // The route's glow is 9 units wide: half of it, scaled, either side of the line.
+    const crosses = (route: (readonly [number, number])[], box: Parameters<typeof segmentHitsBox>[2], pad: number) =>
+      route.some((point, i) => i > 0 && segmentHitsBox(route[i - 1], point, box, pad));
+    for (const [locale, dict] of [
+      ["en", en],
+      ["es", es],
+    ] as const) {
+      for (const width of WIDTHS) {
+        const k = width / FRAMES.wide.width;
+        const scale = (route: readonly (readonly [number, number])[]) => route.map(([x, y]) => [x * k, y * k] as const);
+        const ferry = scale(ferryRoute(FRAMES.wide));
+        const road = scale(roadRoute(FRAMES.wide));
+        const pad = 4.5 * k + 2;
+        // Words only: the route starts and ends on its badges and the HQ glyph by design.
+        const words = wideMapItems(textsOf(dict), width).filter((item) => item.kind === "label" || item.kind === "caption" || item.kind === "text");
+        // Labels may touch the road over the island (collisions' rule), never the ferry where the dock is read.
+        const hit = words
+          .filter((item) => crosses(ferry, item.box, pad) || (item.kind !== "label" && crosses(road, item.box, pad)))
+          .map((item) => item.id);
+        expect(hit, `${locale} at ${Math.round(width)} px`).toEqual([]);
+      }
+    }
+    expect(careerRoute(FRAMES.wide).length).toBe(ferryRoute(FRAMES.wide).length + roadRoute(FRAMES.wide).length - 1);
+  });
+
+  it("shows the captions of the career's places only: home base and the dock", () => {
     const ids = wideMapItems(textsOf(en), 909)
       .filter((i) => i.kind === "caption")
       .map((i) => i.id.split(":")[0]);
-    expect(ids.sort()).toEqual([...SIDE_BLIPS.map((b) => b.id), "you", "hq"].sort());
+    expect(ids.sort()).toEqual(["dock", "hq"]);
   });
 });
 
-describe("blips and missions", () => {
-  it("has at most eight side activities, keyed A to H", () => {
-    expect(SIDE_BLIPS.length).toBeLessThanOrEqual(8);
-    expect(SIDE_BLIPS.map((b) => b.key).join("")).toBe("ABCDEFGH".slice(0, SIDE_BLIPS.length));
-  });
-
-  it("makes the booth the last side activity: the way on", () => {
-    expect(SIDE_BLIPS.at(-1)!.id).toBe("booth");
-  });
-
+describe("missions", () => {
   it("numbers the missions in order, ticks four and keeps only the last live", () => {
     expect(MISSIONS.map((m) => m.number)).toEqual([1, 2, 3, 4, 5]);
     expect(MISSIONS.filter((m) => m.live).map((m) => m.id)).toEqual(["heuristik"]);

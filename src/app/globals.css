@@ -164,3 +164,13 @@ body[tabindex="-1"]:focus {
     transition-duration: 0.001ms !important;
   }
 }
+
+/*
+ * The subtitle size she picks in STATS's settings (lib/subtitleSize.ts):
+ * the hero's and the career city's cards, from their own size
+ * (Hero.module.css and Work.module.css .subtitle, tested). Medium sets
+ * nothing, so by default the cards keep their stylesheets' size.
+ */
+html[data-subtitles] [data-captions] [data-card] {
+  font-size: calc(clamp(0.95rem, 1.35vw, 1.2rem) * var(--va-subtitle-scale, 1));
+}

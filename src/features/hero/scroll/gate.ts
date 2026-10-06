@@ -211,8 +211,10 @@ export function liftFling(fling: number, room: number, vh: number): number {
 
 /**
  * Whether a finger landing with the page at `page` px leaves its stroke
- * to the browser: past the film's end (`heroEnd`, p = 1) with the walls
- * open (`maxScroll` Infinity). Below the hero there is nothing to gate,
+ * to the browser: past the film's end (`heroEnd`, p = 1) with every wall
+ * open (`maxScroll` Infinity: the smaller of the hero's wall and the
+ * career city's, SmoothScroll; a closed wall in the city is gated like
+ * the hero's, or every native move ran past it and was pulled back). Below the hero there is nothing to gate,
  * and Lenis driving a finger there read every move of the viewport as
  * finger travel: a phone's bars coming or going mid-stroke shifted the
  * finger's clientY under a still thumb, so the page jumped against the

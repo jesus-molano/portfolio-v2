@@ -35,8 +35,26 @@ describe("the career", () => {
     expect(everything).not.toMatch(/Madrid/i);
   });
 
-  it("never says he works remotely, anywhere in the copy", () => {
-    expect(JSON.stringify([en, es])).not.toMatch(/\bremot|teletrabajo/i);
+  it("says how each job was done: the army and PwC on site, the three since remote, Heuristik too", () => {
+    expect(Object.fromEntries(CAREER.map((job) => [job.id, job.mode]))).toEqual({
+      army: "onSite",
+      pwc: "onSite",
+      "cloud-district": "remote",
+      logixs: "remote",
+      heuristik: "remote",
+    });
+  });
+
+  it("says remote only in the main missions' work-mode labels, in the owner's words", () => {
+    expect(en.stats.missions.modes).toEqual({ onSite: "On site", remote: "Remote" });
+    expect(es.stats.missions.modes).toEqual({ onSite: "Presencial", remote: "En remoto" });
+    // The labels are the one place the owner lifted his rule; everywhere else the copy still never says it.
+    for (const dict of [en, es]) {
+      const { modes, ...missions } = dict.stats.missions;
+      expect(modes.remote).toMatch(/remot/i);
+      const rest = { ...dict, stats: { ...dict.stats, missions } };
+      expect(JSON.stringify(rest)).not.toMatch(/\bremot|teletrabajo/i);
+    }
   });
 
   it("tags Heuristik LIVE, in English, in every language, and nothing else", () => {

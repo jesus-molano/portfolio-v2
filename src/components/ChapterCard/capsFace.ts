@@ -14,7 +14,7 @@ export const ADVANCE: Readonly<Record<string, number>> = {
   U: 0.487, V: 0.494, W: 0.8, X: 0.471, Y: 0.465, Z: 0.418,
   Á: 0.478, É: 0.408, Í: 0.23, Ó: 0.497, Ú: 0.487, Ü: 0.487, Ñ: 0.543,
   "¡": 0.25, "!": 0.25, "’": 0.251, " ": 0.22,
-  // The career city's ribbon (El trabajo · 2018 — LIVE): the digits, the middle dot and the dashes (no kerning with them).
+  // The career city's ribbon (Trayectoria · 2018 — LIVE): the digits, the middle dot and the dashes (no kerning with them).
   "0": 0.507, "1": 0.274, "2": 0.49, "3": 0.504, "4": 0.511, "5": 0.515, "6": 0.499, "7": 0.485, "8": 0.501, "9": 0.499,
   "·": 0.189, "—": 0.902, "–": 0.546,
 };

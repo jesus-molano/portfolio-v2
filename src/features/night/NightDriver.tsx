@@ -2,7 +2,7 @@
 
 import { useGLTF } from "@react-three/drei";
 import { useMemo } from "react";
-import { type Bone, FrontSide, Mesh, type MeshStandardMaterial, type Object3D } from "three";
+import { type Bone, FrontSide, Group, Mesh, type MeshStandardMaterial, type Object3D } from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { DRIVER_URL } from "@/features/hero/scene/Driver";
 import { captureBindPose, DRIVER_SCALE, DRIVER_SEAT, poseDriver, type RestBone } from "@/features/hero/scene/driverPose";
@@ -30,8 +30,23 @@ export function NightDriver() {
     const rest = stored ?? captureBindPose(bones);
     // eslint-disable-next-line react-hooks/immutability -- the cached GLTF scene owns its bind pose
     scene.userData[REST_POSE_KEY] = rest;
-    poseDriver(scene, bones, rest);
+    // Pose a copy of our own, seated in a car frame of our own: the pose's
+    // targets are in the car's space (poseDriver reads the character's
+    // parent), and the shared scene's parent is the hero's car only while
+    // the hero is mounted; posed in whatever frame it happened to have, his
+    // hands missed the wheel and the door. Posed here he sits as in the hero.
     const copy = cloneBare<Object3D>(scene, (source) => cloneSkinned(source));
+    const copyBones = new Map<string, Bone>();
+    copy.traverse((object) => {
+      if ((object as Bone).isBone) copyBones.set(object.name, object as Bone);
+    });
+    const seat = new Group();
+    copy.position.set(DRIVER_SEAT.x, DRIVER_SEAT.y, DRIVER_SEAT.z);
+    copy.rotation.set(0, Math.PI, 0);
+    copy.scale.setScalar(DRIVER_SCALE);
+    seat.add(copy);
+    poseDriver(copy, copyBones, rest);
+    seat.remove(copy);
     copy.traverse((object) => {
       if (!(object instanceof Mesh)) return;
       object.frustumCulled = false;

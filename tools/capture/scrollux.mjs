@@ -41,7 +41,7 @@
  * never a stroke, a tap or the radio), ends (Ctrl+End and Ctrl+Home, Cmd+Down and Cmd+Up, act as End
  * and Home in the hero), escape (Esc or End twice, or held, cut to THE
  * USUAL SUSPECTS and no further; Esc with the radio open only closes it),
- * navigate (the STATS booth, a STATS tab, back to top and a deep
+ * navigate (the cinema's box office, a STATS tab, back to top and a deep
  * link land with Lenis, the hero's walls open past it, and her next notch
  * or swipe goes on from there, even before the next frame; Back after a
  * link returns to where she was, Forward to where it went; back to top
@@ -59,7 +59,10 @@
  * Skip expanded, the longest card, the dash, the hint and the radio button
  * never overlap, 360 x 640 to 1440 x 900; a phone has no dash, a tablet
  * keeps it), citybars (a phone's bars coming and going at each stop of the
- * career city, its walls closed ahead: nothing moves), statics (after Skip, the static
+ * career city, its walls closed ahead: nothing moves), cityswipe (a phone's
+ * swipes and flings in the career city, its walls closed ahead: every move
+ * gated, no scroll past the wall, no wall opened by a fling's momentum),
+ * statics (after Skip, the static
  * page follows wheel notches, trackpad bursts and keys on a desktop, and
  * swipes on a phone whose bars hide going down and come back going up,
  * the viewport and every viewport unit with them, under both motion modes:
@@ -1472,37 +1475,48 @@ const CHECKS = {
       await sleep(900);
     };
 
-    // The STATS booth (a link to #projects), reached by her own input after Skip.
+    // The cinema's box office (a link to the credits' #contact), reached by her own input after Skip:
+    // the page sent to the cinema's top as find in page would, then her notches or swipes bring the
+    // box office into view. (STATS no longer links on: its booth and prompts are gone.)
     const s = await session(device, lang);
     await sleep(1200);
     if (device === "desktop") await s.page.mouse.move(W / 2, H / 2);
     await s.page.keyboard.press("End");
     await sleep(700);
-    const booth = s.page.locator(device === "desktop" ? 'a[href="#projects"] [class*="marker"]' : 'a[href="#projects"]').first();
+    await s.page.evaluate(() => document.getElementById("projects").scrollIntoView({ block: "start" }));
+    await sleep(800);
+    const office = s.page.locator('#projects a[href="#contact"]').first();
     await driveUntil(s, async () => {
-      const box = await booth.boundingBox();
+      const box = await office.boundingBox();
       return box !== null && box.y > 80 && box.y + box.height < H - 60;
     });
     const was = await s.page.evaluate(() => ({ y: Math.round(scrollY), hash: location.hash }));
-    if (device === "desktop") await booth.click();
-    else await booth.tap();
+    if (device === "desktop") await office.click();
+    else await office.tap();
     await sleep(900);
-    const landed = { projects: await top(s, "projects"), rest: await rest(s, "projects"), ...(await state(s)) };
+    const landed = {
+      contact: await top(s, "contact"),
+      rest: await rest(s, "contact"),
+      limit: await s.page.evaluate(() => document.documentElement.scrollHeight - innerHeight),
+      ...(await state(s)),
+    };
+    // Where a link lands it (its scroll-margin clears the credits' fade), or as near as the foot of the page allows.
+    const atContact = (contact, y) => Math.abs(contact - landed.rest) <= 2 || y >= landed.limit - 1;
     await notch(s);
     await sleep(1500);
-    const after = { projects: await top(s, "projects"), ...(await state(s)) };
+    const after = { contact: await top(s, "contact"), ...(await state(s)) };
     report(
-      `${device} ${lang} navigate: the booth lands on the cinema with the walls open, and her next ${device === "desktop" ? "notch" : "swipe"} goes on from there`,
-      Math.abs(landed.projects - landed.rest) <= 2 &&
+      `${device} ${lang} navigate: the box office lands on the contact with the walls open, and her next ${device === "desktop" ? "notch" : "swipe"} goes on from there`,
+      atContact(landed.contact, landed.y) &&
         landed.frontier === null &&
-        landed.focus === "projects" &&
+        landed.focus === "contact" &&
         after.y >= landed.y &&
         after.y - landed.y <= H,
       { landed, after },
     );
 
-    // The browser's Back: where she was when she followed the booth, the address as it was; Forward:
-    // the cinema again. Never a dead Back (lib/navigate.ts pushFragment, PageEntry's popstate).
+    // The browser's Back: where she was in the cinema when she followed it, the address as it was;
+    // Forward: the contact again. Never a dead Back (lib/navigate.ts pushFragment, PageEntry's popstate).
     const linked = await s.page.evaluate(() => location.hash);
     await s.page.evaluate(() => history.back());
     await sleep(1200);
@@ -1512,40 +1526,22 @@ const CHECKS = {
     const backedOn = await state(s);
     await s.page.evaluate(() => history.forward());
     await sleep(1200);
-    const forward = { projects: await top(s, "projects"), hash: await s.page.evaluate(() => location.hash) };
+    const forward = { contact: await top(s, "contact"), y: await s.page.evaluate(() => Math.round(scrollY)), hash: await s.page.evaluate(() => location.hash) };
     report(
-      `${device} ${lang} navigate: Back after the booth returns to where she was in STATS, her next ${device === "desktop" ? "notch" : "swipe"} goes on from there, and Forward goes back to the cinema`,
-      linked === "#projects" &&
+      `${device} ${lang} navigate: Back after the box office returns to where she was in the cinema, her next ${device === "desktop" ? "notch" : "swipe"} goes on from there, and Forward goes back to the contact`,
+      linked === "#contact" &&
         Math.abs(backed.y - was.y) <= 2 &&
         backed.hash === was.hash &&
         backed.frontier === null &&
         backedOn.y >= backed.y &&
         backedOn.y - backed.y <= H &&
-        Math.abs(forward.projects - landed.rest) <= 2 &&
-        forward.hash === "#projects",
+        atContact(forward.contact, forward.y) &&
+        forward.hash === "#contact",
       { was, linked, backed, backedOn, forward },
     );
 
-    // The cinema's booth (a link to the credits' #contact), then Back: the cinema again.
-    // Where she is when she follows it: the booth in view, so the click itself moves nothing.
-    await s.page.evaluate(() => document.querySelector('#projects a[href="#contact"]').scrollIntoView({ block: "center" }));
-    await sleep(800);
-    const cinemaY = await s.page.evaluate(() => Math.round(scrollY));
-    const toCredits = s.page.locator('#projects a[href="#contact"]').first();
-    if (device === "desktop") await toCredits.click();
-    else await toCredits.tap();
-    await sleep(900);
-    const credits = { contact: await top(s, "contact"), hash: await s.page.evaluate(() => location.hash) };
-    await s.page.evaluate(() => history.back());
-    await sleep(1200);
-    const cinemaAgain = { ...(await state(s)), hash: await s.page.evaluate(() => location.hash) };
-    report(
-      `${device} ${lang} navigate: the cinema's booth to the credits, then Back: the cinema again, where she was`,
-      credits.hash === "#contact" && Math.abs(cinemaAgain.y - cinemaY) <= 2 && cinemaAgain.hash !== "#contact",
-      { cinemaY, credits, cinemaAgain },
-    );
-
-    // Her next scroll before the page's next frame (a slow phone): a notch right after the click.
+    // Her next scroll before the page's next frame (a slow phone): a notch right after the click, from
+    // STATS, far above it. It goes on from the contact, never from where Lenis had the page.
     await s.page.evaluate(() => {
       window.history.replaceState(null, "", window.location.pathname);
       document.getElementById("stats").scrollIntoView({ block: "start" });
@@ -1561,12 +1557,16 @@ const CHECKS = {
             window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100, deltaMode: 0, bubbles: true, cancelable: true }));
           };
           window.addEventListener("hashchange", send, { once: true });
-          document.querySelector('a[href="#projects"]').click();
+          document.querySelector('#projects a[href="#contact"]').click();
           setTimeout(send, 0);
-          setTimeout(() => resolve(Math.round(document.getElementById("projects").getBoundingClientRect().top)), 1500);
+          setTimeout(() => resolve(Math.round(document.getElementById("contact").getBoundingClientRect().top)), 1500);
         }),
     );
-    report(`${device} ${lang} navigate: a notch before the next frame after the booth stays in the cinema`, raced <= 64 && raced >= -200, { projectsTop: raced });
+    report(
+      `${device} ${lang} navigate: a notch before the next frame after the box office stays at the contact`,
+      raced <= landed.contact + 2 && raced >= landed.contact - 200,
+      { contactTop: raced, landed: landed.contact },
+    );
 
     // A native move nobody routed (the scrollbar, find in page) and a notch in the same task, before
     // Lenis hears the scroll event: the notch goes on from where the page is.
@@ -1587,7 +1587,7 @@ const CHECKS = {
       native,
     );
 
-    // STATS's tabs: the STATS tab, then a notch.
+    // STATS's tabs: the MAP tab (the second), then a notch.
     await s.page.evaluate(() => document.getElementById("stats").scrollIntoView({ block: "start" }));
     await sleep(800);
     const tab = s.page.locator('#stats [role="tab"]').nth(1);
@@ -1600,7 +1600,7 @@ const CHECKS = {
     const tabAfter = await state(s);
     report(
       `${device} ${lang} navigate: a STATS tab, then a ${device === "desktop" ? "notch" : "swipe"}: she stays in STATS`,
-      tabAfter.y >= tabbed.y && tabAfter.y - tabbed.y <= H && (await s.page.evaluate(() => window.location.hash)) === "#stats-sheet",
+      tabAfter.y >= tabbed.y && tabAfter.y - tabbed.y <= H && (await s.page.evaluate(() => window.location.hash)) === "#stats-map",
       { tabbed, tabAfter },
     );
 
@@ -2178,6 +2178,56 @@ const CHECKS = {
       });
       await s.close();
     }
+  },
+
+  async cityswipe(device, lang) {
+    // In the career city a stroke is gated like the hero's while a wall is closed ahead: Lenis drives
+    // it, every move is cancelled (one nobody cancels hands the stroke to the browser, past every
+    // wall), no scroll event lands past the wall, and a fling's momentum opens nothing.
+    if (device !== "mobile") return;
+    const record = () => {
+      const rec = { scrolls: [], moves: [] };
+      window.__cityswipe = rec;
+      addEventListener("scroll", () => {
+        const wall = window.__vaStageGate?.maxScroll ?? Number.POSITIVE_INFINITY;
+        if (rec.on) rec.scrolls.push({ y: scrollY, wall });
+      }, { passive: true });
+      addEventListener("touchmove", (event) => {
+        if (!rec.on) return;
+        const entry = { cancelable: event.cancelable, prevented: false };
+        rec.moves.push(entry);
+        setTimeout(() => (entry.prevented = event.defaultPrevented));
+      }, { passive: true, capture: true });
+    };
+    const s = await session(device, lang, { hash: "#work-pwc", init: record });
+    await sleep(2500);
+    await s.page.waitForFunction(() => Number.isFinite(window.__vaStageGate?.maxScroll), null, { timeout: 20_000 });
+    await s.page.evaluate(() => (window.__cityswipe.on = true));
+    for (let i = 0; i < 6; i += 1) {
+      await stroke(s.cdp, { dy: 500, ms: 90 });
+      await sleep(700);
+    }
+    for (let i = 0; i < 6; i += 1) {
+      await stroke(s.cdp, { dy: 320, ms: 160 });
+      await sleep(900);
+    }
+    await sleep(1600);
+    const result = await s.page.evaluate(() => {
+      const rec = window.__cityswipe;
+      rec.on = false;
+      return {
+        moves: rec.moves.length,
+        uncancelable: rec.moves.filter((m) => !m.cancelable).length,
+        unprevented: rec.moves.filter((m) => m.cancelable && !m.prevented).length,
+        past: rec.scrolls.filter((e) => e.y > e.wall + 4).map((e) => Math.round(e.y - e.wall)).slice(0, 6),
+        scrolls: rec.scrolls.length,
+        wall: window.__vaStageGate?.maxScroll,
+        y: scrollY,
+      };
+    });
+    const ok = result.moves > 20 && result.uncancelable === 0 && result.unprevented === 0 && result.past.length === 0 && Number.isFinite(result.wall) && result.y <= result.wall + 4;
+    report(`${device} ${lang} cityswipe: swipes and flings in the city stay gated at its wall, every move cancelled, no wall opened`, ok && s.errors.length === 0, { ...result, errors: s.errors.slice(0, 3) });
+    await s.close();
   },
 
   async loader(device, lang) {

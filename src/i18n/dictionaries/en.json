@@ -149,7 +149,7 @@
       "tally": "Suspects: 4. Culprit: 1."
     },
     "speaker": "Jesús",
-    "line": "Round up the usual suspects."
+    "line": "Officer, I'd take a good look at number three."
   },
   "loader": {
     "loading": "Loading the city",
@@ -239,8 +239,8 @@
   },
   "work": {
     "chapter": {
-      "word": "Night shift",
-      "ribbon": "The work · 2018 — LIVE"
+      "word": "The road so far",
+      "ribbon": "Career · 2018 — LIVE"
     },
     "eyebrow": "The work",
     "bridge": "Someone has to pay for the bowls. I'm off to work.",
@@ -271,7 +271,7 @@
     "stops": {
       "army": {
         "h3": "Spanish Army (Ejército de Tierra)",
-        "line": "SPANISH ARMY · COMBAT ENGINEER",
+        "line": "COMBAT ENGINEER",
         "mirror": "Spanish Army (Ejército de Tierra), 2018–2021. Combat engineer in the Batallón de Zapadores XVI, in Las Palmas de Gran Canaria.",
         "cards": [
           "Sappers go in first, so that everyone else can follow.",
@@ -289,8 +289,7 @@
           "foot": [
             "JOIN THE SAPPERS",
             "LAS PALMAS DE GRAN CANARIA · 2018–2021"
-          ],
-          "crate": "XVI"
+          ]
         }
       },
       "pwc": {
@@ -314,21 +313,19 @@
             "DEVELOPER"
           ],
           "plaques": [
-            "BONO CULTURAL 2023",
-            "B ACCELERATOR TOWER"
+            "THIS SEASON",
+            "BONO CULTURAL 2023"
           ],
-          "amenities": "SCRUM · GIT · PR REVIEWS",
-          "door": "CHECK-IN 2023 · CHECK-OUT 2024",
-          "lobby": "RECEPTION"
+          "door": "CHECK-IN 2023 · CHECK-OUT 2024"
         }
       },
       "cloud-district": {
         "h3": "Cloud District",
         "line": "NATURGY · PANGEA · TELPARK · NEXT.JS · REACT · STRAPI",
-        "mirror": "Cloud District, 2024–2025, a consultancy. Frontend Developer on client projects: Naturgy, the energy supplier (Monitor and Omega, with Next.js and React), Pangea, the travel agency (its main website, with Next.js, Atomic Design, Strapi and Storybook) and Telpark (parking reservations).",
+        "mirror": "Cloud District, 2024–2025, a consultancy. Frontend Developer on client projects: Naturgy, the energy supplier, on two products with Next.js and React: Omega, its customer area, where customers manage their bills, usage and contracts, and Monitor, its in-house dashboard of processes, logs and events; Pangea, the travel agency (its main website, with Next.js, Atomic Design, Strapi and Storybook); and Telpark (parking reservations).",
         "cards": [
-          "At Cloud District, clients rotated like that board's faces.",
-          "After three laps of the block, that's worth more than the car."
+          "At Cloud District, clients rotated faster than this board.",
+          "The only thing that never rotated was the coffee downstairs."
         ],
         "chip": "clouddistrict.com ↗",
         "chipName": "clouddistrict.com: Cloud District, Frontend Developer, 2024 to 2025",
@@ -338,8 +335,19 @@
             {
               "title": "NATURGY",
               "lines": [
-                "MONITOR & OMEGA",
                 "NEXT · REACT"
+              ],
+              "products": [
+                {
+                  "name": "OMEGA",
+                  "kind": "Customer area",
+                  "what": "Bills, usage and contracts"
+                },
+                {
+                  "name": "MONITOR",
+                  "kind": "In-house",
+                  "what": "Processes, logs and events"
+                }
               ]
             },
             {
@@ -347,14 +355,35 @@
               "lines": [
                 "The whole world in one store.",
                 "ATOMIC DESIGN · NEXT · STRAPI · STORYBOOK"
-              ]
+              ],
+              "cta": "Plan your trip"
             },
             {
               "title": "TELPARK",
               "lines": [
                 "Your space, booked before you leave home.",
                 "PARKING RESERVATIONS"
-              ]
+              ],
+              "search": [
+                [
+                  "Destination",
+                  "Central station"
+                ],
+                [
+                  "Arrival",
+                  "Fri · 10:00"
+                ],
+                [
+                  "Departure",
+                  "Sun · 20:00"
+                ]
+              ],
+              "spot": {
+                "name": "Station car park",
+                "price": "€9.90",
+                "per": "/day",
+                "cta": "Book"
+              }
             }
           ],
           "pieces": [
@@ -365,12 +394,12 @@
             "Oceania"
           ],
           "hold": "PANGEA. The whole world in one store.",
-          "cafe": "Cafetería"
+          "cafe": "Cloud District Coffee"
         }
       },
       "logixs": {
         "h3": "Logixs",
-        "line": "BYTETRAVEL · RETECH · FULL STACK DEVELOPER",
+        "line": "BYTETRAVEL · RETECH",
         "mirror": "Logixs, 2025–2026. Full Stack Developer on Bytetravel, a TravelTech offering ancillary services for leisure and business travellers (visas, eSIMs, VIP lounges) through travel agencies and airlines, and on the official portal of Retech, a startup acceleration programme.",
         "cards": [
           "Then came Logixs, where I went full stack.",
@@ -381,23 +410,31 @@
         "board": {
           "snipe": "LOGIXS · FULL STACK DEVELOPER · 2025–2026",
           "ban": "PROHIBIDO FIJAR CARTELES",
-          "bytetravel": [
-            "BYTETRAVEL",
-            "BUSINESS OR PLEASURE?",
-            "EVERYTHING BUT THE TICKET.",
-            "VISAS · eSIM · VIP LOUNGES"
+          "banSmall": "RESPONSABLE LA EMPRESA ANUNCIADORA",
+          "bytetravel": {
+            "name": "BYTETRAVEL",
+            "ask": "BUSINESS OR PLEASURE?",
+            "answer": "Everything but the ticket.",
+            "extras": "VISAS · eSIM · VIP LOUNGES"
+          },
+          "extras": [
+            { "word": "VISAS", "line": "Approved before you board.", "stamp": "APPROVED" },
+            { "word": "eSIM", "line": "Online the moment you land.", "stamp": "" },
+            { "word": "VIP LOUNGES", "line": "The wait, in first class.", "stamp": "" }
           ],
-          "retech": [
-            "RETECH",
-            "THE OFFICIAL PORTAL",
-            "STARTUP ACCELERATION PROGRAMME"
-          ],
-          "printer": "PRINTED BY LOGIXS",
-          "fragments": [
-            "OPEN THE ROAD",
-            "BONO CULTURAL 2023",
-            "PANGEA"
-          ]
+          "retech": {
+            "name": "RETECH",
+            "portal": "THE OFFICIAL PORTAL",
+            "programme": "STARTUP ACCELERATION PROGRAMME"
+          },
+          "gig": {
+            "presents": "LOGIXS PRESENTS",
+            "headliner": "FULL STACK",
+            "acts": ["FRONT END", "BACK END"],
+            "tour": "ON TOUR 2025–2026",
+            "tagline": "Two stages, one dev."
+          },
+          "printer": "PRINTED BY LOGIXS"
         }
       },
       "heuristik": {
@@ -419,20 +456,16 @@
   },
   "stats": {
     "chapter": {
-      "word": "Player one",
-      "ribbon": "Off the clock"
+      "word": "Paused",
+      "ribbon": "Player profile"
     },
-    "title": "PAUSED",
-    "description": "This is a pause screen. His main missions sum up his career in five: four completed and one still running. The map is Tenerife, more or less, with the towns renamed, and hides his favourite games, films and series around the island, and Formula 1 too. A phone booth that won't stop ringing leads to his side projects. The second tab is his character sheet, with his skills and records.",
-    "tabs": [
-      "MAP",
-      "STATS"
-    ],
+    "description": "This is the pause menu. The first tab is his player profile: who he is and how he works, his skills and his records. The map shows where he has worked, on site or from home base, beside his five main missions. Then his achievement tree, unlocked and locked, and the settings: the radio, the controls, the subtitle size and the language.",
+    "tabs": ["STATS", "MAP", "ACHIEVEMENTS", "SETTINGS"],
     "tabsLabel": "Pause menu",
     "clock": "SUN 23:47",
     "map": {
       "title": "TENERIFE, MORE OR LESS",
-      "label": "Map of Tenerife at night, with its towns renamed and Gran Canaria in a box in the corner.",
+      "label": "Map of Tenerife at night, with its towns renamed and Gran Canaria in a box in the corner. Mission 1 is in Gran Canaria's capital, mission 2 at the dock on Tenerife's north-east coast, and missions 3, 4 and 5 at home base, in the caldera.",
       "places": {
         "santaCruz": "SANTA CHICHARRO",
         "laLaguna": "LA LLOVIZNA",
@@ -456,21 +489,8 @@
         "name": "GRAN CANARIA",
         "city": "LAS PALMERITAS"
       },
-      "you": "Hey, you. You're finally awake.",
       "hq": "HQ in a volcano, obviously.",
-      "blips": {
-        "pit": "Pit lane. Box 33.",
-        "box": "A cardboard box that just moved.",
-        "pizza": "Pizza to go, and hold the olives.",
-        "arena": "Strength and honour in the arena.",
-        "carWash": "A car wash that only takes cash.",
-        "law": "A law office at the back of a nail salon.",
-        "betting": "A betting shop where the caps stay on."
-      },
-      "booth": {
-        "caption": "A phone booth that won't stop ringing.",
-        "action": "Answer to continue"
-      },
+      "dock": "The dock",
       "scale": "10 km",
       "north": "N",
       "source": "Relief and coast: SRTM, GMTED2010 and ETOPO1 (public domain)."
@@ -481,6 +501,10 @@
       "done": "completed",
       "live": "LIVE",
       "liveText": "on air since 2026",
+      "modes": {
+        "onSite": "On site",
+        "remote": "Remote"
+      },
       "items": {
         "army": {
           "name": "Batallón de Zapadores XVI",
@@ -505,7 +529,8 @@
       }
     },
     "player": {
-      "name": "JESÚS MOLANO",
+      "title": "ABOUT ME",
+      "bio": "I sweat the user experience: smooth interfaces, truly responsive, nothing mass-produced. I use AI as a tool, not an autopilot, always inside my own layer of security, restrictions and configuration.",
       "player2": "PLAYER 2",
       "alt": "Jesús drawn as a game character: gold aviators, a dark hoop earring, a beard and a striped tee, with Dante, a cream lynx-point kitten with blue eyes, on his shoulder as player 2."
     },
@@ -573,8 +598,152 @@
         }
       ]
     },
-    "hint": "RESUME",
-    "hintTarget": "side projects"
+    "achievements": {
+      "title": "ACHIEVEMENT TREE",
+      "count": "{unlocked}/{total} unlocked",
+      "branchCount": "{unlocked} of {total} unlocked",
+      "intro": "What I've unlocked so far, and what's still holding out on me.",
+      "player": "P1",
+      "status": { "unlocked": "unlocked", "locked": "locked" },
+      "hardLocks": { "max": "maximum lock", "surrendered": "surrendered" },
+      "favourite": "favourite",
+      "branches": {
+        "sport": "SPORT",
+        "games": "GAMES",
+        "film": "FILM",
+        "series": "SERIES",
+        "crossover": "FILM + SERIES"
+      },
+      "groups": {
+        "rope": "JUMP ROPE",
+        "running": "RUNNING",
+        "f1": "FORMULA 1"
+      },
+      "nodes": {
+        "ropeBasic": { "title": "Basic bounce", "line": "Two feet, one rhythm, zero trips. Nearly zero." },
+        "boxerStep": { "title": "Boxer step", "line": "Foot to foot, like in the boxing films." },
+        "doubleUnders": { "title": "Double unders", "line": "Requires: the rope to stop winning." },
+        "run2k": { "title": "2 km", "line": "Just enough to earn breakfast." },
+        "run5k": { "title": "5 km in 24 min", "line": "4:48 a kilometre, tongue out." },
+        "run10k": { "title": "10 km in an hour", "line": "A whole hour without stopping once." },
+        "halfMarathon": { "title": "Half marathon", "line": "Requires: 21.1 km and an early Sunday." },
+        "marathon": { "title": "Marathon", "line": "Requires: unlocking the half first." },
+        "f1Dawn": { "title": "Up at 4 a.m. for the F1", "line": "And back to sleep after. Done, more than once." },
+        "alonso33": { "title": "See Alonso's 33rd", "line": "Requires: a car worthy of him. Pending since 2013." },
+        "pig": { "title": "Stop eating like a pig", "line": "Requires: willpower (not found)." },
+        "metalGear": { "title": "Metal Gear Solid 3", "line": "A cardboard box that just moved." },
+        "devilMayCry": { "title": "Devil May Cry 3", "line": "Pizza to go, and hold the olives." },
+        "skyrim": { "title": "Skyrim", "line": "Hey, you. You're finally awake." },
+        "rdr2": { "title": "Red Dead Redemption 2", "line": "More hours brushing the horse than doing missions." },
+        "gta6": { "title": "GTA VI", "line": "Requires: it to finally come out." },
+        "elderScrolls6": { "title": "The Elder Scrolls VI", "line": "Requires: infinite patience. Announced in 2018." },
+        "godfather": { "title": "The Godfather", "line": "I'm gonna make him an offer he can't refuse." },
+        "usualSuspects": { "title": "The Usual Suspects", "line": "You just walked past the line-up." },
+        "matrix": { "title": "The Matrix", "line": "A phone booth that won't stop ringing." },
+        "pulpFiction": { "title": "Pulp Fiction", "line": "Royale with cheese." },
+        "odyssey": { "title": "The Odyssey, no loo break", "line": "Bladder of steel: confirmed." },
+        "imax": { "title": "Watch a film in 70mm IMAX", "line": "Requires: a budget I don't have." },
+        "sopranos": { "title": "The Sopranos", "line": "Let's not talk about the ending." },
+        "breakingBad": { "title": "Breaking Bad", "line": "A car wash that only takes cash." },
+        "betterCallSaul": { "title": "Better Call Saul", "line": "A law office at the back of a nail salon." },
+        "peakyBlinders": { "title": "Peaky Blinders", "line": "A betting shop where the caps stay on." },
+        "chernobyl": { "title": "Chernobyl", "line": "3.6 roentgen. Not great, not terrible." },
+        "onePiece": { "title": "Catch up on One Piece", "line": "Requires: over a thousand episodes. Stuck in Alabasta." },
+        "marvel": { "title": "Keep up with Marvel", "line": "Requires: 30-odd films and a dozen series." }
+      }
+    },
+    "settings": {
+      "audio": {
+        "title": "AUDIO",
+        "radio": "Radio",
+        "on": "On",
+        "off": "Off",
+        "station": "Station",
+        "volume": "Volume",
+        "fixedVolume": "This device sets the volume with its own buttons."
+      },
+      "controls": {
+        "title": "CONTROLS",
+        "columns": ["Action", "Keyboard", "Mouse", "Touch"],
+        "or": "or",
+        "rows": [
+          {
+            "action": "Next line",
+            "keys": [
+              ["Space"],
+              ["PgDn"],
+              ["↓"]
+            ],
+            "mouse": "Scroll, or click the picture",
+            "touch": "Swipe up, or tap the picture"
+          },
+          {
+            "action": "Hold to drive",
+            "keys": [
+              ["W"],
+              ["Space"]
+            ],
+            "mouse": "Hold the pedal",
+            "touch": "Hold the pedal"
+          },
+          {
+            "action": "Go back",
+            "keys": [
+              ["S"],
+              ["↑"],
+              ["PgUp"]
+            ],
+            "mouse": "Scroll up",
+            "touch": "Swipe down"
+          },
+          {
+            "action": "Skip the film",
+            "keys": [
+              ["Esc"],
+              ["End"]
+            ],
+            "mouse": "The Skip button",
+            "touch": "The Skip button"
+          },
+          {
+            "action": "Open the radio",
+            "keys": [
+              ["Q"]
+            ],
+            "mouse": "Hold right-click on the picture, or the radio button",
+            "touch": "A still finger on the picture, lifted when the ring shows, or the radio button"
+          },
+          {
+            "action": "Pick a station",
+            "keys": [
+              ["←", "→"],
+              ["Enter"]
+            ],
+            "mouse": "Aim and let go, or click",
+            "touch": "Tap a station"
+          },
+          {
+            "action": "Switch tabs here",
+            "keys": [
+              ["["],
+              ["]"]
+            ],
+            "mouse": "Click a tab",
+            "touch": "Tap a tab"
+          }
+        ]
+      },
+      "display": {
+        "title": "DISPLAY",
+        "subtitles": "Subtitle size",
+        "sizes": ["Small", "Medium", "Large"],
+        "sample": "Jesús: this is how the film's lines will read."
+      },
+      "language": {
+        "title": "LANGUAGE",
+        "hint": "The other language opens right here, on this tab."
+      }
+    }
   },
   "common": {
     "newTab": "(opens in a new tab)",

@@ -53,7 +53,9 @@ also exists as real DOM for keyboard and screen-reader users.
   pinch, Esc and End twice, Back after a link and back to top's address,
   the loader on a phone, the pedal (a thumb, the mouse, W and Space
   held, two fingers, blur, a lost keyup, Q, the end, reduced motion) and
-  its layout from 360 x 640 to 1440 x 900, and the static page after
+  its layout from 360 x 640 to 1440 x 900, a phone's swipes and flings
+  in the career city at a closed wall (every move gated, nothing past
+  it, no wall opened), and the static page after
   Skip (wheel, trackpad and keys; swipes while a phone's bars come and
   go, in both motion modes: no section moves, nothing against her input,
   no scroll by script, no layout shift), on desktop and a phone in both
@@ -67,6 +69,13 @@ also exists as real DOM for keyboard and screen-reader users.
   paint to the click (must be exactly 0, also through a slow load), the
   fit matrix of eleven viewports in both languages, and frames of every
   state in `.captures/loader/`. Look at them before calling a change done.
+- `node tools/capture/pause.mjs --url http://localhost:3000` (dev server
+  running; `--lang`, `--device`, `--frames <dir>`) — STATS's pause in the
+  browser: the world frozen and the menu settled as it crosses the middle
+  of the screen and back on leaving, no layout shift, nothing animating
+  once settled, reduced motion; with the radio on, the bus's cutoff and
+  duck and a blip each way; with it off, no AudioContext at all. PASS or
+  FAIL; `--frames` saves a strip of the entrance.
 
 ## Stack (pinned on purpose)
 
@@ -135,8 +144,11 @@ also exists as real DOM for keyboard and screen-reader users.
     finger's coalesced move or a pressure change, before it cancels it,
     and a move nobody cancels hands the rest of the stroke to the
     browser's own scrolling, past every wall; `lenisContract.test.ts`;
-    below the hero, its walls open, a stroke is the browser's own from
-    its first move, `gate.ts` browserStroke: nothing to gate there, and
+    below the hero, every wall open (the career city's too: a closed one
+    there is gated like the hero's, and a fling's momentum within 1.5 s
+    of the lift is still hers, never navigation), a stroke is the
+    browser's own from its first move, `gate.ts` browserStroke: nothing
+    to gate there, and
     the browser, not Lenis, owns a phone's bars and its momentum; a key
     that scrolls the page there stops a wheel's glide, `keyScrollsPage`,
     or Lenis swallowed it or yanked the page back),
@@ -473,7 +485,12 @@ also exists as real DOM for keyboard and screen-reader users.
   runs on a clock (`livePosition`), so tuning in lands mid-song; the
   playlist loops. `player.ts` plays it on `<audio>` decks, fetches only the
   track on air (the next one in its last 20 s), crossfades through a Web
-  Audio burst of tuning static and pauses while the tab is hidden.
+  Audio burst of tuning static and pauses while the tab is hidden. The
+  decks play through one Web Audio bus (a low-pass and a gain, built in
+  the gesture that first tunes the radio, a deck joining it only once the
+  AudioContext runs: routed into a stopped one it would go silent), which
+  only STATS's pause moves; without it the pause ducks the deck's own
+  volume. The tracks must stay same-origin, or the bus plays silence.
   `radio.ts` is the store (useSyncExternalStore) and remembers the last
   station or "off" in localStorage. The loader's "enter with music" plays
   `entryStation` (the remembered station live, or the first time BABYLON
@@ -537,7 +554,7 @@ also exists as real DOM for keyboard and screen-reader users.
     `tips[0]` a tip with no device condition, all six stations named, and
     no tip retells a hero line (the film's beats are the film's) or gives
     away a later section (the cats and their complaint, STATS' bars, map
-    and favourites, the cinema, the credits; tested). Nothing promises what
+    and achievement tree, the cinema, the credits; tested). Nothing promises what
     is not on the page yet: the career city's tip ("a sign for every
     employer") comes back with the city. Every trivia is true of the site
     (the aviators mirror our sky, the palms are made in code, the grain
@@ -568,8 +585,9 @@ also exists as real DOM for keyboard and screen-reader users.
   and without JS the stage is plates. Boards arm before they open
   (`hotspot.ts`): a real pointer move, a first tap, or focus on the chip;
   the hotspot is a DOM element clipped to the board's projected quad.
-  The film opens on the chapter card "Night shift" / «Turno de noche»
-  (ribbon «El trabajo · 2018 — LIVE»), after a bridge card from the cats.
+  The film opens on the chapter card «La carrera» (the career and the race
+  at once) / "The road so far" (ribbon «Trayectoria · 2018 — LIVE» /
+  "Career · 2018 — LIVE"), after a bridge card from the cats.
   The route at the top is one link per stop («PARADA 1…5»), never a video
   scrubber. While the car is stopped, the super shows «PARADA 0X/05 ·
   company» and, under it, the stop's one `line` (clients and stack); the
@@ -587,6 +605,29 @@ also exists as real DOM for keyboard and screen-reader users.
   `lib/screen.ts`) and its film is the stage less one stable screen, so a
   phone's bars coming and going never move it (scrollux `citybars`, at
   every stop with its walls closed ahead, and `statics`).
+  - Pacing and continuity, as polished as the hero: every drive between
+    two stops is held (`workTimeline.ts` BEAT_SECONDS: each stop's
+    `open` is its arrival, each `leave` its departure, both `hold` beats;
+    no `travel` beat is left, since at the scroll's density one was less
+    than a wheel's notch and a stop changed in one frame). The car's x is
+    one continuous function of the film inside every stop
+    (`night/carPath.ts` `carAt`, tested): on the first stop it rolls in
+    under the bridge line as the night fades in, never stands at the
+    board before it gets there; at every stop it cruises in, brakes to
+    the line, waits with the brake lights on and pulls away. The stop
+    changes under a dip to night (`dip.ts`, tested: the leave's end fades
+    to night, the arrival's start up from it), a cut on action, never a
+    hard cut; on screen the dip never plays faster than 0.3 s out and
+    0.35 s back, and the set changes only once the screen is night
+    (`stepDipView`: the old stop held at its edge till then), so a fast
+    pass with the walls open still dissolves. The chapter card fades out
+    over the bridge line's first 28 % and the chrome (route, HUD, super,
+    chip) comes up only once it has gone (`opening.ts`, tested): the card
+    scrolls up with the page, and faded over the whole line it slid over
+    the route. The letterbox bars slide away as the first stop fades in,
+    as in the hero, and soft night scrims at the frame's top and bottom
+    carry the chrome; the cover's night starts and ends on the line-up's
+    floor, the colour on both sides of the stage, so neither seam shows.
   - The city owns the career, told once and in full: company, role,
     years, clients, stack, link, and the army's battalion and Las Palmas.
     STATS only indexes it; the end credits carry no career. The
@@ -610,11 +651,43 @@ also exists as real DOM for keyboard and screen-reader users.
   night at every stop (stars, a thin moon, one fog, palms along the kerb):
   he never moved, so no stop may read as another city. Lit windows are
   painted interiors (`parts/Windows.tsx`, `sets/art/windows.ts`), never
-  flat blocks. The car moves only in
-  the arrival and leave beats and only with the scroll (`carPath.ts`).
-  Shots are keys on the film (`frame.ts`); on a portrait screen `fitPose`
-  dollies back, then widens the lens (at most 70 degrees), then pans and
-  tilts to the board. Board art is painted once per stop into canvases in
+  flat blocks: each pane a room from its building's mix (`pickPane`:
+  hotel, home or office; never the same lit room as the pane beside it,
+  some left half lit), mirrored, dimmed or flickering like a television,
+  and one reader in an armchair is the atlas' only person. A lobby is one
+  room painted across its panes (`LOBBY`, the hotel's; `ATRIUM`, the
+  landmark's), never a framed copy per pane.
+  The car moves only with the scroll (`carPath.ts`), its
+  wheels turning with the distance, its body pitching on its springs as
+  it brakes and pulls away, its headlights' beams in the haze and their
+  fans on the wet road sweeping the street ahead (`Street.tsx`). The
+  camera's direction is `direction.ts`: per stop, keys on the film,
+  eased with a smoothstep (`frame.ts`; a `pass` key is curved through,
+  not stopped at), so every change of framing is a camera move; the sets
+  hold the geometry, not the shots. `rig.ts` (pure) gives the pose
+  `NightRig` follows: a key's `track` pans the look with the car as it
+  arrives, and on a portrait screen `fitPose` dollies back, then widens
+  the lens (at most 70 degrees), then pans and tilts to the stop's subject
+  (the board and the car at its line, never the moving car, so no fit
+  breathes) inside `SAFE.portrait` (under the route and the super, over
+  the subtitles), as much as the key's `fit` asks (a stop's own close
+  framing is `fit: 0`; fits blend, never switch). `NightRig` follows the
+  pose damped like the hero's rig, with its hand-held life (and the
+  pointer's parallax on the high tier), snapping only at a cut, under the
+  dip, or on a dev jump (`night.snap`). `direction.test.ts` holds it on a
+  desktop, a phone and a small phone: no step of the film whips (0.5 m,
+  2 degrees), a line moves the camera 3 m and 5 degrees at most (the
+  framing lands before it), the car is on screen for most of every
+  arrival and stops above the subtitles, every board, PwC's readerboard
+  (a quarter of the frame wide), Logixs' snipe, ban and bills and
+  Heuristik's name over its canopy are whole, the crane climbs at a
+  crane's pace, the lit mast stays under the route, and PwC's blade never
+  reads WC (P, W and C whole, or W cropped before P leaves: the marquee
+  beat rises to the blade and reads it down). The driver sits in the car
+  on every tier. Speed: the hero's dpr (`FULL_DPR`) and its one
+  step down on a slow device (production, `PerformanceMonitor`); every
+  stop's materials are compiled and its textures uploaded ahead of its
+  cut (`Warmup` in `NightScene.tsx`), the next stop first. Board art is painted once per stop into canvases in
   the site's fonts (`sets/art/`). `palette.onAir` is the LIVE tally's red
   and nothing else's. Night shaders never call `pow()` (tested). Dev
   hooks: `window.__vaStage(at)` (a film position or a beat id, `id@t`)
@@ -622,7 +695,8 @@ also exists as real DOM for keyboard and screen-reader users.
 - `src/features/suspects` — THE USUAL SUSPECTS (`#suspects`), right after
   the hero: a police line-up of his four cats against a centimetre height
   chart, a server component with no canvas and no looping animation; its
-  one piece of script is the culprit's plate (`CulpritPlate.tsx`). One CSS
+  script is the culprit's plate (`CulpritPlate.tsx`) and the fit of his
+  line's card (`FitLine.tsx`). One CSS
   length, `--cm`, is a centimetre of the chart; `lineup.ts` (pure, tested)
   turns the renders' manifest (`public/interlude/manifest.json`, contract
   in `public/interlude/README.md`) into centimetres, so every cat keeps
@@ -663,8 +737,17 @@ also exists as real DOM for keyboard and screen-reader users.
     or no city, never Madrid; the slug says "Flatmates" / "Compañeros de
     piso", the owner's words without his name, which the section shows
     once, on the complaint; the complaint keeps the owner's words; the
-    eating joke belongs to STATS). The Spanish line follows the Spanish
-    dub of *Casablanca*: "Arresten a los sospechosos habituales." The
+    eating joke belongs to STATS). It ends on his line to the officer,
+    pointing at the culprit's slot without naming him (the owner's words,
+    tested against `CULPRIT`'s place): «Señor agente, yo me fijaría en el
+    número 3.» / "Officer, I'd take a good look at number three." It has a
+    row of its own under the plates and their descriptions, a pause's room
+    above it, in the hero's subtitle card (one block, balanced, as wide as
+    its widest line, `FitLine.tsx` with the hero's `cardFit.ts`; on the
+    night floor a hairline and the plates' shadow keep its edge). The
+    complaint's boxes are drawn (SVG, never a ✓ glyph from a fallback
+    face) and stand in their item's first line on its x-height centre
+    (`vertical-align: middle`, the columns sharing a baseline). The
     cats are the Blender renders of `tools/blender/render_interlude.py`
     (credited in the end credits with the XR Blocks "Cat" base, Apache-2.0);
     `tools/art/suspects/placeholder.mjs` still writes flat silhouettes for
@@ -676,106 +759,247 @@ also exists as real DOM for keyboard and screen-reader users.
   languages (Frontend Developer, Full Stack Developer, Frontend Engineer)
   except the army's (Zapador / Combat engineer; the city's service record
   spells it Soldado zapador). Las Palmas de Gran Canaria is the army's
-  alone: no civilian job names a city, and no copy says Madrid or remote
-  (tested over both dictionaries). Heuristik is on air, LIVE in English
-  everywhere. STATS derives its main missions from it (`statsLayout.ts`
-  adds only where each one sits on the map; `stats.missions.items` in the
-  dictionaries is tested to say the same), and the career city reads it
-  too. It imports nothing at runtime: `statsLayout.ts` imports it by its
+  alone: no civilian job names a city, and no copy says Madrid (tested
+  over both dictionaries). Each job has its work `mode`, on site (the
+  army, PwC) or remote (Cloud District, Logixs, Heuristik): STATS's main
+  missions say it in the owner's words, «Presencial» / «En remoto» ("On
+  site" / "Remote", `stats.missions.modes`), the one place the copy may
+  say remote (the owner lifted his rule for these labels only; tested).
+  Heuristik is on air, LIVE in English everywhere. STATS derives its main
+  missions from it (`statsLayout.ts` adds only where each one sits on the
+  map, a place for a job done on site, home base for a remote one;
+  `stats.missions.items` in the dictionaries is tested to say the same),
+  and the career city reads it too. It imports nothing at runtime: `statsLayout.ts` imports it by its
   `.ts` file name (`allowImportingTsExtensions`), because
   `tools/art/stats/map.mjs` loads that file in Node.
-- `src/features/stats` — STATS (`#stats`), the static pause menu after the
-  career city: one screen with two tabs, MAP and STATS. A server component
-  (`Stats.tsx`), every word of both tabs DOM text in the server HTML; the
-  tabs are its only client code (`StatsTabs.tsx`, below). Tab 1 (MAP,
-  `#stats`) is Tenerife at night under parody names (GTA-style: real
-  places, renamed; Spanish in both locales, `stats.map.places`; each one
-  gives the real town away at a glance, like GÜIMARCIANO for Güímar). The
-  career is five main missions: the army in a Gran Canaria box (the
-  island and its city named, nothing more: the Tenerife-versus-Gran-Canaria
-  joke is the hero's, and the army's road-opening is the career city's),
-  then the four jobs since, every one done from home, as badges beside
-  the HQ glyph (no job points at an office), which sits in
-  the Teide's caldera so it never points at a real home (tested);
-  Heuristik is the only red blip
-  (`palette.onAir`). Side activities are the favourites as places a fan
-  recognises, never as titles: pit lane "Box 33" at the circuit Atogo has
-  been promising for decades (F1: Alonso's long-awaited 33rd win, and
-  Verstappen's old number; the owner chose 33: never change it to a
-  current car number, `statsCopy.test.ts` holds it), a box that moved in
-  Masca (Metal Gear; the box is this blip's alone, the sheet's STEALTH bar
-  is about the cats and a tin), pizza without olives in Puerto (Devil May
-  Cry), the arena on the Sahara sand of Las Teresitas
-  (Gladiator; "Fuerza y honor" is the Spanish dub), a cash-only car wash at
-  the Malpaís de Güímar (Breaking Bad), a law office behind a nail salon
-  (Better Call Saul), a betting shop with caps on in Garachico (Peaky
-  Blinders), the player at the south airport ("Eh, tú, al fin has
-  despertado", Skyrim's Spanish line) and the ringing booth (The Matrix),
-  the only link on to `#projects` (STATS names no side project: they are
-  the cinema's, `statsMarkup.test.ts`). The booth's link is named by its
-  own words, the visible "Answer to continue" then an unseen ": side
-  projects", never an `aria-label` that drops the words she can see
-  (label in name, tested). The main missions are the career
-  index (with `CAREER_CITY_ON_PAGE` on in `statsLayout.ts`, links to the
-  city's `#work-*` stops), first in the page: from 1280 px a column beside the
-  map's frame, as tall as it (a subgrid), the badges on one route; from
-  700 to 1279 px a row of five above the map, each under its segment of
-  the progress line; on a phone a column before the map, so the content
-  comes before the map's way out. Tab 2 (STATS, `#stats-sheet`) is the
-  character sheet:
-  a Cycles render of his driver model with Dante at his shoulder
-  (`public/stats/portrait.{avif,webp}`, `tools/blender/build_stats_portrait.py`), the joke bars (appetite breaks out of
-  its panel into the gap beside it; under 1280 px, where the panel meets
-  the page's edge, the tracks are shorter and it breaks out of its track
-  only; the section has `overflow-x: clip`) and the records: Dante's
-  wanted level (five stars since the cables), the countless "just one more
-  episode" and the Grand Prix kilometres without a ticket ("from the
-  sofa" is said once, under RACECRAFT). No record counts the cats and no
-  halo shows anywhere (`statsCopy.test.ts`); each value's glyphs are
-  hidden from screen readers, which hear `spoken` instead.
-  `statsLayout.ts` holds the projection, every point as real longitude
-  and latitude, the caption sides and the page geometry; its tests check
-  that the blips stand on land and that no caption, name or marker
-  overlaps another at every map width the wide layout takes (1000 px and
-  up). Below 1000 px the square crop shows keyed pins and the legend
-  carries the words. Move a blip or change a caption, run the tests;
-  place a name with the box model, not by eye.
+- `src/features/stats` — STATS (`#stats`), the pause menu after the
+  career city. The site is a GTA-style game with film cutscenes, and here
+  the game is paused: the chapter card says «Pausa» / "Paused" (ribbon
+  «Ficha del jugador» / "Player profile"), and nothing in the menu says
+  the word again (the menu bar shows only the paused glyph, two bars, and
+  the in-game clock). Arriving feels like pressing pause in a game:
+  while STATS crosses the middle of the screen (an IntersectionObserver
+  on that line, never a scroll read per frame, never under the loading
+  screen; `data-paused` on the section) a big pause sign (two cream bars,
+  a ring and a faint flash) punches in over the middle of the screen for
+  0.9 s and gets out of the way: the one moment nobody misses, whatever
+  is behind (the career city has closed to flat night by then). It plays
+  only when the menu came up from below (`data-pause-from-below`):
+  coming back up from the cinema, the cinema's top would cut it in two.
+  Then the world behind the menu dims: a veil from one screen above
+  STATS down to its foot, under everything in STATS and over everything
+  before it, fading out over STATS's last 10rem, so no line shows where
+  the cinema (a later sibling in the same layer) starts. No backdrop
+  filter: there is nothing behind to blur, and the night canvas above
+  would redraw it every frame. Nothing in STATS may blend, or the section
+  is isolated and the veil sees only STATS. The menu settles into place
+  (a short eased rise), its glyph pulses once and stays lit, and the
+  clock's colon, ticking while the game ran, stops. Leaving undoes it,
+  faster. Only opacity and transforms move (no layout shift), and nothing
+  animates in STATS once it has settled (but the achievement tree's glow,
+  only while its tab is open); under reduced motion no sign
+  shows and the paused state simply holds, dimmed and still; forced
+  colours drop the veil and the sign (and ring the selected tab in
+  Highlight). With the radio on, the music goes behind the menu
+  (`features/music/pauseMix.ts`, pure and tested; `radio.ts`
+  `setPauseMenu`): a low-pass at 800 Hz and a 10 dB duck eased in over
+  0.25 s and back out over 0.38 s, with a synthesized blip each way
+  (falling on pause, rising on resume, never two within 0.7 s; only on a
+  running AudioContext, which her next key, click or tap, touchend
+  included, wakes). On SETTINGS the music is open (no muffle, no duck):
+  she picks a station and sets her volume by ear and hears what she
+  gets; switching tabs inside the paused menu lets it in or out without
+  a blip. Radio off: no sound and no AudioContext. `node
+  tools/capture/pause.mjs` checks it in the browser (the sign, the veil,
+  the sound, SETTINGS, and a fragment set on the open page landing the
+  section's top). While paused the menu's glyph holds still. One screen with four tabs, the player
+  profile first: STATS · MAP · ACHIEVEMENTS · SETTINGS (ESTADÍSTICAS ·
+  MAPA · LOGROS · AJUSTES). A server component (`Stats.tsx`), every
+  word of every tab DOM text in the server HTML; the client parts are the
+  tabs and the pause (`StatsTabs.tsx`), the achievement tree's taps and
+  keys (`AchievementSky.tsx`) and the settings (`StatsSettings.tsx`).
+  - STATS (`#stats`, the default; `#stats-sheet` opens it too) is the
+    player profile: a Cycles render of his driver model with Dante at his
+    shoulder (`public/stats/portrait.{avif,webp}`,
+    `tools/blender/build_stats_portrait.py`), and on its plate ABOUT ME /
+    SOBRE MÍ (`stats.player.title`), headed like the panels beside it,
+    never his name (the owner's call: the portrait's text alternative
+    names him; `statsMarkup.test.ts`), over how he works in the owner's
+    words (`stats.player.bio`, tested word for word; no "Frontend
+    Engineer" or Tenerife in it, the page says both already). From 1000
+    px the plate sits over the portrait, so landing on STATS shows it;
+    from 1000 to 1279 px the records stand beside the skills and the
+    portrait is square, so the profile fits 1100 × 800 (MAP and SETTINGS
+    scroll there, and under 1000 px every tab does). Then the joke bars
+    (appetite breaks out of its panel into the gap beside it; under 1280 px, where
+    the panel meets the page's edge, the tracks are shorter and it breaks
+    out of its track only; the section has `overflow-x: clip`) and the
+    records: Dante's wanted level (five stars since the cables), the
+    countless "just one more episode" and the Grand Prix kilometres
+    without a ticket ("from the sofa" is said once, under RACECRAFT). No
+    record counts the cats and no halo shows anywhere
+    (`statsCopy.test.ts`); each value's glyphs are hidden from screen
+    readers, which hear `spoken` instead.
+  - MAP (`#stats-map`) is career geography only: where he has worked and
+    where he is, on Tenerife at night under parody names (GTA-style: real
+    places, renamed; Spanish in both locales, `stats.map.places`; each one
+    gives the real town away at a glance, like GÜIMARCIANO for Güímar). No
+    hobby blip and no hobby caption on it (the owner found the map read as
+    a riddle: tested). The career is five main missions, the career index
+    (with `CAREER_CITY_ON_PAGE` on in `statsLayout.ts`, links to the
+    city's `#work-*` stops), each row saying how the job was done,
+    «Presencial» or «En remoto» with the map's glyph for it (the ring of
+    an on-site badge, home base), never a city in text. On the map: the army on site in the
+    Gran Canaria box (the island and its city named, nothing more: the
+    Tenerife-versus-Gran-Canaria joke is the hero's, and the army's
+    road-opening is the career city's); PwC on site at the dock on the
+    north-east waterfront, at the level of LAS SAHARITAS (`DOCK`, a real
+    point just inland of the map's coast, tested on land and near Las
+    Teresitas; its caption "The dock" / «La dársena»); and the three
+    remote jobs as badges beside the HQ glyph, which sits in the Teide's
+    caldera so it never points at a real home (tested). The career route
+    (`careerRoute` in `statsLayout.ts`, drawn by `map.mjs`) runs from the
+    box by ferry to the dock and up to home base; the ferry leaves the box
+    by its right side and crosses no word on the map, LAS SAHARITAS
+    standing above it north-east of the dock and SANTA CHICHARRO below it,
+    and the road crosses no caption (labels may touch the road; tested at
+    every wide width). Heuristik
+    is the only red blip (`palette.onAir`). A key beside the map's title
+    reads the badges: a ring is on site, home base is remote. The missions
+    come first in the page: from 1280 px a column beside the map's frame,
+    as tall as it (a subgrid), the badges on one route; from 700 to 1279
+    px a row of five above the map, each under its segment of the
+    progress line; on a phone a column before the map.
+    `statsLayout.ts` holds the projection, every point as real longitude
+    and latitude, the caption sides and the page geometry; its tests check
+    that the places stand on land and that no caption, name or marker
+    overlaps another at every map width the wide layout takes (1000 px and
+    up). Below 1000 px the square crop shows the badges and HQ, and a
+    legend under it carries the words, each row with its badges: 1 on
+    Gran Canaria's, 2 on the dock's, 3 to 5 on home base's. Move a point or change a caption,
+    run the tests; place a name with the box model, not by eye.
+  - ACHIEVEMENTS (`#stats-achievements`; the old `#stats-favorites`
+    still opens it, `PANEL_ALIASES`) is his achievement tree, the owner's
+    idea for the favourites: what he has unlocked and what still holds out
+    on him, as a game lists them (LOGROS / ACHIEVEMENTS: the sheet's
+    panel is SKILLS / HABILIDADES, so never "skill tree"; the panel is
+    headed «Árbol de logros» / "Achievement tree" with the count,
+    «20/30 desbloqueados», derived from the data, never typed). Drawn as
+    constellations in the island's night sky (`Achievements.tsx`, data,
+    layout and tests in `achievements.ts`): him, P1, on the ridge at the
+    foot of the sky, the Teide low on the right; four branches rise from
+    him and fork like a game's tree. SPORT: jump rope (the basic bounce
+    and the boxer step, never double unders), running (2 km, 5 km in 24
+    min, 10 km in an hour; the half and the full marathon locked),
+    Formula 1, watched (up at 4 a.m. for a race and back to sleep, and
+    Alonso's 33rd, pending since 2013; no Box 33, the owner took it out),
+    and «Dejar de comer como un cerdo», locked hardest, three padlocks on
+    a crossed chain, BLOQUEO MÁXIMO, a wink at the appetite bar. GAMES:
+    Metal Gear Solid 3 (its line is the only cardboard box on the site),
+    Devil May Cry 3 (pizza without olives), forking to Skyrim («Eh, tú, al
+    fin has despertado») toward The Elder Scrolls VI and to Red Dead
+    Redemption 2 toward GTA VI, both locked. FILM: The Godfather first,
+    then The Usual Suspects, Pulp Fiction («Royale con queso», the
+    owner's pick over Gladiator) and The Matrix, which feeds Marvel and
+    forks to
+    «Ver La Odisea sin ir al baño» (unlocked) and IMAX 70 mm (locked, «un
+    presupuesto que no tengo»). SERIES: The Sopranos first, forking to
+    Breaking Bad and Better Call Saul (which feeds Marvel) and to Peaky
+    Blinders and Chernobyl; «Ponerme al día con One Piece» (locked, «Me
+    quedé en Alabasta») hangs off the hub, never on the way to Marvel. His
+    two favourites, The Godfather and The Sopranos, are bigger gold stars
+    with a five-pointed star on their light and FAVORITA / FAVOURITE
+    under the title (in their names and details too), first from their
+    hubs. The one star FILM and SERIES feed, «Estar al día con Marvel»,
+    sits where their paths meet, surrendered: a ring as big as the pig's
+    with a white flag planted in it, RENDIDO, and it counts in both
+    branches (`branchTally`), so neither reads as finished. No radio
+    winks: the owner's rule is that people may never open the radio, so
+    no star names a station or the radio (`statsCopy.test.ts`): Pulp
+    Fiction's line is its burger, never Mr. Wolf, and Miami Vice is out. Every locked star's line says what it
+    requires («Requiere: ...», tested both ways). Each branch has its
+    colour (`achievementTree` in the tokens, `--va-tree-*`, the
+    favourites' gold too): lit stars glow in it, a glint each, and a soft
+    pulse travels out from the player along the lit links (CSS, only
+    while the tab is open, paused off screen, none under reduced motion);
+    locked stars are unlit rings with a padlock, their links dotted.
+    Every star is a real button in a nested list (branch, constellation,
+    star) named "<title>, unlocked|locked, [its tag,] <line>" (every word
+    of it on screen too), its details opening on hover, keyboard focus or
+    a tap; a locked one shakes when pressed; the arrows step along its
+    branch. From 1000 px the stars sit on the sky's plane (1200 × 640
+    units, in percentages, the type in `cqi`, titles wrapping at 8 em),
+    never taller than the screen leaves it, so the tab fits 1440 × 900 and
+    1100 × 800; `achievements.test.ts` keeps every title, star, hub, name
+    and link clear of the others (titles of two branches a full line
+    apart) and every details card inside the sky at every width it is
+    drawn at, in both languages: move a star, run the tests. Under 1000 px
+    each branch is a card with its stars down a spine that breaks where a
+    path forks off, every line shown (two columns on a tablet), the
+    favourites headed ★ FAVORITA. Forced colours draw it in system
+    colours. STATS names no side project (they are the cinema's,
+    `statsMarkup.test.ts`) and links nowhere on: the page scrolls on to
+    the cinema.
+  - SETTINGS (`#stats-settings`) are real, GTA-style: AUDIO tunes the
+    radio's own store (`radio.ts`): the radio on or off (a switch), the
+    station (radio buttons; tuning crackles as on the wheel) and her
+    volume (a range in 5 % steps that really sets the player's level,
+    `deckVolume`, remembered as `va-volume` like the station; where the
+    browser keeps the volume, iOS, it is disabled with a note). CONTROLS
+    is the full reference of how to drive the site, keyboard, mouse and
+    touch, true to the code (`hero/scroll/transport.ts`, the pedal, the
+    radio wheel, the tabs' shoulder keys), keys as key caps; on a phone
+    each action is a card, and a touch screen without a mouse (`hover:
+    none` and `pointer: coarse`) shows the touch column only. DISPLAY sets the subtitle size, small, medium
+    or large (`lib/subtitleSize.ts`: `data-subtitles` and
+    `--va-subtitle-scale` on `<html>`, multiplied into both stages' cards
+    by `globals.css`, tested against their stylesheets; remembered as
+    `va-subtitles`; the hero fits its cards again), with a sample card.
+    LANGUAGE links to the other locale on this very tab
+    (`/es#stats-settings`), so she lands back here; while the game is
+    paused the page controls' EN/ES carries the open tab's fragment too
+    (for that one click), so both switches keep her place. Every control is
+    native and labelled.
   - The tabs switch in place, like a game's pause menu: the tab bar (click,
     the arrows, Home, End; the WAI-ARIA tabs pattern, selection following
-    focus, roving tabindex, the open panel focusable next), `[` and `]` as
-    shoulder buttons while STATS crosses the middle of the viewport or
-    holds the focus (never Q or E: Q is the radio's), and a prompt to the
-    other tab at the foot, which brings the tab bar back into view (on a
-    phone the map runs for screens). Beside it RESUME (CONTINUAR) is a real
-    link on to `#projects`, like the booth, never a button-shaped label;
-    both prompts are 44 px targets that lay out as 24 px. A switch writes
-    the tab's fragment with `replaceState` (no scroll, no hashchange): `#stats` is
-    MAP, `#stats-sheet` is STATS (`statsTabs.ts`, pure, tested: fragments
-    and keys). A deep link opens its tab before `PageEntry` lands, through
-    `lib/reveal.ts`, and lands the section's top with the panel focused.
+    focus, roving tabindex, the open panel focusable next) and `[` and `]`
+    as shoulder buttons while STATS crosses the middle of the viewport or
+    holds the focus (never Q or E: Q is the radio's). A switch writes the
+    tab's fragment with `replaceState` (no scroll, no hashchange): `#stats`
+    is STATS, `#stats-map`, `#stats-achievements` and `#stats-settings`
+    the others (and `#stats-favorites`, the tree's old name, an element at
+    the top of its panel that lands like it) (`statsTabs.ts`, pure, tested:
+    fragments and keys). A deep link opens its tab before `PageEntry` lands, through
+    `lib/reveal.ts`, and lands the section's top with the panel focused;
+    so does a fragment set on the open page (the browser's own scroll to
+    a panel, a frame later, lands there too: a panel's
+    `scroll-margin-top` adds `--panel-rise`, its distance under the
+    section's top, which `StatsTabs.tsx` measures).
     The new panel slides in from its tab's side in 0.22 s (none under
-    reduced motion).
-  - One screen on a desktop: from 1000 px both panels share one grid cell
-    and the closed one is `visibility: hidden`, so the taller sets the
-    height and a switch moves nothing (the shorter centres in the part of
-    that cell the screen shows, not below the fold where the MAP tab runs
-    past a short screen); below 1000 px only the open one is
-    on the page (`display: none`), as tall as it needs. The map is never
-    taller than the screen less everything around it (`MAP_CHROME_PX`, the
-    paddings, menu bar, map title, source line and prompts, mirrored in
-    `Stats.module.css`), and beside the map (1280 px up) the missions take
-    the frame's height, so the MAP tab, scrolled to the top of the screen
-    below its chapter card, fits 1440 × 900. A link lands the whole card
+    reduced motion). Under 1000 px the paused glyph and the clock take the
+    menu's first row and the tabs the second; under 560 px the tabs are
+    two columns of equal cells (`PHONE_MENU`, tested from 360 px).
+  - One screen on a desktop: from 1000 px the panels share one grid cell
+    and the closed ones are `visibility: hidden`, so the tallest sets the
+    height and a switch moves nothing (every one starts right under the
+    tab bar, a shorter one too: centred, a short tab opened on a band of
+    empty night under the tabs); below 1000 px only the open one is on the
+    page (`display: none`), as tall as it needs. The map is never taller
+    than the screen less everything around it (`MAP_CHROME_PX`, the
+    paddings, menu bar, map title, source line and the room at the foot,
+    `FOOT_PX`, mirrored in `Stats.module.css` and tested), and beside the
+    map (1280 px up) the missions take the frame's height, so every tab,
+    scrolled to the top of the screen below its chapter card, fits
+    1440 × 900. A link lands the whole card
     under the page controls and the menu just under it (`scroll-margin-top`
-    counts the card's rise over the section's top edge; under 52rem the
-    line-up's last line, centred just over the card, lands with it, below
-    the controls).
+    counts the card's rise over the section's top edge, over the career
+    city's last frame).
   - Without JS (the stacking only applies under `@media (scripting:
-    enabled)`) both panels stay on the page, one under the other, with two
+    enabled)`) the panels stay on the page, one under the other, with four
     plain links; the tab roles come with hydration (`statsMarkup.test.ts`
     renders the server HTML). The map is a lazy `<img>`; the portrait is
-    lazy too until the section is within a screen of the viewport or its
-    tab opens (`StatsPortrait`).
+    lazy too until the section is within a screen of the viewport
+    (`StatsPortrait`).
 - `src/features/finale` — the last two stops, static (no canvas, no
   scroll-driven motion): The Afterglow, a beach-deco picture palace at
   night with the side projects (`Projects.tsx`), then the end credits at
@@ -830,7 +1054,7 @@ also exists as real DOM for keyboard and screen-reader users.
     `plates.json` on both night plates: hover or focus lights it and shows
     where it leads; on touch that chip shows from the start. The marquee's
     second row bills the show as FREE ADMISSION / ENTRADA LIBRE (the code
-    is open; "off the clock" is STATS's).
+    is open).
   - The credits roll is the page's own scroll: on wide screens the dawn
     frame is sticky and the roll scrolls over its right side. It is real
     text (`credits.ts`, tested) and tells only what is its own, the
@@ -854,11 +1078,14 @@ also exists as real DOM for keyboard and screen-reader users.
   sign-painter's chapter card each, a word in the film's voice over a
   scroll banner that says plainly what the section is (`<section>.chapter`
   in the dictionaries, `{ word, ribbon }`; the owner's texts, tested: La
-  banda · Sospechosos habituales, Jugador uno · Fuera de horario, Sesión
+  banda · Sospechosos habituales, Pausa · Ficha del jugador, Sesión
   golfa · Proyectos personales, ¡Y corten! · Créditos y contacto; The crew
-  · The usual suspects, Player one · Off the clock, The late show · Side
-  projects, That’s a wrap · Credits and contact). "El conductor" / "The
-  driver" is his role in the credits' cast, never a ribbon.
+  · The usual suspects, Paused · Player profile, The late show · Side
+  projects, That’s a wrap · Credits and contact; and the career city's,
+  La carrera · Trayectoria · 2018 — LIVE, The road so far · Career · 2018
+  — LIVE). "El conductor" / "The driver" is his role in the credits'
+  cast, never a ribbon. A short word stops growing at `CARD.maxSize`
+  (Pausa, Paused), as tall as THE CREW's.
   - The look: the word in Chapter Script, cream to amber to peach, with an
     ink keyline, a magenta split shade and a dusk-to-ink block shade; under
     it a flat banner of even height on a gentle arch, its swallow-tail ends
@@ -874,7 +1101,7 @@ also exists as real DOM for keyboard and screen-reader users.
     glyph's lowest ink per 0.02 em column) and `capsFace.ts` holds the
     capitals' widths and kerning. The banner hangs as close under the word
     as it can: its top clears the word's body; deep descenders and swashes
-    (Jugador uno, Sesión golfa, ¡Y corten!) cross in front of the band with
+    (Sesión golfa, ¡Y corten!, The road so far) cross in front of the band with
     their shade on it, as on a painted sign, and no ink or shade ever
     reaches a capital (tested). A new word or ribbon: `python3
     tools/chapter/fonts.py` subsets the face again with the dictionaries'
@@ -908,25 +1135,26 @@ also exists as real DOM for keyboard and screen-reader users.
     heights, which only binds on a phone on its side. Its capitals stay at
     least 11 px tall on a 360 px phone (tested). Each section places the card's band: THE
     USUAL SUSPECTS on the night over the line-up (from 64rem, 3rem of
-    night under the controls' row, as in the mockup); PLAYER ONE and THE
+    night under the controls' row, as in the mockup); PAUSED and THE
     LATE SHOW straddle the cut from the section before
     (`--chapter-straddle`, `STRADDLE` in `chapterLayout.ts`, mirrored and
-    tested: PLAYER ONE rises `--chapter-edge` of the card's width, to its
-    word's middle, and the line-up's caption makes room; THE LATE SHOW
-    rises only the top of its word, never above STATS's prompts row, so
-    it stays clear of what ends a row gap over them, the map's source
-    line, and of the main missions beside the map, which end a source line
-    higher still, `statsLayout.test.ts`; its box, which does reach the
-    prompts' 44 px targets, in Spanish from 1000 to about 1125 px (in
-    English only at 1000 px) and wider with a larger text size, lets their
-    clicks through wherever it straddles, its text still selectable; and
-    the cinema's sky makes room under it). Under 1000 px the cinema's
-    card has a band of its own, since a card nearly as wide as the screen
-    would cross STATS's prompts, and a link lands them with it, under the
-    controls. The credits' card heads the roll, rising into its lead-in,
-    as wide as the roll, and narrower where even the roll would reach the
-    dawn marquee (under about 880 px, a phone on its side): it starts 1rem
-    clear of the board (`--w-bx`, `--w-bw` on the section).
+    tested: PAUSED rises 0.8 of the way to its word's middle, over the
+    career city's last frame, at most 0.124 of the card's width, set on
+    the section so its scroll margin counts it; THE LATE SHOW rises only
+    the top of its word, into the room at STATS's foot (`FOOT_PX`, 72 px,
+    its bottom padding, where nothing else stands), 32 px or more under what ends the open tab, on the
+    MAP tab the map's source line, and further under the main missions
+    beside the map, which end a source line higher, `statsLayout.test.ts`;
+    its box rises higher than its word (46 px at the default text size,
+    still in that room) and, with a larger text size, over that last line,
+    so it lets the pointer through wherever it straddles, its text still
+    selectable; and the cinema's sky makes room under it). Under 1000 px
+    the cinema's card does not straddle: it has a band of its own, and a
+    link lands that band under the controls. The credits' card heads the
+    roll, rising into its lead-in, as wide as the roll, and narrower where
+    even the roll would reach the dawn marquee (under about 880 px, a
+    phone on its side): it starts 1rem clear of the board (`--w-bx`,
+    `--w-bw` on the section).
 - `src/hooks` — SSR-safe media query hooks.
 - `src/lib` — small shared helpers: `onScreen.ts` says what an
   IntersectionObserver counts as on screen (an edge that only touches the
@@ -941,7 +1169,7 @@ also exists as real DOM for keyboard and screen-reader users.
   the page moved, Lenis stood where it landed; never Lenis' own
   immediate `scrollTo`, which drops the next native scroll event): a
   native jump Lenis misses (it drops the scroll event after its own
-  landing) left it behind, and one notch after the STATS booth took her to the cinema the
+  landing) left it behind, and one notch after a link took her to the cinema the
   page flew back up to the hero's end. A move past the hero opens its
   walls first (the hero registers itself as the passage), as the focus
   moving past it does, so the frontier never pulls back a page that is
@@ -954,7 +1182,7 @@ also exists as real DOM for keyboard and screen-reader users.
   restoration is off, it moved the page behind Lenis' back), or to the
   section the address names, so Back is never dead. Back to top drops
   the old fragment from the address (`clearFragment`, replaceState), so
-  a reload starts at the top, never in the cinema the STATS booth named.
+  a reload starts at the top, never in the cinema a link named.
 - `tools/art/stats` — the STATS map. `extract.mjs` (run once, needs the
   network) turns the public-domain Terrain Tiles on AWS (zoom 8: SRTM,
   GMTED2010, ETOPO1 only; it refuses a tile with any other source) into
@@ -963,8 +1191,9 @@ also exists as real DOM for keyboard and screen-reader users.
   Canaria. `map.mjs` (offline, deterministic) draws `public/stats/map.svg`
   (16:11) and `map-square.svg` (1:1) from it and `statsLayout.ts`: our
   palette, terraced relief, schematic roads through the real towns
-  (asserted on land), town lights, runways, the circuit and the career
-  route; no text in the SVG. Each file stays under 40 KB (it refuses more).
+  (asserted on land), town lights, runways and the career route (the
+  ferry from Las Palmas to the dock, then up to home base); no hobby and
+  no text in the SVG. Each file stays under 40 KB (it refuses more).
 - `tools/blender` — headless Blender scripts that build the GLB files in
   `public/models` from the original downloads
   (`blender -b -P <script> -- <input> <output>`; set `XDG_CONFIG_HOME` to a
@@ -1100,7 +1329,7 @@ To add a track to a station:
 ## Conventions
 
 - CSS Modules + tokens. No Tailwind.
-- A section with a looping CSS animation (bulbs, the booth's ring) carries
+- A section with a looping CSS animation (bulbs, STATS's ticking clock and its achievement tree's glow) carries
   `data-loops`: `PauseOffscreen` (in `HomeMain.tsx`) pauses
   every animation in it while it is off screen, so it costs no style pass a
   frame during the hero.
@@ -1180,18 +1409,23 @@ Zapadores XVI, Ejército de Tierra / Spanish Army); Gran Canaria only in
 `hero.lines`, on the STATS map's inset (its name, and the map's text
 alternative that describes it) and in the career city's `work.*` keys,
 where the army's posting is a fact, not the joke; the cardboard box only
-on the STATS map; "from the sofa" once; "off the clock" / "fuera de
-horario" once, on STATS's chapter card (`stats.chapter.ribbon`: the
-ribbons name only what their own section owns); Madrid never. Widen an
+on Metal Gear's star in STATS's achievement tree
+(`stats.achievements.nodes.metalGear.line`); "from the sofa"
+once; remote only in the main missions' work-mode label
+(`stats.missions.modes.remote`, the owner's «En remoto»); "off the
+clock" / "fuera de horario" at most once, inside STATS (its card now
+says the game is paused; the ribbons name only what their own section
+owns); Madrid never. Widen an
 allowance only with a comment saying why. Baked text (the
 posters' billing blocks in `posters.mjs`, the city's canvases) is outside
 the dictionaries and the test: hold it to the map by hand.
 
 What each section is for, and what it owns:
 
-- Loading screen — the trailer: how to drive and what is on the radio. It
-  owns the controls, the stations and trivia about the shoot that no other
-  section tells; it gives nothing away.
+- Loading screen — the trailer: how to drive and what is on the radio,
+  one tip at a time, and trivia about the shoot that no other section
+  tells; it gives nothing away. STATS's SETTINGS hold the full controls
+  reference and the radio's controls, as a game's pause menu does.
 - Hero — who he is, in six lines: his name, his role, Tenerife, and the
   army story with the Gran Canaria joke.
 - THE USUAL SUSPECTS — him at home: the four cats, the complaint and Dante
@@ -1199,9 +1433,12 @@ What each section is for, and what it owns:
 - The career city (`#work`) — the career, once and whole: the five
   jobs (employer, role, years, clients, stack, a link) and the army's
   facts (the unit, Las Palmas).
-- STATS — him off the clock: the hobbies (the map's winks, the sheet, the
-  bars, the records). The career only as an index: the main missions, LIVE
-  and, with the city, links to its stops.
+- STATS — the pause menu: the player profile (who he is and how he works,
+  the bars, the records), the map of where he has worked (on site or
+  remote), his achievement tree (the favourites, and the goals still
+  locked), and the settings. The career only as an index:
+  the main missions with their work modes, LIVE and, with the city, links
+  to its stops.
 - The cinema — what he makes for fun: the four side projects, each linked
   to GitHub.
 - The end credits — the close and the contact: the cast, the licences, the
@@ -1216,14 +1453,17 @@ Each subject, who tells it in full, and what the rest may do:
 - The army's facts: the career city. The hero: the anecdote only. The
   STATS map: the first badge, in the Gran Canaria inset, with no joke.
 - Tenerife against Gran Canaria: the hero. Nowhere else.
-- The side projects: the cinema. STATS and the credits: nothing (STATS'
-  ringing booth is a link to the cinema).
+- The side projects: the cinema. STATS and the credits: nothing.
 - The cats: THE USUAL SUSPECTS. Winks only elsewhere: Dante as player 2
   on the STATS sheet and in its wanted-level record, the STEALTH bar's tin
   on the STATS sheet, the culprit in the credits' cast.
-- F1: STATS (the Box 33 blip, RACECRAFT and the Grand Prix record). The
+- F1: STATS (the 4 a.m. race and Alonso's 33rd stars, RACECRAFT and the Grand Prix record). The
   loader: the pit-lane limiter tip only. The hero: its dashboard.
-- The cardboard box: the STATS map's Masca blip. Nowhere else.
+- The favourites (games, films, series) and his sporting goals: STATS's
+  achievement tree. No radio winks there: no station is named.
+- The cardboard box: Metal Gear's star in STATS's achievement tree. Nowhere else.
+- How he works and where: STATS (the ABOUT ME bio, the work modes and
+  the map). The career city: each job's facts, never "remote".
 - His stack: the career city (per job) and the cinema (per project). The
   credits: one toolkit list that shares no name with BUILT WITH.
 - The contact: the end credits. Elsewhere only links to `#contact` (the
@@ -1233,6 +1473,7 @@ Each subject, who tells it in full, and what the rest may do:
 
 - No Rockstar assets, logos or the GTA typeface. Inspiration only.
 - Heuristik is the current employer: show the role and dates only (no
-  city, no mention of remote work), nothing from its clinical projects. Skip `atlas-habits` on purpose
+  city), nothing from its clinical projects; its work mode («En remoto»)
+  only on STATS's main missions, where the owner asked for it. Skip `atlas-habits` on purpose
   (`project-atlas` is a different repo and belongs in the projects).
 - The site never calls the Claude API. Generated data lives as JSON in the repo.

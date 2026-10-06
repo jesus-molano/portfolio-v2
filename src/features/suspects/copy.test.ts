@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
-import { CAT_IDS } from "./lineup";
+import { CAT_IDS, CULPRIT } from "./lineup";
 
 /** Every string in a dictionary subtree, with its key path. */
 function strings(value: unknown, prefix = ""): [string, string][] {
@@ -103,8 +103,16 @@ describe("THE USUAL SUSPECTS copy", () => {
     }
   });
 
-  it("quotes Casablanca as the Spanish dub has it", () => {
-    expect(en.suspects.line).toBe("Round up the usual suspects.");
-    expect(es.suspects.line).toBe("Arresten a los sospechosos habituales.");
+  it("ends on his tip to the officer, in the owner's words: number 3, the culprit's slot", () => {
+    expect(es.suspects.line).toBe("Señor agente, yo me fijaría en el número 3.");
+    expect(en.suspects.line).toBe("Officer, I'd take a good look at number three.");
+    // The number he gives is the culprit's place in the line-up (plates and numerals count from 1).
+    const slot = CAT_IDS.indexOf(CULPRIT) + 1;
+    expect(es.suspects.line).toContain(`número ${slot}`);
+    expect(en.suspects.line).toContain(`number ${["one", "two", "three", "four"][slot - 1]}`);
+    // A nudge, not the reveal: he names no cat (the GUILTY stamp on the plate is the reveal).
+    for (const copy of [en.suspects, es.suspects]) {
+      for (const cat of copy.cats) expect(copy.line).not.toContain(cat.name);
+    }
   });
 });

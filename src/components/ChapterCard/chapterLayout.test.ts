@@ -21,8 +21,8 @@ import {
 } from "./chapterLayout";
 import { missingScript, SCRIPT_FILE, scriptBoxes, scriptDepth, scriptRun } from "./scriptFace";
 
-/** Every chapter in the dictionaries, as its card shows it. */
-const SECTIONS = ["suspects", "stats", "projects", "credits"] as const;
+/** Every chapter in the dictionaries, as its card shows it: the career city's too. */
+const SECTIONS = ["suspects", "work", "stats", "projects", "credits"] as const;
 const CHAPTERS = (
   [
     ["en", en],
@@ -36,7 +36,7 @@ const CHAPTERS = (
 );
 
 /** The words whose descenders reach down to the banner: it tucks up behind them. */
-const DEEP = ["Jugador uno", "Player one", "Sesión golfa", "¡Y corten!", "That’s a wrap"];
+const DEEP = ["Sesión golfa", "¡Y corten!", "That’s a wrap", "The road so far"];
 
 /**
  * The words and ribbons measured in Chromium on the checked-in faces by
@@ -47,26 +47,26 @@ const DEEP = ["Jugador uno", "Player one", "Sesión golfa", "¡Y corten!", "That
 const MEASURED_WORDS: Record<string, { advance: number; left: number; right: number; ascent: number; descent: number }> = {
   "La banda": { advance: 3.435, left: -0.219, right: 3.639, ascent: 0.688, descent: 0.157 },
   "The crew": { advance: 3.028, left: -0.079, right: 3.117, ascent: 0.672, descent: 0.047 },
-  "Jugador uno": { advance: 4.317, left: -0.204, right: 4.521, ascent: 0.719, descent: 0.375 },
-  "Player one": { advance: 3.976, left: -0.032, right: 4.206, ascent: 0.704, descent: 0.375 },
+  Pausa: { advance: 2.11, left: -0.032, right: 2.314, ascent: 0.704, descent: 0.047 },
+  Paused: { advance: 2.531, left: -0.032, right: 2.834, ascent: 0.704, descent: 0.047 },
   "Sesión golfa": { advance: 4.44, left: -0.204, right: 4.644, ascent: 0.672, descent: 0.391 },
   "The late show": { advance: 4.77, left: -0.079, right: 4.859, ascent: 0.672, descent: 0.047 },
   "¡Y corten!": { advance: 4.5, left: -0.063, right: 4.717, ascent: 0.704, descent: 0.391 },
   "That’s a wrap": { advance: 4.821, left: -0.079, right: 4.854, ascent: 0.688, descent: 0.344 },
-  "Turno de noche": { advance: 5.406, left: -0.079, right: 5.636, ascent: 0.672, descent: 0.047 },
-  "Night shift": { advance: 3.882, left: -0.375, right: 4.257, ascent: 0.672, descent: 0.391 },
+  "La carrera": { advance: 4.158, left: -0.219, right: 4.362, ascent: 0.688, descent: 0.157 },
+  "The road so far": { advance: 5.562, left: -0.079, right: 5.757, ascent: 0.672, descent: 0.391 },
 };
 const MEASURED_RIBBONS: Record<string, number> = {
   "SOSPECHOSOS HABITUALES": 9.795,
   "THE USUAL SUSPECTS": 7.77,
-  "FUERA DE HORARIO": 6.74,
-  "OFF THE CLOCK": 5.431,
+  "FICHA DEL JUGADOR": 7.209,
+  "PLAYER PROFILE": 5.745,
   "PROYECTOS PERSONALES": 9.003,
   "SIDE PROJECTS": 5.509,
   "CRÉDITOS Y CONTACTO": 8.143,
   "CREDITS AND CONTACT": 8.22,
-  "EL TRABAJO · 2018 — LIVE": 9.567,
-  "THE WORK · 2018 — LIVE": 9.07,
+  "TRAYECTORIA · 2018 — LIVE": 10.031,
+  "CAREER · 2018 — LIVE": 8.008,
 };
 
 describe("Chapter Script, the word's face", () => {
@@ -186,12 +186,14 @@ describe("the card's width", () => {
 describe("chapterLayout", () => {
   const layouts = CHAPTERS.map((chapter) => ({ ...chapter, layout: chapterLayout(chapter.word, chapter.ribbon) }));
 
-  it("fits each word to the same ink width, the short ones capped, so no chapter shouts louder than another", () => {
+  it("fits each word to the same ink width, the short ones capped at the same size, so no chapter shouts louder than another", () => {
     for (const { where, layout } of layouts) {
       const width = layout.ink.right - layout.ink.left;
       expect(width, where).toBeLessThanOrEqual(CARD.maxInk + 0.1);
-      expect(width, where).toBeGreaterThan(CARD.maxInk * 0.95);
       expect(layout.word.size, where).toBeLessThanOrEqual(CARD.maxSize);
+      // A word too short to fill the width stops at the cap (Pausa, Paused); every other fills it.
+      if (layout.word.size < CARD.maxSize - 0.01) expect(width, where).toBeGreaterThan(CARD.maxInk * 0.95);
+      else expect(width, where).toBeGreaterThan(CARD.maxInk * 0.7);
       // The ink is centred.
       expect((layout.ink.left + layout.ink.right) / 2, where).toBeCloseTo(CARD.width / 2, 1);
     }
@@ -244,14 +246,16 @@ describe("chapterLayout", () => {
     }
   });
 
-  it("is 0.36 to 0.45 of its width tall, and a straddle rises at most 0.124 of it over the edge", () => {
+  it("is 0.36 to 0.45 of its width tall, and a straddle rises at most 0.124 of it over the cut", () => {
     for (const { where, section, layout } of layouts) {
       expect(layout.height / 1000, where).toBeGreaterThanOrEqual(0.36);
       expect(layout.height / 1000, where).toBeLessThanOrEqual(0.45);
       expect(layout.edge, where).toBeGreaterThan(0);
       expect(layout.edge, where).toBeLessThan(layout.height);
-      // Suspects.module.css keeps this much room under its caption for PLAYER ONE; Projects' scroll-margin counts it.
-      if (section === "stats" || section === "projects") expect(layout.edge / 1000, where).toBeLessThanOrEqual(0.124);
+      // The most a straddle rises over the section before it (STATS's and Projects' scroll-margins count it; the room
+      // at STATS's foot that THE LATE SHOW's word rises into is tested in statsLayout.test.ts).
+      if (section === "stats") expect((layout.edge * STRADDLE.stats) / 1000, where).toBeLessThanOrEqual(0.124);
+      if (section === "projects") expect(layout.edge / 1000, where).toBeLessThanOrEqual(0.124);
     }
   });
 
@@ -283,14 +287,14 @@ describe("chapterLayout", () => {
   });
 
   it("refuses a ribbon with a capital it cannot measure", () => {
-    expect(() => chapterLayout("Turno de noche", "EL TRABAJO #1")).toThrow(/#/);
+    expect(() => chapterLayout("La carrera", "TRAYECTORIA #1")).toThrow(/#/);
   });
 });
 
 describe("a chapter's words", () => {
   it("set the ribbon in capitals in the card's own language", () => {
     expect(ribbonCaps("Créditos y contacto", "es")).toBe("CRÉDITOS Y CONTACTO");
-    expect(ribbonCaps("Off the clock", "en")).toBe("OFF THE CLOCK");
+    expect(ribbonCaps("Player profile", "en")).toBe("PLAYER PROFILE");
   });
 
   it("name the heading as a sentence, then the ribbon, with one mark after the word", () => {

@@ -6,6 +6,7 @@
  * one made in a click or key handler reaches `audio.play()` inside that
  * user gesture.
  */
+import { PAUSE_IDLE, pauseStep } from "./pauseMix";
 import { createPlayer, type Player } from "./player";
 import {
   DEFAULT_STATION_ID,
@@ -38,14 +39,30 @@ export type RadioState = {
   /** The track on air: its index in the tuned station's playlist. */
   track: number;
   wheel: WheelState | null;
+  /** Her volume, 0 to 1 (STATS's settings); 1 until she sets it. */
+  volume: number;
 };
 
-const INITIAL: RadioState = { tuned: "off", playing: false, track: 0, wheel: null };
+const INITIAL: RadioState = { tuned: "off", playing: false, track: 0, wheel: null, volume: 1 };
 
 /** The last station tuned to (never "off"), per visitor. */
 const STATION_KEY = "va-station";
 /** "off" once the visitor turned the radio off; the key the site always used. */
 const MUSIC_KEY = "va-music";
+/** Her volume, 0 to 1, as a decimal string. */
+const VOLUME_KEY = "va-volume";
+
+/** A stored volume, or full volume when it is missing or not a number from 0 to 1. */
+export function parseVolume(value: string | null): number {
+  if (value === null || value.trim() === "") return 1;
+  const volume = Number(value);
+  return Number.isFinite(volume) && volume >= 0 && volume <= 1 ? volume : 1;
+}
+
+/** Volume steps of 5 % (the settings' slider), so a stored value reads back the same. */
+export function roundVolume(volume: number): number {
+  return Math.round(Math.min(1, Math.max(0, volume)) * 20) / 20;
+}
 
 let state = INITIAL;
 const listeners = new Set<() => void>();
@@ -89,16 +106,25 @@ function remember(id: TuneId) {
   }
 }
 
+/** The pause menu: on screen or not, and when it last made a sound (pauseMix.ts). */
+let pause = PAUSE_IDLE;
+
 function ensurePlayer(): Player | null {
   if (player) return player;
-  player = createPlayer({
-    onTrack(id, index) {
-      if (state.tuned === id) update({ track: index });
+  // Her volume, before the first note.
+  restoreVolume();
+  player = createPlayer(
+    {
+      onTrack(id, index) {
+        if (state.tuned === id) update({ track: index });
+      },
+      onError(id) {
+        if (state.tuned === id) update({ playing: false });
+      },
     },
-    onError(id) {
-      if (state.tuned === id) update({ playing: false });
-    },
-  });
+    { volume: state.volume },
+  );
+  player?.setPaused(pause.paused);
   if (player) {
     document.addEventListener("visibilitychange", () => player?.setHidden(document.hidden));
   }
@@ -155,6 +181,70 @@ export function resumeRemembered() {
   if (!memory.on || state.tuned !== "off") return;
   if (memory.station) tune(memory.station, { save: false, crackle: false });
   else tune(DEFAULT_STATION_ID, { save: false, crackle: false, fromTop: true });
+}
+
+/** Her volume as she left it, read back on the client: by the settings tab and before the first note. */
+export function restoreVolume() {
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(VOLUME_KEY);
+  } catch {
+    // Blocked storage: full volume.
+  }
+  const volume = parseVolume(stored);
+  if (volume !== state.volume) {
+    update({ volume });
+    player?.setVolume(volume);
+  }
+}
+
+/** Sets her volume (0 to 1, in 5 % steps) and remembers it. */
+export function setVolume(volume: number) {
+  const next = roundVolume(volume);
+  try {
+    localStorage.setItem(VOLUME_KEY, String(next));
+  } catch {
+    // Blocked storage: the volume lasts for this page.
+  }
+  if (next === state.volume) return;
+  update({ volume: next });
+  player?.setVolume(next);
+}
+
+/**
+ * The pause menu (STATS) arrives on screen (`on`) or leaves it
+ * (StatsTabs.tsx). The radio goes behind it, muffled and ducked, and comes
+ * back as she leaves, with a blip each way; all of it only while the radio
+ * plays, the sound she chose: with the radio off the pause is silent. A
+ * station tuned while the menu is up starts behind it. `quiet` lets the
+ * music back out without a blip (the menu taken off the page, not left).
+ */
+export function setPauseMenu(on: boolean, { quiet = false } = {}) {
+  const step = pauseStep(pause, on, performance.now());
+  pause = step.state;
+  if (!step.changed) return;
+  player?.setPaused(on);
+  if (step.blip && state.playing && !quiet) player?.blip(step.blip);
+}
+
+let volumeSettable: boolean | undefined;
+
+/**
+ * Whether this browser lets a page set an <audio>'s volume: iOS keeps it at
+ * 1 and leaves the volume to the device's buttons. Probed once: the
+ * settings read it on every render (useSyncExternalStore's snapshot).
+ */
+export function canSetVolume(): boolean {
+  if (volumeSettable !== undefined) return volumeSettable;
+  if (typeof Audio === "undefined") return false;
+  try {
+    const probe = new Audio();
+    probe.volume = 0.5;
+    volumeSettable = Math.abs(probe.volume - 0.5) < 0.01;
+  } catch {
+    volumeSettable = false;
+  }
+  return volumeSettable;
 }
 
 /**
