@@ -47,7 +47,7 @@ function markHintSeen() {
 
 /**
  * The music button in the page controls: shows the station on air
- * ("87.9 K-CALIMA", the frequency alone on phones) and opens the radio
+ * ("88.3 BOBSLED", the frequency alone on phones) and opens the radio
  * wheel. Browsers only allow sound after a gesture, so on pages without the
  * loading screen the remembered station starts on the first click, tap or
  * key press, unless the visitor turned the radio off. Once per visitor, a

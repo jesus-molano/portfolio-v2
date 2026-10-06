@@ -14,8 +14,7 @@ and Spanish (`/es`).
 2. **The hero.** A WebGL drive over a causeway at sunset toward an art-deco
    skyline. Scrolling, swiping or the keys move the film, and every subtitle
    waits until you have read it. A radio wheel with six stations of licensed
-   instrumental music opens with a held right-click, Q, a long-press or the
-   RADIO button.
+   music opens with a held right-click, Q, a long-press or the RADIO button.
 3. **The Usual Suspects.** A police line-up of his four cats against a
    height chart, and one complaint.
 4. **The career city.** Main story: the car drives on through the island

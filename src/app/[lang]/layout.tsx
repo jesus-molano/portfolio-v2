@@ -46,9 +46,10 @@ const monoFont = JetBrains_Mono({
 });
 
 /*
- * Radio station logos (radioFonts in the tokens). Not preloaded: the
- * browser fetches each face when the wheel first draws it, so the faces of
- * stations not on air yet are never fetched.
+ * Radio station logos (radioFonts in the tokens; ONE LOUDER and WITNESS ME
+ * borrow the chapter cards' capitals). Not preloaded: the browser fetches
+ * each face when the wheel first draws it. Bowlby One also letters a board
+ * in the night city.
  */
 const radioSeventiesFont = Shrikhand({
   weight: "400",
@@ -67,22 +68,6 @@ const radioChromeFont = Kanit({
   preload: false,
 });
 
-const radioTuxFont = Playfair_Display({
-  weight: "700",
-  subsets: ["latin"],
-  variable: "--font-radio-tux",
-  display: "swap",
-  preload: false,
-});
-
-const radioDeliFont = Yellowtail({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-radio-deli",
-  display: "swap",
-  preload: false,
-});
-
 const radioHiphopFont = Bowlby_One({
   weight: "400",
   subsets: ["latin"],
@@ -91,10 +76,31 @@ const radioHiphopFont = Bowlby_One({
   preload: false,
 });
 
-const radioDecoFont = Limelight({
+/*
+ * Sign-painter's faces (signFonts in the tokens): the night city's boards
+ * paint with them, and the credits' THE END is set in the deco one. Not
+ * preloaded: each is fetched when a board or the end of the roll needs it.
+ */
+const signSerifFont = Playfair_Display({
+  weight: "700",
+  subsets: ["latin"],
+  variable: "--font-sign-serif",
+  display: "swap",
+  preload: false,
+});
+
+const signScriptFont = Yellowtail({
   weight: "400",
   subsets: ["latin"],
-  variable: "--font-radio-deco",
+  variable: "--font-sign-script",
+  display: "swap",
+  preload: false,
+});
+
+const signDecoFont = Limelight({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-sign-deco",
   display: "swap",
   preload: false,
 });
@@ -152,10 +158,10 @@ const fontVariables = [
   monoFont,
   radioSeventiesFont,
   radioChromeFont,
-  radioTuxFont,
-  radioDeliFont,
   radioHiphopFont,
-  radioDecoFont,
+  signSerifFont,
+  signScriptFont,
+  signDecoFont,
   marqueeFont,
   chapterScriptFont,
   chapterCapsFont,

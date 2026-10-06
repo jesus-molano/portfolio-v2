@@ -24,12 +24,12 @@
     "nowPlaying": "Sonando",
     "close": "Cerrar la radio",
     "taglines": {
-      "k-calima": "Súper sonidos del atardecer",
-      "crockett": "Sin calcetines, todo synth",
-      "mr-wolf": "Soluciono problemas. A todo volumen.",
-      "leave-the-gun": "Coge el groove",
-      "love-daddy": "¡Despierta! ¡Despierta!",
-      "babylon": "El mundo es tuyo. La pista también."
+      "bobsled": "Siente el ritmo, siente la rima",
+      "raheem": "Veinte pilas gordas. Aquí no se baja.",
+      "manero": "Disco, funk y cuidado con el pelo",
+      "one-louder": "Metal del duro. El nuestro llega al once.",
+      "witness-me": "Tres acordes, brillantes y cromados",
+      "tofu": "Tofu a domicilio de madrugada. De lado."
     }
   },
   "hero": {
@@ -77,8 +77,8 @@
     "billboards": [
       "JESÚS MOLANO",
       "FRONTEND ENGINEER",
-      "BABYLON 105.1",
-      "CROCKETT 91.4"
+      "MANERO 97.7",
+      "TOFU 107.6"
     ],
     "lines": [
       [
@@ -199,12 +199,12 @@
       {
         "kind": "tip",
         "when": [],
-        "text": "De serie suena la música disco de BABYLON; el dial también trae el synth ochentero de CROCKETT y el rock de K-CALIMA."
+        "text": "De serie suenan el disco y el funk de MANERO; el dial también trae el hip-hop de RAHEEM y el reggae de BOBSLED."
       },
       {
         "kind": "tip",
         "when": [],
-        "text": "MR. WOLF pone el rock duro, LEAVE THE GUN el funk y LOVE DADDY el hip-hop de los noventa."
+        "text": "ONE LOUDER pone el metal, WITNESS ME el punk y el rock, y TOFU el phonk de derrape."
       },
       {
         "kind": "trivia",

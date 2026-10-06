@@ -18,9 +18,9 @@ export const fonts = {
   display: () => family("--font-display", typography.display.replace(/^var\(--font-display\),\s*/, "")),
   body: () => family("--font-body", "system-ui, sans-serif"),
   mono: () => family("--font-mono", "ui-monospace, monospace"),
-  script: () => family("--font-radio-deli", "'Brush Script MT', cursive"),
-  deco: () => family("--font-radio-deco", "Didot, Georgia, serif"),
-  serif: () => family("--font-radio-tux", "Didot, Georgia, serif"),
+  script: () => family("--font-sign-script", "'Brush Script MT', cursive"),
+  deco: () => family("--font-sign-deco", "Didot, Georgia, serif"),
+  serif: () => family("--font-sign-serif", "Didot, Georgia, serif"),
   block: () => family("--font-radio-hiphop", "Impact, sans-serif"),
   condensed: () => family("--font-marquee", "'Arial Narrow', sans-serif"),
 };

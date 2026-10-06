@@ -1,9 +1,8 @@
 /**
  * The radio, GTA style: genre stations, each a short playlist of licensed
- * instrumental tracks (public/music, LICENSE.txt there), and "radio off".
- * Every station is a nod to a film the narration quotes, or to the
- * setting; names stay as written in every language, taglines live in the
- * dictionaries (`radio.taglines`).
+ * tracks, instrumental or sung (public/music, LICENSE.txt there), and
+ * "radio off". Every station is a nod to a film; names stay as written in
+ * every language, taglines live in the dictionaries (`radio.taglines`).
  *
  * A station without tracks is defined but stays off the wheel and out of
  * the credits: adding its first track (tools/audio/encode-track.sh, then
@@ -14,13 +13,13 @@
  */
 import type { RadioColor } from "@/design/tokens";
 
-export type StationId = "k-calima" | "crockett" | "mr-wolf" | "leave-the-gun" | "love-daddy" | "babylon";
+export type StationId = "bobsled" | "raheem" | "manero" | "one-louder" | "witness-me" | "tofu";
 
 /** What the radio can be tuned to: a station, or off. */
 export type TuneId = StationId | "off";
 
 /** Which typographic logo the wheel draws for an entry (StationLogo.tsx). */
-export type LogoStyle = "calima" | "crockett" | "wolf" | "deli" | "boombox" | "babylon" | "power";
+export type LogoStyle = "bobsled" | "raheem" | "manero" | "louder" | "witness" | "tofu" | "power";
 
 export type Licence = "CC BY 4.0" | "CC0 1.0" | "Pixabay";
 
@@ -73,7 +72,11 @@ export const LICENCE_URLS: Record<Licence, string> = {
   Pixabay: "https://pixabay.com/service/terms/",
 };
 
-const macleod = (title: string, sourceUrl: string): Credit => ({
+/*
+ * Credit builders for a new track, in each author's own format (the
+ * stations on air today are all Pixabay; the others stay for the next one).
+ */
+export const macleod = (title: string, sourceUrl: string): Credit => ({
   title,
   artist: "Kevin MacLeod",
   artistSite: "incompetech.com",
@@ -81,16 +84,16 @@ const macleod = (title: string, sourceUrl: string): Credit => ({
   licence: "CC BY 4.0",
   licenceUrl: LICENCE_URLS["CC BY 4.0"],
 });
-const incompetech = (isrc: string) => `https://incompetech.com/music/royalty-free/index.html?isrc=${isrc}`;
-const cc0 = (title: string, artist: string, sourceUrl: string): Credit => ({
+export const incompetech = (isrc: string) => `https://incompetech.com/music/royalty-free/index.html?isrc=${isrc}`;
+export const cc0 = (title: string, artist: string, sourceUrl: string): Credit => ({
   title,
   artist,
   sourceUrl,
   licence: "CC0 1.0",
   licenceUrl: LICENCE_URLS["CC0 1.0"],
 });
-const holizna = (title: string, sourceUrl: string): Credit => cc0(title, "HoliznaCC0", sourceUrl);
-const pixabay = (title: string, artist: string, sourceUrl: string): Credit => ({
+export const holizna = (title: string, sourceUrl: string): Credit => cc0(title, "HoliznaCC0", sourceUrl);
+export const pixabay = (title: string, artist: string, sourceUrl: string): Credit => ({
   title,
   artist,
   sourceUrl,
@@ -101,184 +104,166 @@ const pixabay = (title: string, artist: string, sourceUrl: string): Credit => ({
 /** In frequency order: clockwise around the wheel from radio off. */
 export const STATIONS: readonly Station[] = [
   {
-    // Classic and garage rock. Reservoir Dogs' K-Billy "Super Sounds of the
-    // Seventies", and the calima: the warm Saharan haze over the Canaries.
-    id: "k-calima",
-    name: "K-CALIMA",
-    frequency: 87.9,
-    accent: "calima",
-    logo: "calima",
+    // Reggae. Cool Runnings: the Jamaican bobsleigh team's "feel the rhythm,
+    // feel the rhyme".
+    id: "bobsled",
+    name: "BOBSLED",
+    frequency: 88.3,
+    accent: "bobsled",
+    logo: "bobsled",
     tracks: [
       {
-        url: "/music/classic.mp3",
-        duration: 148.21,
-        credit: holizna("Classic", "https://freemusicarchive.org/music/holiznacc0/rock-montage/classic/"),
+        url: "/music/reggae-island-vibes.mp3",
+        duration: 171.77,
+        credit: pixabay("Reggae Island Vibes", "alex-morgan", "https://pixabay.com/music/reggae-reggae-island-vibes-537451/"),
       },
       {
-        url: "/music/plastic-sunrise.mp3",
-        duration: 86.7,
-        credit: pixabay(
-          "Plastic Sunrise",
-          "cinematic-soul",
-          "https://pixabay.com/music/rock-background-rock-music-plastic-sunrise-587089/",
-        ),
+        url: "/music/rasta-vibes.mp3",
+        duration: 226.02,
+        credit: pixabay("Rasta Vibes", "theboysbeats", "https://pixabay.com/music/reggae-the-boy-s-beats-bob-marley-tribute-rasta-vibes-282399/"),
       },
       {
-        url: "/music/gearhead.mp3",
-        duration: 134.78,
-        credit: macleod("Gearhead", "https://incompetech.filmmusic.io/song/3799-gearhead"),
+        url: "/music/dont-worry-about-a-thing.mp3",
+        duration: 222.63,
+        credit: pixabay("Don't Worry About a Thing", "theboysbeats", "https://pixabay.com/music/reggae-the-boy-s-beats-bob-marley-tribute-dont-worry-about-a-thing-282396/"),
       },
     ],
   },
   {
-    // 80s synth. Sonny Crockett, Miami Vice: loafers, no socks.
-    id: "crockett",
-    name: "CROCKETT",
-    frequency: 91.4,
-    accent: "crockett",
-    logo: "crockett",
+    // Hip-hop beats. Do the Right Thing: Radio Raheem, his boombox and its
+    // twenty D batteries.
+    id: "raheem",
+    name: "RAHEEM",
+    frequency: 92.9,
+    accent: "raheem",
+    logo: "raheem",
     tracks: [
-      { url: "/music/newer-wave.mp3", duration: 171.38, credit: macleod("Newer Wave", incompetech("USUAN2000024")) },
       {
-        url: "/music/miami-nights.mp3",
-        duration: 147.29,
-        credit: macleod("Miami Nights - Extended Theme", incompetech("USUAN1700078")),
+        url: "/music/west-coast-beat.mp3",
+        duration: 167.61,
+        credit: pixabay("West Coast Beat", "sunset", "https://pixabay.com/music/beats-west-coast-beat-571783/"),
       },
       {
-        url: "/music/nostalgia.mp3",
-        duration: 85.85,
-        credit: pixabay("Nostalgia", "alex-morgan", "https://pixabay.com/music/nostalgia-nostalgia-591320/"),
+        url: "/music/miraculous.mp3",
+        duration: 190.55,
+        credit: pixabay("Miraculous", "YellowBirdBeats", "https://pixabay.com/music/beats-west-coast-x-gangsta-x-dr-dre-x-old-school-miraculous-292172/"),
       },
       {
-        url: "/music/neon-laser-horizon.mp3",
-        duration: 162.65,
-        credit: macleod("Neon Laser Horizon", incompetech("USUAN2000023")),
-      },
-      {
-        url: "/music/retro-synths.mp3",
-        duration: 185.85,
-        credit: holizna("Retro Synths", "https://freemusicarchive.org/music/holiznacc0/power-pop/retro-synths/"),
+        url: "/music/vlog-music-background.mp3",
+        duration: 70.61,
+        credit: pixabay("Vlog Vlogs Music Background", "sigmamusicart", "https://pixabay.com/music/beats-vlog-vlogs-music-background-368632/"),
       },
     ],
   },
   {
-    // Hard rock. Pulp Fiction's Winston Wolf: "I solve problems", quoted in the hero.
-    id: "mr-wolf",
-    name: "MR. WOLF",
-    frequency: 94.7,
-    accent: "wolf",
-    logo: "wolf",
+    // Disco and funk. Saturday Night Fever: Tony Manero, ".7" for '77, and
+    // "watch the hair".
+    id: "manero",
+    name: "MANERO",
+    frequency: 97.7,
+    accent: "manero",
+    logo: "manero",
     tracks: [
       {
-        url: "/music/rock.mp3",
-        duration: 117.78,
-        credit: pixabay("Rock", "paulyudin", "https://pixabay.com/music/hard-rock-rock-490391/"),
+        url: "/music/honeyed-sunbeams.mp3",
+        duration: 124.98,
+        credit: pixabay("Honeyed Sunbeams", "9jackjack8", "https://pixabay.com/music/dance-honeyed-sunbeams-disco-funk-music-455872/"),
       },
-      { url: "/music/big-rock.mp3", duration: 224.42, credit: macleod("Big Rock", incompetech("USUAN1100305")) },
-      { url: "/music/hotrock.mp3", duration: 201.99, credit: macleod("Hotrock", incompetech("USUAN1100201")) },
       {
-        url: "/music/ready-aim-fire.mp3",
-        duration: 212.12,
-        credit: macleod("Ready Aim Fire", incompetech("USUAN1500002")),
+        url: "/music/funky-disco.mp3",
+        duration: 102.66,
+        credit: pixabay("Funky Disco", "nesterouk", "https://pixabay.com/music/funk-funky-disco-155292/"),
+      },
+      {
+        url: "/music/afrobeat-disco.mp3",
+        duration: 173.92,
+        credit: pixabay("Afrobeat Disco", "arnaud136", "https://pixabay.com/music/afrobeat-afrobeat-disco-352032/"),
+      },
+      {
+        url: "/music/funk-music.mp3",
+        duration: 110.2,
+        credit: pixabay("Funk Music", "sigmamusicart", "https://pixabay.com/music/funk-funk-funk-music-157134/"),
+      },
+      {
+        url: "/music/celebrity.mp3",
+        duration: 125.88,
+        credit: pixabay("Celebrity", "mickeyscat", "https://pixabay.com/music/funk-celebrity-614075/"),
       },
     ],
   },
   {
-    // Funk. The Godfather: "Leave the gun. Take the cannoli."
-    id: "leave-the-gun",
-    name: "LEAVE THE GUN",
-    frequency: 99.2,
-    accent: "gun",
-    logo: "deli",
+    // Metal. This Is Spinal Tap: "these go to eleven", one louder; 101.1 is
+    // all ones.
+    id: "one-louder",
+    name: "ONE LOUDER",
+    frequency: 101.1,
+    accent: "louder",
+    logo: "louder",
     tracks: [
       {
-        url: "/music/joyful-rhythm-walk.mp3",
-        duration: 133.85,
-        credit: pixabay(
-          "Joyful Rhythm Walk Funk",
-          "lightbeatsmusic",
-          "https://pixabay.com/music/funk-joyful-rhythm-walk-funk-513936/",
-        ),
+        url: "/music/sound-of-metal-3.mp3",
+        duration: 205.26,
+        credit: pixabay("The Sound of Metal 3", "chrispixer", "https://pixabay.com/music/metal-the-sound-of-metal-3-224768/"),
       },
       {
-        url: "/music/funk.mp3",
-        duration: 126.1,
-        credit: pixabay("Funk", "prettyjohn1", "https://pixabay.com/music/funk-funk-503900/"),
+        url: "/music/sound-of-metal-4.mp3",
+        duration: 161.96,
+        credit: pixabay("The Sound of Metal 4", "chrispixer", "https://pixabay.com/music/metal-the-sound-of-metal-4-224767/"),
       },
       {
-        url: "/music/retrofuture-nasty.mp3",
-        duration: 202.21,
-        credit: macleod("RetroFuture Nasty", incompetech("USUAN1200042")),
+        url: "/music/thrash-metal.mp3",
+        duration: 180.66,
+        credit: pixabay("Thrash Metal", "alex-morgan", "https://pixabay.com/music/metal-thrash-metal-591343/"),
       },
     ],
   },
   {
-    // 90s hip-hop beats. Mister Señor Love Daddy, the DJ of Do the Right Thing.
-    id: "love-daddy",
-    name: "LOVE DADDY",
-    frequency: 102.5,
-    accent: "daddy",
-    logo: "boombox",
+    // Rock and punk. Mad Max: Fury Road, the War Boys' cry, "shiny and chrome".
+    id: "witness-me",
+    name: "WITNESS ME",
+    frequency: 104.5,
+    accent: "witness",
+    logo: "witness",
     tracks: [
       {
-        url: "/music/old-school-groove.mp3",
-        duration: 127.12,
-        credit: pixabay(
-          "Boom Bap Old School Groove",
-          "alex-morgan",
-          "https://pixabay.com/music/electronic-boom-bap-old-school-groove-573879/",
-        ),
-      },
-      { url: "/music/griphop.mp3", duration: 203.73, credit: macleod("Griphop", incompetech("USUAN1100413")) },
-      {
-        url: "/music/boom-bap.mp3",
-        duration: 151.74,
-        credit: pixabay("Boom Bap", "soundsurfer", "https://pixabay.com/music/old-school-hip-hop-boom-bap-592994/"),
+        url: "/music/nastelbom-rock.mp3",
+        duration: 101.65,
+        credit: pixabay("Rock", "nastelbom", "https://pixabay.com/music/rock-rock-501708/"),
       },
       {
-        url: "/music/basic-implosion.mp3",
-        duration: 184.89,
-        credit: macleod("Basic Implosion", incompetech("USUAN1600032")),
+        url: "/music/punk-rock-heatwave.mp3",
+        duration: 135.02,
+        credit: pixabay("Heatwave", "vibemode", "https://pixabay.com/music/rock-punk-rock-heatwave-545931/"),
+      },
+      {
+        url: "/music/punk-rock-rebellion.mp3",
+        duration: 108.14,
+        credit: pixabay("Punk Rock Rebellion Fast Energy", "echoes_of_lumen", "https://pixabay.com/music/rock-punk-rock-rebellion-fast-energy-589273/"),
+      },
+      {
+        url: "/music/punk-rock.mp3",
+        duration: 112.54,
+        credit: pixabay("Punk Rock", "alexgrohl", "https://pixabay.com/music/rock-punk-rock-478794/"),
       },
     ],
   },
   {
-    // Disco and boogie. The Babylon Club in Scarface.
-    id: "babylon",
-    name: "BABYLON",
-    frequency: 105.1,
-    accent: "babylon",
-    logo: "babylon",
+    // Drift phonk. Initial D: the tofu delivered down the mountain before dawn.
+    id: "tofu",
+    name: "TOFU",
+    frequency: 107.6,
+    accent: "tofu",
+    logo: "tofu",
     tracks: [
       {
-        url: "/music/disco-music.mp3",
-        duration: 123.81,
-        credit: pixabay("Disco Music", "paulyudin", "https://pixabay.com/music/disco-disco-disco-music-595944/"),
+        url: "/music/walk-of-dr-livesey.mp3",
+        duration: 92.95,
+        credit: pixabay("Walk of Dr. Livesey", "sigmamusicart", "https://pixabay.com/music/upbeat-phonk-walk-of-dr-livesey-258266/"),
       },
       {
-        url: "/music/disco-con-tutti.mp3",
-        duration: 218.99,
-        credit: macleod("Disco con Tutti", incompetech("USUAN1200091")),
-      },
-      {
-        url: "/music/disco.mp3",
-        duration: 94.48,
-        credit: pixabay("Disco", "atlasaudio", "https://pixabay.com/music/disco-disco-518074/"),
-      },
-      {
-        url: "/music/gotta-keep-on-movin.mp3",
-        duration: 131.53,
-        // FreePD (freepd.com) published it; the link is the composer's own page for the track.
-        credit: cc0(
-          "Gotta Keep On Movin'",
-          "Bryan Teoh",
-          "https://bryan-teoh.squarespace.com/sleepfacingwest/2020/9/16/gl038-gotta-keep-on-movin",
-        ),
-      },
-      {
-        url: "/music/nu-disco.mp3",
-        duration: 148.07,
-        credit: pixabay("Nu Disco", "aurec", "https://pixabay.com/music/disco-nu-disco-590512/"),
+        url: "/music/phonk.mp3",
+        duration: 87.62,
+        credit: pixabay("Phonk", "sigmamusicart", "https://pixabay.com/music/upbeat-phonk-253422/"),
       },
     ],
   },
@@ -287,7 +272,7 @@ export const STATIONS: readonly Station[] = [
 export const OFF: OffEntry = { id: "off", accent: "off", logo: "power" };
 
 /** The station "enter with music" plays the first time, from its first track. */
-export const DEFAULT_STATION_ID: StationId = "babylon";
+export const DEFAULT_STATION_ID: StationId = "manero";
 
 /** Where the wheel's first entry (radio off) sits: degrees clockwise from 12 o'clock, so the bottom. */
 export const WHEEL_START = 180;
@@ -325,7 +310,7 @@ export function wheelIndex(id: TuneId, wheel: readonly WheelEntry[] = WHEEL): nu
   return Math.max(0, wheel.findIndex((entry) => entry.id === id));
 }
 
-/** "87.9" */
+/** "88.3" */
 export function formatFrequency(frequency: number): string {
   return frequency.toFixed(1);
 }

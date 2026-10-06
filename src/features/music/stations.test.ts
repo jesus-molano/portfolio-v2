@@ -6,14 +6,18 @@ import {
   findEntry,
   findStation,
   formatFrequency,
+  holizna,
+  incompetech,
   isTuneId,
   joinSentences,
   LICENCE_URLS,
   liveOffset,
+  macleod,
   livePosition,
   nextIndex,
   nextTrack,
   parseMemory,
+  pixabay,
   playlistLength,
   previousIndex,
   type Station,
@@ -48,26 +52,34 @@ function station(id: Station["id"], durations: number[]): Station {
 }
 
 describe("the lineup", () => {
-  it("has six genre stations by frequency, K-CALIMA first", () => {
+  it("has six genre stations by frequency, BOBSLED first", () => {
     expect(STATIONS.map((entry) => entry.name)).toEqual([
-      "K-CALIMA",
-      "CROCKETT",
-      "MR. WOLF",
-      "LEAVE THE GUN",
-      "LOVE DADDY",
-      "BABYLON",
+      "BOBSLED",
+      "RAHEEM",
+      "MANERO",
+      "ONE LOUDER",
+      "WITNESS ME",
+      "TOFU",
+    ]);
+    expect(STATIONS.map((entry) => formatFrequency(entry.frequency))).toEqual([
+      "88.3",
+      "92.9",
+      "97.7",
+      "101.1",
+      "104.5",
+      "107.6",
     ]);
     const frequencies = STATIONS.map((entry) => entry.frequency);
     expect(frequencies).toEqual([...frequencies].sort((a, b) => a - b));
     expect(new Set(STATIONS.map((entry) => entry.accent)).size).toBe(STATIONS.length);
   });
 
-  it("defaults to BABYLON 105.1, whose playlist opens with Disco Music", () => {
-    expect(DEFAULT_STATION_ID).toBe("babylon");
-    const babylon = findStation(DEFAULT_STATION_ID)!;
-    expect(formatFrequency(babylon.frequency)).toBe("105.1");
-    expect(babylon.tracks[0].credit.title).toBe("Disco Music");
-    expect(babylon.tracks[0].url).toBe("/music/disco-music.mp3");
+  it("defaults to MANERO 97.7, whose playlist opens with Honeyed Sunbeams", () => {
+    expect(DEFAULT_STATION_ID).toBe("manero");
+    const manero = findStation(DEFAULT_STATION_ID)!;
+    expect(formatFrequency(manero.frequency)).toBe("97.7");
+    expect(manero.tracks[0].credit.title).toBe("Honeyed Sunbeams");
+    expect(manero.tracks[0].url).toBe("/music/honeyed-sunbeams.mp3");
   });
 
   it("gives every track its own file, a measured duration and a full credit", () => {
@@ -88,54 +100,61 @@ describe("the lineup", () => {
       STATIONS.map((entry) => [entry.id, entry.tracks.map((track) => track.credit.title)]),
     );
     expect(playlists).toEqual({
-      "k-calima": ["Classic", "Plastic Sunrise", "Gearhead"],
-      crockett: ["Newer Wave", "Miami Nights - Extended Theme", "Nostalgia", "Neon Laser Horizon", "Retro Synths"],
-      "mr-wolf": ["Rock", "Big Rock", "Hotrock", "Ready Aim Fire"],
-      "leave-the-gun": ["Joyful Rhythm Walk Funk", "Funk", "RetroFuture Nasty"],
-      "love-daddy": ["Boom Bap Old School Groove", "Griphop", "Boom Bap", "Basic Implosion"],
-      babylon: ["Disco Music", "Disco con Tutti", "Disco", "Gotta Keep On Movin'", "Nu Disco"],
+      bobsled: ["Reggae Island Vibes", "Rasta Vibes", "Don't Worry About a Thing"],
+      raheem: ["West Coast Beat", "Miraculous", "Vlog Vlogs Music Background"],
+      manero: ["Honeyed Sunbeams", "Funky Disco", "Afrobeat Disco", "Funk Music", "Celebrity"],
+      "one-louder": ["The Sound of Metal 3", "The Sound of Metal 4", "Thrash Metal"],
+      "witness-me": ["Rock", "Heatwave", "Punk Rock Rebellion Fast Energy", "Punk Rock"],
+      tofu: ["Walk of Dr. Livesey", "Phonk"],
     });
   });
 
-  it("names Kevin MacLeod's site, as his CC BY credit asks", () => {
+  it("credits every Pixabay track with its page, whose address ends in the track's ID", () => {
     for (const credit of STATIONS.flatMap((entry) => entry.tracks.map((track) => track.credit))) {
-      if (credit.artist === "Kevin MacLeod") {
-        expect(credit.artistSite).toBe("incompetech.com");
-        expect(credit.licence).toBe("CC BY 4.0");
-      }
+      expect(credit.licence).toBe("Pixabay");
+      expect(credit.sourceUrl).toMatch(/^https:\/\/pixabay\.com\/music\/[a-z0-9-]+-\d{6}\/$/);
     }
+  });
+
+  it("names Kevin MacLeod's site, as his CC BY credit asks", () => {
+    const credit = macleod("Gearhead", incompetech("USUAN1100221"));
+    expect(credit.artistSite).toBe("incompetech.com");
+    expect(credit.licence).toBe("CC BY 4.0");
+    expect(credit.licenceUrl).toBe(LICENCE_URLS["CC BY 4.0"]);
+    expect(holizna("Classic", "https://example.com").licence).toBe("CC0 1.0");
+    expect(pixabay("Phonk", "sigmamusicart", "https://example.com").licenceUrl).toBe(LICENCE_URLS.Pixabay);
   });
 });
 
 describe("visibleStations", () => {
   it("puts all six stations on air, each with a playlist", () => {
     expect(visibleStations().map((entry) => entry.id)).toEqual([
-      "k-calima",
-      "crockett",
-      "mr-wolf",
-      "leave-the-gun",
-      "love-daddy",
-      "babylon",
+      "bobsled",
+      "raheem",
+      "manero",
+      "one-louder",
+      "witness-me",
+      "tofu",
     ]);
   });
 
   it("keeps a station without tracks off the air", () => {
-    const lineup = withoutTracks("love-daddy", "babylon");
+    const lineup = withoutTracks("witness-me", "tofu");
     expect(visibleStations(lineup).map((entry) => entry.id)).toEqual([
-      "k-calima",
-      "crockett",
-      "mr-wolf",
-      "leave-the-gun",
+      "bobsled",
+      "raheem",
+      "manero",
+      "one-louder",
     ]);
-    expect(findStation("babylon", lineup)).toBeNull();
+    expect(findStation("tofu", lineup)).toBeNull();
   });
 
   it("puts a station on air as soon as it has a track", () => {
-    const lineup = withoutTracks("love-daddy").map((entry) =>
-      entry.id === "love-daddy" ? station("love-daddy", [180]) : entry,
+    const lineup = withoutTracks("witness-me").map((entry) =>
+      entry.id === "witness-me" ? station("witness-me", [180]) : entry,
     );
-    expect(findStation("love-daddy", withoutTracks("love-daddy"))).toBeNull();
-    expect(findStation("love-daddy", lineup)?.name).toBe("LOVE DADDY");
+    expect(findStation("witness-me", withoutTracks("witness-me"))).toBeNull();
+    expect(findStation("witness-me", lineup)?.name).toBe("WITNESS ME");
   });
 });
 
@@ -148,20 +167,20 @@ describe("the wheel", () => {
   });
 
   it("closes up when a station goes off air", () => {
-    const wheel = wheelEntries(withoutTracks("love-daddy", "babylon"));
-    expect(wheel.map((entry) => entry.id)).toEqual(["off", "k-calima", "crockett", "mr-wolf", "leave-the-gun"]);
-    expect(wheel[sectorAt(angleOf(1, 1), wheel.length)].id).toBe("leave-the-gun");
+    const wheel = wheelEntries(withoutTracks("witness-me", "tofu"));
+    expect(wheel.map((entry) => entry.id)).toEqual(["off", "bobsled", "raheem", "manero", "one-louder"]);
+    expect(wheel[sectorAt(angleOf(1, 1), wheel.length)].id).toBe("one-louder");
   });
 
   it("finds entries and indices, and falls back to radio off", () => {
     expect(wheelIndex("off")).toBe(0);
-    expect(wheelIndex("leave-the-gun")).toBe(4);
-    expect(wheelIndex("babylon")).toBe(6);
-    const short = wheelEntries(withoutTracks("babylon"));
-    expect(wheelIndex("babylon", short)).toBe(0);
-    expect(findEntry("babylon", short).id).toBe("off");
-    expect(isTuneId("mr-wolf")).toBe(true);
-    expect(isTuneId("babylon")).toBe(true);
+    expect(wheelIndex("one-louder")).toBe(4);
+    expect(wheelIndex("tofu")).toBe(6);
+    const short = wheelEntries(withoutTracks("tofu"));
+    expect(wheelIndex("tofu", short)).toBe(0);
+    expect(findEntry("tofu", short).id).toBe("off");
+    expect(isTuneId("manero")).toBe(true);
+    expect(isTuneId("tofu")).toBe(true);
     expect(isTuneId("off")).toBe(true);
     expect(isTuneId("omerta")).toBe(false);
     expect(isTuneId("flash-fm")).toBe(false);
@@ -197,11 +216,11 @@ describe("sectorAt", () => {
     }
   });
 
-  it("reads the radio wheel like a dial: off below, 87.9 lower left, the top station lower right", () => {
+  it("reads the radio wheel like a dial: off below, 88.3 lower left, the top station lower right", () => {
     const count = WHEEL.length;
     expect(WHEEL[sectorAt(180, count)].id).toBe("off");
-    expect(WHEEL[sectorAt(angleOf(-1, 1), count)].id).toBe("k-calima");
-    expect(WHEEL[sectorAt(angleOf(1, 1), count)].id).toBe("babylon");
+    expect(WHEEL[sectorAt(angleOf(-1, 1), count)].id).toBe("bobsled");
+    expect(WHEEL[sectorAt(angleOf(1, 1), count)].id).toBe("tofu");
     expect(WHEEL_START).toBe(180);
   });
 });
@@ -214,10 +233,10 @@ describe("aimedSector", () => {
 
   it("picks the sector the pointer moved toward beyond the dead zone", () => {
     expect(WHEEL[aimedSector(0, 80, WHEEL.length, 24)!].id).toBe("off");
-    expect(WHEEL[aimedSector(-80, 0, WHEEL.length, 24)!].id).toBe("crockett");
-    expect(WHEEL[aimedSector(-20, -80, WHEEL.length, 24)!].id).toBe("mr-wolf");
-    expect(WHEEL[aimedSector(20, -80, WHEEL.length, 24)!].id).toBe("leave-the-gun");
-    expect(WHEEL[aimedSector(80, 0, WHEEL.length, 24)!].id).toBe("love-daddy");
+    expect(WHEEL[aimedSector(-80, 0, WHEEL.length, 24)!].id).toBe("raheem");
+    expect(WHEEL[aimedSector(-20, -80, WHEEL.length, 24)!].id).toBe("manero");
+    expect(WHEEL[aimedSector(20, -80, WHEEL.length, 24)!].id).toBe("one-louder");
+    expect(WHEEL[aimedSector(80, 0, WHEEL.length, 24)!].id).toBe("witness-me");
   });
 });
 
@@ -319,13 +338,13 @@ describe("parseMemory", () => {
   });
 
   it("remembers the last station and whether the radio was turned off", () => {
-    expect(parseMemory("mr-wolf", "on")).toEqual({ station: "mr-wolf", on: true });
-    expect(parseMemory("crockett", "off")).toEqual({ station: "crockett", on: false });
+    expect(parseMemory("manero", "on")).toEqual({ station: "manero", on: true });
+    expect(parseMemory("raheem", "off")).toEqual({ station: "raheem", on: false });
   });
 
   it("forgets stations that are gone or not on air", () => {
     expect(parseMemory("funny-how", null)).toEqual({ station: null, on: true });
-    expect(parseMemory("babylon", "on", withoutTracks("babylon"))).toEqual({ station: null, on: true });
+    expect(parseMemory("tofu", "on", withoutTracks("tofu"))).toEqual({ station: null, on: true });
     expect(parseMemory("off", "off")).toEqual({ station: null, on: false });
   });
 });
@@ -334,32 +353,40 @@ describe("stationCredits", () => {
   it("credits every track on air, by station", () => {
     const credits = stationCredits();
     expect(credits.map((entry) => entry.station.id)).toEqual(visibleStations().map((entry) => entry.id));
-    expect(credits.flatMap((entry) => entry.credits)).toHaveLength(24);
-    expect(credits[0].credits.map((credit) => credit.title)).toEqual(["Classic", "Plastic Sunrise", "Gearhead"]);
+    expect(credits.flatMap((entry) => entry.credits)).toHaveLength(20);
+    expect(credits[0].credits.map((credit) => credit.title)).toEqual([
+      "Reggae Island Vibes",
+      "Rasta Vibes",
+      "Don't Worry About a Thing",
+    ]);
   });
 
   it("leaves out the stations off air", () => {
-    const credits = stationCredits(withoutTracks("love-daddy"));
-    expect(credits.map((entry) => entry.station.id)).not.toContain("love-daddy");
-    const loveDaddy = findStation("love-daddy")!.tracks.length;
-    expect(credits.flatMap((entry) => entry.credits)).toHaveLength(24 - loveDaddy);
+    const credits = stationCredits(withoutTracks("witness-me"));
+    expect(credits.map((entry) => entry.station.id)).not.toContain("witness-me");
+    const witnessMe = findStation("witness-me")!.tracks.length;
+    expect(credits.flatMap((entry) => entry.credits)).toHaveLength(20 - witnessMe);
   });
 });
 
 describe("joinSentences", () => {
   it("puts a full stop between phrases", () => {
-    expect(joinSentences(["K-CALIMA 87.9", "Super sounds of the sunset"])).toBe("K-CALIMA 87.9. Super sounds of the sunset");
+    expect(joinSentences(["BOBSLED 88.3", "Feel the rhythm, feel the rhyme"])).toBe(
+      "BOBSLED 88.3. Feel the rhythm, feel the rhyme",
+    );
   });
 
   it("keeps a phrase's own ending and adds none after the last", () => {
-    expect(joinSentences(["LOVE DADDY 102.5", "Wake up! Wake up!", "Now playing: Griphop, Kevin MacLeod"])).toBe(
-      "LOVE DADDY 102.5. Wake up! Wake up! Now playing: Griphop, Kevin MacLeod",
+    expect(joinSentences(["WITNESS ME 104.5", "Witness me!", "Now playing: Punk Rock, alexgrohl"])).toBe(
+      "WITNESS ME 104.5. Witness me! Now playing: Punk Rock, alexgrohl",
     );
-    expect(joinSentences(["MR. WOLF 94.7", "I solve problems. Loudly."])).toBe("MR. WOLF 94.7. I solve problems. Loudly.");
+    expect(joinSentences(["TOFU 107.6", "Tofu delivered by dawn. Sideways."])).toBe(
+      "TOFU 107.6. Tofu delivered by dawn. Sideways.",
+    );
     expect(joinSentences(["¿Qué?", "Nada"])).toBe("¿Qué? Nada");
   });
 
   it("skips empty phrases", () => {
-    expect(joinSentences(["BABYLON 105.1", "", "  "])).toBe("BABYLON 105.1");
+    expect(joinSentences(["MANERO 97.7", "", "  "])).toBe("MANERO 97.7");
   });
 });

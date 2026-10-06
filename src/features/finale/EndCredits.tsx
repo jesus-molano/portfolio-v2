@@ -247,9 +247,9 @@ export function EndCredits({ dict, newTab, locale }: Props) {
             </dl>
           </Block>
 
-          {/* CC BY 4.0 asks for the title, the author, the source, the licence
-              and a note of changes for every track, in Kevin MacLeod's own
-              format; CC0 and Pixabay ask for nothing, they are credited anyway. */}
+          {/* Pixabay and CC0 ask for nothing, every track is credited anyway
+              (title, author, source, licence, a note of changes); a CC BY 4.0
+              track would be credited in its author's own format. */}
           <Block id="credits-music" title={dict.music.title}>
             <p className={styles.aside}>{dict.music.edited}</p>
             <dl className={styles.cells}>

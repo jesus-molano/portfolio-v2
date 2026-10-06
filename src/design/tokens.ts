@@ -87,32 +87,59 @@ export type PaletteKey = keyof typeof palette;
  * `--va-radio-*`.
  */
 export const radio = {
-  /** K-CALIMA 87.9: sunset orange; its logo uses the sky palette. */
-  calima: palette.orange,
-  /** CROCKETT 91.4: teal and pink speed stripes, chrome type, a Miami night. */
-  crockett: "#22d8c3",
-  crockettNight: "#140a33",
-  crockettChrome: "#9cc2ff",
-  crockettHorizon: "#3b2a78",
-  /** MR. WOLF 94.7: white tie on a black tux. */
-  wolf: "#f5f1e8",
-  wolfTux: "#0b0a10",
-  wolfSatin: "#2a2733",
-  /** LEAVE THE GUN 99.2: deli paper, red script, green trim, a cannoli. */
-  gun: "#2fae66",
-  gunRed: "#d8343a",
-  gunPaper: "#fbf0dc",
-  gunShell: "#d9963f",
-  gunCrust: "#8a5524",
-  /** LOVE DADDY 102.5: a boombox on a brick wall, yellow block letters. */
-  daddy: "#ffd23a",
-  daddyBrick: "#b0302a",
-  daddyMortar: "#7d1f1c",
-  daddyBox: "#1d1418",
-  /** BABYLON 105.1: pink disco neon, a mirror ball, deco gold. */
-  babylon: "#ff4fd8",
-  babylonNight: "#12081f",
-  babylonGold: "#f0c36a",
+  /** Shared by every badge: the frame's deepest shadow, a white glint, a fabric weave and a tyre. */
+  shadow: "#0b0614",
+  glint: "#ffffff",
+  weave: "#2a1d3d",
+  tyre: "#140a22",
+  /** BOBSLED 88.3: a four-man sled off a banked ice wall on a cold, sunny morning; green, gold and black. */
+  bobsled: "#3ddc84",
+  bobsledGold: "#ffc93c",
+  bobsledGreen: "#1f9e5a",
+  bobsledDeep: "#0f5a3a",
+  bobsledBlack: "#120a1c",
+  bobsledIce: "#bfe9f2",
+  bobsledIceDeep: "#6fb3d6",
+  bobsledSky: "#cfe8f7",
+  bobsledSkyDeep: "#7fb2e8",
+  bobsledWall: "#2d5f9e",
+  bobsledSkin: "#8a4f36",
+  /** RAHEEM 92.9: a fist with a gold LOVE ring over a boombox, on a heatwave. */
+  raheem: "#ff9a3c",
+  raheemGold: "#f0c36a",
+  raheemGoldDeep: "#a9741f",
+  raheemBrick: "#b0302a",
+  raheemSkin: "#8a4c34",
+  raheemSkinLight: "#c07a55",
+  raheemSkinDeep: "#4a2027",
+  /** MANERO 97.7: a white suit on a lit floor under a mirror ball. */
+  manero: "#ff4fd8",
+  maneroNight: "#12081f",
+  maneroShirt: "#1a0d2e",
+  /** ONE LOUDER 101.1: a chrome knob cranked past ten, an amp's gold panel, black tolex. */
+  louder: "#9cc2ff",
+  louderHot: "#ff6a2b",
+  louderTolex: "#120a1c",
+  louderChrome: "#b8a8d8",
+  louderStage: "#0d0716",
+  louderDeep: "#2b4f9e",
+  louderPanel: "#e6c27a",
+  louderPanelDeep: "#a8803e",
+  /** WITNESS ME 104.5: ransom-note tape over a pink spray splat and a chrome can. */
+  witness: "#ffe14d",
+  witnessInk: "#160a24",
+  witnessSteel: "#d9d4e8",
+  witnessDeep: "#7a0f4e",
+  /** TOFU 107.6: a hatchback drifting a hairpin before dawn, a tofu box on the roof. */
+  tofu: "#8f6bff",
+  tofuNight: "#0d0618",
+  tofuDusk: "#3b1a66",
+  tofuDawn: "#ffb48a",
+  tofuRidge: "#4a2a7a",
+  tofuLow: "#1a0f2a",
+  tofuSide: "#e9dccf",
+  tofuShade: "#c7b5c9",
+  tofuSmoke: "#d9cdf0",
   /** Radio off: quiet lavender grey. */
   off: "#9d90bf",
 } as const;
@@ -175,18 +202,27 @@ export const typography = {
  * without preloading: the browser fetches them when the wheel first shows.
  */
 export const radioFonts = {
-  /** K-CALIMA: a fat, soft seventies display face. */
+  /** BOBSLED and MANERO: a fat, soft seventies display face. */
   seventies: "var(--font-radio-seventies), var(--font-display), 'Arial Black', sans-serif",
-  /** CROCKETT: a heavy italic for chrome eighties TV titles. */
+  /** TOFU: a heavy italic, like a drift video's title. */
   chrome: "var(--font-radio-chrome), var(--font-display), 'Arial Black', sans-serif",
-  /** MR. WOLF: a high-contrast tuxedo serif. */
-  tux: "var(--font-radio-tux), Didot, Georgia, serif",
-  /** LEAVE THE GUN: a bold deli-window script. */
-  deli: "var(--font-radio-deli), 'Brush Script MT', cursive",
-  /** LOVE DADDY: chunky late-eighties block letters. */
+  /** RAHEEM: chunky late-eighties block letters (the night city's ban notice too). */
   hiphop: "var(--font-radio-hiphop), var(--font-display), Impact, sans-serif",
-  /** BABYLON: an art-deco display face for the neon. */
-  deco: "var(--font-radio-deco), Didot, Georgia, serif",
+  /** ONE LOUDER and WITNESS ME: the chapter cards' condensed capitals, Big Shoulders Display Black. */
+  caps: "var(--font-chapter-caps), 'Bebas Neue', 'Arial Narrow', Impact, sans-serif",
+} as const;
+
+/**
+ * Sign-painter's faces of the night city's boards (src/features/night) and
+ * the credits' THE END, loaded like the radio's: never preloaded.
+ */
+export const signFonts = {
+  /** A high-contrast serif. */
+  serif: "var(--font-sign-serif), Didot, Georgia, serif",
+  /** A bold shop-window script. */
+  script: "var(--font-sign-script), 'Brush Script MT', cursive",
+  /** An art-deco display face. */
+  deco: "var(--font-sign-deco), Didot, Georgia, serif",
 } as const;
 
 /**
@@ -396,6 +432,9 @@ export function tokensToCssVariables(): string {
   entries.push(`--va-font-chapter-caps: ${typography.chapterCaps};`);
   for (const [key, value] of Object.entries(radioFonts)) {
     entries.push(`--va-font-radio-${kebab(key)}: ${value};`);
+  }
+  for (const [key, value] of Object.entries(signFonts)) {
+    entries.push(`--va-font-sign-${kebab(key)}: ${value};`);
   }
   entries.push(`--va-size-hero-name: ${typography.heroName};`);
   entries.push(`--va-size-hero-role: ${typography.heroRole};`);

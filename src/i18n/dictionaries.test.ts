@@ -115,7 +115,7 @@ describe("loading screen copy", () => {
   const stationNames = visibleStations().map((station) => station.name);
   /** Capitals that are not a station's name. */
   const NOT_STATIONS = new Set(["CV"]);
-  /** Runs of capitalised words: "BABYLON", "MR. WOLF", "LEAVE THE GUN". */
+  /** Runs of capitalised words: "MANERO", "ONE LOUDER", "WITNESS ME". */
   const CAPITALS = /\b[A-Z][A-Z.\-]*[A-Z.](?:\s+[A-Z][A-Z.\-]*[A-Z.])*/g;
 
   it("has the same keys in both languages", () => {
@@ -164,7 +164,7 @@ describe("loading screen copy", () => {
       const named = new Set<string>();
       for (const tip of tips) {
         for (const [match] of tip.text.matchAll(CAPITALS)) {
-          // A full stop after a name ends the sentence; the one in "MR. WOLF" is the name's.
+          // A full stop after a name ends the sentence, unless the name itself ends in one.
           const run = stationNames.includes(match) ? match : match.replace(/\.$/, "");
           if (NOT_STATIONS.has(run)) continue;
           expect(stationNames, `"${run}" in "${tip.text}"`).toContain(run);

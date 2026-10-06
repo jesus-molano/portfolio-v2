@@ -41,7 +41,7 @@ describe("STATS copy", () => {
 
   it("keeps the favourites' winks on their stars, the owner's fixed lines among them", () => {
     const nodes = (dict: typeof en) => dict.stats.achievements.nodes;
-    // Pulp Fiction (the owner swapped it in for Gladiator): its burger, never Mr. Wolf, a radio station's name.
+    // Pulp Fiction (the owner swapped it in for Gladiator): its burger, never Mr. Wolf, an old radio station's name.
     expect(nodes(es).pulpFiction.line).toBe("Royale con queso.");
     expect(nodes(en).pulpFiction.line).toBe("Royale with cheese.");
     expect(nodes(es).skyrim.line).toBe("Eh, tú, al fin has despertado.");
@@ -59,9 +59,9 @@ describe("STATS copy", () => {
 
   it("winks at no radio station in the tree, and keeps out what the owner took out", () => {
     // The owner: people may never open the radio, so the tree never leans on it. Every station's name, and the word.
-    const stations = /K-CALIMA|CROCKETT|MR\.? WOLF|LEAVE THE GUN|LOVE DADDY|BABYLON|\bradio\b|emisora|station/i;
-    // Not his: the radio winks (Mr. Wolf for MR. WOLF, the cannoli for LEAVE THE GUN, Miami Vice for CROCKETT,
-    // which he has not seen), Box 33 and Gladiator, which he swapped for Pulp Fiction.
+    const stations = /BOBSLED|RAHEEM|MANERO|ONE LOUDER|WITNESS ME|\bTOFU\b|\bradio\b|emisora|station/i;
+    // Not his: the old radio's winks (Mr. Wolf, the cannoli, Miami Vice, which he has not seen), Box 33 and
+    // Gladiator, which he swapped for Pulp Fiction.
     const removed = /Wolfe?\b|Lobo|cannoli|Miami|Corrupción|Crockett|Box 33|Gladiator|Fuerza y honor|Strength and honour/i;
     for (const dict of [en, es]) {
       for (const [path, text] of strings(dict.stats.achievements)) {

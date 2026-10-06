@@ -31,8 +31,8 @@
 # variable. Without a system ffmpeg, `pip install imageio-ffmpeg` ships one:
 #   FFMPEG=$(python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())")
 #
-# Example (the first K-CALIMA track):
-#   tools/audio/encode-track.sh ~/Downloads/classic.mp3 public/music/classic.mp3 0 149.4
+# Example (a radio edit: the second BOBSLED track, cut at a phrase with a 4 s fade):
+#   tools/audio/encode-track.sh ~/Downloads/rasta-vibes.mp3 public/music/rasta-vibes.mp3 0 226.44 4
 set -euo pipefail
 
 FFMPEG=${FFMPEG:-ffmpeg}

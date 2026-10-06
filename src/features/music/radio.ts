@@ -60,8 +60,8 @@ const MUSIC_KEY = "va-music";
 /** Her volume, 0 to 1, as a decimal string. */
 const VOLUME_KEY = "va-volume";
 /**
- * The start menu's radio choice for this visit, as "on:babylon" or
- * "off:crockett", in sessionStorage: the other language (a new page from
+ * The start menu's radio choice for this visit, as "on:manero" or
+ * "off:tofu", in sessionStorage: the other language (a new page from
  * the settings) keeps it until she enters.
  */
 const CUE_KEY = "va-cue";
@@ -167,7 +167,7 @@ export function tune(id: TuneId, { save = true, crackle = true, fromTop = false 
 
 /**
  * The station "enter with music" starts: the one the visitor last tuned
- * to, or the first time BABYLON (DEFAULT_STATION_ID). The loading screen's
+ * to, or the first time MANERO (DEFAULT_STATION_ID). The loading screen's
  * button names it and `requestMusic` plays it, both from here, so they
  * never disagree.
  */
@@ -175,7 +175,7 @@ export function entryStation(memory: RadioMemory): StationId {
   return memory.station ?? DEFAULT_STATION_ID;
 }
 
-/** A stored cue ("on:babylon", "off:crockett") as a choice; null when missing or unreadable. */
+/** A stored cue ("on:manero", "off:tofu") as a choice; null when missing or unreadable. */
 export function parseCue(value: string | null): EntryChoice | null {
   const match = value?.match(/^(on|off):(.+)$/);
   const station = match ? findStation(match[2]) : null;
@@ -217,7 +217,7 @@ export function getEntryChoice(): EntryChoice {
 
 const SERVER_CHOICE: EntryChoice = { station: DEFAULT_STATION_ID, on: true };
 
-/** Server render and hydration: BABYLON, on. */
+/** Server render and hydration: MANERO, on. */
 export function getServerEntryChoice(): EntryChoice {
   return SERVER_CHOICE;
 }
@@ -240,7 +240,7 @@ export function cueEntry(next: EntryChoice) {
 /**
  * The start menu's choice. NEW GAME (`on`) plays `entryChoice`: the
  * station she cued in the settings, or the one she last tuned to, live
- * (the first time BABYLON, from the top of its first track); with the
+ * (the first time MANERO, from the top of its first track); with the
  * radio cued off it enters in silence. CONTINUE turns the radio off.
  */
 export function requestMusic(on: boolean) {

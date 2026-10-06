@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { CAREER } from "@/features/career/career";
-import { STATIONS } from "@/features/music/stations";
+import { incompetech, macleod, STATIONS } from "@/features/music/stations";
 import { CULPRIT } from "@/features/suspects/lineup";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
@@ -82,14 +82,23 @@ describe("the music credits", () => {
     expect(tracks.length).toBeGreaterThan(0);
   });
 
-  it("credit every CC BY 4.0 track in its author's format: title, author (site), licence", () => {
-    const ccBy = tracks.filter((credit) => credit.licence === "CC BY 4.0");
-    expect(ccBy.length).toBeGreaterThan(0);
-    for (const credit of ccBy) {
-      expect(trackByline(credit, "by")).toBe("Kevin MacLeod (incompetech.com)");
-      expect(credit.sourceUrl).toMatch(/^https:\/\/(incompetech\.com|incompetech\.filmmusic\.io)\//);
-      expect(credit.licenceUrl).toBe("https://creativecommons.org/licenses/by/4.0/");
-    }
+  it("list the six stations on the dial, each with its playlist", () => {
+    expect(musicCredits().map(({ station, credits }) => [station.name, credits.length])).toEqual([
+      ["BOBSLED", 3],
+      ["RAHEEM", 3],
+      ["MANERO", 5],
+      ["ONE LOUDER", 3],
+      ["WITNESS ME", 4],
+      ["TOFU", 2],
+    ]);
+  });
+
+  it("would credit a CC BY 4.0 track in its author's format: title, author (site), licence", () => {
+    // None on air today (every station is Pixabay); the format stays ready for the next one.
+    const credit = macleod("Gearhead", incompetech("USUAN1100221"));
+    expect(trackByline(credit, "by")).toBe("Kevin MacLeod (incompetech.com)");
+    expect(credit.sourceUrl).toMatch(/^https:\/\/(incompetech\.com|incompetech\.filmmusic\.io)\//);
+    expect(credit.licenceUrl).toBe("https://creativecommons.org/licenses/by/4.0/");
     expect(en.credits.music.licences["CC BY 4.0"]).toBe("Licensed under Creative Commons: By Attribution 4.0 License");
     // The licence's official Spanish name, in lower case after the comma that leads to it.
     expect(es.credits.music.licences["CC BY 4.0"]).toBe("con licencia Creative Commons: Atribución 4.0 Internacional");

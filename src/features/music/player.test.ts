@@ -155,14 +155,14 @@ class FakeAudio {
 
 const credit = { title: "T", artist: "A", sourceUrl: "", licence: "CC0 1.0", licenceUrl: "" } as const;
 const STATION: Program = {
-  id: "k-calima",
+  id: "bobsled",
   tracks: [
     { url: "/music/a.mp3", duration: 100, credit },
     { url: "/music/b.mp3", duration: 50, credit },
     { url: "/music/c.mp3", duration: 30, credit },
   ],
 };
-const OTHER: Program = { id: "crockett", tracks: [{ url: "/music/x.mp3", duration: 120, credit }] };
+const OTHER: Program = { id: "raheem", tracks: [{ url: "/music/x.mp3", duration: 120, credit }] };
 
 describe("createPlayer", () => {
   /** Runs the clock far enough ahead to finish every fade. */
@@ -192,7 +192,7 @@ describe("createPlayer", () => {
     expect(deck.src).toBe("/music/b.mp3");
     expect(deck.currentTime).toBe(10);
     expect(deck.paused).toBe(false);
-    expect(onTrack).toHaveBeenLastCalledWith("k-calima", 1);
+    expect(onTrack).toHaveBeenLastCalledWith("bobsled", 1);
     finishFades();
     expect(deck.volume).toBeCloseTo(0.65, 5);
   });
@@ -203,7 +203,7 @@ describe("createPlayer", () => {
     await player.tune(STATION, { crackle: false, fromTop: true });
     expect(FakeAudio.all[0].src).toBe("/music/a.mp3");
     expect(FakeAudio.all[0].currentTime).toBe(0);
-    expect(onTrack).toHaveBeenLastCalledWith("k-calima", 0);
+    expect(onTrack).toHaveBeenLastCalledWith("bobsled", 0);
     // Away for 2 minutes, then back: 120 s into the restarted broadcast.
     await player.tune(OTHER, { crackle: false });
     vi.setSystemTime(new Date(1_010_000 + 120_000));
@@ -239,7 +239,7 @@ describe("createPlayer", () => {
     deck.emit("ended");
     expect(playing().map((candidate) => candidate.src)).toEqual(["/music/b.mp3"]);
     expect(playing()[0].volume).toBeCloseTo(0.65, 5);
-    expect(onTrack).toHaveBeenLastCalledWith("k-calima", 1);
+    expect(onTrack).toHaveBeenLastCalledWith("bobsled", 1);
   });
 
   it("loops the playlist after the last track", async () => {
@@ -315,7 +315,7 @@ describe("createPlayer", () => {
     expect(deck.src).toBe("/music/c.mp3");
     expect(deck.currentTime).toBeCloseTo(5, 5);
     expect(deck.paused).toBe(false);
-    expect(onTrack).toHaveBeenLastCalledWith("k-calima", 2);
+    expect(onTrack).toHaveBeenLastCalledWith("bobsled", 2);
   });
 
   it("skips a track that fails to the next one", async () => {
@@ -337,7 +337,7 @@ describe("createPlayer", () => {
     deck.broken = true;
     deck.emit("error");
     expect(onError).toHaveBeenCalledTimes(1);
-    expect(onError).toHaveBeenCalledWith("k-calima");
+    expect(onError).toHaveBeenCalledWith("bobsled");
   });
 });
 

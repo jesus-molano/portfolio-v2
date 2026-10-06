@@ -24,12 +24,12 @@
     "nowPlaying": "Now playing",
     "close": "Close the radio",
     "taglines": {
-      "k-calima": "Super sounds of the sunset",
-      "crockett": "No socks, all synth",
-      "mr-wolf": "I solve problems. Loudly.",
-      "leave-the-gun": "Take the groove",
-      "love-daddy": "Wake up! Wake up!",
-      "babylon": "The world is yours. So is the floor."
+      "bobsled": "Feel the rhythm, feel the rhyme",
+      "raheem": "Twenty D batteries. No turning down.",
+      "manero": "Disco, funk and watch the hair",
+      "one-louder": "Heavy metal. Ours goes to eleven.",
+      "witness-me": "Three chords, shiny and chrome",
+      "tofu": "Tofu delivered by dawn. Sideways."
     }
   },
   "hero": {
@@ -77,8 +77,8 @@
     "billboards": [
       "JESÚS MOLANO",
       "FRONTEND ENGINEER",
-      "BABYLON 105.1",
-      "CROCKETT 91.4"
+      "MANERO 97.7",
+      "TOFU 107.6"
     ],
     "lines": [
       [
@@ -199,12 +199,12 @@
       {
         "kind": "tip",
         "when": [],
-        "text": "BABYLON's disco comes as standard, but the dial also has CROCKETT's eighties synth and K-CALIMA's classic rock."
+        "text": "MANERO's disco and funk come as standard, but the dial also has RAHEEM's hip-hop beats and BOBSLED's reggae."
       },
       {
         "kind": "tip",
         "when": [],
-        "text": "MR. WOLF plays hard rock, LEAVE THE GUN brings the funk and LOVE DADDY spins nineties hip-hop beats."
+        "text": "ONE LOUDER plays metal, WITNESS ME brings punk and rock, and TOFU spins drift phonk."
       },
       {
         "kind": "trivia",

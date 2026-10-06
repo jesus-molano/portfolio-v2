@@ -11,7 +11,7 @@
 /*
  * The station on air: its frequency, then its name. Both stay in the
  * button's text colour: over the bright sky the station colours fall under
- * 4.5:1 as text (BABYLON's pink and LEAVE THE GUN's green measured 2.5:1),
+ * 4.5:1 as text (the old disco pink and funk green measured 2.5:1),
  * so the station's colour lights the equalizer instead.
  */
 .frequency {

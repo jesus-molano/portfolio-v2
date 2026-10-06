@@ -494,8 +494,8 @@ also exists as real DOM for keyboard and screen-reader users.
     (`createSilhouetteUniforms`: violet ramp, warm sun-side rim).
   - Rooftop billboards (`Billboards.tsx`, layout in `billboardLayout.ts`)
     show `hero.billboards` from one canvas atlas drawn in the display font:
-    his name and his role, then two ads for stations on the dial (BABYLON
-    105.1, CROCKETT 91.4), a hint at the radio; nothing else (tested), the
+    his name and his role, then two ads for stations on the dial (MANERO
+    97.7, TOFU 107.6), a hint at the radio; nothing else (tested), the
     same in both languages. The first two repeat the title on purpose. They
     stay unlit while the title is up and switch on one after another as it
     leaves (`neonLevel`). `sightCap` keeps every
@@ -505,9 +505,11 @@ also exists as real DOM for keyboard and screen-reader users.
     so no shot sees an edge.
 - `src/features/music` — the radio, GTA style. `stations.ts` (pure, unit
   tested) holds the genre stations, each a short playlist, in frequency
-  order: K-CALIMA 87.9 (classic and garage rock), CROCKETT
-  91.4 (80s synth), MR. WOLF 94.7 (hard rock), LEAVE THE GUN 99.2 (funk),
-  LOVE DADDY 102.5 (90s hip-hop beats), BABYLON 105.1 (disco, the default). A station
+  order, each a nod to a film: BOBSLED 88.3 (reggae; Cool Runnings),
+  RAHEEM 92.9 (hip-hop; Do the Right Thing), MANERO 97.7 (disco and funk,
+  the default; Saturday Night Fever), ONE LOUDER 101.1 (metal; This Is
+  Spinal Tap), WITNESS ME 104.5 (rock and punk; Mad Max: Fury Road), TOFU
+  107.6 (drift phonk; Initial D). A station
   without tracks stays off the wheel and out of the credits. Every station
   runs on a clock (`livePosition`), so tuning in lands mid-song; the
   playlist loops. `player.ts` plays it on `<audio>` decks, fetches only the
@@ -523,8 +525,8 @@ also exists as real DOM for keyboard and screen-reader users.
   `entryChoice`: what she cued in the start menu's settings
   (`cueEntry`, nothing sounds before she enters; kept for the visit in
   sessionStorage, so the other language keeps it), else `entryStation`
-  (the remembered station live, or the first time BABYLON from the top
-  of Disco Music), on even if CONTINUE saved "off" last time; with the
+  (the remembered station live, or the first time MANERO from the top
+  of Honeyed Sunbeams), on even if CONTINUE saved "off" last time; with the
   radio cued off it enters in silence. Its line names the same station,
   or "Radio off". `RadioWheel.tsx` opens by holding the right mouse button over
   the scene, holding or pressing Q, a long-press on touch, or the music
@@ -555,10 +557,14 @@ also exists as real DOM for keyboard and screen-reader users.
   of its night left at the top after a little scroll back) it would cover
   the next section's chapter card. Radio off sits at
   the bottom; every sector stays a 44 px target on a 360 px phone
-  (`wheelGeometry.ts`, tested). Station logos (`StationLogo.tsx`) are our
-  own SVG typography in `radio` tokens and `radioFonts`: no trademarks,
-  no copied logos. Names stay as written in both languages; taglines live
-  in `radio.taglines` in the dictionaries.
+  (`wheelGeometry.ts`, tested). Station logos (`StationLogo.tsx`, drawn by
+  `stationBadges.ts`, pure and tested) are our own illustrated badges in
+  one frame family (an enamel rim in the station's accent, a gloss, grain,
+  the frequency on a tab), each with its own mark and lockup, readable at
+  44 px and rich at 180 px; every colour a `radio` or palette token and
+  every face a `radioFonts` token, set through `style`: no trademarks, no
+  film stills, no copied logos. Names stay as written in both languages;
+  taglines live in `radio.taglines` in the dictionaries.
 - `src/features/loader` — the loading screen, made a game's start menu
   (the owner's call): no name and no role on it (the hero shows them once
   she starts), three huge items in the marquee face (`loader.menu`): NEW
@@ -1446,16 +1452,17 @@ Each folder in `public/models` keeps its `LICENSE.txt`.
 
 `public/music/<slug>.mp3` holds the radio's tracks, and
 `public/music/LICENSE.txt` lists each one by station: title, artist,
-source URL, licence and what was changed. Only instrumental tracks whose
-licence allows this use: CC BY 4.0 (Kevin MacLeod, credited in his own
-format), CC0, or the Pixabay Content License. No copyrighted songs, ever.
+source URL, licence and what was changed. Only tracks whose licence
+allows this use, instrumental or sung (the owner's call): CC BY 4.0
+(Kevin MacLeod, credited in his own format), CC0, or the Pixabay Content
+License. No copyrighted songs, ever. Every track on air today is Pixabay.
 Pixabay licence certificates name the licensee: they stay out of the repo;
 LICENSE.txt gives the track page and the Pixabay ID instead.
 
 To add a track to a station:
 
 1. Encode it: `tools/audio/encode-track.sh <download> public/music/<slug>.mp3
-   [start] [end]` (ffmpeg on PATH, or `FFMPEG=...`; `pip install
+   [start] [end] [fade]` (ffmpeg on PATH, or `FFMPEG=...`; `pip install
    imageio-ffmpeg` ships one). It trims, fades out a mid-track cut, strips
    silence, normalises to -16 LUFS / -1.5 dBTP, writes MP3 128 kbps 44.1 kHz
    stereo without tags, and prints the duration. Cap a track at about 3:45,

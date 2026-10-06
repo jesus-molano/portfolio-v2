@@ -574,7 +574,7 @@
 
 .end {
   margin-top: 4.5rem;
-  font: 400 clamp(2.4rem, 4vw, 3.2rem) / 1 var(--va-font-radio-deco);
+  font: 400 clamp(2.4rem, 4vw, 3.2rem) / 1 var(--va-font-sign-deco);
   color: var(--va-color-cream);
 }
 
