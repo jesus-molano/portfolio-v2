@@ -95,7 +95,8 @@ also exists as real DOM for keyboard and screen-reader users.
   FAIL; `--frames` saves a strip of the entrance.
 - `node tools/capture/radiowheel.mjs --url http://localhost:3000` (dev
   server running; `--lang`, `--sizes`, `--json <file>`, `--shots <dir>`)
-  — the radio wheel's centre on phones, upright and on their side: every
+  — the radio wheel's centre on phones, upright and on their side, from
+  320 px to a big iPhone (any size under the full wheel): every
   sector selected and tuned (every track it can have on air), each line
   of text and the status pill 4 px inside the disc, no word broken, one
   name size, 44 px badges, radio off's symbol lit when selected. PASS or
@@ -566,11 +567,15 @@ also exists as real DOM for keyboard and screen-reader users.
   the bottom (its power symbol lit cream while selected); every sector
   stays a 44 px target on a 360 px phone and on a phone on its side,
   where the hint stands beside the wheel so it takes the height
-  (`wheelGeometry.ts`, tested). On a phone's wheel (400 px or less) the
-  centre's type scales with the disc (`CENTRE_TYPE`), one name size for
-  every station, so the station on air, its track and status sit 4 px
-  inside the rim (`tools/capture/radiowheel.mjs`); a longer name,
-  tagline or credit than `CENTRE_BUDGET` is measured again. Station
+  (`wheelGeometry.ts`, tested; its column at most a third of the
+  screen, so a big text size wraps the hint instead of squeezing the
+  wheel). On every wheel under the full 600 px (phones up to a big
+  iPhone, short or zoomed windows) the centre's type scales with the
+  disc (`CENTRE_TYPE`), one name size for every station, so the station
+  on air, its track and status sit 4 px inside the rim
+  (`tools/capture/radiowheel.mjs`); a rem floor there put WITNESS ME
+  across it. A longer name, tagline or credit than `CENTRE_BUDGET` is
+  measured again. Station
   logos (`StationLogo.tsx`, drawn by `stationBadges.ts`, pure and
   tested) are our own illustrated badges in one frame family (an enamel
   rim in the station's accent, a gloss, grain, the frequency on a tab),

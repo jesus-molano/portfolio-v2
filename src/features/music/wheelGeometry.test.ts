@@ -115,25 +115,40 @@ describe("wheelSize", () => {
     expect(wheelSize(1280, 480)).toBe(448);
     expect(wheelSize(1280, 501)).toBe(357);
   });
+
+  it("keeps the hint's column to a third of a narrow screen", () => {
+    // 13rem would leave 352 px; a third of the width, 192 px, leaves 360.
+    expect(wheelSize(600, 480)).toBe(360);
+  });
 });
 
-/** Phone wheels, upright and on their side, from a 320 px phone up. */
+/** Phone wheels, upright and on their side, from a 320 px phone up to a big iPhone. */
 const PHONES = [
   [320, 568],
   [360, 640],
   [375, 667],
   [390, 844],
   [412, 915],
+  [428, 926],
+  [430, 932],
+  [440, 956],
   [568, 320],
   [640, 360],
   [844, 390],
+  [932, 430],
+  [956, 440],
 ].map(([width, height]) => wheelSize(width, height));
 
 describe("the centre on a phone's wheel", () => {
   it("takes CENTRE_TYPE on every phone, upright or on its side", () => {
     for (const size of PHONES) expect(size).toBeLessThanOrEqual(SMALL_WHEEL);
-    // A tablet keeps the big wheel's type.
+    // A short window and a 1440 x 900 one at 200 % zoom too: only the full wheel keeps the big type.
+    expect(wheelSize(1024, 500)).toBeLessThanOrEqual(SMALL_WHEEL);
+    expect(wheelSize(720, 450)).toBeLessThanOrEqual(SMALL_WHEEL);
+    expect(SMALL_WHEEL).toBe(599);
+    // A tablet and a desktop keep the big wheel's type.
     expect(wheelSize(768, 1024)).toBeGreaterThan(SMALL_WHEEL);
+    expect(wheelSize(1440, 900)).toBeGreaterThan(SMALL_WHEEL);
   });
 
   it("never sets the name under 11 px, and keeps it the biggest line", () => {

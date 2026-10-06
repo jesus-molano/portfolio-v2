@@ -10,11 +10,12 @@
  *     [--lang es,en] [--sizes 360x640,640x360,...] [--json <file>]
  *     [--shots <dir>]
  *
- * The sizes default to the phones, upright and on their side, whose wheel
- * (400 px or less) sets its centre in CENTRE_TYPE (wheelGeometry.ts). A
- * tablet or a desktop (768x1024, 1440x900) takes the big wheel's type: on
- * it WITNESS ME's line box, over a two-line title on air, comes within
- * 4 px of the rim (its letters stay inside).
+ * The sizes default to the phones, upright and on their side, from a
+ * 320 px phone to a big iPhone, whose wheel (under 600 px) sets its centre
+ * in CENTRE_TYPE (wheelGeometry.ts). A tablet or a desktop (768x1024,
+ * 1440x900) takes the full 600 px wheel and its own type: on it WITNESS
+ * ME's line box, over a two-line title on air, comes within 4 px of the
+ * rim (its letters stay inside).
  *
  * Every sector is measured twice: selected (the arrows on a desktop, the
  * focus on a touch screen, where a tap tunes at once) and tuned, its
@@ -46,7 +47,10 @@ const { values } = parseArgs({
   options: {
     url: { type: "string", default: "http://localhost:3000" },
     lang: { type: "string", default: "es,en" },
-    sizes: { type: "string", default: "360x640,360x740,375x667,390x844,412x915,640x360,844x390" },
+    sizes: {
+      type: "string",
+      default: "320x568,360x640,360x740,375x667,390x844,412x915,430x932,440x956,568x320,640x360,844x390,956x440",
+    },
     json: { type: "string" },
     shots: { type: "string" },
   },

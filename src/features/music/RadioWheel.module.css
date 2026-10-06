@@ -371,15 +371,23 @@
 }
 
 /*
- * Phones (a wheel of 400 px or less): the track speaks for itself without
- * its label, and the type scales with the disc (CENTRE_TYPE in
- * wheelGeometry.ts, as --centre-*-k), so every phone wraps the centre the
- * same way and keeps it 4 px inside the rim. With a big wheel's rem floors
- * WITNESS ME crossed the rim, and a station on air, with its track, ran
- * out at the bottom. The lines sit tighter, and a two-line title is
- * balanced, so the stack is short enough for the disc's narrow ends.
+ * Every wheel under the full 600 px (phones, upright or on their side, and
+ * short or zoomed windows): the track speaks for itself without its label,
+ * and the type scales with the disc (CENTRE_TYPE in wheelGeometry.ts, as
+ * --centre-*-k), so every such wheel wraps the centre the same way and
+ * keeps it 4 px inside the rim. With a big wheel's rem floors WITNESS ME
+ * crossed the rim (a 336 px wheel, and a 406 px one on a big iPhone), and
+ * a station on air, with its track, ran out at the bottom. The lines sit
+ * tighter, and a two-line title is balanced, so the stack is short enough
+ * for the disc's narrow ends. The stack sits a little low: its widest line,
+ * the name, is in its upper half, and the pill at its foot is narrower
+ * (tighter tracked and padded than on a big wheel).
  */
-@container (max-width: 400px) {
+@container (max-width: 599px) {
+  .centre {
+    transform: translate(-50%, calc(-50% + var(--size) * 0.008));
+  }
+
   .trackLabel {
     display: none;
   }
@@ -408,8 +416,9 @@
   }
 
   .status {
-    padding: 0.25em 0.8em;
+    padding: 0.25em 0.65em;
     font-size: calc(var(--size) * var(--centre-status-k));
+    letter-spacing: 0.16em;
     line-height: 1.1;
   }
 }
@@ -486,7 +495,9 @@
  * A phone on its side (SIDE_HINT in wheelGeometry.ts, which mirrors
  * --size): the hint stands beside the wheel, which takes the height. Under
  * it, 9rem of a 360 px tall screen went to the hint and the wheel shrank
- * to 216 px, its badges under 44 px.
+ * to 216 px, its badges under 44 px. The hint's column is at most a third
+ * of the screen, so a bigger text size wraps the hint instead of
+ * shrinking the wheel (13rem alone left a 128 px wheel at 200 %).
  */
 @media (orientation: landscape) and (max-height: 500px) {
   .dialog {
@@ -495,12 +506,12 @@
   }
 
   .wheel {
-    --size: min(600px, calc(100dvh - 2rem), calc(100vw - 1.5rem - 1.5rem - 13rem));
+    --size: min(600px, calc(100dvh - 2rem), calc(100vw - 1.5rem - 1.5rem - min(13rem, 32vw)));
   }
 
   .hint {
     flex: none;
-    width: 13rem;
+    width: min(13rem, 32vw);
     border-radius: 1rem;
   }
 }

@@ -91,11 +91,12 @@ export const WHEEL_LAYOUT = {
 /**
  * A phone on its side (a viewport wider than tall and at most 500 px tall,
  * the `@media` in RadioWheel.module.css): the hint stands beside the wheel,
- * a column `hint` px wide, `gap` px off it, and the wheel takes the height.
- * With the hint under it, a 360 px tall phone got a 216 px wheel: badges
- * under 44 px and a centre whose type ran past the rim.
+ * a column `hint` px wide (`hintVw` of the screen's width at most, so a big
+ * text size never squeezes the wheel), `gap` px off it, and the wheel takes
+ * the height. With the hint under it, a 360 px tall phone got a 216 px
+ * wheel: badges under 44 px and a centre whose type ran past the rim.
  */
-export const SIDE_HINT = { maxHeight: 500, hint: 208, gap: 24 } as const;
+export const SIDE_HINT = { maxHeight: 500, hint: 208, hintVw: 0.32, gap: 24 } as const;
 
 /**
  * The wheel's diameter in px for a viewport: the same as `--size` on
@@ -105,7 +106,8 @@ export const SIDE_HINT = { maxHeight: 500, hint: 208, gap: 24 } as const;
  */
 export function wheelSize(viewportWidth: number, viewportHeight: number): number {
   if (viewportWidth > viewportHeight && viewportHeight <= SIDE_HINT.maxHeight) {
-    return Math.min(600, viewportHeight - 32, viewportWidth - 24 - SIDE_HINT.gap - SIDE_HINT.hint);
+    const hint = Math.min(SIDE_HINT.hint, SIDE_HINT.hintVw * viewportWidth);
+    return Math.min(600, viewportHeight - 32, viewportWidth - 24 - SIDE_HINT.gap - hint);
   }
   return Math.min(600, viewportWidth - 24, viewportHeight - 144);
 }
@@ -116,8 +118,14 @@ export function wheelSize(viewportWidth: number, viewportHeight: number): number
  */
 export const DISC = WHEEL_LAYOUT.inner - 3 / 200;
 
-/** A wheel this many px across or less (a phone's) sets its centre in CENTRE_TYPE. */
-export const SMALL_WHEEL = 400;
+/**
+ * A wheel this many px across or less (anything under the full 600 px: every
+ * phone, a big iPhone's 406 px too, and short or zoomed windows) sets its
+ * centre in CENTRE_TYPE (the `@container` in RadioWheel.module.css). With
+ * the line at 400 px, a 428 to 440 px wide phone got a big wheel's rem
+ * floors and WITNESS ME crossed the rim by 6 px.
+ */
+export const SMALL_WHEEL = 599;
 
 /**
  * The centre's type on a small wheel, as fractions of its diameter
