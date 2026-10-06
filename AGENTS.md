@@ -674,7 +674,12 @@ also exists as real DOM for keyboard and screen-reader users.
   stretch of the scroll, with heading, years, the mirror text, the
   transcript and one chip: the employer's site (`stops.ts`, per locale;
   ids, order, anchors and years come from `features/career/career.ts`)
-  or, for the army, the `#service-record` popover. Under reduced motion
+  or, for the army, the `#service-record` popover. On a phone the chip
+  stands over the stop's tallest card (`chipPlace.ts`, measured when the
+  cards are fitted, written as `--cards-h`), placed from the pinned
+  frame's bottom (`100dvh`), so neither the browser's bars nor a card of
+  three lines at the large subtitle size ever puts it on the subtitles;
+  on its side, the bottom row between Skip and the pedal. Under reduced motion
   and without JS the stage is plates. Boards arm before they open
   (`hotspot.ts`): a real pointer move, a first tap, or focus on the chip;
   the hotspot is a DOM element clipped to the board's projected quad.

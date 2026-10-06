@@ -868,9 +868,14 @@
 }
 
 @media not ((min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px)) {
+  /* Where the subtitles' band stands, off the pinned frame's bottom: the cards and the cue, and on a phone the chip over them. */
+  .stage {
+    --subs-bottom: calc(max(1.1rem, env(safe-area-inset-bottom)) + 6.5 * 15px + 0.75rem);
+  }
+
   .subtitles,
   .cue {
-    bottom: calc(max(1.1rem, env(safe-area-inset-bottom)) + 6.5 * 15px + 0.75rem);
+    bottom: var(--subs-bottom);
   }
 
   /* Centred, 6.6rem over the subtitles, which stand over the dash. */
@@ -910,17 +915,21 @@
   }
 
   /* Over the pedal's plate (16 px em, 5.25 em tall, 1.25rem off the bottom), never beside it. */
-  .subtitles {
-    bottom: calc(1.25rem + 5.25 * 16px + 0.75rem);
+  .stage {
+    --subs-bottom: calc(1.25rem + 5.25 * 16px + 0.75rem);
   }
 
-  .cue {
-    bottom: calc(1.25rem + 5.25 * 16px + 0.75rem);
-  }
-
+  /*
+   * The chip over the stop's tallest card (--cards-h, chipPlace.ts), from
+   * the bottom of the pinned frame, which follows the visible screen
+   * (100dvh, as .sticky): placed from the large screen, it sat a bar's
+   * height lower whenever the browser's bars were shown, right on the
+   * card, and a fixed allowance never cleared a three-line card at the
+   * large subtitle size. Its sticky offset moves nothing in the flow.
+   */
   .chipSlot {
-    /* 6.6rem over the subtitles' band, which stands over the pedal. */
-    top: calc(calc(100 * var(--va-lvh)) - 2rem - 5.25 * 16px - 6.6rem);
+    top: calc(100 * var(--va-lvh) - var(--subs-bottom) - var(--cards-h, 4.5rem) - 0.75rem - 2.75rem);
+    top: calc(100dvh - var(--subs-bottom) - var(--cards-h, 4.5rem) - 0.75rem - 2.75rem);
     justify-content: center;
     padding-left: 0;
   }
@@ -932,6 +941,25 @@
   .skip {
     right: auto;
     left: max(1rem, env(safe-area-inset-left));
+  }
+}
+
+/*
+ * A phone on its side: over the cards there is no room left once the
+ * bars are shown (the chip met the stop's super there), so the chip
+ * takes the bottom row, centred between Skip and the pedal, under the
+ * card's marker, again from the bottom of the pinned frame.
+ */
+@media (pointer: coarse) and (min-aspect-ratio: 1/1) and (max-height: 500px) {
+  .chipSlot {
+    top: calc(100 * var(--va-lvh) - max(1.1rem, env(safe-area-inset-bottom)) - 2.75rem);
+    top: calc(100dvh - max(1.1rem, env(safe-area-inset-bottom)) - 2.75rem);
+    justify-content: center;
+    padding-left: 0;
+  }
+
+  .chip {
+    min-height: 2.75rem;
   }
 }
 

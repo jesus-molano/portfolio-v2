@@ -37,6 +37,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { goTo, isNavigation, registerPassage } from "@/lib/navigate";
 import { stableScreen } from "@/lib/screen";
 import { SUBTITLES_EVENT } from "@/lib/subtitleSize";
+import { tallestCards } from "./chipPlace";
 import { newDipView, stepDipView } from "./dip";
 import { openingAt } from "./opening";
 import { DISARMED, insideQuad, quadClipPath, quadIsTargetable, stepArm, type ArmEvent } from "./hotspot";
@@ -189,7 +190,18 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       let layout = dashLayout((query) => window.matchMedia(query).matches);
       // Each card fitted to its widest line, as the hero's (hero/fitCards.ts): with the viewport, the fonts and the subtitle size.
       const cardText = Array.from(stage.querySelectorAll<HTMLElement>("[data-card-text]"));
-      const fitLines = () => fitCards(cardText);
+      // And on a phone each stop's chip stands over its tallest card (chipPlace.ts), measured with them.
+      const articles = Array.from(stage.querySelectorAll<HTMLElement>("[data-stop]"));
+      const cardStops = timeline.cards.map((card) => card.stop);
+      const fitLines = () => {
+        fitCards(cardText);
+        const tallest = tallestCards(
+          cardText.map((text) => text.offsetHeight),
+          cardStops,
+          articles.length,
+        );
+        articles.forEach((article, i) => article.style.setProperty("--cards-h", `${tallest[i]}px`));
+      };
       const measure = () => {
         layout = dashLayout((query) => window.matchMedia(query).matches);
         fitLines();
