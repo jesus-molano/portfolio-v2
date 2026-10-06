@@ -322,9 +322,9 @@ describe("chapter cards (each static section's heading)", () => {
     expect(en.credits.cast.driver).toBe("The driver");
   });
 
-  it("opens the career city on the owner's card: the career and the race at once, on air since 2018", () => {
-    expect(es.work.chapter).toEqual({ word: "La carrera", ribbon: "Trayectoria · 2018 — LIVE" });
-    expect(en.work.chapter).toEqual({ word: "The road so far", ribbon: "Career · 2018 — LIVE" });
+  it("opens the career city on the owner's card: the main story, as STATS' main missions, on air since 2018", () => {
+    expect(es.work.chapter).toEqual({ word: "Historia principal", ribbon: "Trayectoria · 2018 — LIVE" });
+    expect(en.work.chapter).toEqual({ word: "Main story", ribbon: "Career · 2018 — LIVE" });
   });
 
   it("pays off the hero's last line: the crew it promised", () => {

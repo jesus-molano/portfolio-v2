@@ -585,9 +585,10 @@ also exists as real DOM for keyboard and screen-reader users.
   and without JS the stage is plates. Boards arm before they open
   (`hotspot.ts`): a real pointer move, a first tap, or focus on the chip;
   the hotspot is a DOM element clipped to the board's projected quad.
-  The film opens on the chapter card «La carrera» (the career and the race
-  at once) / "The road so far" (ribbon «Trayectoria · 2018 — LIVE» /
-  "Career · 2018 — LIVE"), after a bridge card from the cats.
+  The film opens on the chapter card «Historia principal» / "Main story"
+  (the game's main storyline, as STATS's main missions are; ribbon
+  «Trayectoria · 2018 — LIVE» / "Career · 2018 — LIVE"), after a bridge
+  card from the cats.
   The route at the top is one link per stop («PARADA 1…5»), never a video
   scrubber. While the car is stopped, the super shows «PARADA 0X/05 ·
   company» and, under it, the stop's one `line` (clients and stack); the
@@ -1082,8 +1083,8 @@ also exists as real DOM for keyboard and screen-reader users.
   golfa · Proyectos personales, ¡Y corten! · Créditos y contacto; The crew
   · The usual suspects, Paused · Player profile, The late show · Side
   projects, That’s a wrap · Credits and contact; and the career city's,
-  La carrera · Trayectoria · 2018 — LIVE, The road so far · Career · 2018
-  — LIVE). "El conductor" / "The driver" is his role in the credits'
+  Historia principal · Trayectoria · 2018 — LIVE, Main story · Career ·
+  2018 — LIVE). "El conductor" / "The driver" is his role in the credits'
   cast, never a ribbon. A short word stops growing at `CARD.maxSize`
   (Pausa, Paused), as tall as THE CREW's.
   - The look: the word in Chapter Script, cream to amber to peach, with an
@@ -1101,9 +1102,9 @@ also exists as real DOM for keyboard and screen-reader users.
     glyph's lowest ink per 0.02 em column) and `capsFace.ts` holds the
     capitals' widths and kerning. The banner hangs as close under the word
     as it can: its top clears the word's body; deep descenders and swashes
-    (Sesión golfa, ¡Y corten!, The road so far) cross in front of the band with
-    their shade on it, as on a painted sign, and no ink or shade ever
-    reaches a capital (tested). A new word or ribbon: `python3
+    (Sesión golfa, ¡Y corten!, That’s a wrap, Main story) cross in front
+    of the band with their shade on it, as on a painted sign, and no ink
+    or shade ever reaches a capital (tested). A new word or ribbon: `python3
     tools/chapter/fonts.py` subsets the face again with the dictionaries'
     letters and rewrites the metrics (fontTools and brotli), and `node
     tools/chapter/measure.mjs` prints Chromium's numbers for the MEASURED

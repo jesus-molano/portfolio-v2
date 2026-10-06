@@ -18,7 +18,7 @@ and Spanish (`/es`).
    RADIO button.
 3. **The Usual Suspects.** A police line-up of his four cats against a
    height chart, and one complaint.
-4. **The career city.** La carrera: the car drives on through the island
+4. **The career city.** Main story: the car drives on through the island
    at night, and every job has its own sign (a war-propaganda billboard, a
    hotel's neon blade, a rotating trivision, torn wheat-paste posters and
    an art-deco tower on air), each one a link.

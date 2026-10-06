@@ -36,7 +36,7 @@ const CHAPTERS = (
 );
 
 /** The words whose descenders reach down to the banner: it tucks up behind them. */
-const DEEP = ["Sesión golfa", "¡Y corten!", "That’s a wrap", "The road so far"];
+const DEEP = ["Sesión golfa", "¡Y corten!", "That’s a wrap", "Main story"];
 
 /**
  * The words and ribbons measured in Chromium on the checked-in faces by
@@ -53,8 +53,8 @@ const MEASURED_WORDS: Record<string, { advance: number; left: number; right: num
   "The late show": { advance: 4.77, left: -0.079, right: 4.859, ascent: 0.672, descent: 0.047 },
   "¡Y corten!": { advance: 4.5, left: -0.063, right: 4.717, ascent: 0.704, descent: 0.391 },
   "That’s a wrap": { advance: 4.821, left: -0.079, right: 4.854, ascent: 0.688, descent: 0.344 },
-  "La carrera": { advance: 4.158, left: -0.219, right: 4.362, ascent: 0.688, descent: 0.157 },
-  "The road so far": { advance: 5.562, left: -0.079, right: 5.757, ascent: 0.672, descent: 0.391 },
+  "Historia principal": { advance: 6.801, left: -0.016, right: 7.082, ascent: 0.704, descent: 0.344 },
+  "Main story": { advance: 3.951, left: -0.219, right: 4.06, ascent: 0.688, descent: 0.375 },
 };
 const MEASURED_RIBBONS: Record<string, number> = {
   "SOSPECHOSOS HABITUALES": 9.795,
@@ -287,7 +287,7 @@ describe("chapterLayout", () => {
   });
 
   it("refuses a ribbon with a capital it cannot measure", () => {
-    expect(() => chapterLayout("La carrera", "TRAYECTORIA #1")).toThrow(/#/);
+    expect(() => chapterLayout("Historia principal", "TRAYECTORIA #1")).toThrow(/#/);
   });
 });
 
