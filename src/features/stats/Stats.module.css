@@ -79,7 +79,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   row-gap: 24px;
-  min-height: 100svh;
+  min-height: calc(100 * var(--va-svh));
   /*
    * 16 px clear of the fixed page controls (music, language) at the top
    * right. The content stops growing at 1680 px (statsLayout.ts
@@ -276,7 +276,7 @@
      * (1024 x 768, 1366 x 768) the sheet would sit low, cut off at its foot.
      */
     align-self: start;
-    min-height: min(100%, calc(100svh - 206px));
+    min-height: min(100%, calc(100 * var(--va-svh) - 206px));
   }
 
   .tabPanel[data-active="false"] {
@@ -364,7 +364,7 @@
   width: 100%;
   min-width: 0;
   /* Short screens: the whole tab fits on one (statsLayout.ts MAP_CHROME_PX, mapWidthAt). */
-  max-width: max(740px, calc((100svh - 256px) * 16 / 11));
+  max-width: max(740px, calc((100 * var(--va-svh) - 256px) * 16 / 11));
   margin: 0 auto;
 }
 
@@ -1081,7 +1081,7 @@ a.missionRow:focus-visible {
 @media (min-width: 1000px) and (max-width: 1279.98px) {
   .missionsPanel {
     width: 100%;
-    max-width: max(740px, calc((100svh - 256px) * 16 / 11));
+    max-width: max(740px, calc((100 * var(--va-svh) - 256px) * 16 / 11));
     margin-inline: auto;
   }
 }

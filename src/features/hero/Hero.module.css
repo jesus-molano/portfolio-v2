@@ -7,6 +7,12 @@
   height: var(--va-hero-scroll);
 }
 
+/*
+ * The pinned frame follows the visible area (dvh) for its overlays; it is
+ * out of the flow (the stage's height is fixed), so the bars never move the
+ * page below. The film's length is the stage's less the large screen
+ * (HeroStage measure), never this frame's own height.
+ */
 .sticky {
   position: sticky;
   top: 0;
@@ -93,17 +99,17 @@
 }
 
 /*
- * The canvas keeps the large-viewport height: phone browsers show and hide
- * their address bar while scrolling, and a canvas that followed 100dvh would
- * be resized (and cleared for a frame) every time, which reads as a flash.
- * The overlays follow the visible area through .sticky; the canvas bottom is
- * simply clipped while the bar is shown.
+ * The canvas keeps the large-viewport height, held still (lib/screen.ts):
+ * phone browsers show and hide their address bar while scrolling, and a
+ * canvas that followed 100dvh would be resized (and cleared for a frame)
+ * every time, which reads as a flash. The overlays follow the visible area
+ * through .sticky; the canvas bottom is simply clipped while the bar is
+ * shown.
  */
 .canvas {
   position: absolute;
   inset: 0 0 auto;
-  height: 100vh;
-  height: 100lvh;
+  height: calc(100 * var(--va-lvh));
   z-index: var(--va-z-canvas);
 }
 
@@ -2205,14 +2211,15 @@
     position: relative;
     height: auto;
     overflow: visible;
-    padding-top: 100dvh;
-    background: linear-gradient(transparent 100dvh, var(--va-color-night) 100dvh);
+    /* The still frame is in the flow: the screen's stable height (lib/screen.ts), never dvh. */
+    padding-top: calc(100 * var(--va-svh));
+    background: linear-gradient(transparent calc(100 * var(--va-svh)), var(--va-color-night) calc(100 * var(--va-svh)));
   }
 
   .canvas,
   .title {
     inset: 0 0 auto;
-    height: 100dvh;
+    height: calc(100 * var(--va-svh));
   }
 
   .subtitles {
@@ -2265,7 +2272,7 @@
 
   .hint {
     position: absolute;
-    top: calc(100dvh - 4.5rem);
+    top: calc(100 * var(--va-svh) - 4.5rem);
     bottom: auto;
     height: auto;
     transform: none;

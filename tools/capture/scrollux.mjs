@@ -50,7 +50,12 @@
  * there; under
  * reduced motion there is none), pedallayout (the pedal and its hit area,
  * Skip expanded, the longest card, the dash, the hint and the radio button
- * never overlap, 360 x 640 to 1440 x 900).
+ * never overlap, 360 x 640 to 1440 x 900), statics (after Skip, the static
+ * page follows wheel notches, trackpad bursts and keys on a desktop, and
+ * swipes on a phone whose bars hide going down and come back going up,
+ * the viewport and every viewport unit with them, under both motion modes:
+ * no section moves in the page, no frame against her input or over a
+ * screen, no scroll by script, no layout shift).
  *
  * WebGL is off by default: the checks read the DOM and its timing, and a
  * machine without a GPU renders the scene at a few frames a second
@@ -101,8 +106,9 @@ const browser = await chromium.launch({
 });
 
 /** A fresh page, entered (without music), with the hero's probe on. */
-async function session(device, lang, { reducedMotion = "no-preference", enter = true, hash = "" } = {}) {
+async function session(device, lang, { reducedMotion = "no-preference", enter = true, hash = "", init = null } = {}) {
   const context = await browser.newContext({ ...DEVICES[device], reducedMotion });
+  if (init) await context.addInitScript(init);
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -223,6 +229,141 @@ async function reachCard(s, device, card) {
     await sleep(device === "desktop" ? 700 : 900);
   }
   return false;
+}
+
+/**
+ * The statics check's recorder (an init script): every frame's scroll,
+ * page height and section tops, her inputs and their direction, every
+ * scroll the page is given by script (Lenis writing her own input from its
+ * frame is hers), and every layout shift.
+ */
+function recordStatics() {
+  const SECTIONS = ["suspects", "stats", "projects", "credits", "contact"];
+  const rec = { on: false, frames: [], inputs: [], writes: [], shifts: [] };
+  const where = () => (new Error().stack ?? "").split("\n").slice(2, 7).map((line) => line.trim().replace(/\(.*\//, "(")).join(" < ");
+  const own = (stack) => /Lenis\.setScroll|Animate\.advance/.test(stack);
+  const log = (fn) => {
+    if (!rec.on) return;
+    const stack = where();
+    if (!own(stack)) rec.writes.push({ t: performance.now(), fn, y: window.scrollY, stack });
+  };
+  for (const [owner, name, label] of [
+    [window, "scrollTo", "window.scrollTo"],
+    [window, "scrollBy", "window.scrollBy"],
+    [window, "scroll", "window.scroll"],
+    [Element.prototype, "scrollTo", "element.scrollTo"],
+    [Element.prototype, "scrollBy", "element.scrollBy"],
+    [Element.prototype, "scrollIntoView", "element.scrollIntoView"],
+  ]) {
+    const original = owner[name];
+    owner[name] = function (...args) {
+      log(label);
+      return original.apply(this, args);
+    };
+  }
+  const scrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop");
+  Object.defineProperty(Element.prototype, "scrollTop", {
+    configurable: true,
+    get() {
+      return scrollTop.get.call(this);
+    },
+    set(value) {
+      if (this === document.documentElement || this === document.body) log("scrollTop");
+      scrollTop.set.call(this, value);
+    },
+  });
+  try {
+    new PerformanceObserver((list) => {
+      if (!rec.on) return;
+      for (const entry of list.getEntries()) {
+        const sources = (entry.sources ?? []).map((source) => String(source.node?.id || source.node?.className || source.node?.nodeName).slice(0, 60));
+        rec.shifts.push({ t: entry.startTime, value: entry.value, sources });
+      }
+    }).observe({ type: "layout-shift" });
+  } catch {}
+  const KEY_DIR = { PageDown: 1, ArrowDown: 1, " ": 1, PageUp: -1, ArrowUp: -1 };
+  window.addEventListener("wheel", (e) => rec.on && e.deltaY !== 0 && rec.inputs.push({ t: performance.now(), dir: Math.sign(e.deltaY), kind: "wheel" }), { capture: true, passive: true });
+  window.addEventListener("keydown", (e) => {
+    const dir = (KEY_DIR[e.key] ?? 0) * (e.key === " " && e.shiftKey ? -1 : 1);
+    if (rec.on && dir) rec.inputs.push({ t: performance.now(), dir, kind: "key" });
+  }, { capture: true });
+  let fingerY = null;
+  window.addEventListener("touchstart", (e) => (fingerY = e.touches[0]?.clientY ?? null), { capture: true, passive: true });
+  window.addEventListener("touchmove", (e) => {
+    const now = e.touches[0]?.clientY;
+    if (rec.on && fingerY !== null && now !== undefined && now !== fingerY) rec.inputs.push({ t: performance.now(), dir: now < fingerY ? 1 : -1, kind: "touch" });
+    fingerY = now ?? fingerY;
+  }, { capture: true, passive: true });
+  window.addEventListener("resize", () => rec.on && rec.inputs.push({ t: performance.now(), dir: 0, kind: "resize", h: innerHeight }));
+  const tick = () => {
+    if (rec.on) {
+      const tops = SECTIONS.map((id) => {
+        const el = document.getElementById(id);
+        return el ? Math.round((el.getBoundingClientRect().top + window.scrollY) * 10) / 10 : null;
+      });
+      rec.frames.push({ t: performance.now(), y: window.scrollY, h: document.documentElement.scrollHeight, ih: innerHeight, tops });
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  window.__statics = {
+    start() {
+      rec.on = true;
+    },
+    stop() {
+      rec.on = false;
+      return rec;
+    },
+  };
+}
+
+/**
+ * The statics check's verdict on a recording: sections that moved in the
+ * page or a page height that changed, frames against every input of the
+ * moment (two frames of grace at a turn) or over a screen at once, scrolls
+ * by script, and layout shifts (any value, input or not). `floor` is THE
+ * USUAL SUSPECTS' top: the page stays below the hero.
+ */
+function staticsVerdict(log, floor) {
+  const { frames, inputs, writes, shifts } = log;
+  const moved = [];
+  const against = [];
+  const leaps = [];
+  let below = true;
+  for (let i = 1; i < frames.length; i += 1) {
+    const a = frames[i - 1];
+    const b = frames[i];
+    if (a.h !== b.h) moved.push({ t: Math.round(b.t), height: [a.h, b.h], y: b.y });
+    b.tops.forEach((top, n) => {
+      if (top !== null && a.tops[n] !== null && Math.abs(top - a.tops[n]) > 0.5) moved.push({ t: Math.round(b.t), section: n, top: [a.tops[n], top], y: b.y });
+    });
+    if (b.y < floor - b.ih) below = false;
+    const dy = b.y - a.y;
+    if (Math.abs(dy) > b.ih) leaps.push({ t: Math.round(b.t), dy });
+    if (Math.abs(dy) <= 2) continue;
+    // Her input of the moment: the last one before this frame's grace, and any since.
+    const recent = inputs.filter((e) => e.dir !== 0 && e.t <= b.t && e.t > a.t - 34);
+    const before = inputs.filter((e) => e.dir !== 0 && e.t <= a.t - 34).at(-1);
+    const dirs = new Set([...recent, ...(before ? [before] : [])].map((e) => e.dir));
+    if (dirs.size === 0 || !dirs.has(Math.sign(dy))) against.push({ t: Math.round(b.t), dy: Math.round(dy), y: Math.round(b.y), dirs: [...dirs] });
+  }
+  const shift = shifts.reduce((sum, entry) => sum + entry.value, 0);
+  const ok = frames.length > 100 && inputs.length > 10 && below && moved.length === 0 && against.length === 0 && leaps.length === 0 && writes.length === 0 && shift === 0;
+  return {
+    ok,
+    detail: {
+      frames: frames.length,
+      inputs: inputs.length,
+      resizes: inputs.filter((e) => e.kind === "resize").length,
+      below,
+      moved: moved.slice(0, 4),
+      against: against.slice(0, 4),
+      leaps: leaps.slice(0, 4),
+      writes: writes.slice(0, 3),
+      shift,
+      shifts: shifts.slice(0, 3),
+    },
+  };
 }
 
 const CHECKS = {
@@ -852,15 +993,18 @@ const CHECKS = {
     await s.close();
 
     // It is the hero's alone. After Skip, a little scroll back up leaves a strip of the hero's
-    // night at the top, with THE CREW's card right under it: the callout stays away. Further
-    // back, the hero runs down past it and it comes.
+    // night at the top, with THE CREW's card right under it: the film is over (p = 1), and the
+    // callout stays away (sceneLoading.onStage), however much of that night shows. (Back in the
+    // film, resting on a line she has read asks her to go on: a prompt, so no callout either;
+    // that it comes in a quiet moment of the film is the first part of this check.)
     const k = await session(device, lang);
     await k.page.evaluate(() => localStorage.removeItem("va-radio-hint"));
     await sleep(1500);
     await k.page.locator("[data-skip]").click({ timeout: 10_000 });
     await sleep(1500);
+    const night = Math.round(0.6 * DEVICES[device].viewport.height);
     const back = {};
-    for (const px of [16, 80, 200]) {
+    for (const px of [16, 80, 200, night]) {
       back[px] = await k.page.evaluate(async (by) => {
         const shown = [];
         let on = true;
@@ -877,8 +1021,8 @@ const CHECKS = {
       }, px);
     }
     report(
-      `${device} ${lang} callout: after Skip, 16 or 80 px back up it stays off THE CREW's card; 200 px back, in the hero, it comes`,
-      !back[16] && !back[80] && back[200],
+      `${device} ${lang} callout: after Skip, a strip of the hero's night back up (the film over) never brings it over THE CREW's card`,
+      Object.values(back).every((shown) => !shown),
       back,
     );
     await k.close();
@@ -1657,6 +1801,106 @@ const CHECKS = {
       report(`${device} ${lang} pedallayout ${name}: the pedal, Skip, the card, its marker, the dash and the hint never overlap`,
         clashes.length === 0 && Boolean(shown), { clashes, card, title: { pedal: title.pedal, hint: title.hint, skip: title.skip } });
       await context.close();
+    }
+  },
+
+  async statics(device, lang) {
+    // The static page (THE USUAL SUSPECTS to the end credits) follows her
+    // input and nothing else: wheel notches, trackpad bursts and keys on a
+    // desktop, swipes on a phone whose bars hide as she scrolls down and
+    // come back as she scrolls up (the viewport's height changing with them,
+    // every viewport unit too, as browsers that resize their web view do).
+    // No section moves in the page, the page never moves against her input
+    // or a screen in one frame, nothing scrolls it by script, and nothing
+    // shifts. Reduced motion too on a phone (the still hero above, the
+    // browser's own scrolling).
+    const W = DEVICES[device].viewport.width;
+    const H = DEVICES[device].viewport.height;
+    const SHOWN = H - 74;
+    for (const reducedMotion of device === "mobile" ? ["no-preference", "reduce"] : ["no-preference"]) {
+      // On a phone she enters with a tap: a click would leave a mouse over the page, hovering what scrolls under it.
+      const s = await session(device, lang, { reducedMotion, init: recordStatics, enter: device === "desktop" });
+      if (device === "mobile") {
+        await s.page.waitForSelector('[data-loader][data-phase="ready"], [data-loader][data-slow]', { timeout: 240_000 });
+        await s.page.locator('[data-loader] [data-enter="silent"]').tap();
+        await s.page.waitForSelector("[data-loader]", { state: "detached", timeout: 20_000 });
+      }
+      await sleep(1200);
+      if (device === "desktop") await s.page.mouse.move(W / 2, H / 2);
+      if (reducedMotion === "reduce") {
+        // The still hero: her own scrolling takes her below it; the check starts at THE USUAL SUSPECTS.
+        await s.page.evaluate(() => window.scrollTo(0, document.getElementById("suspects").getBoundingClientRect().top + scrollY));
+      } else {
+        await s.page.keyboard.press("End");
+      }
+      await sleep(1500);
+      const start = await s.page.evaluate(() => ({
+        y: scrollY,
+        suspects: document.getElementById("suspects").getBoundingClientRect().top + scrollY,
+        max: document.documentElement.scrollHeight - innerHeight,
+      }));
+      await s.page.evaluate(() => window.__statics.start());
+      const y = () => s.page.evaluate(() => scrollY);
+      let bars = "hidden";
+      /** The bars follow her direction: hidden going down, shown going up (a phone only). */
+      const barsFor = async (dir) => {
+        if (device !== "mobile") return;
+        const want = dir > 0 ? "hidden" : "shown";
+        if (want === bars) return;
+        bars = want;
+        await s.page.setViewportSize({ width: W, height: want === "hidden" ? H : SHOWN });
+      };
+      /** A swipe whose bars change once the page moves the new way, mid-stroke. */
+      const swipe = async (dy, ms) => {
+        const steps = Math.max(3, Math.round(ms / 16));
+        const y0 = dy > 0 ? Math.round(SHOWN * 0.78) : Math.round(SHOWN * 0.22);
+        await s.cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: W / 2, y: y0 }] });
+        for (let i = 1; i <= steps; i += 1) {
+          await s.cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: W / 2, y: y0 - (dy * i) / steps }] });
+          if (i === 2) await barsFor(Math.sign(dy));
+          await sleep(ms / steps);
+        }
+        await s.cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      };
+      const keys = { down: ["PageDown", "ArrowDown", "Space", "ArrowDown"], up: ["PageUp", "ArrowUp", "Shift+Space", "ArrowUp"] };
+      let k = 0;
+      /** One of her inputs, `dir` 1 down, -1 up, by turns a notch, a burst of a trackpad or a key. */
+      const input = async (dir, i) => {
+        if (device === "mobile") {
+          await swipe(dir * (180 + (i % 3) * 70), i % 2 ? 110 : 220);
+          await sleep(380 + (i % 3) * 140);
+        } else if (i % 3 === 0) {
+          for (let n = 0; n < 4; n += 1) {
+            await s.page.mouse.wheel(0, dir * 100);
+            await sleep(50 + ((n * 37) % 100));
+          }
+          await sleep(250);
+        } else if (i % 3 === 1) {
+          for (let n = 0; n < 24; n += 1) {
+            await s.page.mouse.wheel(0, dir * (4 + (n % 5) * 3));
+            await sleep(12);
+          }
+          await sleep(300);
+        } else {
+          await s.page.keyboard.press(keys[dir > 0 ? "down" : "up"][k++ % 4]);
+          await sleep(450);
+        }
+      };
+      // Down to the end credits and back up to THE USUAL SUSPECTS, twice, then short turns.
+      for (let round = 0; round < 2; round += 1) {
+        for (let i = 0; i < 80 && (await y()) < start.max - 1.2 * H; i += 1) await input(1, i);
+        for (let i = 0; i < 80 && (await y()) > start.suspects + 1.2 * H; i += 1) await input(-1, i);
+      }
+      for (let i = 0; i < 6; i += 1) await input(i % 2 ? -1 : 1, i);
+      await sleep(1500);
+      const log = await s.page.evaluate(() => window.__statics.stop());
+      const verdict = staticsVerdict(log, start.suspects);
+      report(
+        `${device} ${lang} statics${reducedMotion === "reduce" ? " (reduced motion)" : ""}: the static page follows her ${device === "desktop" ? "wheel, trackpad and keys" : "swipes while the bars come and go"}, with no jump, no scroll by script and no shift`,
+        verdict.ok && s.errors.length === 0,
+        { ...verdict.detail, errors: s.errors.slice(0, 3) },
+      );
+      await s.close();
     }
   },
 

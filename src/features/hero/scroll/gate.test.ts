@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GATE, gateAction, lenisMissed, liftFling, newStroke, pageScroll, resetStroke, strokeLift, strokeMove } from "./gate";
+import { browserStroke, GATE, gateAction, keyScrollsPage, lenisMissed, liftFling, newStroke, pageScroll, resetStroke, strokeLift, strokeMove } from "./gate";
 
 describe("where the page is", () => {
   it("draws from Lenis' sub-pixel value while it agrees with the page", () => {
@@ -118,5 +118,40 @@ describe("a finger's stroke", () => {
     expect(strokeMove(stroke, GATE.touchSlop - 1)).toBe(0);
     expect(strokeMove(stroke, Number.NaN)).toBe(0);
     expect(strokeMove(stroke, 1)).toBe(GATE.touchSlop);
+  });
+});
+
+describe("a finger below the hero", () => {
+  // A 390 x 844 phone: the film ends five screens down the stage.
+  const heroEnd = 5 * 844;
+
+  it("is the browser's stroke once the film has ended and the walls are open", () => {
+    expect(browserStroke(heroEnd, heroEnd, Number.POSITIVE_INFINITY)).toBe(true);
+    expect(browserStroke(heroEnd + 4000, heroEnd, Number.POSITIVE_INFINITY)).toBe(true);
+  });
+
+  it("stays Lenis' in the hero, where the walls pace the film", () => {
+    expect(browserStroke(heroEnd - 1, heroEnd, Number.POSITIVE_INFINITY)).toBe(false);
+    expect(browserStroke(0, heroEnd, Number.POSITIVE_INFINITY)).toBe(false);
+    // Walls up: always gated, wherever the page is.
+    expect(browserStroke(heroEnd + 10, heroEnd, 1200)).toBe(false);
+  });
+
+  it("stays Lenis' with no film measured (no hero on the page, or the still hero)", () => {
+    expect(browserStroke(9000, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY)).toBe(false);
+  });
+});
+
+describe("a key below the hero", () => {
+  it("scrolls the page natively: Lenis' glide stops for it", () => {
+    for (const key of ["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "]) expect(keyScrollsPage(key, "page")).toBe(true);
+    expect(keyScrollsPage("PageDown", "control")).toBe(true);
+  });
+
+  it("leaves a field's keys, Space on a control and every other key alone", () => {
+    expect(keyScrollsPage("ArrowDown", "field")).toBe(false);
+    expect(keyScrollsPage(" ", "field")).toBe(false);
+    expect(keyScrollsPage(" ", "control")).toBe(false);
+    for (const key of ["q", "[", "]", "Tab", "Enter", "Escape", "w"]) expect(keyScrollsPage(key, "page")).toBe(false);
   });
 });

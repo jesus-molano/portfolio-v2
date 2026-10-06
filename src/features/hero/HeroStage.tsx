@@ -19,6 +19,7 @@ import { REDUCED_MOTION_QUERY, usePrefersReducedMotion } from "@/hooks/usePrefer
 import type { Dictionary } from "@/i18n/dictionaries";
 import { focusInPlace, goTo, registerPassage } from "@/lib/navigate";
 import { isOnScreen, lineBelow, lineRootMargin, ON_SCREEN_THRESHOLDS } from "@/lib/onScreen";
+import { stableScreen } from "@/lib/screen";
 import styles from "./Hero.module.css";
 import { HeroCanvas } from "./HeroCanvas";
 import { HeroTitle } from "./HeroTitle";
@@ -504,11 +505,14 @@ export function HeroStage({
 
       /**
        * The pinned stage on the page, measured when the viewport changes,
-       * never in the frame. The film runs from the stage's top to where the
-       * sticky viewport unpins (the stage's height less the viewport's own),
-       * so p = 1 is exactly the unpin, whatever the address bar does.
+       * never in the frame. The film runs from the stage's top over the
+       * stage's height less one large screen (lib/screen.ts), which a
+       * phone's bars never change: showing or hiding them leaves the film's
+       * length, the stage and the page below exactly where they were (the
+       * pinned frame follows the visible area, so with the bars shown it
+       * unpins up to their height after p = 1, on the night).
        */
-      const geom = { top: 0, range: 1, vh: window.innerHeight };
+      const geom = { top: 0, range: 1, vh: stableScreen().large };
       /** Where the dash sits (dash.ts DASH_MEDIA, the same queries as the CSS). */
       let layout = dashLayout((query) => window.matchMedia(query).matches);
       /**
@@ -533,8 +537,10 @@ export function HeroStage({
       const measure = () => {
         const rect = root.getBoundingClientRect();
         geom.top = rect.top + window.scrollY;
-        geom.range = Math.max(1, rect.height - (sticky?.offsetHeight ?? window.innerHeight));
-        geom.vh = window.innerHeight;
+        const { large } = stableScreen();
+        geom.range = Math.max(1, rect.height - large);
+        geom.vh = large;
+        scrollGate.heroEnd = geom.top + geom.range;
         layout = dashLayout((query) => window.matchMedia(query).matches);
         fitCards();
       };
@@ -602,10 +608,11 @@ export function HeroStage({
 
       let reseatAt = Number.NEGATIVE_INFINITY;
       /**
-       * The viewport changed (a rotation, a resized window, the address
-       * bar): the stage changed height, so the same pixel scroll is another
-       * film position. The film keeps its place instead, and the gate does
-       * not take the move for a jump of hers.
+       * The viewport changed (a rotation, a resized window): the stage
+       * changed height, so the same pixel scroll is another film position.
+       * The film keeps its place instead, and the gate does not take the
+       * move for a jump of hers. A phone's bars change nothing measured
+       * here (lib/screen.ts), so they never move the page.
        */
       const remeasure = () => {
         if (stillQuery.matches) return;
@@ -1924,6 +1931,7 @@ export function HeroStage({
 
       return () => {
         disposed = true;
+        scrollGate.heroEnd = Number.POSITIVE_INFINITY;
         for (const text of cardText) text?.style.removeProperty("--fit");
         unregisterPassage();
         gsap.ticker.remove(tick);

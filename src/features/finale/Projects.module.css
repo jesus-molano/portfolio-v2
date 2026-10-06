@@ -34,7 +34,7 @@
  * 30 units down the 1280-unit wide plate (tools/art/finale/cinema.mjs).
  */
 .chapter {
-  padding-bottom: max(1rem, calc(var(--chapter-w) * 0.09 - min(100%, 177.78svh) * 30 / 1280));
+  padding-bottom: max(1rem, calc(var(--chapter-w) * 0.09 - min(100%, 177.78 * var(--va-svh)) * 30 / 1280));
 }
 
 /*
@@ -61,7 +61,7 @@
   position: relative;
   container-type: inline-size;
   /* Never taller than the screen: wider screens letterbox it on night (its edges fade to night). */
-  width: min(100%, 177.78svh);
+  width: min(100%, 177.78 * var(--va-svh));
   margin-inline: auto;
 }
 

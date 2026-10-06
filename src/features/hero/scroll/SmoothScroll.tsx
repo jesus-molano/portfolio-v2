@@ -8,8 +8,20 @@ import { ReactLenis, useLenis, type LenisRef } from "lenis/react";
 import { motion } from "@/design/tokens";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { registerScroller, type Scroller } from "@/lib/navigate";
+import { stableScreen } from "@/lib/screen";
 import { getSceneLoading } from "../sceneLoading";
-import { GATE, lenisMissed, liftFling, newStroke, type PageReading, resetStroke, strokeLift, strokeMove } from "./gate";
+import {
+  browserStroke,
+  GATE,
+  keyScrollsPage,
+  lenisMissed,
+  liftFling,
+  newStroke,
+  type PageReading,
+  resetStroke,
+  strokeLift,
+  strokeMove,
+} from "./gate";
 import { recordInput, scrollDrive, scrollGate, scrollInput } from "./heroProgress";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -25,7 +37,10 @@ gsap.registerPlugin(ScrollTrigger);
  * held there becomes `scrollGate.pressure`, which the hero shows. Touch
  * scrolling is synced too (`syncTouch`), so phones get the same gate and no
  * native momentum runs past it: every move of a stroke is cancelled, by
- * Lenis or by the gate, so the browser never takes a stroke over. A
+ * Lenis or by the gate, so the browser never takes a stroke over. Below
+ * the hero, with its walls open, a stroke is the browser's own from its
+ * first move (gate.ts browserStroke): nothing to gate there, and the
+ * browser, not Lenis, owns a phone's bars coming and going. A
  * finger moves the page once past its slop, so a resting thumb that
  * trembles is still, and its fling flies up to the wall and no further.
  * The input this gate passes never goes past the frontier; whatever else
@@ -45,6 +60,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
   const stroke = useRef(newStroke());
   /** Where the page is when her input comes, against where Lenis thinks it is (gate.ts). */
   const reading = useRef<PageReading>({ page: 0, lenis: 0, gliding: false });
+  /** The current touch stroke started below the hero: the browser scrolls it (gate.ts browserStroke). */
+  const browserOwns = useRef(false);
 
   /*
    * Gate for wheel and touch input, run by Lenis before it scrolls. It
@@ -108,9 +125,31 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       if (event.type === "touchstart") {
         scrollGate.touching = true;
         strokeMoved.current = false;
+        // Below the hero, the walls open, the stroke is the browser's (gate.ts browserStroke).
+        browserOwns.current = browserStroke(window.scrollY, scrollGate.heroEnd, scrollGate.maxScroll);
         // A second finger landing beside a held pedal: Lenis would take it for a tap that stops the
-        // scroll (reset), dropping the pedal's glide. Its strokes still scroll as ever.
+        // scroll (reset), dropping the pedal's glide. Its strokes still scroll as ever. Otherwise
+        // the tap stops any glide of Lenis' under her finger, the browser's strokes included.
         return scrollInput.pedal === 0;
+      }
+      if (browserOwns.current && event.type.startsWith("touch")) {
+        // Lenis drops what this returns false for before it cancels it (internal 4), so the
+        // browser scrolls the stroke and flings it, its bars coming and going as on any page.
+        // The stroke is still her input, through its slop, for the hero she may scroll back into.
+        const now = performance.now();
+        if (event.type === "touchmove") {
+          const move = strokeMove(stroke.current, data.deltaY);
+          if (move !== 0) {
+            strokeMoved.current = true;
+            recordInput(move, "touch", now);
+          }
+        } else if (event.type === "touchend") {
+          scrollGate.touching = false;
+          if (strokeMoved.current) scrollGate.touchEndAt = now;
+          strokeMoved.current = false;
+          browserOwns.current = false;
+        }
+        return false;
       }
       if (event.type === "touchmove") {
         // A finger moves the page only once it is past its slop (gate.ts).
@@ -202,6 +241,31 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
     [reducedMotion],
   );
 
+  // The page's stable screen height (--va-svh, --va-lvh) from the first frame on, hero or not.
+  useLayoutEffect(() => {
+    stableScreen();
+  }, []);
+
+  useEffect(() => {
+    // A key that scrolls the page below the hero, in the tail of a wheel's glide: the glide stops,
+    // so the browser's own key scroll runs and Lenis follows it (gate.ts keyScrollsPage). The
+    // hero's keys are its own (HeroStage drives Lenis with them).
+    const onKey = (event: KeyboardEvent) => {
+      const lenis = lenisRef.current?.lenis;
+      if (!lenis || event.defaultPrevented || lenis.isScrolling !== "smooth") return;
+      if (window.scrollY <= scrollGate.heroEnd + 1) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const kind = target?.closest("input, textarea, select, [contenteditable='true']")
+        ? "field"
+        : target?.closest("button, a[href], summary, [role='button'], [role='tab']")
+          ? "control"
+          : "page";
+      if (keyScrollsPage(event.key, kind)) (lenis as unknown as { reset(): void }).reset();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   useEffect(() => {
     // Lenis listens for no touchcancel: a stroke the system takes over (the
     // home indicator, an alert) must not leave the hero stretched under a
@@ -211,6 +275,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       scrollGate.touching = false;
       scrollGate.touchEndAt = performance.now();
       strokeMoved.current = false;
+      browserOwns.current = false;
     };
     window.addEventListener("touchcancel", cancel, { passive: true });
     return () => window.removeEventListener("touchcancel", cancel);

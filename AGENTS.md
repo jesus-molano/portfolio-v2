@@ -51,7 +51,10 @@ also exists as real DOM for keyboard and screen-reader users.
   forms, no ghost after a short swipe), the loader on a phone, and the
   pedal (a thumb, the mouse, W and Space held, two fingers, blur, a lost
   keyup, Q, the end, reduced motion) and its layout from 360 x 640 to
-  1440 x 900, on desktop and a phone in both languages. PASS or FAIL.
+  1440 x 900, and the static page after Skip (wheel, trackpad and keys;
+  swipes while a phone's bars come and go, in both motion modes: no
+  section moves, nothing against her input, no scroll by script, no
+  layout shift), on desktop and a phone in both languages. PASS or FAIL.
 - `node tools/capture/capture.mjs --device both --progress 0.05,0.3,0.6,0.9`
   — renders hero frames at those film positions (dev server running) into
   `.captures/`. Look at the frames before calling a visual change done.
@@ -129,7 +132,12 @@ also exists as real DOM for keyboard and screen-reader users.
     the gate: Lenis drops a move with nothing vertical in it, a still
     finger's coalesced move or a pressure change, before it cancels it,
     and a move nobody cancels hands the rest of the stroke to the
-    browser's own scrolling, past every wall; `lenisContract.test.ts`),
+    browser's own scrolling, past every wall; `lenisContract.test.ts`;
+    below the hero, its walls open, a stroke is the browser's own from
+    its first move, `gate.ts` browserStroke: nothing to gate there, and
+    the browser, not Lenis, owns a phone's bars and its momentum; a key
+    that scrolls the page there stops a wheel's glide, `keyScrollsPage`,
+    or Lenis swallowed it or yanked the page back),
     and whatever else moves the page there (the scrollbar,
     find in page, an anchor, a programmatic scroll, wheel events the
     browser would not let the page cancel) goes back to it in the same
@@ -320,9 +328,11 @@ also exists as real DOM for keyboard and screen-reader users.
     `anchors.test.ts` checks it follows the hero). Focus
     leaving the hero opens the walls, and so does any move of the page
     past it that is not her scrolling (a link, a deep link, Skip:
-    `lib/navigate.ts`). A viewport change (rotation, resize, address bar)
-    keeps the film where
-    it is, and so does reduced motion switched on mid-film: the line she
+    `lib/navigate.ts`). A viewport change (rotation, resize) keeps the
+    film where it is; a phone's bars coming and going change nothing the
+    film measures (its length is the stage less one stable large screen,
+    `lib/screen.ts`), so they never move the page. And reduced motion
+    switched on mid-film keeps her place: the line she
     was on shows in the running script, and if motion comes back the film
     resumes exactly where it was (she has not scrolled), at the line she
     reads, or at its end once she has read past the script. The frame
@@ -1024,6 +1034,16 @@ To add a track to a station:
   element geometry; the stage is measured when the viewport changes),
   clamps it to the story frontier into `value`, and `useFrame` reads
   `value`.
+- Nothing in the page flow is sized with `vh`, `svh`, `lvh` or `dvh`:
+  use `--va-svh` and `--va-lvh` (one hundredth of the small and large
+  screen, `lib/screen.ts`, defaults in `globals.css`), which a phone's
+  bars never change. Browsers that resize their web view with the bars
+  (in-app browsers, some iOS browsers) change every viewport unit, and
+  the 600vh hero stage moved the whole page below by six bar heights on
+  every change of direction (`lib/screenUnits.test.ts` checks the static
+  sections). `dvh` stays for what follows the visible area out of the
+  flow (the hero's pinned frame and its overlays). `scrollux.mjs
+  --only statics` swipes the static page with the bars coming and going.
 - `lenis` is pinned on purpose: `gateInput` and HeroStage's gate rely on
   1.3.26 internals, and `scroll/lenisContract.test.ts` guards them. Re-check
   them before an upgrade.

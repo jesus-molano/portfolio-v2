@@ -170,3 +170,35 @@ export function liftFling(fling: number, room: number, vh: number): number {
   if (!(fling > 0) || room < GATE.liftRoom * vh) return 0;
   return Math.min(fling, room);
 }
+
+/**
+ * Whether a finger landing with the page at `page` px leaves its stroke
+ * to the browser: past the film's end (`heroEnd`, p = 1) with the walls
+ * open (`maxScroll` Infinity). Below the hero there is nothing to gate,
+ * and Lenis driving a finger there read every move of the viewport as
+ * finger travel: a phone's bars coming or going mid-stroke shifted the
+ * finger's clientY under a still thumb, so the page jumped against the
+ * stroke, and its fling knew nothing of the bars. The browser's own
+ * scrolling owns the bars and its momentum. In the hero, Lenis drives
+ * every stroke as ever (a native fling back up into it is fine: the walls
+ * are open, and the frame reads the page).
+ */
+export function browserStroke(page: number, heroEnd: number, maxScroll: number): boolean {
+  return !Number.isFinite(maxScroll) && Number.isFinite(heroEnd) && page >= heroEnd - 0.5;
+}
+
+/** The keys whose default action scrolls the page (with or without modifiers: Ctrl+End, Cmd+Down). */
+const PAGE_KEYS = new Set(["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "]);
+
+/**
+ * Whether a key the page did not take scrolls the page natively, so a
+ * glide of Lenis' must stop for it (SmoothScroll): Lenis ignores native
+ * scrolls while it glides and writes its own place every frame, so a key
+ * pressed in the tail of a wheel's glide was swallowed, or scrolled and
+ * was yanked back a screen within two frames. Never in a field, and Space
+ * on a control presses it.
+ */
+export function keyScrollsPage(key: string, target: "field" | "control" | "page"): boolean {
+  if (!PAGE_KEYS.has(key) || target === "field") return false;
+  return !(key === " " && target === "control");
+}

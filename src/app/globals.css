@@ -21,6 +21,28 @@ html {
   scroll-padding-top: calc(1rem + var(--va-control-height-sm) + 1rem);
 }
 
+/*
+ * The screen's height for everything laid out in the page flow: one
+ * hundredth of the small and of the large viewport, like 1svh and 1lvh,
+ * but held still while a phone's browser shows and hides its bars
+ * (lib/screen.ts writes them in px, starting from exactly these values).
+ * Never vh, svh, lvh or dvh in the flow: a browser that resizes its web
+ * view with its bars changes every one of them, and the whole page below
+ * moved under her finger. dvh stays for what follows the visible area out
+ * of the flow (the hero's pinned frame and its overlays).
+ */
+:root {
+  --va-svh: 1vh;
+  --va-lvh: 1vh;
+}
+
+@supports (height: 1svh) {
+  :root {
+    --va-svh: 1svh;
+    --va-lvh: 1lvh;
+  }
+}
+
 /* Keyboard focus in the end credits stops clear of their fades (6rem at
    the top and the bottom, Credits.module.css, the top one under the page
    controls); only there, so a focused control at the bottom of the hero's

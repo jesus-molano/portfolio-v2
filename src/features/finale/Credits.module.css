@@ -37,7 +37,7 @@
 .frame {
   position: sticky;
   top: 0;
-  height: 100svh;
+  height: calc(100 * var(--va-svh));
   overflow: hidden;
   container-type: size;
 }
@@ -107,7 +107,7 @@
   position: relative;
   z-index: 1;
   width: var(--roll-w);
-  margin: -100svh 0 0 auto;
+  margin: calc(-100 * var(--va-svh)) 0 0 auto;
   padding: 0 var(--roll-pad);
   text-align: center;
 }
@@ -119,7 +119,7 @@
   inset: 0 0 0 -9rem;
   z-index: -1;
   background: linear-gradient(90deg, var(--va-finale-scrim-clear), var(--va-finale-scrim) 13rem);
-  mask-image: linear-gradient(var(--va-finale-mask-clear), var(--va-finale-mask) 45svh);
+  mask-image: linear-gradient(var(--va-finale-mask-clear), var(--va-finale-mask) calc(45 * var(--va-svh)));
   pointer-events: none;
 }
 
@@ -159,7 +159,7 @@
  * share, --chapter-h, set on the slot) stays below the top fade (6rem).
  */
 .roll > .chapterSlot {
-  margin-top: max(58svh, calc(6rem + var(--roll-w) * var(--chapter-h) - 0.98rem));
+  margin-top: max(58 * var(--va-svh), calc(6rem + var(--roll-w) * var(--chapter-h) - 0.98rem));
 }
 
 /*
@@ -183,7 +183,7 @@
 
 .chapterSlot > .chapter {
   /* The plate's width and left edge as .stage has them: the section is as wide as the frame, which is 100svh tall. */
-  --dawn-w: max(100cqw, 177.78svh);
+  --dawn-w: max(100cqw, 177.78 * var(--va-svh));
   --dawn-x: clamp(100cqw - var(--dawn-w), (100cqw - var(--roll-w)) / 2 - 0.33 * var(--dawn-w), 0px);
   /* How far the board, and 1rem more, reaches past the roll's left edge. */
   --board-in: calc(var(--dawn-x) + (var(--w-bx) + var(--w-bw)) * var(--dawn-w) / 100 + 1rem - (100cqw - var(--roll-w)));
@@ -195,7 +195,7 @@
 }
 
 .roll > .top {
-  margin-bottom: 22svh;
+  margin-bottom: calc(22 * var(--va-svh));
 }
 
 .fadeBottom {

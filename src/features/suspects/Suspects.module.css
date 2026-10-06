@@ -22,7 +22,7 @@
    * and the caption still fit, but never below 4.5 px (cats of about 13
    * rem): under that the section grows instead.
    */
-  --cm: min(0.62vw, 1.25svh, max((100svh - 18rem) / 56, 4.5px));
+  --cm: min(0.62vw, 1.25 * var(--va-svh), max((100 * var(--va-svh) - 18rem) / 56, 4.5px));
   --chart-major: color-mix(in srgb, var(--va-color-lilac) 34%, transparent);
   --chart-minor: color-mix(in srgb, var(--va-color-lilac) 14%, transparent);
   --floor-line: color-mix(in srgb, var(--va-color-cream) 30%, transparent);
@@ -48,8 +48,7 @@
   grid-template-columns: 28% repeat(4, minmax(0, 1fr)) 8%;
   /* The wall (slug, slip, cats), the floor (plates), the caption. */
   grid-template-rows: minmax(calc(var(--cm) * 53 + 6rem), 1fr) auto auto;
-  min-height: 100vh;
-  min-height: 100svh;
+  min-height: calc(100 * var(--va-svh));
 }
 
 /* ---------------------------------------------------------------- the card */
@@ -173,7 +172,7 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
-  padding: max(5.5svh, 2.25rem) 1.25rem 0 max(4vw, 1.25rem);
+  padding: max(5.5 * var(--va-svh), 2.25rem) 1.25rem 0 max(4vw, 1.25rem);
   font-family: var(--va-font-mono);
   font-size: 0.6875rem;
   line-height: 1.75;
@@ -478,7 +477,7 @@
    * above it (its padding, its three lines, then the tape): in a short
    * window the wall grows rather than the slip covering the title.
    */
-  margin: calc(max(5.5svh, 2.25rem) + 6.5rem) 0 calc(var(--cm) * 8) clamp(1.75rem, 4.6vw - 1rem, 4rem);
+  margin: calc(max(5.5 * var(--va-svh), 2.25rem) + 6.5rem) 0 calc(var(--cm) * 8) clamp(1.75rem, 4.6vw - 1rem, 4rem);
   padding: 1.15rem 1.1rem 1.05rem;
   rotate: -3deg;
   background: linear-gradient(180deg, var(--va-lineup-paper), var(--va-lineup-paper-shade));
@@ -578,7 +577,7 @@
    * at most 0.124 of its width (chapterLayout.test.ts), with 0.5rem clear
    * above it.
    */
-  padding: 1.25rem 1rem max(2.25rem, 5svh, calc(min(100vw - 2rem, var(--va-chapter-span)) * 0.124 + 0.5rem));
+  padding: 1.25rem 1rem max(2.25rem, 5 * var(--va-svh), calc(min(100vw - 2rem, var(--va-chapter-span)) * 0.124 + 0.5rem));
   font-family: var(--va-font-body);
   font-size: clamp(0.95rem, 1.35vw, 1.2rem);
   font-weight: 500;
@@ -666,7 +665,7 @@
  */
 @media (max-aspect-ratio: 1/1), (max-width: 40rem) {
   .suspects {
-    --cm: min(1.84vw, 0.9svh, 0.6875rem);
+    --cm: min(1.84vw, 0.9 * var(--va-svh), 0.6875rem);
     --strip-labels: 1.9rem;
     background: linear-gradient(180deg, var(--va-color-night) 0, var(--va-lineup-floor) 22rem);
   }
@@ -814,7 +813,7 @@
   /* PLAYER ONE's rise under it, as on wide screens: a tablet's card is nearly as wide as the screen. */
   .caption {
     grid-area: auto;
-    padding: 2.25rem 1rem max(3rem, 6svh, calc(min(100vw - 2rem, var(--va-chapter-span)) * 0.124 + 0.5rem));
+    padding: 2.25rem 1rem max(3rem, 6 * var(--va-svh), calc(min(100vw - 2rem, var(--va-chapter-span)) * 0.124 + 0.5rem));
     font-size: 1rem;
   }
 }

@@ -213,7 +213,8 @@ export const motion = {
   /** Lenis touch inertia interpolation (syncTouch). */
   touchLerp: 0.08,
   /**
-   * Hero stage height, in viewport heights (a scroll range of five). The
+   * Hero stage height, in hundredths of the large viewport height
+   * (`--va-lvh`, held still through a phone's bars; a scroll range of five). The
    * story's walls pace the cards, so a shorter scroll skips nothing: one
    * wheel notch is about 2% of the film.
    */
@@ -367,7 +368,8 @@ export function tokensToCssVariables(): string {
   entries.push(`--va-size-body: ${typography.bodySize};`);
   entries.push(`--va-motion-reveal: ${motion.revealDuration}s;`);
   entries.push(`--va-motion-ease: ${motion.easeCss};`);
-  entries.push(`--va-hero-scroll: ${motion.heroScrollVh}vh;`);
+  // In stable screens (lib/screen.ts): the stage never grows or shrinks with a phone's bars.
+  entries.push(`--va-hero-scroll: calc(${motion.heroScrollVh} * var(--va-lvh));`);
   for (const [key, value] of Object.entries(radio)) {
     entries.push(`--va-radio-${kebab(key)}: ${value};`);
   }

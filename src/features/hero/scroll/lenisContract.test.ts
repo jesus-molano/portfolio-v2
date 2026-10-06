@@ -30,7 +30,11 @@ import { describe, expect, it } from "vitest";
  *    touchmove nobody cancels hands the rest of the stroke to the
  *    browser's own scrolling, past every gate. So the gate cancels those
  *    itself, wherever Lenis drives the stroke: not under
- *    `data-lenis-prevent`, not while iOS drags a selection handle.
+ *    `data-lenis-prevent`, not while iOS drags a selection handle. Below
+ *    the hero (gate.ts browserStroke) the gate relies on the same drop the
+ *    other way: it returns false for every move and the lift, so the
+ *    browser scrolls the stroke, and lets the touchstart through, which
+ *    Lenis takes for a tap that stops its own glide (`reset()`).
  * And the page's one way of moving (lib/navigate.ts) on one more:
  * 7. `resize()` re-measures the page and stands Lenis where the page is,
  *    and `reset()` (public at runtime, private in its types) also stops
@@ -94,6 +98,10 @@ describe("Lenis contract", () => {
       expect(body).toContain(`node.hasAttribute?.("${attribute}")`);
     }
     expect(body).toContain("composedPath = composedPath.slice(0, composedPath.indexOf(this.rootElement));");
+    // A finger landing stops Lenis' glide (a stroke left to the browser must not fight it).
+    const tapStops = body.indexOf('this.options.syncTouch && isTouch && event.type === "touchstart" && isClickOrTap');
+    expect(tapStops).toBeGreaterThan(body.indexOf("const isClickOrTap"));
+    expect(body.slice(tapStops, tapStops + 200)).toContain("this.reset();");
   });
 
   it("still re-measures and stands where the page is on resize() and reset(), which also stops a glide", () => {

@@ -33,6 +33,12 @@ export const scrollGate = {
   touching: false,
   /** performance.now() of the last touchend that ended a scrolling stroke. */
   touchEndAt: Number.NEGATIVE_INFINITY,
+  /**
+   * The page scroll (px) where the film ends (p = 1), written by HeroStage
+   * when it measures; Infinity with no film. A finger's stroke that starts
+   * past it, the walls open, is the browser's own (SmoothScroll).
+   */
+  heroEnd: Number.POSITIVE_INFINITY,
 };
 
 /**
