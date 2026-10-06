@@ -209,22 +209,22 @@
       {
         "kind": "trivia",
         "when": [],
-        "text": "El coche no se mueve ni un milímetro: es la ciudad la que pasa por su lado. Y nadie se atreve a decírselo al coche."
+        "text": "No hay ni una foto en toda la web: todo está dibujado, renderizado o calculado en tu navegador."
       },
       {
         "kind": "trivia",
         "when": [],
-        "text": "Las gafas del conductor reflejan el cielo de la escena: el atardecer que ves también está en sus cristales."
+        "text": "La barba y el pelo del conductor los peinó un script, pelo a pelo. Ningún barbero ha tocado este proyecto."
       },
       {
         "kind": "trivia",
         "when": [],
-        "text": "De noche la carretera entra en la ciudad: cada empresa en la que ha trabajado tiene su rótulo, y cada uno es un enlace."
+        "text": "Las letras de cada cartel de la ciudad se pintan en tu navegador al cargar, con las mismas fuentes de la web."
       },
       {
         "kind": "trivia",
         "when": ["motion"],
-        "text": "El grano de la imagen cambia 24 veces por segundo: si la ves temblar un poco, no son tus gafas."
+        "text": "El cielo no es una imagen: se calcula entero en cada fotograma, y su sol se refleja en todo lo que brilla."
       },
       {
         "kind": "trivia",
@@ -234,7 +234,7 @@
       {
         "kind": "trivia",
         "when": [],
-        "text": "Los coches de tu sentido van justo a tu ritmo: nadie te adelanta y tú tampoco adelantas a nadie."
+        "text": "Cada palmera sale de una semilla: si vuelves mañana, cada una estará exactamente donde la dejaste."
       }
     ],
     "menu": {

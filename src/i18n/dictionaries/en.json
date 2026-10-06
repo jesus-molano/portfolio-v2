@@ -209,22 +209,22 @@
       {
         "kind": "trivia",
         "when": [],
-        "text": "The car never actually moves. The whole city drives past it, and so far nobody has had the heart to tell the car."
+        "text": "There isn't a single photo on this site: everything is drawn, rendered or computed in your browser."
       },
       {
         "kind": "trivia",
         "when": [],
-        "text": "The driver's aviators mirror the scene's own sky: the sunset you're watching is in his lenses too."
+        "text": "The driver's beard and hair were groomed by a script, strand by strand. No barber ever touched this project."
       },
       {
         "kind": "trivia",
         "when": [],
-        "text": "At night the road reaches the city: every company he has worked for has its own sign, and every sign is a link."
+        "text": "Every sign in the city is painted in your browser as it loads, in the site's own fonts."
       },
       {
         "kind": "trivia",
         "when": ["motion"],
-        "text": "The picture's grain changes 24 times a second: if it seems to shimmer, it isn't your glasses."
+        "text": "The sky isn't a picture: it's computed whole every frame, and its sun shows in everything that shines."
       },
       {
         "kind": "trivia",
@@ -234,7 +234,7 @@
       {
         "kind": "trivia",
         "when": [],
-        "text": "The cars going your way keep your exact pace, so nobody overtakes you, and you never overtake anyone either."
+        "text": "Every palm grows from a seed: come back tomorrow and each one will be exactly where you left it."
       }
     ],
     "menu": {

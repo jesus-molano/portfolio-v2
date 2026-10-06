@@ -641,9 +641,12 @@ also exists as real DOM for keyboard and screen-reader users.
     and achievement tree, the cinema, the credits; tested). Nothing promises what
     is not on the page yet: the career city's tip ("a sign for every
     employer") comes back with the city. Every trivia is true of the site
-    (the aviators mirror our sky, the palms are made in code, the grain
-    changes 24 times a second, every station keeps its own clock, the
-    traffic going her way holds her pace), and so is every tip: the touch
+    (no photo anywhere: everything is drawn, rendered or computed; the
+    driver's beard and hair groomed by a script; every city sign painted
+    in the browser in the site's fonts; the sky computed every frame;
+    every station keeps its own clock; every palm grown from a seed, the
+    same on every visit: the owner's pick of "cooler" trivia), and so is
+    every tip: the touch
     radio tip names a still finger on the picture, not the pedal, until
     the ring shows, then lifted (`touchHold.ts`; tested). Natural
     sentences, never telegraphic. `tips.ts` orders them (`tipOrder`: the
