@@ -1023,8 +1023,10 @@ also exists as real DOM for keyboard and screen-reader users.
     the panel meets the page's edge, the tracks are shorter and it breaks
     out of its track only; the section has `overflow-x: clip`) and the
     records: Dante's wanted level (five stars since the cables), the
-    countless "just one more episode" and the Grand Prix kilometres
-    without a ticket ("from the sofa" is said once, under RACECRAFT). No
+    countless "just one more episode" and the kilometres of Formula 1
+    watched a season, not one behind the wheel (it must never read as
+    if he raced; "from the sofa" is said once, under RACECRAFT, which is
+    F1 watched from the sofa every weekend). No
     record counts the cats and no halo shows anywhere
     (`statsCopy.test.ts`); each value's glyphs are hidden from screen
     readers, which hear `spoken` instead.
