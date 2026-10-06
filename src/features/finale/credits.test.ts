@@ -3,13 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { CAREER } from "@/features/career/career";
 import { incompetech, macleod, STATIONS } from "@/features/music/stations";
-import { CULPRIT } from "@/features/suspects/lineup";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
 import {
   BUILT_WITH,
   CAR_CREDIT,
-  CAST_CULPRIT,
+  CAST_CATS,
   COPYRIGHT,
   CAT_BASE_CREDIT,
   CC0_ASSETS,
@@ -151,12 +150,21 @@ describe("the roll's order", () => {
 });
 
 describe("the cast and the rest", () => {
-  it("casts the driver as himself and bills the culprit, Dante; Odin is never named (the owner's call)", () => {
-    expect(en.credits.cast).toMatchObject({ driver: "The driver", himself: "Himself", culprit: "The culprit" });
-    expect(es.credits.cast).toMatchObject({ driver: "El conductor", himself: "Él mismo", culprit: "El culpable" });
-    expect(CAST_CULPRIT).toBe("Dante");
-    expect(CAST_CULPRIT.toLowerCase()).toBe(CULPRIT);
-    expect(JSON.stringify([en.credits, es.credits, CAST_CULPRIT])).not.toMatch(/Odin/i);
+  it("casts him as himself and his four cats by their aliases, in the line-up's order (the owner's call)", () => {
+    expect(en.credits.cast).toMatchObject({ driver: "The driver", himself: "Himself" });
+    expect(es.credits.cast).toMatchObject({ driver: "El conductor", himself: "Él mismo" });
+    expect(CAST_CATS.map((cat) => cat.name)).toEqual(["Kira", "Tom", "Dante", "Odin"]);
+    expect(es.credits.cast.roles).toEqual({ kira: "La Reina", tom: "El Gordo", dante: "Satanás", odin: "El Enano" });
+    expect(en.credits.cast.roles).toEqual({ kira: "The Queen", tom: "Fats", dante: "Satan", odin: "Shorty" });
+    for (const [locale, dict] of LOCALES) {
+      const html = renderCredits(locale, dict);
+      for (const cat of CAST_CATS) {
+        expect(html, `${locale} ${cat.name}`).toContain(cat.name);
+        expect(html, `${locale} ${cat.name}`).toContain(dict.credits.cast.roles[cat.id]);
+      }
+      // No culprit left to bill: the complaint and its verdict are gone.
+      expect(html, locale).not.toMatch(/culprit|culpable/i);
+    }
   });
 
   it("names him twice at most: written and directed by, and the copyright (the marquee bills him too)", () => {

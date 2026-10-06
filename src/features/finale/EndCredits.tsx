@@ -7,7 +7,7 @@ import {
   BUILT_WITH,
   CAR_CREDIT,
   CAT_BASE_CREDIT,
-  CAST_CULPRIT,
+  CAST_CATS,
   CC0_ASSETS,
   COPYRIGHT,
   creditList,
@@ -98,7 +98,7 @@ function Block({ id, title, children }: { id: string; title: string; children: R
  * The end credits: the last show at The Afterglow, at dawn. The cinema's
  * marquee carries one name, and the credits roll over the frame as real
  * text, the contact before the fine print: the title, the cast (the driver
- * plays himself, and the culprit is billed), then THANKS FOR DRIVING BY
+ * plays himself, and each cat its alias from the character select), then THANKS FOR DRIVING BY
  * and the two contact tickets, then every licence credit the site owes
  * (the car, the traffic, the driver's body, the cats' base, the map's
  * relief, every radio track, the typefaces) with his toolkit and what the
@@ -154,7 +154,11 @@ export function EndCredits({ dict, newTab, locale }: Props) {
         <Block id="credits-cast" title={dict.cast.title}>
           <dl className={styles.pairs}>
             <Pair role={dict.cast.driver}>{dict.cast.himself}</Pair>
-            <Pair role={dict.cast.culprit}>{CAST_CULPRIT}</Pair>
+            {CAST_CATS.map((cat) => (
+              <Pair key={cat.id} role={dict.cast.roles[cat.id]}>
+                {cat.name}
+              </Pair>
+            ))}
           </dl>
         </Block>
 

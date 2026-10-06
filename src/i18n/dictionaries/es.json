@@ -874,7 +874,12 @@
       "title": "REPARTO",
       "driver": "El conductor",
       "himself": "Él mismo",
-      "culprit": "El culpable"
+      "roles": {
+        "kira": "La Reina",
+        "tom": "El Gordo",
+        "dante": "Satanás",
+        "odin": "El Enano"
+      }
     },
     "assets": {
       "title": "ATREZO Y DECORADOS",

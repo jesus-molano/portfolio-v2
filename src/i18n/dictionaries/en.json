@@ -874,7 +874,12 @@
       "title": "CAST",
       "driver": "The driver",
       "himself": "Himself",
-      "culprit": "The culprit"
+      "roles": {
+        "kira": "The Queen",
+        "tom": "Fats",
+        "dante": "Satan",
+        "odin": "Shorty"
+      }
     },
     "assets": {
       "title": "PROPS AND SETS",

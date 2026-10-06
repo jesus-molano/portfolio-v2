@@ -49,8 +49,17 @@ export const RELIEF_CREDIT = {
   sourceUrl: "https://registry.opendata.aws/terrain-tiles/",
 } as const;
 
-/** The cast: the driver plays himself (dictionary `credits.cast`); of the cats, only the culprit is billed, and Odin is never named in the credits (the owner's call). */
-export const CAST_CULPRIT = "Dante";
+/**
+ * The cast: him and his four cats, the ones who are really in it (the
+ * owner's call). He plays himself; each cat plays its alias from the
+ * character select (`credits.cast.roles`), in the line-up's order.
+ */
+export const CAST_CATS = [
+  { id: "kira", name: "Kira" },
+  { id: "tom", name: "Tom" },
+  { id: "dante", name: "Dante" },
+  { id: "odin", name: "Odin" },
+] as const;
 
 export const DIRECTOR = "Jesús Molano";
 export const FILM_TITLE = "VICE AFTERGLOW";

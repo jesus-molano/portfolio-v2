@@ -1272,9 +1272,11 @@ also exists as real DOM for keyboard and screen-reader users.
     frame is sticky and the roll scrolls over its right side. It is real
     text (`credits.ts`, tested) and tells only what is its own, the
     contact before the fine print (tested): the title and who wrote it
-    (his name once more, and in the copyright), the cast (the driver as
-    Himself; of the cats only the culprit, Dante: Odin is not named in the
-    credits, the owner's call), then THANKS FOR DRIVING BY and the GitHub
+    (his name once more, and in the copyright), the cast (him and his four
+    cats, the ones really in it, the owner's call: the driver as Himself,
+    then each cat as its alias from the character select, in the line-up's
+    order: La Reina / The Queen, Kira; El Gordo / Fats, Tom; Satanás /
+    Satan, Dante; El Enano / Shorty, Odin), then THANKS FOR DRIVING BY and the GitHub
     and LinkedIn tickets (`#contact`, `rel="me"`, never the email), then
     the fine print: PROPS AND SETS (the CC BY 3.0 car, the CC0 traffic and
     body, the cats' Apache-2.0 base as a modified version, the map's
@@ -1678,7 +1680,7 @@ Each subject, who tells it in full, and what the rest may do:
 - The side projects: the cinema. STATS and the credits: nothing.
 - The cats: THE USUAL SUSPECTS. Winks only elsewhere: Dante as player 2
   on the STATS sheet and in its wanted-level record, the STEALTH bar's tin
-  on the STATS sheet, the culprit in the credits' cast.
+  on the STATS sheet, the four cats by their aliases in the credits' cast.
 - F1: STATS (the 4 a.m. race and Alonso's 33rd stars, RACECRAFT and the Grand Prix record). The
   loader: the pit-lane limiter tip only. The hero: its dashboard.
 - The favourites (games, films, series) and his sporting goals: STATS's
