@@ -47,7 +47,7 @@ import {
   type WheelEntry,
 } from "./stations";
 import { holdArmed, holdCancelled, holdLapsed, holdMayStart, TOUCH_HOLD } from "./touchHold";
-import { ringSectorPath, sectorArcPath, unwrapAngle, WHEEL_LAYOUT } from "./wheelGeometry";
+import { CENTRE_TYPE, ringSectorPath, sectorArcPath, unwrapAngle, WHEEL_LAYOUT } from "./wheelGeometry";
 
 type Props = { dict: Dictionary["radio"] };
 
@@ -75,8 +75,12 @@ const WEDGES = WHEEL.map((_, i) => ringSectorPath(i, COUNT, RING.inner, RING.out
 const RIMS = WHEEL.map((_, i) => sectorArcPath(i, COUNT, RING.outer - 1.6, WHEEL_LAYOUT.gap + 1.2, WHEEL_START));
 /** Where the selected wedge's glow starts: dark at the centre disc, lit at the rim. */
 const GLOW_FROM = RING.inner / RING.outer;
-/** The badges' size and orbit, as fractions of the wheel (RadioWheel.module.css). */
-const LAYOUT_STYLE = { "--badge-k": WHEEL_LAYOUT.badge, "--orbit-k": WHEEL_LAYOUT.orbit } as CSSProperties;
+/** The badges' size and orbit, and a small wheel's centre type, as fractions of the wheel (RadioWheel.module.css). */
+const LAYOUT_STYLE = {
+  "--badge-k": WHEEL_LAYOUT.badge,
+  "--orbit-k": WHEEL_LAYOUT.orbit,
+  ...Object.fromEntries(Object.entries(CENTRE_TYPE).map(([row, k]) => [`--centre-${row}-k`, k])),
+} as CSSProperties;
 
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -658,7 +662,7 @@ export function RadioWheel({ dict }: Props) {
                   />
                 ) : null,
               )}
-              <circle className={styles.ringInner} r={RING.inner - 3} />
+              <circle className={styles.ringInner} r={RING.inner - 3} data-radio-disc />
             </svg>
 
             <div className={styles.needle} aria-hidden="true" />
@@ -699,8 +703,9 @@ export function RadioWheel({ dict }: Props) {
             </div>
 
             {/* What the pointer is on. Screen readers get the same from the radio labels. */}
-            <div className={styles.centre} aria-hidden="true">
-              <p className={styles.frequency}>
+            {/* data-radio-centre and data-row: tools/capture/radiowheel.mjs measures them against the disc. */}
+            <div className={styles.centre} aria-hidden="true" data-radio-centre>
+              <p className={styles.frequency} data-row="frequency">
                 {isStation(entry) ? (
                   <>
                     {formatFrequency(entry.frequency)}
@@ -714,17 +719,21 @@ export function RadioWheel({ dict }: Props) {
                   </>
                 )}
               </p>
-              <p className={styles.name}>{isStation(entry) ? entry.name : dict.off}</p>
-              {isStation(entry) ? <p className={styles.tagline}>{dict.taglines[entry.id]}</p> : null}
+              <p className={styles.name} data-row="name">
+                {isStation(entry) ? entry.name : dict.off}
+              </p>
+              {isStation(entry) ? (
+                <p className={styles.tagline} data-row="tagline">{dict.taglines[entry.id]}</p>
+              ) : null}
               {playing ? (
-                <p className={styles.track}>
+                <p className={styles.track} data-row="track">
                   <span className={styles.trackLabel}>{dict.nowPlaying}</span>
-                  <span className={styles.trackTitle}>{playing.title}</span>
-                  <span className={styles.trackArtist}>{playing.artist}</span>
+                  <span className={styles.trackTitle} data-row="title">{playing.title}</span>
+                  <span data-row="artist">{playing.artist}</span>
                 </p>
               ) : null}
               {isStation(entry) ? (
-                <p className={styles.status} data-live={live}>
+                <p className={styles.status} data-live={live} data-row="status">
                   {live ? dict.onAir : dict.tune}
                 </p>
               ) : null}

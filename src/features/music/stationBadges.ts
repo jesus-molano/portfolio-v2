@@ -905,14 +905,18 @@ function tofu(id: string, f: string | null): string {
   return badge(id, VIO, f, art, defs);
 }
 
-/* Radio off, in the same frame (no frequency tab). */
+/*
+ * Radio off, in the same frame (no frequency tab). The symbol fades from
+ * cream into the off colour, and lights up all cream on the wheel's
+ * selected sector, which sets --logo-lit (RadioWheel.module.css).
+ */
 function power(id: string): string {
   const art = `<rect width="100" height="100" fill="url(#${id}-bg)"/>
     <circle cx="50" cy="50" r="24" fill="var(--va-radio-off)" opacity="0.18" filter="url(#${id}-soft)"/>
     <path d="M39.4 36.4 A17 17 0 1 0 60.6 36.4 M50 29 V50" fill="none" stroke="var(--va-radio-shadow)" stroke-width="7.4" stroke-linecap="round" transform="translate(0.6 1)"/>
     <path d="M39.4 36.4 A17 17 0 1 0 60.6 36.4 M50 29 V50" fill="none" stroke="url(#${id}-p)" stroke-width="5.4" stroke-linecap="round"/>`;
   const defs = `<radialGradient id="${id}-bg" cx="0.5" cy="0.4" r="0.7"><stop offset="0" stop-color="var(--va-color-asphalt)"/><stop offset="1" stop-color="var(--va-color-night)"/></radialGradient>
-    <linearGradient id="${id}-p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CREAM}"/><stop offset="1" stop-color="var(--va-radio-off)"/></linearGradient>`;
+    <linearGradient id="${id}-p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CREAM}"/><stop offset="1" style="stop-color:var(--logo-lit, var(--va-radio-off))"/></linearGradient>`;
   return badge(id, "var(--va-radio-off)", null, art, defs);
 }
 

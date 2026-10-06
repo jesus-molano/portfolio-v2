@@ -317,8 +317,8 @@ export function formatFrequency(frequency: number): string {
 
 /**
  * Joins phrases into what a screen reader says, one sentence each: a full
- * stop between them unless the phrase already ends in one ("Wake up! Wake
- * up!" stays as written, not "Wake up!.").
+ * stop between them unless the phrase already ends in one ("Ours goes to
+ * eleven." stays as written, not "Ours goes to eleven..").
  */
 export function joinSentences(parts: readonly string[]): string {
   return parts

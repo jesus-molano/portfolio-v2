@@ -254,7 +254,7 @@
 
 .station[data-selected="true"] {
   --scale: 1.17;
-  /* Lights the power symbol of radio off (StationLogo.module.css). */
+  /* Lights the power symbol of radio off (its gradient's last stop, stationBadges.ts). */
   --logo-lit: var(--va-color-cream);
   z-index: 1;
   filter: none;
@@ -352,13 +352,6 @@
   color: var(--va-color-text);
 }
 
-/* Phones: the centre is small, the track speaks for itself without its label. */
-@container (max-width: 400px) {
-  .trackLabel {
-    display: none;
-  }
-}
-
 .status {
   margin-top: calc(var(--size) * 0.012) !important;
   padding: 0.3em 0.8em;
@@ -375,6 +368,50 @@
 .status[data-live="true"] {
   background: var(--accent);
   color: var(--va-color-night);
+}
+
+/*
+ * Phones (a wheel of 400 px or less): the track speaks for itself without
+ * its label, and the type scales with the disc (CENTRE_TYPE in
+ * wheelGeometry.ts, as --centre-*-k), so every phone wraps the centre the
+ * same way and keeps it 4 px inside the rim. With a big wheel's rem floors
+ * WITNESS ME crossed the rim, and a station on air, with its track, ran
+ * out at the bottom. The lines sit tighter, and a two-line title is
+ * balanced, so the stack is short enough for the disc's narrow ends.
+ */
+@container (max-width: 400px) {
+  .trackLabel {
+    display: none;
+  }
+
+  .frequency {
+    font-size: calc(var(--size) * var(--centre-frequency-k));
+    line-height: 1.05;
+  }
+
+  .name {
+    font-size: calc(var(--size) * var(--centre-name-k));
+  }
+
+  .tagline {
+    font-size: calc(var(--size) * var(--centre-tagline-k));
+    line-height: 1.2;
+  }
+
+  .track {
+    font-size: calc(var(--size) * var(--centre-track-k));
+    line-height: 1.25;
+  }
+
+  .trackTitle {
+    text-wrap: balance;
+  }
+
+  .status {
+    padding: 0.25em 0.8em;
+    font-size: calc(var(--size) * var(--centre-status-k));
+    line-height: 1.1;
+  }
 }
 
 .hint {
@@ -443,6 +480,29 @@
 
 .closeIcon::after {
   transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/*
+ * A phone on its side (SIDE_HINT in wheelGeometry.ts, which mirrors
+ * --size): the hint stands beside the wheel, which takes the height. Under
+ * it, 9rem of a 360 px tall screen went to the hint and the wheel shrank
+ * to 216 px, its badges under 44 px.
+ */
+@media (orientation: landscape) and (max-height: 500px) {
+  .dialog {
+    flex-direction: row;
+    gap: 1.5rem;
+  }
+
+  .wheel {
+    --size: min(600px, calc(100dvh - 2rem), calc(100vw - 1.5rem - 1.5rem - 13rem));
+  }
+
+  .hint {
+    flex: none;
+    width: 13rem;
+    border-radius: 1rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
