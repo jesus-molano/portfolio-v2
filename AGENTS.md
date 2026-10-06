@@ -1280,12 +1280,16 @@ also exists as real DOM for keyboard and screen-reader users.
     body, the cats' Apache-2.0 base as a modified version, the map's
     public-domain relief), every radio track in its author's format, the
     typefaces, HIS TOOLKIT and BUILT WITH (no name in both: what only this
-    site uses is in BUILT WITH alone; no Vue or Nuxt), smaller and two
+    site uses is in BUILT WITH alone; the toolkit opens on the owner's own
+    list in his order, Vue, Nuxt, TypeScript, React, Next.js, Tailwind CSS,
+    Claude Code, Codex, Supabase, Firebase, AWS Amplify, Docker, Linux, and
+    ends on «y un largo etcétera» / "and the list goes on"), smaller and two
     credits to a row once the roll is wide enough (a container query: a
     desktop window from about 990 px, a tablet's column), every word still
     on the page, as CC BY asks. A link to `#contact` lands its head below
-    the roll's sticky top fade (`scroll-margin-top`), never dimmed under it. Then THE END and "Same time
-    tomorrow?". No job and no side project is named there (tested): STATS,
+    the roll's sticky top fade (`scroll-margin-top`), never dimmed under it. Then THE END, the
+    copyright in his name alone (no site title under it, the owner's
+    call) and "Same time tomorrow?". No job and no side project is named there (tested): STATS,
     the career city and the cinema tell them.
 - `src/components/ChapterCard` — the static sections' headings: one
   sign-painter's chapter card each, a word in the film's voice over a

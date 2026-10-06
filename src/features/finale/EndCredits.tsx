@@ -294,7 +294,7 @@ export function EndCredits({ dict, newTab, locale }: Props) {
           {/* Side by side: no name is in both (credits.test.ts). */}
           <div className={styles.lists}>
             <Block id="credits-toolkit" title={dict.toolkit}>
-              <p className={styles.list}>{creditList(TOOLKIT)}</p>
+              <p className={styles.list}>{creditList([...TOOLKIT, dict.toolkitMore])}</p>
             </Block>
             <Block id="credits-built" title={dict.builtWith}>
               <p className={styles.list}>{creditList(BUILT_WITH)}</p>

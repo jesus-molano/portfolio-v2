@@ -10,6 +10,7 @@ import {
   BUILT_WITH,
   CAR_CREDIT,
   CAST_CULPRIT,
+  COPYRIGHT,
   CAT_BASE_CREDIT,
   CC0_ASSETS,
   creditList,
@@ -165,17 +166,31 @@ describe("the cast and the rest", () => {
     }
   });
 
-  it("keeps one list of his toolkit and one of what the site is built with, no name in both, no Vue or Nuxt", () => {
+  it("keeps one list of his toolkit and one of what the site is built with, no name in both", () => {
     for (const list of [TOOLKIT, BUILT_WITH]) expect(new Set(list).size).toBe(list.length);
     expect(TOOLKIT.filter((name) => (BUILT_WITH as readonly string[]).includes(name))).toEqual([]);
     // What only this site uses stays in BUILT_WITH.
     for (const name of ["Three.js", "React Three Fiber", "GSAP"]) expect(BUILT_WITH).toContain(name);
-    for (const list of [TOOLKIT, BUILT_WITH]) {
-      expect(list).not.toContain("Vue");
-      expect(list).not.toContain("Nuxt");
-    }
     expect(en.credits.toolkit).toBe("HIS TOOLKIT");
     expect(es.credits.toolkit).toBe("SU CAJA DE HERRAMIENTAS");
+  });
+
+  it("opens his toolkit on the owner's own list, in his order, and ends it on a long etcetera", () => {
+    const owners = [
+      "Vue", "Nuxt", "TypeScript", "React", "Next.js", "Tailwind CSS", "Claude Code", "Codex", "Supabase",
+      "Firebase", "AWS Amplify", "Docker", "Linux",
+    ];
+    expect(TOOLKIT.slice(0, owners.length)).toEqual(owners);
+    expect(es.credits.toolkitMore).toBe("y un largo etcétera");
+    expect(en.credits.toolkitMore).toBe("and the list goes on");
+    for (const [locale, dict] of LOCALES) {
+      const html = renderCredits(locale, dict);
+      expect(html, locale).toContain(`Git\u00a0· ${dict.credits.toolkitMore}`);
+    }
+  });
+
+  it("closes on the copyright in his name alone, no site title under THE END (the owner's call)", () => {
+    expect(COPYRIGHT).toBe("© 2026 Jesús Molano");
   });
 
   it("credits every typeface once", () => {

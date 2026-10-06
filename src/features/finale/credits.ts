@@ -54,16 +54,19 @@ export const CAST_CULPRIT = "Dante";
 
 export const DIRECTOR = "Jesús Molano";
 export const FILM_TITLE = "VICE AFTERGLOW";
-export const COPYRIGHT = "© 2026 Jesús Molano · Vice Afterglow";
+export const COPYRIGHT = "© 2026 Jesús Molano";
 
 /**
- * His toolkit: what he works with, from the jobs and the side projects.
- * No Vue or Nuxt (the owner took them out). No name here is in BUILT_WITH:
- * the libraries only this site uses are listed there alone.
+ * His toolkit: what he works with, the owner's list first in his order,
+ * then the rest from the jobs and the side projects; the roll ends it on
+ * "and the list goes on" (`credits.toolkitMore`), as he put it. No name
+ * here is in BUILT_WITH: the libraries only this site uses are listed
+ * there alone.
  */
 export const TOOLKIT = [
-  "React", "Next.js", "TypeScript", "Tailwind CSS", "Zod", "React Hook Form", "Material UI", "Keycloak",
-  "Veracode", "Docker", "Strapi", "Storybook", "Atomic Design", "Supabase", "Python", "Scrum", "Git",
+  "Vue", "Nuxt", "TypeScript", "React", "Next.js", "Tailwind CSS", "Claude Code", "Codex", "Supabase", "Firebase",
+  "AWS Amplify", "Docker", "Linux", "Zod", "React Hook Form", "Material UI", "Keycloak", "Veracode", "Strapi",
+  "Storybook", "Atomic Design", "Python", "Scrum", "Git",
 ] as const;
 
 /** What this site is made with, beyond his toolkit. */
