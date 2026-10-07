@@ -128,6 +128,23 @@ also exists as real DOM for keyboard and screen-reader users.
   of text and the status pill 4 px inside the disc, no word broken, one
   name size, 44 px badges, radio off's symbol lit when selected. PASS or
   FAIL.
+- `node tools/capture/perf.mjs --url http://localhost:3100/en` (a
+  production build running: `pnpm build && pnpm start -p 3100`; `--device
+  phone|desktop`, `--only menu,hero,cover,rest,radio,layers,leak`,
+  `--cycles`, `--out`) — the page's heat on a phone (390 x 844 at 3x, an
+  iPhone's user agent), one line of numbers per stop (frames each WebGL
+  canvas drew per animation frame, rAF callbacks, script, task, style
+  recalcs and layouts a second, heap) and PASS or FAIL: the hero's canvas
+  rests behind the start menu and the loader's loop stops (no style
+  writes), it draws again once she enters; no canvas draws under opaque
+  night (Skip, the hero's strip over THE CREW, the city under STATS); one
+  frame loop at most at rest at the cinema and the credits; the playing
+  radio's button costs no layout, and radio off or a hidden tab puts its
+  AudioContext to sleep; no compositor layer for a bulb out of sight;
+  eight passes down into the city and back keep the JS heap flat (from
+  the third pass, after the JIT's own warm-up) and no WebGL context
+  outlives its canvas. Run it after any change to a canvas, a looping
+  animation, the radio or a frame loop.
 
 ## Stack (pinned on purpose)
 
@@ -135,7 +152,9 @@ also exists as real DOM for keyboard and screen-reader users.
   does not support it yet), ESLint 9 (eslint-plugin-react does not support 10).
 - three `~0.186` (postprocessing requires `< 0.187`), `@react-three/fiber` 9,
   `@react-three/drei` 10, `@react-three/postprocessing` 3.
-- GSAP 3 + `@gsap/react` for timelines and ScrollTrigger; Lenis for smooth scroll.
+- GSAP 3 + `@gsap/react` for timelines and the ticker; Lenis for smooth scroll
+  (no ScrollTrigger: nothing makes a trigger, and the plugin alone ran a
+  frame loop, a timer and a refresh on resize).
 
 ## Structure
 
@@ -542,7 +561,9 @@ also exists as real DOM for keyboard and screen-reader users.
     comes from the knuckles (`palmNormal`) and each finger closes about one
     world axis (`curlFinger`). Hands stay in line with the forearm: turn
     the forearm for the palm, then flex the wrist; never aim the hand on
-    its own.
+    its own. Brows and lashes (double-sided, blended) draw in one pass
+    (`forceSinglePass`): split in two, three flipped their side and
+    program twice a frame.
   - His gold aviators (`Sunglasses.tsx`) are a separate GLB in the frame
     of the head bone, added as that bone's child, so they follow the
     glance. The lenses mirror the environment map through a violet-to-pink
@@ -598,7 +619,12 @@ also exists as real DOM for keyboard and screen-reader users.
   runs on a clock (`livePosition`), so tuning in lands mid-song; the
   playlist loops. `player.ts` plays it on `<audio>` decks, fetches only the
   track on air (the next one in its last 20 s), crossfades through a Web
-  Audio burst of tuning static and pauses while the tab is hidden. The
+  Audio burst of tuning static and pauses while the tab is hidden. With
+  the radio off (once the static and the fade are over) and while the
+  tab is hidden the AudioContext is suspended and an off deck lets its
+  file go (`sleepIfSilent`): a running context mixed silence for the
+  rest of the visit. Her next tune, the tab coming back or her next
+  gesture wakes it (`wake`). The
   decks play through one Web Audio bus (a low-pass and a gain, built in
   the gesture that first tunes the radio, a deck joining it only once the
   AudioContext runs: routed into a stopped one it would go silent), which
@@ -897,7 +923,22 @@ also exists as real DOM for keyboard and screen-reader users.
   the stage (within 1.5 screens) and released only far from it (six
   screens: a pass back up into the hero's end keeps it, or the night came
   back under its cover, compiling, over the first stops), rendering only
-  while it is on screen. Five sets (`sets/`),
+  while it is on screen and not under the stage's own opaque night
+  (`nightCover.ts`, tested: the closed iris at the end, the strip left
+  under STATS's card; the opening cover still fully up once every stop is
+  warm, `night.warm`; never during a dip; WorkStage writes `night`'s
+  covered flag, NightCanvas reads it, and the loop waking lands the car
+  on the picture as `night.woke` does). What it clones from the hero's
+  glTF cache (the car, the driver, his glasses, Telpark's car) is
+  `cloneOwned` (`cloneBare.ts`, tested): geometries over the same
+  attributes, materials (the hero's shader hooks and live uniforms kept)
+  and textures of its own, disposed with the night; a shared one kept the
+  dying renderer's dispose listener, and through it the whole WebGL
+  context, once per pass down into the city. `DisposeOnUnmount` (the
+  canvas's first child) releases the textures its programs bound that
+  outlive it (`releaseTextures.ts`: the window atlas, three's DFG lookup
+  table, the car's rim blur), which their next renderer uploads again.
+  `tools/capture/perf.mjs --only leak` holds it. Five sets (`sets/`),
   one per stop, all at the origin and only the active one visible; the
   street, sky, car, lights and post are shared and switch per stop (two
   point lights whose count never changes, so no recompile at a cut). Set
@@ -991,7 +1032,8 @@ also exists as real DOM for keyboard and screen-reader users.
   on every tier. Speed: the hero's dpr (`FULL_DPR`) and its one
   step down on a slow device (production, `PerformanceMonitor`); every
   stop's materials are compiled and its textures uploaded ahead of its
-  cut (`Warmup` in `NightScene.tsx`), the next stop first. Board art is painted once per stop into canvases in
+  cut (`Warmup` in `NightScene.tsx`), the next stop first, and it stops
+  looking once all five are warm and nothing loads. Board art is painted once per stop into canvases in
   the site's fonts (`sets/art/`). `palette.onAir` is the LIVE tally's red
   and nothing else's. Armed, Logixs' wall is hunted by a police
   helicopter's searchlight (`searchlight.ts`, pure and tested;
@@ -1745,10 +1787,30 @@ To add a track to a station:
 ## Conventions
 
 - CSS Modules + tokens. No Tailwind.
-- A section with a looping CSS animation (bulbs, STATS's ticking clock and its achievement tree's glow) carries
-  `data-loops`: `PauseOffscreen` (in `HomeMain.tsx`) pauses
-  every animation in it while it is off screen, so it costs no style pass a
-  frame during the hero.
+- A section with a looping CSS animation (the hero's blinking hint and
+  bobbing glyphs, the cinema's bulbs, STATS's ticking clock and its
+  achievement tree's glow) carries `data-loops`: `PauseOffscreen` (in
+  `HomeMain.tsx`) pauses every animation in it while it is off screen, so
+  it costs no style pass a frame elsewhere (the hero's cues restyled the
+  page every frame down to the credits). An endless loop whose restart
+  nobody can see goes further: the bulbs' chases are taken off
+  (`animation-name: none` under `[data-offscreen]`), since a paused
+  animation still kept a compositor layer per bulb. STATS keeps the pause
+  (its states must not restart).
+- Nothing draws or ticks for what nobody sees: the hero's canvas stops
+  behind the start menu 3 s after the scene is ready
+  (`scene/heroFrameloop.ts`, tested; its PerformanceMonitor only watches
+  once she has entered) and under its opaque night (`heroCover.ts`, the
+  fade at 0.999 or more); the loader's drawing loop writes only what
+  changed and stops once the load line is full, and its tip timer and
+  resize listener stop once she has entered; the hero's and the city's
+  frames return early more than a screen away from their stage with every
+  wall open and nothing in flight (`scroll/farRest.ts`, tested; a closed
+  wall always keeps the frame running); no ScrollTrigger; the radio's
+  equalizer scales its bars (transform, a drop-shadow on the row) and the
+  wheel's rim breathes only while the wheel is open; the title's letters
+  drop their reveal's `filter` once formed. Check with
+  `tools/capture/perf.mjs`.
 - Where the page starts once she is in is `PageEntry` (in `HomeMain.tsx`),
   once the loading screen has given `<main>` back: a deep link
   (`/en#contact`) lands on its target with the focus through
