@@ -2,7 +2,7 @@
 
 import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { Suspense, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "../SceneErrorBoundary";
 import { getSceneLoading, subscribeSceneLoading } from "../sceneLoading";
@@ -31,6 +31,7 @@ import { Waterfront } from "./Waterfront";
 import { SHOTS } from "./shots";
 import { CAR_POSITION } from "./drive";
 import { declineLevel, degradedSettings } from "./degrade";
+import { READY_GRACE_MS, heroFrameloop } from "./heroFrameloop";
 import { sunDirection } from "./skyUniforms";
 import { world } from "./world";
 
@@ -82,6 +83,25 @@ export function HeroScene({ tier, reducedMotion, active, billboards }: Props) {
     () => getSceneLoading().entered,
     () => false,
   );
+  const ready = useSyncExternalStore(
+    subscribeSceneLoading,
+    () => getSceneLoading().ready,
+    () => false,
+  );
+  // Behind the start menu the scene stops drawing a few seconds after it is ready (heroFrameloop).
+  const [graceOver, setGraceOver] = useState(false);
+  useEffect(() => {
+    if (!ready || graceOver) return;
+    const timer = setTimeout(() => setGraceOver(true), READY_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [ready, graceOver]);
+  const frameloop = heroFrameloop({
+    animate,
+    active,
+    ready,
+    entered,
+    sinceReadyMs: graceOver ? Number.POSITIVE_INFINITY : 0,
+  });
 
   return (
     <Canvas
@@ -91,7 +111,7 @@ export function HeroScene({ tier, reducedMotion, active, billboards }: Props) {
       // Measured on resize only: by default R3F re-measures its box on every scroll (a layout read) and,
       // as the box moves with the page, re-renders the whole scene tree about twenty times a second.
       resize={{ scroll: false }}
-      frameloop={animate && active ? "always" : "demand"}
+      frameloop={frameloop}
       gl={{ antialias: false, powerPreference: "high-performance", alpha: false, stencil: false }}
       camera={{
         fov: world.camera.fov,
@@ -115,7 +135,7 @@ export function HeroScene({ tier, reducedMotion, active, billboards }: Props) {
       <hemisphereLight args={[palette.pink, palette.ink, LIGHT.hemisphere]} />
       <directionalLight position={KEY_POSITION} intensity={LIGHT.key} color={palette.amber} />
 
-      {WATCH_FRAME_RATE && entered && animate && active ? (
+      {WATCH_FRAME_RATE && entered && frameloop === "always" ? (
         <PerformanceMonitor onDecline={() => setLevel((current) => declineLevel(tier, current))} />
       ) : null}
       <DevHandle />

@@ -142,6 +142,8 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
   const shownP = useRef(0);
   /** What the per-frame drawing needs from the latest render. */
   const frame = useRef({ target: 0, done: false, reduced: false, selected: 0, waiting: false, slabWidth: 0, wordWidth: 0 });
+  /** Starts the drawing loop again when it has come to rest (see the drawing loop). */
+  const wake = useRef<(() => void) | null>(null);
   /** The first value of --p, written once by React (the server's paint); every frame writes it after. */
   const [initialP] = useState(0);
 
@@ -163,7 +165,8 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
 
   const loaded = phase !== "loading";
   const slowNow = phase === "loading" && slow;
-  const rotating = order !== null && !slowNow && phase !== "leaving";
+  // Not once she has entered: a tip timer re-armed behind the hero for the rest of the visit.
+  const rotating = order !== null && !slowNow && phase !== "leaving" && phase !== "gone";
   const held = hovered || focused;
   const loading = { loaded, slow };
 
@@ -273,8 +276,11 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
     };
   }, [rotating, held, position, seconds]);
 
-  // The slab's length: each word as drawn, once the faces are in and whenever the screen changes.
+  // The slab's length: each word as drawn, once the faces are in and whenever the screen changes
+  // (while the menu is up: once she has entered nothing reads it).
+  const gone = phase === "gone";
   useLayoutEffect(() => {
+    if (gone) return;
     let cancelled = false;
     const measure = () => {
       if (cancelled) return;
@@ -289,7 +295,7 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
       cancelled = true;
       window.removeEventListener("resize", measure);
     };
-  }, [lang]);
+  }, [lang, gone]);
 
   const enter = useCallback((music: boolean, via: EnteredVia) => {
     const now = phaseRef.current;
@@ -380,31 +386,54 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
       slabWidth: widths ? wordWidth + SLAB_BEFORE + SLAB_AFTER : 0,
       wordWidth,
     };
+    // The drawing loop rests once the load as drawn has caught up; anything new wakes it.
+    wake.current?.();
   });
 
   // Draw the load every frame from the smoothed value: the progress line, the percentage, the
   // horizon (--p on the screen) and, while the selected item waits, the slab and its letters'
   // fill (--fill on the word). Writes only custom properties: no layout, no shift.
+  // Writes a value only when it changed, and stops once the load as drawn has reached its target
+  // (the menu ready, nothing left to ease): a loop writing the same values every frame kept the
+  // phone busy for as long as she read the tips. A render with new inputs wakes it.
   useEffect(() => {
     if (phase === "gone") return;
     let raf = 0;
     let last = performance.now();
+    let writtenP = "";
+    const writtenFill: string[] = [];
     const tick = (now: number) => {
+      raf = 0;
       const f = frame.current;
       const dt = (now - last) / 1000;
       last = now;
       shownP.current = smoothProgress(shownP.current, f.target, dt, { done: f.done, reduced: f.reduced });
       const shown = shownP.current;
-      root.current?.style.setProperty("--p", String(shown));
+      const p = String(shown);
+      if (p !== writtenP) {
+        writtenP = p;
+        root.current?.style.setProperty("--p", p);
+      }
       words.current.forEach((word, i) => {
         if (!word) return;
         const fill = i === f.selected && f.waiting ? Math.max(0, Math.min(f.wordWidth, shown * f.slabWidth - SLAB_BEFORE)) : 0;
-        word.style.setProperty("--fill", `${fill}px`);
+        const value = `${fill}px`;
+        if (writtenFill[i] === value) return;
+        writtenFill[i] = value;
+        word.style.setProperty("--fill", value);
       });
+      if (shown < Math.min(1, Math.max(0, f.target)) || phaseRef.current === "loading") raf = requestAnimationFrame(tick);
+    };
+    wake.current = () => {
+      if (raf) return;
+      last = performance.now();
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      wake.current = null;
+      cancelAnimationFrame(raf);
+    };
   }, [phase]);
 
   if (phase === "gone") return null;
