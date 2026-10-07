@@ -665,11 +665,15 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
         {live}
       </p>
 
+      {/* Lenis is stopped while the menu is up, and a stopped Lenis cancels every
+          wheel and touchmove it sees: `data-lenis-prevent` leaves the panel's own
+          scrolling to the browser (on a phone it runs well below the screen). */}
       <dialog
         ref={panel}
         className={styles.panel}
         aria-labelledby="start-settings-title"
         data-settings
+        data-lenis-prevent
         onClose={() => {
           setPanelOpen(false);
           setSelected(2);

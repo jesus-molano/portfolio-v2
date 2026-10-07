@@ -91,7 +91,15 @@ also exists as real DOM for keyboard and screen-reader users.
   words, slab and lines, Next inside the tip card, no box over another), the menu's keys (↓ S W, a way in chosen
   too soon, Esc back to SETTINGS), and frames of every state (loading,
   slow, ready, CONTINUE selected, SETTINGS open, leaving, reduced motion)
-  in `.captures/loader/`. Look at them before calling a change done.
+  in `.captures/loader/`, and SETTINGS scrolled (`--only scroll`: a
+  finger on phones, the wheel in a short window; Lenis is stopped under
+  the menu and cancels every wheel and touchmove it sees, so the dialog
+  carries `data-lenis-prevent`). Look at them before calling a change done.
+- `node tools/capture/settings-touch.mjs --url http://localhost:3000` —
+  STATS's SETTINGS tab under a finger on phones: swipes from the stations,
+  the volume and the subtitle sizes scroll the page and leave the volume
+  alone (`settings/rangeGuard.ts`), a tap on the track still sets it.
+  PASS or FAIL.
 - `node tools/capture/pause.mjs --url http://localhost:3000` (dev server
   running; `--lang`, `--device`, `--frames <dir>`) — STATS's pause in the
   browser: the world frozen and the menu settled as it crosses the middle

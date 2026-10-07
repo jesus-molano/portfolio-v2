@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type ReactNode, useEffect, useId, useSyncExternalStore } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { type Locale, localeNames, locales } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import {
@@ -26,6 +26,7 @@ import {
   subscribeSubtitleSize,
   type SubtitleSize,
 } from "@/lib/subtitleSize";
+import { createRangeGuard } from "./rangeGuard";
 import styles from "./Settings.module.css";
 
 type SettingsDict = Dictionary["stats"]["settings"];
@@ -132,6 +133,8 @@ function Audio({ dict, ids, cue }: { dict: SettingsDict["audio"]; ids: string; c
   const { on, selected, set } = useRadioChoice(cue);
   const settable = useSyncExternalStore(noSubscription, canSetVolume, () => true);
   const volume = Math.round(radio.volume * 100);
+  // A swipe that starts on the track scrolls the page and leaves the volume alone.
+  const [guard] = useState(createRangeGuard);
   const name = useId();
 
   return (
@@ -199,6 +202,14 @@ function Audio({ dict, ids, cue }: { dict: SettingsDict["audio"]; ids: string; c
             aria-describedby={settable ? undefined : `${ids}-volume-note`}
             style={{ "--level": `${volume}%` } as CSSProperties}
             onChange={(event) => setVolume(Number(event.currentTarget.value) / 100)}
+            onPointerDown={(event) => guard.down(event.pointerType, volume)}
+            onPointerUp={() => guard.up()}
+            onPointerCancel={(event) => {
+              const found = guard.cancel();
+              if (found === null) return;
+              event.currentTarget.value = String(found);
+              setVolume(found / 100);
+            }}
           />
           <output className={styles.value} htmlFor={`${ids}-volume`} aria-hidden="true">
             {volume}%

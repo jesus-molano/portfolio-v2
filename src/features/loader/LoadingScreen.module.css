@@ -1069,11 +1069,16 @@ a.lang:focus-visible {
   box-shadow: 0 0 8px var(--va-color-amber);
 }
 
-/* A touch screen has no Esc to press. */
+/* A touch screen has no Esc to press. Without its key cap Back is the word
+   alone, centred in its pill (the 0.22em is the tracking after its last letter). */
 @media (pointer: coarse) {
   .escKey,
   .escape {
     display: none;
+  }
+
+  .back {
+    padding: 0 16px 0 calc(16px + 0.22em);
   }
 
   .total::after {
@@ -1089,7 +1094,7 @@ a.lang:focus-visible {
     height: 64px;
     margin: 0 calc(-1 * var(--gutter));
     padding: 0 var(--gutter);
-    background: linear-gradient(color-mix(in srgb, var(--va-color-night) 96%, transparent) 70%, transparent);
+    background: linear-gradient(var(--va-color-night) 88%, transparent);
   }
 }
 

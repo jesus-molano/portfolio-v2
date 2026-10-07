@@ -3,10 +3,10 @@
  * Start menu (the loading screen) QA: layout shift, fit and frames.
  *
  *   node tools/loader/check.mjs [--url http://localhost:3000]
- *     [--only cls|fit|frames] [--out .captures/loader]
+ *     [--only cls|fit|frames|scroll] [--out .captures/loader]
  *
  * Needs the dev server running and Playwright's Chromium, like
- * tools/capture. Three passes, in both languages:
+ * tools/capture. Four passes, in both languages:
  *
  * - cls: a buffered `layout-shift` observer from the first paint to the
  *   click, at 1440 x 900 and on a 390 x 844 phone. One run loads normally
@@ -33,6 +33,13 @@
  *   back to SETTINGS. Look at the frames before calling a change done.
  *   Leaving and reduced motion run without WebGL, so their frames are
  *   drawn on time.
+ * - scroll: SETTINGS runs below the screen on a phone, and the screen
+ *   stops Lenis, which cancels every wheel and touchmove it sees. On
+ *   phones (390 x 844, 360 x 640, 844 x 390) it opens SETTINGS with a tap
+ *   and swipes the dialog with real touch events (CDP): one slow drag
+ *   must scroll it, flings must reach its bottom and come back to the
+ *   top, and the page behind must not move; in a short desktop window
+ *   (1280 x 600) the mouse wheel must do the same.
  *
  * Every screenshot lands in --out. Exits 1 if any check fails.
  */
@@ -92,7 +99,7 @@ const READY_TIMEOUT = 360_000;
 
 const { chromium } = await loadPlaywright();
 const langs = values.langs.split(",");
-const passes = values.only ? values.only.split(",") : ["cls", "fit", "frames"];
+const passes = values.only ? values.only.split(",") : ["cls", "fit", "frames", "scroll"];
 await mkdir(values.out, { recursive: true });
 // WebGL on SwiftShader when there is no GPU: slow, but the real scene loads behind the screen.
 const browser = await chromium.launch({
@@ -479,9 +486,118 @@ async function framesPass() {
   }
 }
 
+/** [width, height, touch] */
+const SCROLL = [
+  [390, 844, true],
+  [360, 640, true],
+  [844, 390, true],
+  [1280, 600, false],
+];
+
+async function scrollPass() {
+  console.log("Scroll");
+  for (const [width, height, touch] of SCROLL) {
+    for (const lang of langs) {
+      const label = `${width} x ${height} ${touch ? "touch" : "wheel"} ${lang}`;
+      const device = { viewport: { width, height }, deviceScaleFactor: 1, isMobile: touch, hasTouch: touch };
+      const { context, page } = await newPage(device, { on: flat });
+      await page.goto(`${values.url}/${lang}`, { waitUntil: "commit" });
+      await page.waitForSelector("[data-loader][data-measured] [data-tips] [data-on]", { timeout: 60_000 });
+      await page.waitForTimeout(400);
+      const cdp = await context.newCDPSession(page);
+      const touchAt = (type, x, y) =>
+        cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+      /** A finger from y0 moved by dy (up is positive) over ms. */
+      const swipe = async (y0, dy, ms) => {
+        const x = width / 2;
+        const steps = Math.max(2, Math.round(ms / 16));
+        await touchAt("touchStart", x, y0);
+        for (let i = 1; i <= steps; i++) {
+          await touchAt("touchMove", x, y0 - (dy * i) / steps);
+          await page.waitForTimeout(ms / steps);
+        }
+        await touchAt("touchEnd");
+      };
+      const read = () =>
+        page.evaluate(() => {
+          const dialog = document.querySelector("[data-loader] dialog[data-settings]");
+          return {
+            open: Boolean(dialog?.open),
+            top: Math.round(dialog?.scrollTop ?? 0),
+            max: dialog ? dialog.scrollHeight - dialog.clientHeight : 0,
+            page: Math.round(window.scrollY),
+          };
+        });
+      const item = page.locator('[data-loader] [data-item="settings"]');
+      if (touch) {
+        const box = await item.boundingBox();
+        await touchAt("touchStart", box.x + box.width / 2, box.y + box.height / 2);
+        await page.waitForTimeout(40);
+        await touchAt("touchEnd");
+      } else {
+        await item.focus();
+        await page.keyboard.press("Enter");
+      }
+      await page.waitForTimeout(600);
+      const opened = await read();
+      if (!opened.open) {
+        fail(`${label}: SETTINGS did not open`);
+        await context.close();
+        continue;
+      }
+      if (opened.max < 40) {
+        console.log(`  ${label}: the settings fit the screen (${opened.max} px below it)`);
+        await context.close();
+        continue;
+      }
+      let moved;
+      if (touch) {
+        await swipe(height * 0.75, height * 0.3, 400);
+        await page.waitForTimeout(600);
+        moved = await read();
+        for (let i = 0; i < 10 && (await read()).top < opened.max - 1; i++) {
+          await swipe(height * 0.8, height * 0.5, 90);
+          await page.waitForTimeout(400);
+        }
+      } else {
+        await page.mouse.move(width / 2, height / 2);
+        await page.mouse.wheel(0, 100);
+        await page.waitForTimeout(400);
+        moved = await read();
+        for (let i = 0; i < 20 && (await read()).top < opened.max - 1; i++) {
+          await page.mouse.wheel(0, 400);
+          await page.waitForTimeout(150);
+        }
+      }
+      await page.waitForTimeout(800);
+      const bottom = await read();
+      if (touch) {
+        for (let i = 0; i < 10 && (await read()).top > 0; i++) {
+          await swipe(height * 0.2, -height * 0.5, 90);
+          await page.waitForTimeout(400);
+        }
+      } else {
+        for (let i = 0; i < 20 && (await read()).top > 0; i++) {
+          await page.mouse.wheel(0, -400);
+          await page.waitForTimeout(150);
+        }
+      }
+      await page.waitForTimeout(800);
+      const top = await read();
+      console.log(`  ${label}: ${opened.max} px below; first ${touch ? "drag" : "notch"} ${moved.top}, bottom ${bottom.top}, back ${top.top}, page ${top.page}`);
+      if (moved.top < 20) fail(`${label}: the first ${touch ? "drag" : "notch"} scrolled the settings ${moved.top} px`);
+      if (bottom.top < opened.max - 1) fail(`${label}: the settings stopped ${opened.max - bottom.top} px short of their bottom`);
+      if (top.top > 0) fail(`${label}: the settings did not come back to their top (${top.top} px)`);
+      if (bottom.page || top.page) fail(`${label}: the page behind the settings moved to ${bottom.page || top.page} px`);
+      await context.close();
+    }
+  }
+}
+
 if (passes.includes("cls")) await clsPass();
 if (passes.includes("fit")) await fitPass();
 if (passes.includes("frames")) await framesPass();
+if (passes.includes("scroll")) await scrollPass();
 await browser.close();
 await flat.close();
 
