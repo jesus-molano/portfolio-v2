@@ -1115,6 +1115,8 @@ a.missionRow:focus-visible {
 .portraitBox {
   position: relative;
   aspect-ratio: 330 / 400;
+  /* The PLAYER 2 tag is placed in the render's own units (cqw). */
+  container-type: inline-size;
 }
 
 .portrait {
@@ -1126,9 +1128,17 @@ a.missionRow:focus-visible {
   object-position: 50% 100%;
 }
 
+/*
+ * PLAYER 2 hangs just over Dante's ears, wherever the box crops the render.
+ * The box is never narrower than the render (660 x 825; 330 / 400 or
+ * square), so the render fills its width and sits on its bottom edge: a
+ * row y of the render stands (825 - y) / 660 of the box's width above the
+ * box's foot. His ear tips reach row 455; at 50% of the box's height the tag
+ * sat on them (and on his face in the square crops).
+ */
 .player2 {
   position: absolute;
-  top: 50%;
+  bottom: calc((825 - 455) / 660 * 100cqw + 6px);
   left: 12px;
   padding: 5px 8px;
   border: 1px solid color-mix(in srgb, var(--va-color-cyan) 55%, transparent);
