@@ -545,7 +545,7 @@ describe("acceptance: the page never traps her", () => {
             }
           }
         }
-      });
+      }, 30_000); // Two 40 s simulations: over 5 s on a loaded machine, a timeout, not a failure.
     }
 
     it(`${locale}: a 40-notch burst inside one long frame never pushes the page past the wall`, () => {
