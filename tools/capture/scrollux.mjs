@@ -82,7 +82,11 @@
  * swipes on a phone whose bars hide going down and come back going up,
  * the viewport and every viewport unit with them, under both motion modes:
  * no section moves in the page, no frame against her input or over a
- * screen, no scroll by script, no layout shift), select (THE USUAL
+ * screen, no scroll by script, no layout shift), shiftless (the hero's
+ * boxes whose words change keep one box: the title hint in every state, the
+ * dash's unit whatever its status says, the camera readout at every shot;
+ * and her first input while the name forms, its answer and the way on log
+ * no layout shift at all), select (THE USUAL
  * SUSPECTS' character select, unchosen: Skip lands on it; the wheel, the
  * keys, the scrollbar dragged and its track clicked on a desktop, swipes
  * and a fling on a phone (and under reduced motion, the browser's own
@@ -110,6 +114,8 @@ const { values } = parseArgs({
     webgl: { type: "boolean", default: false },
     out: { type: "string", default: ".captures/cityloop" },
     replay: { type: "string", default: "" },
+    // CDP CPU throttling for cityloop (4 or 6: a loaded phone), set once the visitor is in.
+    cpu: { type: "string", default: "1" },
   },
 });
 
@@ -468,6 +474,7 @@ async function cityModel(lang) {
       ...(await load("src/features/work/workStory.ts")),
       ...(await load("src/features/work/dip.ts")),
       ...(await load("src/features/night/carPath.ts")),
+      ...(await load("src/features/night/carMotion.ts")),
       STORY: (await load("src/features/hero/scroll/story.ts")).STORY,
       dict: (l) => JSON.parse(fs.readFileSync(path.join(root, `src/i18n/dictionaries/${l}.json`), "utf8")),
     };
@@ -548,10 +555,10 @@ function recordCity() {
   }, { capture: true, passive: true });
   addEventListener("touchmove", (e) => {
     const now = e.touches[0]?.clientY;
-    if (rec.on && !onPedal(e) && fingerY !== null && now !== undefined && now !== fingerY) rec.inputs.push({ t: performance.now(), dir: now < fingerY ? 1 : -1, d: fingerY - now, kind: "touch" });
+    if (rec.on && !onPedal(e) && fingerY !== null && now !== undefined && now !== fingerY) rec.inputs.push({ t: performance.now(), ts: e.timeStamp, dir: now < fingerY ? 1 : -1, d: fingerY - now, kind: "touch" });
     fingerY = now ?? fingerY;
   }, { capture: true, passive: true });
-  addEventListener("touchend", () => rec.on && rec.inputs.push({ t: performance.now(), dir: 0, kind: "touchend" }), { capture: true, passive: true });
+  addEventListener("touchend", (e) => rec.on && rec.inputs.push({ t: performance.now(), ts: e.timeStamp, dir: 0, kind: "touchend" }), { capture: true, passive: true });
   addEventListener("pointerdown", (e) => rec.on && onPedal(e) && e.pointerType === "mouse" && rec.inputs.push({ t: performance.now(), dir: 0, kind: "pedal" }), { capture: true });
   let lvh = 0;
   const readLvh = () => {
@@ -639,6 +646,8 @@ function recordCity() {
           hmax: probe ? probe.maxScroll : null,
           hfr: probe ? probe.frontier : null,
           hop: probe ? probe.opacity : null,
+          lt: probe ? probe.lenisTarget : null,
+          ls: probe ? probe.lenisState : null,
         });
       }
       scrolls = 0;
@@ -744,7 +753,13 @@ function motionVerdict(phase, inputsAll, heroToo = false) {
     if (Math.abs(dy) > 0.6 * b.ih && Math.abs(dy) > travel + 0.25 * b.ih) leaps.push({ t: Math.round(b.t), dy: Math.round(dy), travel: Math.round(travel), y: Math.round(b.y) });
     const prev = i >= 2 ? Math.abs(a.y - frames[i - 2].y) : 0;
     const next = i + 1 < frames.length ? Math.abs(frames[i + 1].y - b.y) : 0;
-    if (Math.abs(dy) > 0.25 * b.ih && Math.abs(dy) > 3 * Math.max(prev, next, 8) && Math.abs(dy) > travel + 0.1 * b.ih) {
+    // On the frames' own clock (px/ms): this frame with the one before it (a frame after a stalled one shows
+    // the glide over both, the compositor's or Lenis' timed one), against the frames just outside. A loaded
+    // machine's rAF comes 40 ms late, then 9 ms after: in px that read as a jump out of the glide.
+    const speed = (j0, j1) => (j0 >= 0 && j1 < frames.length ? Math.abs(frames[j1].y - frames[j0].y) / Math.max(1, frames[j1].t - frames[j0].t) : 0);
+    const here = speed(Math.max(0, i - 2), i);
+    const around = Math.max(speed(i - 3, i - 2), speed(i, i + 1));
+    if (Math.abs(dy) > 0.25 * b.ih && Math.abs(dy) > 3 * Math.max(prev, next, 8) && here > 3 * Math.max(around, 0.5) && Math.abs(dy) > travel + 0.1 * b.ih) {
       // After a stalled frame the page catches up with a glide (Lenis' is timed) or the compositor's own
       // scroll: a jump the stall made, not the scroll (reported as a catch-up, with the stall).
       const stall = Math.max(b.t - a.t, i >= 2 ? a.t - frames[i - 2].t : 0, i >= 3 ? frames[i - 2].t - frames[i - 3].t : 0);
@@ -831,8 +846,8 @@ function cityVerdict(phases, inputsAll, model) {
     return target > -0.02 && target < 1.02;
   };
   const inputAt = (t, window = 150) => inputsAll.some((e) => e.t <= t && e.t > t - window && (e.dir !== 0 || e.kind === "pedal"));
-  /** The car as the scene draws it: on the stop the super shows (the old one until the dip is at night). */
-  const car = (f) => {
+  /** The picture the scene draws: on the stop the super shows (the old one until the dip is at night). */
+  const view = (f) => {
     const p = pic(f);
     const sup = f.sup >= 0 ? f.sup : stopOfBeat(p);
     let viewP = p;
@@ -840,8 +855,30 @@ function cityVerdict(phases, inputsAll, model) {
       const range = stops[sup];
       viewP = Math.min(range.to - 1e-6, Math.max(sup === 0 ? 0 : range.from, p));
     }
-    return { x: m.carAt(timeline, viewP).x, sup };
+    return { p: viewP, sup };
   };
+  /**
+   * The car as the scene draws it: CarDrive steps carMotion.ts toward that picture once a frame, landing
+   * on it only as the frame loop wakes (the stage back on screen; here, the first frame back in the
+   * film). Read at the picture (carAt), a fling's or a held beat's designed step was scored as the car's.
+   * A dev run with WebGL logs the drawn car itself (__vaCarProbe): the replay matches it to a millimetre.
+   */
+  const drawn = new Map();
+  {
+    const motion = m.newCarMotion();
+    let last = null;
+    for (const f of frames) {
+      if (!inCity(f)) {
+        last = null;
+        continue;
+      }
+      const v = view(f);
+      m.stepCarMotion(motion, timeline, v.p, last ? (f.t - last.t) / 1000 : 0, { snap: last === null });
+      drawn.set(f.t, { x: motion.car.x, sup: v.sup, stop: motion.car.stop });
+      last = f;
+    }
+  }
+  const car = (f) => drawn.get(f.t) ?? { x: m.carAt(timeline, view(f).p).x, sup: view(f).sup, stop: -1 };
   const out = {};
   for (const phase of phases) {
     const fs = phase.frames.filter(inCity);
@@ -871,7 +908,7 @@ function cityVerdict(phases, inputsAll, model) {
       const a = fs[i - 1];
       const b = fs[i];
       if (a.sup >= 0 && b.sup >= 0 && a.sup !== b.sup && Math.max(a.dip, b.dip) < 0.98 && Math.max(a.fade, b.fade) < 0.98) visibleCuts.push({ t: Math.round(b.t), from: a.sup, to: b.sup, dip: r3(Math.max(a.dip, b.dip)) });
-      if (cars[i].sup !== cars[i - 1].sup) continue;
+      if (cars[i].sup !== cars[i - 1].sup || cars[i].stop !== cars[i - 1].stop) continue;
       const shown = Math.max(a.dip, b.dip) < 0.5 && Math.max(a.fade, b.fade) < 0.5;
       const dx = Math.abs(cars[i].x - cars[i - 1].x);
       const dt = Math.max(1 / 120, (b.t - a.t) / 1000);
@@ -2760,6 +2797,61 @@ const CHECKS = {
     }
   },
 
+  async shiftless(device, lang) {
+    // The hero's boxes whose words change keep their geometry, read from the DOM in every state (no
+    // timing): the title hint, the dash's unit, the camera readout. Then one live first input while the
+    // name forms, through the answer, the name's end and the way on, logs no layout shift at all (wheel
+    // and touch scrolling are no recent input to the metric: a shift there counts).
+    const s = await session(device, lang, { enter: true });
+    await sleep(600);
+    const geometry = await s.page.evaluate(() => {
+      const rect = (el) => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 100) / 100).join(","); };
+      const out = { hint: new Set(), unit: new Set(), readout: new Set() };
+      const hint = document.querySelector("[data-hint]");
+      const keep = [hint.getAttribute("data-prompt"), hint.hasAttribute("data-naming")];
+      for (const prompt of ["hint", "ack", "onward"]) for (const naming of [false, true]) {
+        hint.setAttribute("data-prompt", prompt);
+        hint.toggleAttribute("data-naming", naming);
+        out.hint.add(rect(hint.firstElementChild));
+      }
+      if (keep[0] === null) hint.removeAttribute("data-prompt");
+      else hint.setAttribute("data-prompt", keep[0]);
+      hint.toggleAttribute("data-naming", keep[1]);
+      for (const dash of document.querySelectorAll("[data-osd]")) {
+        const show = dash.getAttribute("data-show");
+        const unit = dash.querySelector("[data-speed] + span > span");
+        const seen = new Set();
+        for (const s of ["hidden", "drive", "floored", "reverse", "limiter", "clear", "prompt"]) {
+          dash.setAttribute("data-show", s);
+          seen.add(getComputedStyle(dash).display === "none" ? "none" : rect(unit));
+        }
+        dash.setAttribute("data-show", show);
+        out.unit.add(seen.size);
+      }
+      return { hint: [...out.hint], unit: [...out.unit] };
+    });
+    report(`${device} ${lang} shiftless: the title hint's box is the same in every state`, geometry.hint.length === 1, geometry.hint);
+    report(`${device} ${lang} shiftless: the dash's unit stands still whatever the status says`, geometry.unit.every((n) => n === 1), geometry.unit);
+    // The camera readout at every shot (dev jump through the five).
+    const readout = new Set();
+    for (const p of [0.05, 0.25, 0.45, 0.65, 0.85, 0.99]) {
+      readout.add(await s.page.evaluate((p) => { window.__vaJump(p); const r = document.querySelector("[data-hud]").getBoundingClientRect(); return `${r.x},${r.width}`; }, p));
+      await sleep(250);
+    }
+    report(`${device} ${lang} shiftless: the camera readout keeps one box at every shot`, readout.size === 1, [...readout]);
+    await s.close();
+    // Live: her first input while the name still forms, then the answer, the reason, its end and the way on.
+    const t = await session(device, lang, { enter: true });
+    await t.page.evaluate(() => { window.__ls = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__ls += e.value; }).observe({ type: "layout-shift" }); });
+    await sleep(500);
+    if (device === "desktop") await t.page.mouse.wheel(0, 100);
+    else await stroke(t.cdp, { dy: 120, ms: 160, y0: 500 });
+    await sleep(9000);
+    const shift = await t.page.evaluate(() => window.__ls);
+    report(`${device} ${lang} shiftless: her first input, the answer and the way on shift nothing`, shift === 0, { shift });
+    await t.close();
+  },
+
   async citybars(device, lang) {
     // The career city at each of its stops, its walls closed ahead (a deep link opens them up to the
     // stop), while a phone's bars come and go with no input: the page, the city and every section
@@ -2872,6 +2964,7 @@ const CHECKS = {
       await sleep(1200);
       if (!mobile) await s.page.mouse.move(W / 2, H / 2);
       await s.page.evaluate(() => window.__city.start());
+      if (Number(values.cpu) > 1) await s.cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(values.cpu) });
       return s;
     };
     const tools = (s) => {
@@ -3149,6 +3242,33 @@ const CHECKS = {
       const v = motion[phase.name];
       return { against: v.againstCount, firstAgainst: v.against[0], leaps: v.leaps, spikes: v.spikes, moved: v.moved[0], unasked: v.unasked[0], writes: v.writes[0], shift: v.shift, firstShift: v.shifts[0] };
     }));
+    // A flick flings as far on a loaded phone as at 60 fps: Lenis' touch inertia is |px per frame|^1.7, so
+    // long frames (coalesced moves) flung three to six times as far, from the city to the top of the hero
+    // (gate.ts steadyFling). Every lift Lenis flings, its target's jump against the fling that finger's own
+    // speed (its last 120 ms of moves) gives at a 60 fps frame.
+    const flingsOf = (r) => {
+      const rows = [];
+      for (const lift of r.inputs.filter((e) => e.kind === "touchend")) {
+        const i = r.frames.findIndex((f) => f.t > lift.t);
+        if (i < 1) continue;
+        const before = r.frames[i - 1];
+        // The hero's probe is a frame behind the recorder: the fling shows within the next few frames.
+        const after = r.frames.slice(i, i + 4).filter((f) => f.ls === "smooth" && f.lt !== null);
+        if (after.length === 0 || before.lt === null) continue;
+        const moves = r.inputs.filter((e) => e.kind === "touch" && e.t <= lift.t && e.t > lift.t - 120);
+        if (moves.length < 2) continue;
+        // On the events' own clock (a busy page handles a flick's moves late, and all at once).
+        const at = (e) => e.ts ?? e.t;
+        const speed = moves.reduce((sum, e) => sum + e.d, 0) / Math.max(16, at(lift) - at(moves[0]));
+        if (Math.abs(speed) < 2) continue;
+        const fling = Math.max(...after.map((f) => Math.sign(speed) * (f.lt - before.lt)));
+        const at60 = (Math.abs(speed) * (1000 / 60)) ** 1.7;
+        rows.push({ t: Math.round(lift.t), speed: r1(speed), fling: Math.round(fling), at60: Math.round(at60), ih: after[0].ih });
+      }
+      return rows;
+    };
+    const overflung = [...flingsOf(rec), ...flingsOf(hrec)].filter((e) => e.fling > 2 * e.at60 + 0.5 * e.ih);
+    if (mobile) report(`${tag} 2 a flick flings as far whatever the frame rate (Lenis' fling at most twice its 60 fps fling, and half a screen)`, overflung.length === 0, overflung.slice(0, 4));
     // With the walls open the car is wherever the film is: a fling drives it as fast as the page goes (reported).
     report(`${tag} 2 the cuts in reverse and on a second pass: the set changes only under night, the dip settles on the film's`, p2.every((phase) => !cityOf(phase) || (cityOf(phase).visibleCutCount === 0 && cityOf(phase).settledDipOffCount === 0)), pick(p2, (phase) => cityOf(phase) && { cuts: cityOf(phase).visibleCuts, dip: cityOf(phase).settledDipOff }));
     console.log(`INFO ${tag} 2 car, fastest page frame (px), leaps over 0.6 screen beyond her travel, shift from the bars:`, JSON.stringify(pick(p2, (phase) => ({ carMaxStepM: cityOf(phase)?.car.maxStepM, carMaxSpeedMs: cityOf(phase)?.car.maxSpeedMs, fastestPx: motion[phase.name].fastestPx, leaps: motion[phase.name].leaps.length, barShift: motion[phase.name].barShift }))));

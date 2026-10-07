@@ -173,6 +173,10 @@ export function NightScene({ tier, active, timeline, work, locale }: Props) {
   const groups = useRef<(Group | null)[]>([]);
   // The hero's pixels (degrade.ts), and its one step down on a slow device: dpr 1, never back up.
   const [slow, setSlow] = useState(false);
+  // The frame loop wakes as the stage comes back on screen: the car lands on the picture (CarDrive).
+  useEffect(() => {
+    if (active) night.woke = true;
+  }, [active]);
 
   return (
     <Canvas

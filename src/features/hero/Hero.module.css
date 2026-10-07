@@ -569,11 +569,20 @@
   transform: translateY(calc(var(--bars, 0) * 4.5vh));
 }
 
+/*
+ * Every message the hint can say sits in one fixed cell of a two-row grid
+ * (the ask, the answer and the way on in the first row, the model line and
+ * why the road waits in the second), and a swap only flips visibility: the
+ * box keeps the size of its largest message, so a message going or coming
+ * never re-centres the one that stays (a layout shift as the name finished
+ * forming, 0.003 on a phone, where the chip is anchored by its foot).
+ */
 .hintBox {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  justify-items: center;
   align-items: center;
-  gap: 0.35rem;
+  row-gap: 0.35rem;
+  --hint-row2: calc(0.8rem * 1.5);
   padding: 0 1rem;
   text-align: center;
   opacity: 0;
@@ -591,6 +600,30 @@
 
 .hint[data-pop="2"] .hintBox {
   animation: vcr-pop-b 160ms steps(1, end) 1;
+}
+
+.hintLine1,
+.hintAck,
+.hintOnward {
+  grid-area: 1 / 1;
+}
+
+.hintLine2,
+.hintArriving {
+  grid-area: 2 / 1;
+}
+
+/*
+ * The answer alone (the name has formed: no "why the road waits" under it)
+ * stands in the middle of the box, moved there by a translate, which is no
+ * layout shift: half the second row (one line of it, --hint-row2) and the gap.
+ */
+.hintAck {
+  transition: translate 250ms ease;
+}
+
+.hint[data-prompt="ack"]:not([data-naming]) .hintAck {
+  translate: 0 calc((var(--hint-row2) + 0.35rem) / 2);
 }
 
 .hintLine1,
@@ -635,7 +668,7 @@
 
 /* Her first input answered in place of the ask: the drive is hers. */
 .hintAck {
-  display: none;
+  visibility: hidden;
   font-family: var(--va-font-mono);
   font-size: clamp(0.72rem, 0.9vw, 0.86rem);
   font-weight: 600;
@@ -646,39 +679,40 @@
 
 .hint[data-prompt="ack"] .hintLine1,
 .hint[data-prompt="onward"] .hintLine1 {
-  display: none;
+  visibility: hidden;
 }
 
 .hint[data-prompt="ack"] .hintAck {
-  display: block;
+  visibility: visible;
 }
 
 .hintOnward {
-  display: none;
+  visibility: hidden;
 }
 
 .hint[data-prompt="onward"] .hintOnward {
-  display: inline-flex;
+  visibility: visible;
 }
 
 .hintLine2,
 .hintArriving {
   font-family: var(--va-font-body);
   font-size: 0.8rem;
+  line-height: 1.5;
   color: color-mix(in srgb, var(--va-color-cream) 85%, transparent);
 }
 
 .hintArriving {
-  display: none;
+  visibility: hidden;
 }
 
 /* Her first input answered: "you have the wheel" says it, the model line would say it twice. */
 .hint[data-prompt="ack"] .hintLine2 {
-  display: none;
+  visibility: hidden;
 }
 
 .hint[data-prompt="ack"][data-naming] .hintArriving {
-  display: block;
+  visibility: visible;
 }
 
 /* The screen-reader help for the still hero (reduced motion) is the other half of #hero-help. */
@@ -970,9 +1004,16 @@
   color: color-mix(in srgb, var(--va-color-cream) 62%, transparent);
 }
 
+/*
+ * One line tall whatever it says, or nothing: the unit above it is centred
+ * with it in .side, and an empty status (data-show="hidden", the frame the
+ * dash starts fading out at the end of a film) dropped the unit 9 px while
+ * it was still on screen, a layout shift (scrollux statics, the city's end).
+ */
 .status {
   display: flex;
   align-items: center;
+  height: 1lh;
   font-family: var(--va-font-mono);
   font-size: 0.8125em;
   font-weight: 700;

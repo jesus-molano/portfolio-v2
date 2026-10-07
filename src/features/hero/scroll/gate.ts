@@ -62,6 +62,10 @@ export const GATE = {
   restPx: 3,
   /** From rest, a finger moves the page again once it has moved this far (px): past a tremble and a roll. */
   restSlop: 12,
+  /** The frame Lenis' touch inertia is read at (ms): |px per frame|^1.7, a 60 fps frame whatever the device's. */
+  flingFrameMs: 1000 / 60,
+  /** The finger's speed is smoothed over this long (ms, the moves' own clock): about the frame Lenis' velocity reads. */
+  flingTau: 16,
 } as const;
 
 /**
@@ -89,19 +93,24 @@ export type Stroke = {
   paceAt: number;
   /** It came to rest: it goes on only past `restSlop`. */
   rested: boolean;
+  /** The finger's speed (px/ms, positive forward) on its moves' own clock, and the time (ms) of its last move or landing. */
+  speed: number;
+  speedAt: number;
 };
 
 export function newStroke(): Stroke {
-  return { dir: 0, slack: 0, pace: 0, paceAt: 0, rested: false };
+  return { dir: 0, slack: 0, pace: 0, paceAt: 0, rested: false, speed: 0, speedAt: Number.NaN };
 }
 
-/** A new finger on the glass: its stroke starts still. */
-export function resetStroke(stroke: Stroke): void {
+/** A new finger on the glass at `at` ms (the touchstart's own time): its stroke starts still. */
+export function resetStroke(stroke: Stroke, at = Number.NaN): void {
   stroke.dir = 0;
   stroke.slack = 0;
   stroke.pace = 0;
   stroke.paceAt = 0;
   stroke.rested = false;
+  stroke.speed = 0;
+  stroke.speedAt = at;
 }
 
 /**
@@ -112,6 +121,12 @@ export function resetStroke(stroke: Stroke): void {
  */
 export function strokeMove(stroke: Stroke, delta: number, at: number): number {
   if (!Number.isFinite(delta)) return 0;
+  // The finger's own speed, on its moves' clock: a frame's coalesced moves count over the time they took.
+  if (Number.isFinite(stroke.speedAt) && at > stroke.speedAt) {
+    const dt = at - stroke.speedAt;
+    stroke.speed += (delta / dt - stroke.speed) * (1 - Math.exp(-dt / GATE.flingTau));
+  }
+  if (!(at <= stroke.speedAt)) stroke.speedAt = at;
   // Gone less than restPx its way for restMs: it has come to rest, and lands still where it is.
   if (stroke.dir !== 0 && at - stroke.paceAt >= GATE.restMs) {
     stroke.dir = 0;
@@ -151,6 +166,18 @@ export function strokeMove(stroke: Stroke, delta: number, at: number): number {
  */
 export function strokeLift(stroke: Stroke, at: number): -1 | 0 | 1 {
   return stroke.dir !== 0 && at - stroke.paceAt >= GATE.restMs ? 0 : stroke.dir;
+}
+
+/**
+ * How far a lift's fling flies (px): Lenis' touch inertia, |velocity|^exponent with its velocity in px
+ * per frame, read at a 60 fps frame from the finger's own speed, and never further than Lenis' own. On
+ * a loaded device the frames are long and a frame's moves coalesce, so the last frame's delta, and with
+ * it the fling, grew with the frame: the same 420 px flick sent the page 1,500 px at 60 fps and
+ * 7,800 px at 25, from the career city to the top of the hero in leaps of 1,300 px a frame.
+ */
+export function steadyFling(lenisVelocity: number, stroke: Stroke, exponent: number): number {
+  const perFrame = Math.min(Math.abs(lenisVelocity), Math.abs(stroke.speed) * GATE.flingFrameMs);
+  return perFrame > 0 ? perFrame ** exponent : 0;
 }
 
 /** One frame's reading of where the page is. */

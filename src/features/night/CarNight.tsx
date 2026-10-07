@@ -39,9 +39,6 @@ const TAILS = [2, 3];
 /** The headlights' beams in the night haze: a cone from each lamp, ahead and a little down. */
 const BEAM = { length: 11, radius: 1.5, dip: 0.07, level: 0.32 } as const;
 
-/** A frame this long (s) is the loop resuming, not a frame of the drive. */
-const RESUMED = 0.5;
-
 /**
  * Steps the car toward the picture once a frame (carMotion.ts), before the
  * camera (NightRig, priority -1), which pans with it, and before the street
@@ -51,8 +48,12 @@ const RESUMED = 0.5;
 export function CarDrive({ timeline }: { timeline: StageTimeline }) {
   const still = usePrefersReducedMotion();
   useFrame((_, delta) => {
-    // A dev jump, or the loop waking (the stage back on screen): the car lands on the picture.
-    stepCarMotion(night.car, timeline, night.p, delta, { snap: night.snap || delta > RESUMED, still });
+    // A dev jump, or the loop waking (the stage back on screen): the car lands on the picture. A long
+    // frame mid-drive is no waking: carMotion integrates it (a frame over 0.5 s on a loaded phone snapped
+    // the car up to its whole chase lag in one frame, metres).
+    const woke = night.woke;
+    night.woke = false;
+    stepCarMotion(night.car, timeline, night.p, delta, { snap: night.snap || woke, still });
     if (process.env.NODE_ENV !== "production") {
       const probe = (window as ProbeWindow).__vaCarProbe;
       const m = night.car;

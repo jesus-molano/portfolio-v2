@@ -21,6 +21,7 @@ import {
   newStroke,
   type PageReading,
   resetStroke,
+  steadyFling,
   strokeLift,
   strokeMove,
 } from "./gate";
@@ -145,7 +146,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       if (reducedMotion || event.ctrlKey || !getSceneLoading().entered) return true;
       const lenis = lenisRef.current?.lenis;
       // Every finger lands still.
-      if (event.type === "touchstart") resetStroke(stroke.current);
+      if (event.type === "touchstart") resetStroke(stroke.current, event.timeStamp);
       // Scroll held (the radio wheel is open): nothing reaches the hero, not
       // even as feedback; Lenis drops the event itself after this callback.
       if (lenis?.isStopped) {
@@ -234,22 +235,28 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         const lift = strokeLift(stroke.current, event.timeStamp);
         if (lift === 0) data.deltaX = 0;
         data.deltaY = lift;
-        // A forward fling flies up to the wall and no further (gate.ts
-        // liftFling); near the wall it does not fly at all. A flick back
-        // keeps its inertia.
-        if (lenis && data.deltaY > 0 && Number.isFinite(room)) {
+        // The fling is read at a 60 fps frame (gate.ts steadyFling): Lenis'
+        // own grows with the frame, and a loaded phone's flick flew from the
+        // career city to the top of the hero. A forward fling flies up to the
+        // wall and no further (gate.ts liftFling); near the wall it does not
+        // fly at all. A flick back keeps its inertia.
+        if (lenis && lift !== 0) {
           // Internal 3: the fling Lenis would add after this callback.
-          const fling = Math.abs(lenis.velocity) ** lenis.options.touchInertiaExponent;
-          const fly = liftFling(fling, room, window.innerHeight);
+          const exponent = lenis.options.touchInertiaExponent;
+          const fling = Math.abs(lenis.velocity) ** exponent;
+          const steady = steadyFling(lenis.velocity, stroke.current, exponent);
+          const fly = lift > 0 && Number.isFinite(room) ? liftFling(steady, room, window.innerHeight) : steady;
           if (fly < fling) {
             // Internal 2: zero deltas return as a tap, so Lenis flings nothing...
             data.deltaX = 0;
             data.deltaY = 0;
             if (fly > 0) {
-              // ...and what fits glides into the wall the way Lenis' own fling would.
-              lenis.scrollTo(lenis.targetScroll + fly, { programmatic: false, lerp: motion.touchLerp });
-              scrollGate.pressure += Math.min(fling - fly, GATE.overshootCap);
-              scrollGate.pushedAt = now;
+              // ...and what fits glides the way Lenis' own fling would, into the wall at most.
+              lenis.scrollTo(lenis.targetScroll + lift * fly, { programmatic: false, lerp: motion.touchLerp });
+              if (steady > fly) {
+                scrollGate.pressure += Math.min(steady - fly, GATE.overshootCap);
+                scrollGate.pushedAt = now;
+              }
             }
           }
         }

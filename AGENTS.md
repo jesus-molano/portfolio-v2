@@ -71,8 +71,15 @@ also exists as real DOM for keyboard and screen-reader users.
   for its reading time, every held beat at no less than half its pace,
   the car never jumping in sight, the set changing only under night, the
   walls staying open and the picture the scroll once complete; it also
-  reports frame timing, long tasks and stalls, city against hero;
-  `--out` keeps the traces, `--replay <dir>` re-scores them), and the
+  reports frame timing, long tasks and stalls, city against hero; the
+  car is scored as the scene draws it, `carMotion.ts` replayed over the
+  recorded picture; on a phone every flick's fling is held to twice what
+  her finger's speed flings at 60 fps, and half a screen; `--cpu 4|6`
+  throttles the CPU once she is in, a loaded phone;
+  `--out` keeps the traces, `--replay <dir>` re-scores them), `shiftless`
+  (the title hint, the dash's unit and the camera readout keep one box in
+  every state, and her first input while the name forms, its answer and
+  the way on log no layout shift at all), and the
   static page after
   Skip (wheel, trackpad and keys; swipes while a phone's bars come and
   go, in both motion modes: no section moves, nothing against her input,
@@ -178,7 +185,11 @@ also exists as real DOM for keyboard and screen-reader users.
     be passed before it has been on screen for its reading time. The page
     is never left past the frontier (`scroll/gate.ts`): the input the gate
     passes never goes past it (a finger's fling flies up to the wall and
-    no further, and every move of a stroke is cancelled, by Lenis or by
+    no further, and it is read at a 60 fps frame from the finger's own
+    speed on the events' clock, `gate.ts` steadyFling, never further than
+    Lenis' own: Lenis flings |its last frame's move|^1.7, and on a loaded
+    phone a frame's coalesced moves made the same flick fly four to seven
+    times as far, from the career city to the top of the hero; and every move of a stroke is cancelled, by Lenis or by
     the gate: Lenis drops a move with nothing vertical in it, a still
     finger's coalesced move or a pressure change, before it cancels it,
     and a move nobody cancels hands the rest of the stroke to the
@@ -261,7 +272,9 @@ also exists as real DOM for keyboard and screen-reader users.
     motion and forced colours it is not shown (its meaning is in text),
     and the camera readout is `aria-hidden` decoration like it (it
     keeps its widest shot label's width, every label in one cell, so
-    anchored right it never shifts at a cut).
+    anchored right it never shifts at a cut; its status line is one line
+    tall, said or not, so the unit centred beside it never drops as the
+    dash goes; `layoutShift.test.ts`).
     The tick only writes attributes and custom properties, and only what
     changed; Skip's patience reads her demand (`pushingHard`), not the
     capped pace, so "In a hurry?" still comes at a line. No gear letter (a
@@ -383,7 +396,12 @@ also exists as real DOM for keyboard and screen-reader users.
     then plays the first line once the name has formed. Once the wheel is
     hers nothing asks her to take it again: resting on the title (after
     that answer, or rewound there) brings "keep driving" into the hint's
-    place, centred in what is left of the bottom bar; resting
+    place, centred in what is left of the bottom bar. The hint's
+    messages hold fixed cells of one two-row box (the ask, the answer and
+    the way on in the first, the model line and why the road waits in the
+    second) and swap by visibility, so none re-centres another (a layout
+    shift); the answer alone stands in the box's middle by a translate.
+    Resting
     mid-dissolve, the title finishes its fade on time
     (`settleTitle`) instead of hanging there as a ghost. A card coming up
     hides the between-card cue at once. Cards fade on time (0.25 s in, 0.2 s out); a
@@ -848,8 +866,10 @@ also exists as real DOM for keyboard and screen-reader users.
   pace it and the picture shared, the beat's own at most, a chase's lag
   behind the picture (`chaseLag`), so a fling never carries its speed
   into the next shot. A jump (`night.snap`), the frame loop waking (the
-  stage back on screen) or a gap of 10 natural seconds put it on the
-  picture at once; reduced motion keeps it there. Its body never reads that
+  stage back on screen: `night.woke`, set by NightScene; a long frame
+  mid-drive is no waking, it is integrated, or a hitch snapped the car
+  its whole lag, metres, in sight; `carDrive.test.ts`) or a gap of 10
+  natural seconds put it on the picture at once; reduced motion keeps it there. Its body never reads that
   motion: it leans from the path's designed `lean` (the brake pedal goes
   down over the first 30 % of the braking and comes off over its last
   15 %, the throttle opens over the first 30 % of a leave), a dive of

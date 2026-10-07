@@ -22,6 +22,8 @@ export const night = {
   car: newCarMotion() as CarMotion,
   /** A jump the camera must not glide through (a capture's or a deep link's): NightRig cuts to its pose once. */
   snap: false,
+  /** The frame loop woke (the stage back on screen, NightScene): the car lands on the picture once (CarDrive). */
+  woke: false,
   /** The board's armed level: `armTarget` is 0 or 1, `armed` eases toward it. */
   armTarget: 0,
   armed: 0,
