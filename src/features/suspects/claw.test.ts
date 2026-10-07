@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CLAW_TIMING, clawMarks, clawStart } from "./claw";
+import { CLAW_TIMING, clawMarks, clawStart, TEAR, tearNoise } from "./claw";
 
 /** Every number in a path. */
 const numbers = (d: string) => (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
@@ -12,7 +13,8 @@ describe("Dante's claw swipe", () => {
     for (const claw of [desktop, phone]) {
       expect(claw.marks).toHaveLength(3);
       for (const mark of claw.marks) {
-        for (const layer of [mark.glow, mark.edge, mark.flesh, mark.gash, mark.core]) {
+        expect(mark.glow).toHaveLength(3);
+        for (const layer of [...mark.glow, mark.edge, mark.flesh, mark.gash, mark.core]) {
           expect(layer).toMatch(/^M[\d.\- L]+Z$/);
           expect(numbers(layer).every(Number.isFinite)).toBe(true);
         }
@@ -53,5 +55,32 @@ describe("Dante's claw swipe", () => {
   it("tears fast and fades slowly", () => {
     expect(CLAW_TIMING.rake).toBeLessThan(CLAW_TIMING.hold);
     expect(CLAW_TIMING.lead + CLAW_TIMING.hold + CLAW_TIMING.out).toBeLessThan(2600);
+  });
+
+  it("tears its edges itself, raggedly but within the tear's reach, the same every time", () => {
+    for (let s = 0; s < 2000; s += 7) {
+      const n = tearNoise(3, s, TEAR.edge.frequency);
+      expect(Math.abs(n)).toBeLessThanOrEqual(1);
+      expect(tearNoise(3, s, TEAR.edge.frequency)).toBe(n);
+    }
+    // The torn pale edge strays from a smooth one: many points, and its width changes from step to step.
+    for (const claw of [desktop, phone]) {
+      const edge = numbers(claw.marks[1].edge);
+      expect(edge.length / 2).toBeGreaterThan(200);
+      const reach = claw.width * TEAR.edge.amplitude;
+      expect(reach).toBeGreaterThan(1);
+    }
+  });
+
+  it("draws with no SVG filter, which Safari renders on the CPU every frame (an iPhone froze on his strike)", () => {
+    // (The stylesheet's grain is a 240 px tile drawn once as an image, not a live filter.)
+    const select = readFileSync(new URL("./CharacterSelect.tsx", import.meta.url), "utf8");
+    for (const filter of ["feTurbulence", "feDisplacementMap", "feGaussianBlur", "<filter", 'filter="url(']) {
+      expect(select).not.toContain(filter);
+    }
+    const styles = readFileSync(new URL("./Suspects.module.css", import.meta.url), "utf8");
+    const clawRules = styles.match(/\.claw[A-Za-z]*\s*\{[^}]*\}/g) ?? [];
+    expect(clawRules.length).toBeGreaterThan(4);
+    for (const rule of clawRules) expect(rule).not.toMatch(/filter|backdrop/);
   });
 });

@@ -218,28 +218,23 @@ export function CharacterSelect({ dict, lang }: Props) {
       const ns = "http://www.w3.org/2000/svg";
       svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
       svg.replaceChildren();
+      // Plain paths and the reveal's masks, no SVG filter (claw.ts: Safari drew them on the CPU, every frame).
       const defs = document.createElementNS(ns, "defs");
-      const filter = (id: string, frequency: number, scale: number) =>
-        `<filter id="${id}" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="${frequency}" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="${scale.toFixed(1)}"/></filter>`;
-      defs.innerHTML =
-        filter("claw-tear", 0.045, claw.width * 0.42) +
-        filter("claw-rag", 0.08, claw.width * 0.3) +
-        `<filter id="claw-blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${(claw.width * 0.35).toFixed(1)}"/></filter>` +
-        claw.marks
-          .map(
-            (mark, k) =>
-              `<mask id="claw-reveal-${k}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><path data-reveal d="${mark.center}" pathLength="1" fill="none" stroke="#fff" stroke-width="${(claw.width * 4).toFixed(1)}" stroke-linecap="round" stroke-dasharray="1 1" stroke-dashoffset="${reducedMotion ? 0 : 1}"/></mask>`,
-          )
-          .join("");
+      defs.innerHTML = claw.marks
+        .map(
+          (mark, k) =>
+            `<mask id="claw-reveal-${k}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><path data-reveal d="${mark.center}" pathLength="1" fill="none" stroke="#fff" stroke-width="${(claw.width * 4).toFixed(1)}" stroke-linecap="round" stroke-dasharray="1 1" stroke-dashoffset="${reducedMotion ? 0 : 1}"/></mask>`,
+        )
+        .join("");
       svg.appendChild(defs);
       claw.marks.forEach((mark, k) => {
         const g = document.createElementNS(ns, "g");
         g.setAttribute("mask", `url(#claw-reveal-${k})`);
         g.innerHTML =
-          `<path class="${styles.clawGlow}" d="${mark.glow}" filter="url(#claw-blur)"/>` +
-          `<path class="${styles.clawEdge}" d="${mark.edge}" filter="url(#claw-tear)"/>` +
-          `<path class="${styles.clawFlesh}" d="${mark.flesh}" filter="url(#claw-tear)"/>` +
-          `<path class="${styles.clawGash}" d="${mark.gash}" filter="url(#claw-rag)"/>` +
+          mark.glow.map((d) => `<path class="${styles.clawGlow}" d="${d}"/>`).join("") +
+          `<path class="${styles.clawEdge}" d="${mark.edge}"/>` +
+          `<path class="${styles.clawFlesh}" d="${mark.flesh}"/>` +
+          `<path class="${styles.clawGash}" d="${mark.gash}"/>` +
           `<path class="${styles.clawCore}" d="${mark.core}"/>`;
         svg.appendChild(g);
       });

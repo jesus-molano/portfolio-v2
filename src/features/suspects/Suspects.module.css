@@ -1621,9 +1621,10 @@
   pointer-events: none;
 }
 
+/* Three nested rings, a soft glow with no blur filter: together 0.36 at the wound, 0.14 at the rim. */
 .clawGlow {
   fill: var(--va-color-magenta);
-  opacity: 0.38;
+  opacity: 0.14;
 }
 
 .clawEdge {
