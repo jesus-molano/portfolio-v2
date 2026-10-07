@@ -1242,7 +1242,7 @@ also exists as real DOM for keyboard and screen-reader users.
     presupuesto que no tengo»). SERIES: The Sopranos first, forking to
     Breaking Bad and Better Call Saul (which feeds Marvel) and to Peaky
     Blinders and Chernobyl; «Ponerme al día con One Piece» (locked, «Me
-    quedé en Alabasta») hangs off the hub, never on the way to Marvel. His
+    quedé en Arabasta») hangs off the hub, never on the way to Marvel. His
     two favourites, The Godfather and The Sopranos, are bigger gold stars
     with a five-pointed star on their light and FAVORITA / FAVOURITE
     under the title (in their names and details too), first from their

@@ -203,8 +203,8 @@ describe("the achievement tree's copy", () => {
     expect(es.stats.achievements.nodes.imax).toEqual({ title: "Ver una peli en IMAX de 70 mm", line: "Requiere: un presupuesto que no tengo." });
     expect(en.stats.achievements.nodes.imax).toEqual({ title: "Watch a film in 70mm IMAX", line: "Requires: a budget I don't have." });
     expect(es.stats.achievements.nodes.onePiece.title).toBe("Ponerme al día con One Piece");
-    expect(es.stats.achievements.nodes.onePiece.line).toMatch(/Me quedé en Alabasta\.$/);
-    expect(en.stats.achievements.nodes.onePiece.line).toMatch(/Stuck in Alabasta\.$/);
+    expect(es.stats.achievements.nodes.onePiece.line).toMatch(/Me quedé en Arabasta\.$/);
+    expect(en.stats.achievements.nodes.onePiece.line).toMatch(/Stuck in Arabasta\.$/);
     expect(en.stats.achievements.nodes.chernobyl.line).toBe("3.6 roentgen. Not great, not terrible.");
     expect(es.stats.achievements.nodes.chernobyl.line).toMatch(/^3,6 roentgen\./);
     // His own words on the 10 km: he never picks up the phone, so the star never says he does.
