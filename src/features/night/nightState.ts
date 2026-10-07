@@ -24,6 +24,8 @@ export const night = {
   snap: false,
   /** The frame loop woke (the stage back on screen, NightScene): the car lands on the picture once (CarDrive). */
   woke: false,
+  /** Every stop warmed up (compiled, uploaded) and nothing loading (Warmup): the opening cover may rest the canvas. */
+  warm: false,
   /** The board's armed level: `armTarget` is 0 or 1, `armed` eases toward it. */
   armTarget: 0,
   armed: 0,
@@ -67,4 +69,27 @@ export function setNightReadiness(next: Readiness): void {
 export function subscribeNightReadiness(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+let covered = false;
+const coverListeners = new Set<() => void>();
+
+/**
+ * The scene is under the stage's opaque night (nightCover.ts): WorkStage
+ * writes it, NightCanvas reads it (useSyncExternalStore, so only a flip
+ * re-renders) and the frame loop stops until it lifts.
+ */
+export function getNightCovered(): boolean {
+  return covered;
+}
+
+export function setNightCovered(next: boolean): void {
+  if (covered === next) return;
+  covered = next;
+  for (const listener of coverListeners) listener();
+}
+
+export function subscribeNightCovered(listener: () => void): () => void {
+  coverListeners.add(listener);
+  return () => coverListeners.delete(listener);
 }

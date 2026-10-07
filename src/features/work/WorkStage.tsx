@@ -30,7 +30,8 @@ import { getSceneLoading } from "@/features/hero/sceneLoading";
 import { getRadio } from "@/features/music/radio";
 import { DIRECTION } from "@/features/night/direction";
 import { NightCanvas } from "@/features/night/NightCanvas";
-import { getNightReadiness, night, subscribeNightReadiness } from "@/features/night/nightState";
+import { type NightCoverInput, nightCovered } from "@/features/night/nightCover";
+import { getNightReadiness, night, setNightCovered, subscribeNightReadiness } from "@/features/night/nightState";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -377,6 +378,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       let driver: ReturnType<typeof createPedalDriver> | null = null;
       const drawnPedal = { lv: Number.NaN };
 
+      /** What nightCover.ts reads, filled each frame (the frame allocates nothing). */
+      const coverIn: NightCoverInput = { ready: false, sceneIn: 0, endT: 0, dip: 0, warm: false };
       const update = (deltaMs: number) => {
         const now = performance.now();
         // The pedal lets go whenever its holder may be gone: the radio wheel opened, Lenis stopped, a lost keyup.
@@ -464,6 +467,13 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         // Between two stops the picture dips to night and back (dip.ts): the cut happens under it.
         const dip = view.dip;
         set(el.dip, "opacity", dip.toFixed(3));
+        // Under the closed iris or the opening's full cover the canvas stops drawing (nightCover.ts).
+        coverIn.ready = getNightReadiness() === "ready";
+        coverIn.sceneIn = opening;
+        coverIn.endT = endT;
+        coverIn.dip = dip;
+        coverIn.warm = night.warm;
+        setNightCovered(nightCovered(coverIn));
 
         el.cards.forEach((card, i) => {
           const opacity = story.opacity[i];
@@ -960,6 +970,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
 
       return () => {
         gsap.ticker.remove(tick);
+        setNightCovered(false);
         driver?.dispose();
         driver = null;
         unregisterPassage();

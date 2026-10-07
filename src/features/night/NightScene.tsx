@@ -1,6 +1,6 @@
 "use client";
 
-import { Environment, Lightformer, PerformanceMonitor } from "@react-three/drei";
+import { Environment, Lightformer, PerformanceMonitor, useProgress } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useRef, useState } from "react";
 import type { Group, Material, Mesh, Texture, WebGLRenderer } from "three";
@@ -87,7 +87,9 @@ function uploadTextures(gl: WebGLRenderer, group: Group, seen: WeakSet<Texture>)
  * Warms every stop up before its cut: compiles its materials (in parallel
  * where the GPU allows) and uploads its textures while another stop is on
  * screen, the next one first, so the first frame of a stop never stalls on
- * a shader or a texture. A set that loads more later is warmed again.
+ * a shader or a texture. A set that loads more later is warmed again;
+ * once every stop is warm and nothing loads, it stops looking (`night.warm`,
+ * which also lets the opening cover rest the canvas: nightCover.ts).
  */
 function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
   const gl = useThree((state) => state.gl);
@@ -97,17 +99,37 @@ function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
   const textures = useRef(new WeakSet<Texture>());
   const busy = useRef(false);
   const lookAt = useRef(0);
+  // Anything still loading (a set's model or texture) may add meshes to a set already warmed.
+  const loading = useProgress((state) => state.active);
+  const loadingRef = useRef(loading);
+  useEffect(() => {
+    loadingRef.current = loading;
+    // Something new loads: look again once it is in.
+    if (loading) night.warm = false;
+  }, [loading]);
+  useEffect(
+    () => () => {
+      night.warm = false;
+    },
+    [],
+  );
 
   useFrame(({ clock }) => {
-    if (busy.current || clock.elapsedTime < lookAt.current) return;
+    // Every stop warm and nothing loading: no more traversals until the scene mounts again.
+    if (night.warm || busy.current || clock.elapsedTime < lookAt.current) return;
     lookAt.current = clock.elapsedTime + WARM_EVERY;
     const count = groups.current.length;
+    let ready = 0;
     for (let k = 0; k < count; k += 1) {
       const i = (night.stop + 1 + k) % count;
       const group = groups.current[i];
       if (!group) continue;
       const meshes = meshCount(group);
-      if (meshes === 0 || warm.current.get(i) === meshes) continue;
+      if (meshes === 0) continue;
+      if (warm.current.get(i) === meshes) {
+        ready += 1;
+        continue;
+      }
       warm.current.set(i, meshes);
       busy.current = true;
       uploadTextures(gl, group, textures.current);
@@ -118,6 +140,7 @@ function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
         });
       return;
     }
+    if (count > 0 && ready === count && !loadingRef.current) night.warm = true;
   });
   return null;
 }

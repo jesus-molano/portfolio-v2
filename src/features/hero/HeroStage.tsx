@@ -88,6 +88,7 @@ import {
   teaseOffset,
 } from "./scroll/transport";
 import { drive } from "./scene/drive";
+import { isCovered, setHeroCovered } from "./heroCover";
 import { CUT_BAND, SHOT_COUNT, type ShotPick, shotIndexAt, stickyShot } from "./scene/shots";
 
 gsap.registerPlugin(useGSAP);
@@ -1109,6 +1110,8 @@ export function HeroStage({
         if (nightO !== drawn.night) {
           drawn.night = nightO;
           set(el.fade, "opacity", nightO.toFixed(3));
+          // Under opaque night the canvas stops drawing (HeroCanvas).
+          setHeroCovered(isCovered(nightO));
         }
 
         for (let i = 0; i < el.cards.length; i += 1) {
@@ -1752,6 +1755,7 @@ export function HeroStage({
         for (const text of cardText) text?.style.removeProperty("--fit");
         unregisterPassage();
         gsap.ticker.remove(tick);
+        setHeroCovered(false);
         driver.dispose();
         window.removeEventListener("keydown", onKey);
         window.removeEventListener("keyup", onKeyUp);
