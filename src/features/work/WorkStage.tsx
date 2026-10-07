@@ -106,6 +106,19 @@ function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
 
+/**
+ * A popover open over the stage (the army's service record) takes the keys:
+ * Esc closes it, and nothing behind it drives, skips or steps a line. A
+ * browser without `:popover-open` has no popovers open either.
+ */
+function popoverOpen(): boolean {
+  try {
+    return document.querySelector(":popover-open") !== null;
+  } catch {
+    return false;
+  }
+}
+
 function targetKind(target: EventTarget | null): TargetKind {
   if (!(target instanceof Element)) return "other";
   if (target.closest("input, textarea, select, [contenteditable='true']")) return "text";
@@ -711,7 +724,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       });
 
       const onKey = (event: KeyboardEvent) => {
-        if (event.defaultPrevented || !lenis || lenis.isStopped) return;
+        if (event.defaultPrevented || !lenis || lenis.isStopped || popoverOpen()) return;
         const loading = getSceneLoading();
         if (!loading.entered || event.timeStamp - loading.enteredAt < KEY_GUARD_MS) return;
         const scroll = scrollNow();

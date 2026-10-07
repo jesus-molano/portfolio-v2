@@ -321,10 +321,34 @@
           "value": "Ejército de Tierra"
         },
         {
+          "label": "Especialidad",
+          "value": "Ingenieros"
+        },
+        {
           "label": "Empleo",
           "value": "Soldado zapador"
+        },
+        {
+          "label": "Instrucción básica",
+          "value": "CEFOT nº 2, Camposoto (San Fernando, Cádiz)"
+        },
+        {
+          "label": "Rol principal",
+          "value": "Topógrafo y MG42"
+        },
+        {
+          "label": "Tiempo en activo",
+          "value": "4 años"
         }
-      ]
+      ],
+      "remarks": {
+        "label": "Observaciones",
+        "value": "Chicharrero destinado entre canariones. Resistió sin quejarse (en voz alta)."
+      },
+      "stamps": {
+        "filed": "Archivo",
+        "copy": "Copia"
+      }
     },
     "stops": {
       "army": {

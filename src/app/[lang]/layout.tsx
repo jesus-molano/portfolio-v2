@@ -8,6 +8,7 @@ import {
   Playfair_Display,
   Shrikhand,
   Space_Grotesk,
+  Special_Elite,
   Unbounded,
   Yellowtail,
 } from "next/font/google";
@@ -122,6 +123,19 @@ const marqueeFont = Bebas_Neue({
 });
 
 /*
+ * The army's service record in the career city (typewriter in the tokens):
+ * Special Elite, a worn typewriter face. Not preloaded: the record is a
+ * popover, so the browser fetches it the first time the record opens.
+ */
+const typewriterFont = Special_Elite({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-typewriter",
+  display: "swap",
+  preload: false,
+});
+
+/*
  * The chapter cards (src/components/ChapterCard), each a checked-in subset
  * beside its OFL licence in src/app/fonts: the word in Chapter Script (Mr
  * Dafoe, subset and renamed by tools/chapter/fonts.py, which also reads
@@ -165,6 +179,7 @@ const fontVariables = [
   marqueeFont,
   chapterScriptFont,
   chapterCapsFont,
+  typewriterFont,
 ]
   .map((font) => font.variable)
   .join(" ");

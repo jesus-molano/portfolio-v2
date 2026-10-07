@@ -3,6 +3,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
+import { ServiceRecord } from "./ServiceRecord";
 import { SERVICE_RECORD_ID, STOPS } from "./stops";
 import styles from "./Work.module.css";
 import { WorkStage } from "./WorkStage";
@@ -119,27 +120,7 @@ export function Work({ work, common, pedal, osd, locale }: Props) {
         </ol>
 
         {/* The army's board opens its own record, not an external page. */}
-        <div id={SERVICE_RECORD_ID} className={styles.record} popover="auto" aria-labelledby="service-record-title">
-          <p id="service-record-title" className={styles.recordTitle}>
-            {work.record.title}
-          </p>
-          <dl className={styles.recordRows}>
-            {work.record.rows.map((row) => (
-              <div key={row.label} className={styles.recordRow}>
-                <dt>{row.label}</dt>
-                <dd>{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-          <button
-            type="button"
-            className={styles.recordClose}
-            popoverTarget={SERVICE_RECORD_ID}
-            popoverTargetAction="hide"
-          >
-            {work.record.close}
-          </button>
-        </div>
+        <ServiceRecord record={work.record} />
       </WorkStage>
     </section>
   );

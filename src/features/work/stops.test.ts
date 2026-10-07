@@ -76,6 +76,56 @@ describe("work copy", () => {
     });
   }
 
+  // The army's service record, in the owner's words: the form's fields in a real form's order (service, speciality,
+  // rank, basic training, then the posting's role and the time served) and his sergeant's remark. Nothing else is a
+  // claim about him: the stamps say only that the sheet is filed and a copy.
+  const RECORD = {
+    en: {
+      rows: [
+        ["Army", "Ejército de Tierra (Spanish Army)"],
+        ["Speciality", "Engineers"],
+        ["Rank and trade", "Private, combat engineer"],
+        ["Basic training", "CEFOT No. 2, Camposoto (San Fernando, Cádiz)"],
+        ["Main role", "Surveyor and MG42 gunner"],
+        ["Time in service", "4 years"],
+      ],
+      stamps: { filed: "Filed", copy: "Copy" },
+    },
+    es: {
+      rows: [
+        ["Ejército", "Ejército de Tierra"],
+        ["Especialidad", "Ingenieros"],
+        ["Empleo", "Soldado zapador"],
+        ["Instrucción básica", "CEFOT nº 2, Camposoto (San Fernando, Cádiz)"],
+        ["Rol principal", "Topógrafo y MG42"],
+        ["Tiempo en activo", "4 años"],
+      ],
+      stamps: { filed: "Archivo", copy: "Copia" },
+    },
+  } as const;
+
+  for (const [locale, work] of dicts) {
+    it(`${locale}: the service record carries the owner's fields, in a form's order`, () => {
+      const { record } = work;
+      expect(record.rows.map((row) => [row.label, row.value])).toEqual(RECORD[locale].rows);
+      expect(record.stamps).toEqual(RECORD[locale].stamps);
+      expect(record.remarks.label).toBe(locale === "es" ? "Observaciones" : "Remarks");
+      // The remark is the sergeant's wink at the chicharrero among canariones (the owner's ask), never the
+      // hero's line retold: no "four years", no "Gran Canaria", no "nerve" or «mérito».
+      expect(record.remarks.value).toMatch(locale === "es" ? /chicharrero.*canariones/i : /Tenerife.*Gran Canarians/);
+      expect(record.remarks.value).not.toMatch(/Gran Canaria\b|four years|cuatro años|nerve|m[eé]rito/i);
+    });
+
+    it(`${locale}: the service record repeats nothing its board says, and no course, manoeuvre or Madrid`, () => {
+      const text = JSON.stringify(work.record);
+      for (const word of [/Zapadores XVI/i, /Batall[oó]n/i, /Las Palmas/i, /2018/, /2021/, /Madrid/i]) {
+        expect(text, String(word)).not.toMatch(word);
+      }
+      // The owner's call: no courses, aptitudes or manoeuvres on it.
+      expect(text).not.toMatch(/curso|course|aptitud|aptitude|maniobra|manoeuvre|exercise|medal|medalla/i);
+    });
+  }
+
   it("has the same keys and as many cards per stop in both languages", () => {
     const keys = (value: unknown, prefix = ""): string[] =>
       value && typeof value === "object" && !Array.isArray(value)

@@ -187,6 +187,12 @@ export const typography = {
    */
   chapterScript: "var(--font-chapter-script), 'Brush Script MT', cursive",
   chapterCaps: "var(--font-chapter-caps), 'Bebas Neue', 'Arial Narrow', Impact, sans-serif",
+  /**
+   * The army's service record (src/features/work): Special Elite, a worn
+   * typewriter face (Apache 2.0), the one the posters' billing blocks are
+   * set in too. Loaded without preloading, when the record first opens.
+   */
+  typewriter: "var(--font-typewriter), 'Courier New', Courier, monospace",
   /** Fluid sizes. */
   heroName: "clamp(2.7rem, 9.4vw, 10.5rem)",
   heroRole: "clamp(0.72rem, 1.05vw, 0.95rem)",
@@ -339,6 +345,47 @@ export const finale = {
   card: "rgba(11, 6, 25, 0.72)",
 } as const;
 
+/**
+ * The army's service record in the career city (src/features/work, the
+ * `#service-record` popover): an old, handled paper form. Aged paper,
+ * browned at the edges, foxed, folded in three and creased; printed in the
+ * site's ink, typed on a worn ribbon, a sergeant's remark in ballpoint and
+ * rubber stamps in office violet and rose (never the on-air red). Emitted
+ * as `--va-record-*`.
+ */
+export const serviceRecord = {
+  /** The sheet: lighter where it was kept flat, browner toward its edges. */
+  paper: "#efe3c4",
+  paperLight: "#f7efd9",
+  paperEdge: "#cdb27a",
+  /** The back of the dog-eared corner, turned from the light. */
+  paperBack: "#e0cfa4",
+  /** Paper fibres and foxing (the brown age spots), drawn through noise. */
+  fibre: "rgba(96, 66, 28, 0.55)",
+  foxing: "rgba(150, 96, 38, 0.5)",
+  /** A cup set down on it once. */
+  coffee: "rgba(122, 74, 30, 0.42)",
+  coffeeWash: "rgba(150, 100, 48, 0.1)",
+  /** A fold's two sides: the valley's shadow and the ridge catching the light. */
+  creaseShade: "rgba(84, 58, 24, 0.28)",
+  creaseLight: "rgba(255, 252, 238, 0.85)",
+  /** The printed form: labels, rules and frame. */
+  print: palette.ink,
+  rule: "rgba(43, 24, 72, 0.32)",
+  /** The typewriter's ribbon. */
+  type: "#1e1428",
+  /** The remark's ballpoint. */
+  pen: "#26357f",
+  /** Rubber-stamp inks. */
+  stampViolet: mixHex(palette.violet, palette.ink, 0.38),
+  stampRose: mixHex(palette.magenta, palette.ink, 0.32),
+  /** The staple, in the shade and catching the light. */
+  staple: "#8d8a99",
+  stapleShine: "#eeecf4",
+  /** The sheet's shadow on the night behind it. */
+  shadow: "rgba(6, 3, 13, 0.6)",
+} as const;
+
 /** A colour `t` of the way from `a` to `b` (both #rrggbb), for the tokens derived below. */
 export function mixHex(a: string, b: string, t: number): string {
   const channel = (hex: string, i: number) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
@@ -426,6 +473,7 @@ export function tokensToCssVariables(): string {
   entries.push(`--va-font-marquee: ${typography.marquee};`);
   entries.push(`--va-font-chapter-script: ${typography.chapterScript};`);
   entries.push(`--va-font-chapter-caps: ${typography.chapterCaps};`);
+  entries.push(`--va-font-typewriter: ${typography.typewriter};`);
   for (const [key, value] of Object.entries(radioFonts)) {
     entries.push(`--va-font-radio-${kebab(key)}: ${value};`);
   }
@@ -450,6 +498,9 @@ export function tokensToCssVariables(): string {
   }
   for (const [key, value] of Object.entries(finale)) {
     entries.push(`--va-finale-${kebab(key)}: ${value};`);
+  }
+  for (const [key, value] of Object.entries(serviceRecord)) {
+    entries.push(`--va-record-${kebab(key)}: ${value};`);
   }
   for (const [key, value] of Object.entries(chapterCard)) {
     entries.push(`--va-chapter-${kebab(key)}: ${value};`);

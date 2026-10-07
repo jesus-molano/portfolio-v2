@@ -744,7 +744,24 @@ also exists as real DOM for keyboard and screen-reader users.
   stretch of the scroll, with heading, years, the mirror text, the
   transcript and one chip: the employer's site (`stops.ts`, per locale;
   ids, order, anchors and years come from `features/career/career.ts`)
-  or, for the army, the `#service-record` popover. On a phone the chip
+  or, for the army, the `#service-record` popover (`ServiceRecord.tsx`):
+  his service record as an old, creased paper form, every word real text
+  (a description list, `work.record`): printed labels, the values typed in
+  Special Elite (`--va-font-typewriter`, credited with the site's faces),
+  his sergeant's remark in ballpoint (Yellowtail) on a ruled box, two
+  rubber stamps that claim nothing (FILED, COPY), and the paper drawn in
+  CSS and one inline SVG (fibres, foxing, a lit wrinkle relief, two folds,
+  a crumple, a dog-ear, a staple, a coffee ring; `serviceRecord` tokens,
+  `--va-record-*`). The owner's fields in a form's order: service,
+  speciality (Engineers), rank, basic training (CEFOT nº 2, Camposoto, San
+  Fernando, Cádiz), main role (surveyor and MG42), time in service (4
+  years), then the remark; no courses, aptitudes or manoeuvres (his call;
+  `stops.test.ts`). It drops and settles in as it opens (none under
+  reduced motion), is a plain bordered card under forced colours, and
+  scrolls on its own (`data-lenis-prevent`) where the screen is short.
+  While it is open the stage ignores the keys (`popoverOpen` in
+  WorkStage): Esc closes it and never skips the city, and W, Space and
+  the arrows drive nothing behind it. On a phone the chip
   stands over the stop's tallest card (`chipPlace.ts`, measured when the
   cards are fitted, written as `--cards-h`), placed from the pinned
   frame's bottom (`100dvh`), so neither the browser's bars nor a card of
@@ -834,7 +851,9 @@ also exists as real DOM for keyboard and screen-reader users.
   - The city owns the career, told once and in full: company, role,
     years, clients, stack, link, and the army's battalion and Las Palmas.
     STATS only indexes it; the end credits carry no career. The
-    Tenerife-versus-Gran-Canaria joke is the hero's. No visible text in
+    Tenerife-versus-Gran-Canaria joke is the hero's; the service record's
+    remark (`work.record.remarks`), the chicharrero posted among
+    canariones, is its one wink, at the owner's request. No visible text in
     the city repeats its own board (the service record, Heuristik's
     first card).
   - Copy rules (tested): roles in English in both languages (Frontend
@@ -1756,7 +1775,9 @@ city's `work.*` keys, and so is the army's unit or service (Batallón de
 Zapadores XVI, Ejército de Tierra / Spanish Army); Gran Canaria only in
 `hero.lines`, on the STATS map's inset (its name, and the map's text
 alternative that describes it) and in the career city's `work.*` keys,
-where the army's posting is a fact, not the joke; the cardboard box only
+where the army's posting is a fact, not the joke; the rivalry's wink
+(chicharrero, canariones) only in `hero.lines` and the service record's
+remark (`work.record.remarks.value`, the owner's request); the cardboard box only
 on Metal Gear's star in STATS's achievement tree
 (`stats.achievements.nodes.metalGear.line`); "from the sofa"
 once; remote only in the main missions' work-mode label
@@ -1805,7 +1826,9 @@ Each subject, who tells it in full, and what the rest may do:
   credits: nothing.
 - The army's facts: the career city. The hero: the anecdote only. The
   STATS map: the first badge, in the Gran Canaria inset, with no joke.
-- Tenerife against Gran Canaria: the hero. Nowhere else.
+- Tenerife against Gran Canaria: the hero. Elsewhere one wink only, at
+  the owner's request: the army's service record's remark in the career
+  city, the chicharrero posted among canariones.
 - The side projects: the cinema. STATS and the credits: nothing.
 - The cats: THE USUAL SUSPECTS (Dante's culprit wink is his claw swipe,
   the only cat who attacks). Winks only elsewhere: Dante as player 2 on

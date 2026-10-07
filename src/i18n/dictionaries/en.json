@@ -321,10 +321,34 @@
           "value": "Ejército de Tierra (Spanish Army)"
         },
         {
+          "label": "Speciality",
+          "value": "Engineers"
+        },
+        {
           "label": "Rank and trade",
           "value": "Private, combat engineer"
+        },
+        {
+          "label": "Basic training",
+          "value": "CEFOT No. 2, Camposoto (San Fernando, Cádiz)"
+        },
+        {
+          "label": "Main role",
+          "value": "Surveyor and MG42 gunner"
+        },
+        {
+          "label": "Time in service",
+          "value": "4 years"
         }
-      ]
+      ],
+      "remarks": {
+        "label": "Remarks",
+        "value": "A Tenerife lad posted among Gran Canarians. Held out without grumbling (out loud)."
+      },
+      "stamps": {
+        "filed": "Filed",
+        "copy": "Copy"
+      }
     },
     "stops": {
       "army": {

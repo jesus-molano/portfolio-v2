@@ -45,6 +45,14 @@ const RULES: Rule[] = [
     owners: [/^hero\.lines\./, /^stats\.map\.inset\.name$/, /^stats\.map\.label$/, /^work\./],
   },
   {
+    // The rivalry itself is the hero's joke. The owner asked for one wink at it on the army's service record
+    // in the career city: his sergeant's remark, the chicharrero (from Tenerife) posted among canariones.
+    // That remark, and the hero, are the only places it may be said.
+    subject: "the Tenerife-versus-Gran-Canaria wink",
+    pattern: /chicharrer|canari[oó]n|Gran Canarians?\b|Tenerife lad/i,
+    owners: [/^hero\.lines\./, /^work\.record\.remarks\.value$/],
+  },
+  {
     // The army is a job like the others: its unit and its service are the
     // career index's and the career city's facts. The hero tells the
     // anecdote without them.
@@ -149,6 +157,7 @@ describe("the content map", () => {
       expect(text(/^stats\.achievements\.nodes\.metalGear\./)).toMatch(/cart[oó]n|cardboard/i);
       expect(text(/^stats\.bars\./)).toMatch(/desde el sof[aá]|from the sofa/i);
       expect(text(/^stats\.missions\.modes\./)).toMatch(/remot/i);
+      expect(text(/^work\.record\.remarks\./)).toMatch(/chicharrer|Gran Canarians/i);
     });
   }
 });

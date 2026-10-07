@@ -762,75 +762,478 @@
   outline-offset: 3px;
 }
 
-/* ---- the army's service record ---- */
+/* ---- the army's service record (ServiceRecord.tsx) ---- */
 
+/*
+ * An old, handled paper form. The popover is only its frame: transparent,
+ * never taller than the screen (it scrolls instead, `data-lenis-prevent`),
+ * with room round the sheet for its tilt and its shadow. Everything drawn
+ * (paper, fibres, foxing, folds, wrinkles, dog-ear, staple, coffee ring)
+ * is decoration under the text; every word is real text on top of it.
+ */
 .record {
-  width: min(26rem, calc(100vw - 2rem));
+  width: min(37rem, 100vw);
+  max-height: 100dvh;
   margin: auto;
-  padding: 1.6rem 1.6rem 1.3rem;
+  padding: clamp(0.75rem, 3dvh, 1.6rem) clamp(0.7rem, 3vw, 1.6rem);
+  overflow: auto;
+  overscroll-behavior: contain;
   border: 0;
-  border-radius: 0.2rem;
-  background: #efe3c4;
-  box-shadow:
-    0 0 0 1px #c9b98f inset,
-    0 30px 80px rgba(0, 0, 0, 0.55);
-  color: var(--va-color-ink);
-  font-family: var(--va-font-mono);
+  background: transparent;
+  color: var(--va-record-print);
 }
 
 .record::backdrop {
   background: color-mix(in srgb, var(--va-color-night) 70%, transparent);
 }
 
+.recordSheet {
+  rotate: -1.2deg;
+  filter: drop-shadow(0 1px 1px var(--va-record-shadow)) drop-shadow(0 1.4rem 2rem var(--va-record-shadow));
+}
+
+/* The sheet: worn edges, a dog-eared corner (--dog), folded in three. */
+.recordPaper {
+  --dog: 2.4rem;
+  position: relative;
+  container-type: inline-size;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 1.2rem;
+  clip-path: polygon(
+    0.4% 0.5%,
+    17% 0,
+    41% 0.35%,
+    64% 0,
+    86% 0.3%,
+    99.7% 0,
+    100% 27%,
+    99.6% 52%,
+    100% 78%,
+    100% calc(100% - var(--dog)),
+    calc(100% - var(--dog)) 100%,
+    71% 99.6%,
+    44% 100%,
+    19% 99.7%,
+    0.2% 100%,
+    0 71%,
+    0.45% 43%,
+    0 16%
+  );
+  background:
+    /* the two folds: a valley's shadow, then the ridge catching the light */
+    linear-gradient(
+      to bottom,
+      transparent calc(33.4% - 0.5rem),
+      var(--va-record-crease-shade) calc(33.4% - 1px),
+      var(--va-record-crease-light) calc(33.4% + 1px),
+      transparent calc(33.4% + 0.35rem)
+    ),
+    linear-gradient(
+      to bottom,
+      transparent calc(66.8% - 0.35rem),
+      var(--va-record-crease-light) calc(66.8% - 1px),
+      var(--va-record-crease-shade) calc(66.8% + 1px),
+      transparent calc(66.8% + 0.5rem)
+    ),
+    /* a crumple across the top corner, and one half folded once, lower down */
+    linear-gradient(
+      58deg,
+      transparent 74%,
+      var(--va-record-crease-shade) 74.4%,
+      var(--va-record-crease-light) 74.7%,
+      transparent 75.6%
+    ),
+    linear-gradient(
+      -14deg,
+      transparent 18%,
+      color-mix(in srgb, var(--va-record-crease-light) 70%, transparent) 18.3%,
+      color-mix(in srgb, var(--va-record-crease-shade) 60%, transparent) 18.55%,
+      transparent 19.4%
+    ),
+    /* each of the three panels lies at its own angle to the light */
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--va-record-crease-shade) 32%, transparent) 0%,
+      transparent 33.3%,
+      color-mix(in srgb, var(--va-record-crease-light) 30%, transparent) 33.5%,
+      transparent 66.7%,
+      color-mix(in srgb, var(--va-record-crease-shade) 22%, transparent) 66.9%,
+      transparent 100%
+    ),
+    /* foxing spots, a few darker than the rest */
+    radial-gradient(circle at 12% 58%, var(--va-record-foxing) 0 0.12rem, transparent 0.32rem),
+    radial-gradient(circle at 83% 12%, var(--va-record-foxing) 0 0.08rem, transparent 0.26rem),
+    radial-gradient(circle at 67% 88%, var(--va-record-foxing) 0 0.1rem, transparent 0.3rem),
+    radial-gradient(circle at 28% 22%, color-mix(in srgb, var(--va-record-foxing) 60%, transparent) 0 0.06rem, transparent 0.2rem),
+    radial-gradient(ellipse 85% 75% at 42% 38%, var(--va-record-paper-light), var(--va-record-paper) 72%);
+  box-shadow:
+    inset 0 0 2.4rem color-mix(in srgb, var(--va-record-paper-edge) 85%, transparent),
+    inset 0 0 0.4rem var(--va-record-paper-edge);
+}
+
+.recordGrain {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.recordWrinkles {
+  opacity: 0.65;
+}
+
+.recordLight {
+  lighting-color: var(--va-color-cream);
+}
+
+.recordFoxing {
+  fill: var(--va-record-foxing);
+  opacity: 0.55;
+}
+
+.recordFibre {
+  fill: var(--va-record-fibre);
+  opacity: 0.45;
+}
+
+/* A cup set down on it once, half off the sheet. */
+.recordCoffee {
+  position: absolute;
+  z-index: -1;
+  top: 41%;
+  right: -2.6rem;
+  width: 7.2rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  rotate: 20deg;
+  background: radial-gradient(circle, var(--va-record-coffee-wash) 0 58%, transparent 71%);
+  box-shadow:
+    inset 0 0 0 0.14rem var(--va-record-coffee),
+    inset 0 0 0.45rem 0.22rem var(--va-record-coffee-wash);
+  mask-image: conic-gradient(
+    var(--va-finale-mask) 0 52%,
+    var(--va-finale-mask-clear) 60% 71%,
+    var(--va-finale-mask) 80%
+  );
+  pointer-events: none;
+}
+
+/* The staple through its top left corner, and the hole of one pulled out. */
+.recordStaple {
+  position: absolute;
+  z-index: 2;
+  top: 1.15rem;
+  left: 0.55rem;
+  width: 1.7rem;
+  height: 0.26rem;
+  border-radius: 0.13rem;
+  rotate: -38deg;
+  background: linear-gradient(to bottom, var(--va-record-staple-shine), var(--va-record-staple) 65%);
+  box-shadow: 0.08rem 0.12rem 0.12rem var(--va-record-crease-shade);
+  pointer-events: none;
+}
+
+.recordStaple::after {
+  content: "";
+  position: absolute;
+  top: 0.85rem;
+  left: 0.15rem;
+  width: 0.14rem;
+  height: 0.14rem;
+  border-radius: 50%;
+  background: var(--va-record-crease-shade);
+  box-shadow: 1.2rem 0 0 var(--va-record-crease-shade);
+}
+
+/* The dog-eared corner: the back of the paper, folded over the front. */
+.recordCorner {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  bottom: 0;
+  width: var(--dog);
+  height: var(--dog);
+  filter: drop-shadow(-0.12rem -0.12rem 0.14rem var(--va-record-crease-shade));
+  pointer-events: none;
+}
+
+.recordCorner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  background: linear-gradient(
+    135deg,
+    var(--va-record-paper-light) 0%,
+    var(--va-record-paper-back) 38%,
+    color-mix(in srgb, var(--va-record-paper-back) 70%, var(--va-record-paper-edge)) 50%
+  );
+}
+
+/* The printed form: a double frame, its header, numbered fields on rules. */
+.recordForm {
+  position: relative;
+  z-index: 1;
+  padding: 1.1rem 1.15rem 1.05rem;
+  border: 1.5px solid var(--va-record-rule);
+  outline: 1px solid var(--va-record-rule);
+  outline-offset: -0.3rem;
+}
+
 .recordTitle {
-  margin: 0 0 1rem;
-  padding-bottom: 0.6rem;
-  border-bottom: 2px solid var(--va-color-ink);
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.3em;
+  margin: 0 0 0.85rem;
+  padding: 0.15rem 5.2rem 0.55rem 0;
+  border-bottom: 3px double var(--va-record-print);
+  font: 700 1.02rem / 1.2 var(--va-font-body);
+  letter-spacing: 0.24em;
+  color: var(--va-record-print);
 }
 
 .recordRows {
   display: grid;
-  gap: 0.55rem;
-  margin: 0 0 1.2rem;
+  margin: 0 0 1.15rem;
 }
 
 .recordRow {
   display: grid;
-  grid-template-columns: minmax(7rem, 38%) 1fr;
-  gap: 0.75rem;
-  font-size: 0.8rem;
+  grid-template-columns: minmax(11rem, 36%) 1fr;
+  align-items: baseline;
+  gap: 0.2rem 0.8rem;
+  padding: 0.5rem 0 0.12rem;
+  border-bottom: 1px solid var(--va-record-rule);
 }
 
-.recordRow dt {
+.recordRow dt,
+.recordRemarks dt {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding-bottom: 0.22rem;
+  font: 600 0.64rem / 1.3 var(--va-font-body);
+  letter-spacing: 0.13em;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  opacity: 0.7;
+  color: color-mix(in srgb, var(--va-record-print) 80%, transparent);
 }
 
+.recordNumber {
+  flex: none;
+  padding: 0 0.2rem;
+  border: 1px solid var(--va-record-rule);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+/* Typed on a worn ribbon: the ink bleeds a little, no two lines quite level. */
 .recordRow dd {
   margin: 0;
-  font-weight: 600;
+  font: 400 1rem / 1.35 var(--va-font-typewriter);
+  color: var(--va-record-type);
+  text-shadow: 0 0 0.05em color-mix(in srgb, var(--va-record-type) 70%, transparent);
+  overflow-wrap: anywhere;
+}
+
+.recordRow:nth-child(2n) dd {
+  translate: 0.12rem 0.05rem;
+}
+
+.recordRow:nth-child(3n) dd {
+  translate: -0.05rem -0.06rem;
+  color: color-mix(in srgb, var(--va-record-type) 86%, transparent);
+}
+
+/* The sergeant's remark, by hand in ballpoint on the box's ruled lines. */
+.recordRemarks {
+  margin-top: 1rem;
+}
+
+.recordRemarks dd {
+  --ruled: 1.95rem;
+  margin: 0.15rem 0 0;
+  padding: 0.1rem 0.7rem 0;
+  border: 1px solid var(--va-record-rule);
+  background: repeating-linear-gradient(
+      to bottom,
+      transparent 0 calc(var(--ruled) - 1px),
+      var(--va-record-rule) calc(var(--ruled) - 1px) var(--ruled)
+    )
+    0 0.1rem;
+  font: 400 1.32rem / var(--ruled) var(--va-font-sign-script);
+  word-spacing: 0.14em;
+  color: var(--va-record-pen);
+}
+
+.recordFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .recordClose {
+  min-width: 2.75rem;
   min-height: 2.75rem;
-  padding: 0 1.2rem;
-  border: 1.5px solid var(--va-color-ink);
-  border-radius: 999px;
-  background: transparent;
-  font: 600 0.72rem / 1 var(--va-font-mono);
-  letter-spacing: 0.2em;
+  padding: 0 1.1rem;
+  border: 1.5px solid var(--va-record-print);
+  border-radius: 0.2rem;
+  background: var(--va-record-paper-light);
+  box-shadow: 0.15rem 0.15rem 0 var(--va-record-rule);
+  font: 400 0.92rem / 1 var(--va-font-typewriter);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--va-color-ink);
+  color: var(--va-record-print);
   cursor: pointer;
+}
+
+.recordClose::before {
+  content: "✕" / "";
+  margin-right: 0.55em;
+}
+
+@media (hover: hover) {
+  .recordClose:hover {
+    background: var(--va-record-print);
+    color: var(--va-record-paper-light);
+  }
 }
 
 .recordClose:focus-visible {
   outline: 2px solid var(--va-color-magenta);
   outline-offset: 3px;
+}
+
+/* Rubber stamps: uneven ink, pressed down at an angle, never quite square. */
+.recordStamp {
+  margin: 0;
+  border: 2px solid currentColor;
+  border-radius: 0.25rem;
+  font: 900 0.85rem / 1 var(--va-font-chapter-caps);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  mix-blend-mode: multiply;
+  filter: url(#va-record-ink);
+}
+
+.recordStampCopy {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.85rem;
+  padding: 0.3rem 0.3rem 0.25rem 0.58rem;
+  rotate: 8deg;
+  color: var(--va-record-stamp-rose);
+  opacity: 0.85;
+}
+
+.recordStampFiled {
+  padding: 0.38rem 0.5rem 0.32rem 0.78rem;
+  border: 4px double currentColor;
+  font-size: 1.15rem;
+  rotate: -7deg;
+  color: var(--va-record-stamp-violet);
+  opacity: 0.88;
+}
+
+/* A narrow sheet (a phone): each field's label over its value. */
+@container (max-width: 25rem) {
+  .recordForm {
+    padding: 0.95rem 0.85rem 0.9rem;
+  }
+
+  .recordTitle {
+    padding-right: 4.4rem;
+    font-size: 0.92rem;
+    letter-spacing: 0.18em;
+  }
+
+  .recordRow {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+    padding-top: 0.4rem;
+  }
+
+  .recordRow dd {
+    font-size: 0.95rem;
+    line-height: 1.3;
+  }
+
+  .recordRemarks {
+    margin-top: 0.8rem;
+  }
+
+  .recordRemarks dd {
+    --ruled: 1.75rem;
+    font-size: 1.18rem;
+  }
+
+  .recordRows {
+    margin-bottom: 0.9rem;
+  }
+
+  .recordRow dt {
+    padding-bottom: 0;
+  }
+
+  .recordStampFiled {
+    font-size: 1rem;
+  }
+}
+
+/* Set down on the night with a short drop and settle; still under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .record:popover-open .recordSheet {
+    animation: recordDrop 460ms var(--va-motion-ease) both;
+  }
+}
+
+@keyframes recordDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-1.4rem) rotate(-2.6deg) scale(1.02);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(0.18rem) rotate(0.35deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Forced colours: a plain bordered card in the system's colours, every word kept. */
+@media (forced-colors: active) {
+  .recordSheet {
+    rotate: none;
+    filter: none;
+  }
+
+  .recordPaper {
+    clip-path: none;
+    border: 2px solid CanvasText;
+    background: Canvas;
+    box-shadow: none;
+  }
+
+  .recordGrain,
+  .recordCoffee,
+  .recordStaple,
+  .recordCorner {
+    display: none;
+  }
+
+  .recordRemarks dd {
+    background: none;
+  }
+
+  .recordStamp {
+    mix-blend-mode: normal;
+    filter: none;
+    opacity: 1;
+    color: CanvasText;
+  }
 }
 
 /* ---- the dash (hero/Dash.tsx), on every screen but a phone's ---- */
