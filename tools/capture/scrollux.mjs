@@ -3269,6 +3269,41 @@ const CHECKS = {
     };
     const overflung = [...flingsOf(rec), ...flingsOf(hrec)].filter((e) => e.fling > 2 * e.at60 + 0.5 * e.ih);
     if (mobile) report(`${tag} 2 a flick flings as far whatever the frame rate (Lenis' fling at most twice its 60 fps fling, and half a screen)`, overflung.length === 0, overflung.slice(0, 4));
+    // And at least half as far: once a frame took 40 ms the lift came in the same task as the last moves,
+    // Lenis' velocity was the frame before's, and a hard flick flew 150 px, then nothing. Lifts in the
+    // city's pinned film (Lenis' strokes there, walls open or not), the finger still moving as it lifted
+    // (within 30 ms of its last move), against the fling its own speed gives at 60 fps, as far as the
+    // page and the wall leave room; the target read over the next six frames, gliding or not.
+    const underflungOf = (r) => {
+      const rows = [];
+      const at = (e) => e.ts ?? e.t;
+      for (const lift of r.inputs.filter((e) => e.kind === "touchend")) {
+        const i = r.frames.findIndex((f) => f.t > lift.t);
+        if (i < 1) continue;
+        const before = r.frames[i - 1];
+        if (before.lt === null || before.top === undefined) continue;
+        const moves = r.inputs.filter((e) => e.kind === "touch" && e.t <= lift.t && e.t > lift.t - 120);
+        if (moves.length < 2 || at(lift) - at(moves.at(-1)) > 30) continue;
+        const first = r.frames.findLast((f) => f.t <= moves[0].t) ?? before;
+        const pinned = (f) => f.y >= f.top && f.y <= f.top + f.range;
+        // Lenis' strokes only: a finger landing on the browser's own fling stays the browser's (gate.ts browserStroke).
+        if (!pinned(before) || !pinned(first) || before.ls === "native" || first.ls === "native") continue;
+        const speed = moves.reduce((sum, e) => sum + e.d, 0) / Math.max(16, at(lift) - at(moves[0]));
+        if (Math.abs(speed) < 2) continue;
+        const after = r.frames.slice(i, i + 6).filter((f) => f.lt !== null);
+        if (after.length === 0) continue;
+        const fling = Math.max(...after.map((f) => Math.sign(speed) * (f.lt - before.lt)));
+        // Forward, up to the wall (a closed one holds the fling, gate.ts liftFling: none within 0.06 of a screen).
+        const end = Math.min(before.h - before.ih, Number.isFinite(before.wall) ? before.wall : Infinity);
+        const room = speed > 0 ? end - before.lt : before.lt;
+        if (room < 0.1 * before.ih) continue;
+        const want = Math.min((Math.abs(speed) * (1000 / 60)) ** 1.7, room);
+        rows.push({ t: Math.round(lift.t), speed: r1(speed), fling: Math.round(fling), want: Math.round(want) });
+      }
+      return rows;
+    };
+    const underflung = underflungOf(rec).filter((e) => e.fling < 0.5 * e.want);
+    if (mobile) report(`${tag} 2 a hard flick flings on a loaded phone too (at least half its 60 fps fling, as far as there is room)`, underflung.length === 0, underflung.slice(0, 4));
     // With the walls open the car is wherever the film is: a fling drives it as fast as the page goes (reported).
     report(`${tag} 2 the cuts in reverse and on a second pass: the set changes only under night, the dip settles on the film's`, p2.every((phase) => !cityOf(phase) || (cityOf(phase).visibleCutCount === 0 && cityOf(phase).settledDipOffCount === 0)), pick(p2, (phase) => cityOf(phase) && { cuts: cityOf(phase).visibleCuts, dip: cityOf(phase).settledDipOff }));
     console.log(`INFO ${tag} 2 car, fastest page frame (px), leaps over 0.6 screen beyond her travel, shift from the bars:`, JSON.stringify(pick(p2, (phase) => ({ carMaxStepM: cityOf(phase)?.car.maxStepM, carMaxSpeedMs: cityOf(phase)?.car.maxSpeedMs, fastestPx: motion[phase.name].fastestPx, leaps: motion[phase.name].leaps.length, barShift: motion[phase.name].barShift }))));

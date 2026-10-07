@@ -68,3 +68,20 @@ describe("the hero's frame never shifts", () => {
     expect(bodyOf(".status")).toMatch(/(^|[;\s])height:\s*1lh/);
   });
 });
+
+describe("the career city's aim corners never shift", () => {
+  const work = topLevelRules(readFileSync(new URL("../work/Work.module.css", import.meta.url), "utf8"));
+  const reticle = work.filter(([sel]) => sel.startsWith(".reticle"));
+
+  it("moves each corner by a transform in the reticle's container units, never by left or top", () => {
+    expect(reticle.find(([sel]) => sel === ".reticle")?.[1]).toMatch(/container-type:\s*size/);
+    for (const [sel, body] of reticle) expect(`${sel} { ${body} }`).not.toMatch(/(left|top|right|bottom|inset)\s*:[^;]*var\(--c\d[xy]/);
+    for (let i = 0; i < 4; i += 1) {
+      const body = reticle.find(([sel]) => sel === `.reticle [data-corner="${i}"]`)?.[1] ?? "";
+      expect(body).toMatch(new RegExp(`transform:[^;]*var\\(--c${i}x[^)]*\\)\\s*\\*\\s*1cqw[^;]*var\\(--c${i}y[^)]*\\)\\s*\\*\\s*1cqh`));
+    }
+    const span = reticle.find(([sel]) => sel === ".reticle span")?.[1] ?? "";
+    expect(span).toMatch(/left:\s*0/);
+    expect(span).toMatch(/top:\s*0/);
+  });
+});

@@ -74,7 +74,8 @@ also exists as real DOM for keyboard and screen-reader users.
   reports frame timing, long tasks and stalls, city against hero; the
   car is scored as the scene draws it, `carMotion.ts` replayed over the
   recorded picture; on a phone every flick's fling is held to twice what
-  her finger's speed flings at 60 fps, and half a screen; `--cpu 4|6`
+  her finger's speed flings at 60 fps, and half a screen, and in the
+  city's film to at least half of it where the page has room; `--cpu 4|6`
   throttles the CPU once she is in, a loaded phone;
   `--out` keeps the traces, `--replay <dir>` re-scores them), `shiftless`
   (the title hint, the dash's unit and the camera readout keep one box in
@@ -185,11 +186,14 @@ also exists as real DOM for keyboard and screen-reader users.
     be passed before it has been on screen for its reading time. The page
     is never left past the frontier (`scroll/gate.ts`): the input the gate
     passes never goes past it (a finger's fling flies up to the wall and
-    no further, and it is read at a 60 fps frame from the finger's own
-    speed on the events' clock, `gate.ts` steadyFling, never further than
-    Lenis' own: Lenis flings |its last frame's move|^1.7, and on a loaded
-    phone a frame's coalesced moves made the same flick fly four to seven
-    times as far, from the career city to the top of the hero; and every move of a stroke is cancelled, by Lenis or by
+    no further, and the gate flies it itself, read at a 60 fps frame
+    from the finger's own speed on the events' clock, `gate.ts`
+    steadyFling, nothing once the finger lifts 40 ms after its last move:
+    Lenis flings |its last frame's move|^1.7 from a velocity set in its
+    frame, so on a loaded phone a frame's coalesced moves made the same
+    flick fly four to seven times as far, from the career city to the top
+    of the hero, and once a frame took 40 ms the lift came in the same
+    task as the last moves and the flick flew almost nowhere; and every move of a stroke is cancelled, by Lenis or by
     the gate: Lenis drops a move with nothing vertical in it, a still
     finger's coalesced move or a pressure change, before it cancels it,
     and a move nobody cancels hands the rest of the stroke to the
@@ -733,7 +737,10 @@ also exists as real DOM for keyboard and screen-reader users.
   on its side, the bottom row between Skip and the pedal. Under reduced motion
   and without JS the stage is plates. Boards arm before they open
   (`hotspot.ts`): a real pointer move, a first tap, or focus on the chip;
-  the hotspot is a DOM element clipped to the board's projected quad.
+  the hotspot is a DOM element clipped to the board's projected quad,
+  and the aim's corners follow that quad by transform only (container
+  units of the frame, never `left`/`top`: a layout shift per move;
+  `layoutShift.test.ts`).
   The film opens on the chapter card «Historia principal» / "Main story"
   (the game's main storyline, as STATS's main missions are; ribbon
   «Trayectoria · 2018 — LIVE» / "Career · 2018 — LIVE"), after a bridge

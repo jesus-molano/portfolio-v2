@@ -83,9 +83,11 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
    * 2. Lenis reads the deltas from `data` after this callback, and zero
    *    deltas return early as for a tap;
    * 3. touchend inertia, sign(delta)·|velocity|^touchInertiaExponent, is
-   *    computed after this callback from Lenis' own velocity: the gate
-   *    computes the same fling here and, when it would pass the wall, zeroes
-   *    the deltas (2) and glides into the wall itself;
+   *    computed after this callback from Lenis' own velocity, which is set in
+   *    its frame and so grows with a long frame or goes stale when the lift
+   *    shares a task with the last moves: the gate zeroes the deltas (2) and
+   *    glides the same law itself from the finger's own speed, into the wall
+   *    at most;
    * 4. a touchmove Lenis drops (zero vertical delta, or `false` from this
    *    callback) returns before Lenis cancels it. A cancelable touchmove
    *    nobody cancels hands the rest of the stroke to the browser's own
@@ -235,28 +237,28 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         const lift = strokeLift(stroke.current, event.timeStamp);
         if (lift === 0) data.deltaX = 0;
         data.deltaY = lift;
-        // The fling is read at a 60 fps frame (gate.ts steadyFling): Lenis'
-        // own grows with the frame, and a loaded phone's flick flew from the
-        // career city to the top of the hero. A forward fling flies up to the
-        // wall and no further (gate.ts liftFling); near the wall it does not
-        // fly at all. A flick back keeps its inertia.
-        if (lenis && lift !== 0) {
-          // Internal 3: the fling Lenis would add after this callback.
-          const exponent = lenis.options.touchInertiaExponent;
-          const fling = Math.abs(lenis.velocity) ** exponent;
-          const steady = steadyFling(lenis.velocity, stroke.current, exponent);
+        // The fling is the finger's, read at a 60 fps frame (gate.ts
+        // steadyFling): Lenis' own grows with the frame, so a loaded phone's
+        // flick flew from the career city to the top of the hero, and once
+        // the lift came in the same task as the last moves its velocity was
+        // stale, so a hard flick barely flew at all. The gate always flies it
+        // itself. A forward fling flies up to the wall and no further (gate.ts
+        // liftFling); near the wall it does not fly at all. A flick back keeps
+        // its inertia.
+        // (Not under data-lenis-prevent or a selection handle, where Lenis flings nothing either.)
+        if (lenis && lift !== 0 && lenisDrivesTouch(lenis, event)) {
+          const steady = steadyFling(stroke.current, lenis.options.touchInertiaExponent, event.timeStamp);
           const fly = lift > 0 && Number.isFinite(room) ? liftFling(steady, room, window.innerHeight) : steady;
-          if (fly < fling) {
-            // Internal 2: zero deltas return as a tap, so Lenis flings nothing...
-            data.deltaX = 0;
-            data.deltaY = 0;
-            if (fly > 0) {
-              // ...and what fits glides the way Lenis' own fling would, into the wall at most.
-              lenis.scrollTo(lenis.targetScroll + lift * fly, { programmatic: false, lerp: motion.touchLerp });
-              if (steady > fly) {
-                scrollGate.pressure += Math.min(steady - fly, GATE.overshootCap);
-                scrollGate.pushedAt = now;
-              }
+          // Internal 2: zero deltas return as a tap, so Lenis flings nothing (internal 3)...
+          data.deltaX = 0;
+          data.deltaY = 0;
+          if (fly > 0) {
+            // ...and the fling glides the way Lenis' own would, into the wall at most.
+            if (event.cancelable) event.preventDefault();
+            lenis.scrollTo(lenis.targetScroll + lift * fly, { programmatic: false, lerp: motion.touchLerp });
+            if (steady > fly) {
+              scrollGate.pressure += Math.min(steady - fly, GATE.overshootCap);
+              scrollGate.pushedAt = now;
             }
           }
         }

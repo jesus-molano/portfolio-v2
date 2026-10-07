@@ -106,6 +106,12 @@
   cursor: pointer;
 }
 
+/*
+ * The corners follow the board as the camera moves, by transform only: placed with left and top they
+ * were laid out again on every write, a layout shift each time a corner moved in sight (the touch
+ * hint shows them at 0.4 whenever a card is up). `--cNx`, `--cNy` are percentages of the frame
+ * (WorkStage), read in container units of the reticle, which covers the frame.
+ */
 .reticle {
   position: absolute;
   inset: 0;
@@ -113,6 +119,7 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity 160ms ease-out;
+  container-type: size;
 }
 
 .reticle[data-visible] {
@@ -125,6 +132,8 @@
 
 .reticle span {
   position: absolute;
+  left: 0;
+  top: 0;
   width: 1.1rem;
   height: 1.1rem;
   border: 0 solid var(--va-color-cream);
@@ -132,31 +141,23 @@
 }
 
 .reticle [data-corner="0"] {
-  left: var(--c0x);
-  top: var(--c0y);
   border-width: 2px 0 0 2px;
-  transform: translate(-0.35rem, -0.35rem);
+  transform: translate(calc(var(--c0x, 0) * 1cqw - 0.35rem), calc(var(--c0y, 0) * 1cqh - 0.35rem));
 }
 
 .reticle [data-corner="1"] {
-  left: var(--c1x);
-  top: var(--c1y);
   border-width: 2px 2px 0 0;
-  transform: translate(calc(-100% + 0.35rem), -0.35rem);
+  transform: translate(calc(var(--c1x, 0) * 1cqw - 100% + 0.35rem), calc(var(--c1y, 0) * 1cqh - 0.35rem));
 }
 
 .reticle [data-corner="2"] {
-  left: var(--c2x);
-  top: var(--c2y);
   border-width: 0 2px 2px 0;
-  transform: translate(calc(-100% + 0.35rem), calc(-100% + 0.35rem));
+  transform: translate(calc(var(--c2x, 0) * 1cqw - 100% + 0.35rem), calc(var(--c2y, 0) * 1cqh - 100% + 0.35rem));
 }
 
 .reticle [data-corner="3"] {
-  left: var(--c3x);
-  top: var(--c3y);
   border-width: 0 0 2px 2px;
-  transform: translate(-0.35rem, calc(-100% + 0.35rem));
+  transform: translate(calc(var(--c3x, 0) * 1cqw - 0.35rem), calc(var(--c3y, 0) * 1cqh - 100% + 0.35rem));
 }
 
 @media (forced-colors: active) {

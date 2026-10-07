@@ -12,8 +12,8 @@ import { describe, expect, it } from "vitest";
  *    early as for a tap (no touchend inertia);
  * 3. touchend inertia, sign(delta) * |velocity|^touchInertiaExponent, is
  *    computed after the callback from Lenis' own velocity: the gate
- *    computes the same fling and, when it would pass the wall, zeroes the
- *    deltas (2) and glides into the wall itself.
+ *    zeroes the deltas (2) and glides the same law itself, from the
+ *    finger's own speed (gate.ts steadyFling), into the wall at most.
  * And HeroStage's frame (gate.ts) on two more:
  * 4. Lenis can miss a native move of the page: it drops the scroll event
  *    after its own landing (preventNextNativeScrollEvent, cleared on the

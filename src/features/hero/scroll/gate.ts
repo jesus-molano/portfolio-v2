@@ -66,6 +66,11 @@ export const GATE = {
   flingFrameMs: 1000 / 60,
   /** The finger's speed is smoothed over this long (ms, the moves' own clock): about the frame Lenis' velocity reads. */
   flingTau: 16,
+  /**
+   * A lift more than this (ms, the events' own clock) after the finger's last move flings nothing:
+   * the finger had stopped (Android's VelocityTracker assumes a pointer stopped after 40 ms).
+   */
+  flingStaleMs: 40,
 } as const;
 
 /**
@@ -170,13 +175,19 @@ export function strokeLift(stroke: Stroke, at: number): -1 | 0 | 1 {
 
 /**
  * How far a lift's fling flies (px): Lenis' touch inertia, |velocity|^exponent with its velocity in px
- * per frame, read at a 60 fps frame from the finger's own speed, and never further than Lenis' own. On
- * a loaded device the frames are long and a frame's moves coalesce, so the last frame's delta, and with
- * it the fling, grew with the frame: the same 420 px flick sent the page 1,500 px at 60 fps and
- * 7,800 px at 25, from the career city to the top of the hero in leaps of 1,300 px a frame.
+ * per frame, read at a 60 fps frame from the finger's own speed alone. On a loaded device the frames
+ * are long and a frame's moves coalesce, so the last frame's delta, and with it Lenis' fling, grew
+ * with the frame: the same 420 px flick sent the page 1,500 px at 60 fps and 7,800 px at 25, from
+ * the career city to the top of the hero in leaps of 1,300 px a frame. And Lenis' velocity is set in
+ * its frame, not by the moves: once a frame took 40 ms the last moves and the lift came in one task,
+ * its velocity was still the frame before's (or zeroed), and the same flick flew 150 px, then
+ * nothing. The finger's speed, on its events' own clock, is the same whatever the frame rate. It
+ * counts only while the finger is still moving as it lifts (`at`, the lift's own time, within
+ * `flingStaleMs` of its last move): a finger that stopped before lifting flings nothing.
  */
-export function steadyFling(lenisVelocity: number, stroke: Stroke, exponent: number): number {
-  const perFrame = Math.min(Math.abs(lenisVelocity), Math.abs(stroke.speed) * GATE.flingFrameMs);
+export function steadyFling(stroke: Stroke, exponent: number, at: number): number {
+  if (!(at - stroke.speedAt <= GATE.flingStaleMs)) return 0;
+  const perFrame = Math.abs(stroke.speed) * GATE.flingFrameMs;
   return perFrame > 0 ? perFrame ** exponent : 0;
 }
 

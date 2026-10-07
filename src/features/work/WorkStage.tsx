@@ -505,11 +505,12 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         if (el.reticle) {
           const shown = targetable && night.armTarget > 0;
           const hint = targetable && touch && active >= 0;
-          // Its corners move with the camera: written only while it shows, so a moving shot lays nothing out.
+          // Its corners move with the camera, by transform (percent of the frame, read in container units):
+          // written only while it shows, and never laid out again.
           if (shown || hint) {
             night.quad.forEach(([x, y], i) => {
-              set(el.reticle, `--c${i}x`, `${(((x + 1) / 2) * 100).toFixed(1)}%`);
-              set(el.reticle, `--c${i}y`, `${(((1 - y) / 2) * 100).toFixed(1)}%`);
+              set(el.reticle, `--c${i}x`, (((x + 1) / 2) * 100).toFixed(1));
+              set(el.reticle, `--c${i}y`, (((1 - y) / 2) * 100).toFixed(1));
             });
           }
           attr(el.reticle, "data-visible", shown);
