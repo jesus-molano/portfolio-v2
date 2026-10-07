@@ -89,6 +89,7 @@ import {
 } from "./scroll/transport";
 import { drive } from "./scene/drive";
 import { isCovered, setHeroCovered } from "./heroCover";
+import { type FarRestInput, restsFarAway } from "./scroll/farRest";
 import { CUT_BAND, SHOT_COUNT, type ShotPick, shotIndexAt, stickyShot } from "./scene/shots";
 
 gsap.registerPlugin(useGSAP);
@@ -823,12 +824,35 @@ export function HeroStage({
       };
 
       /** One frame of the story and everything drawn from it. Reads first, then writes. */
+      /** What farRest.ts reads, filled each frame (the frame allocates nothing). */
+      const farIn: FarRestInput = {
+        wallsOpen: false,
+        scroll: 0,
+        top: 0,
+        bottom: 0,
+        vh: 1,
+        pressure: 0,
+        sincePush: 0,
+        pedalDown: false,
+        scrolling: false,
+      };
       const update = (deltaMs: number) => {
         // Reduced motion just switched on: the CSS shows the still hero, and
         // the film must not touch the page before React hands over to it.
         if (stillQuery.matches) return;
         const now = performance.now();
         const scroll = readScroll();
+        // Far below with every wall open and nothing in flight, the frame has nothing to do (farRest.ts).
+        farIn.wallsOpen = frontierIndex(story) < 0;
+        farIn.scroll = scroll;
+        farIn.top = geom.top;
+        farIn.bottom = geom.top + geom.range + geom.vh;
+        farIn.vh = geom.vh;
+        farIn.pressure = scrollGate.pressure;
+        farIn.sincePush = now - scrollGate.pushedAt;
+        farIn.pedalDown = pedal.down;
+        farIn.scrolling = Boolean(lenis?.isScrolling);
+        if (restsFarAway(farIn)) return;
         // The story's reading clocks take at most STORY.maxStep a frame; the feedback runs on real time.
         let realDt = Math.min(Math.max(0, deltaMs) / 1000, MAX_REAL_STEP);
         const visible = document.visibilityState === "visible";

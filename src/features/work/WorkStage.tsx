@@ -15,6 +15,7 @@ import { ChapterCard } from "@/components/ChapterCard/ChapterCard";
 import { Button } from "@/components/ui/Button";
 import { motion } from "@/design/tokens";
 import { decay, ELASTIC, rubberBand, touchStretchMax } from "@/features/hero/scroll/elastic";
+import { type FarRestInput, restsFarAway } from "@/features/hero/scroll/farRest";
 import { lenisMissed, type PageReading, pageScroll } from "@/features/hero/scroll/gate";
 import { type InputSource, recordInput, scrollGate, scrollInput } from "@/features/hero/scroll/heroProgress";
 import { createPedalDriver } from "@/features/hero/scroll/pedalDriver";
@@ -378,6 +379,18 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       let driver: ReturnType<typeof createPedalDriver> | null = null;
       const drawnPedal = { lv: Number.NaN };
 
+      /** What farRest.ts reads, filled each frame. */
+      const farIn: FarRestInput = {
+        wallsOpen: false,
+        scroll: 0,
+        top: 0,
+        bottom: 0,
+        vh: 1,
+        pressure: 0,
+        sincePush: 0,
+        pedalDown: false,
+        scrolling: false,
+      };
       /** What nightCover.ts reads, filled each frame (the frame allocates nothing). */
       const coverIn: NightCoverInput = { ready: false, sceneIn: 0, endT: 0, dip: 0, warm: false };
       const update = (deltaMs: number) => {
@@ -385,6 +398,18 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         // The pedal lets go whenever its holder may be gone: the radio wheel opened, Lenis stopped, a lost keyup.
         driver?.watch(now, getRadio().wheel !== null || !lenis || lenis.isStopped);
         const scroll = scrollNow();
+        // Far from the city with every wall open and nothing in flight (no dip settling either), the
+        // frame has nothing to do (farRest.ts).
+        farIn.wallsOpen = stageFrontierIndex(story) < 0;
+        farIn.scroll = scroll;
+        farIn.top = geom.top;
+        farIn.bottom = geom.top + geom.range + geom.vh;
+        farIn.vh = geom.vh;
+        farIn.pressure = scrollGate.pressure;
+        farIn.sincePush = now - scrollGate.pushedAt;
+        farIn.pedalDown = driver?.pedal.down ?? false;
+        farIn.scrolling = Boolean(lenis?.isScrolling);
+        if (view.dip === 0 && restsFarAway(farIn)) return;
         let dt = Math.min(Math.max(0, deltaMs) / 1000, STORY.maxStep);
         const visible = document.visibilityState === "visible";
         if (visible && wasHidden) {
