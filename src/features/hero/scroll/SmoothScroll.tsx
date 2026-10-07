@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { VirtualScrollData } from "lenis";
 import { ReactLenis, useLenis, type LenisRef } from "lenis/react";
 import { motion } from "@/design/tokens";
@@ -29,11 +28,10 @@ import {
 } from "./gate";
 import { recordInput, scrollDrive, scrollGate, scrollInput } from "./heroProgress";
 
-gsap.registerPlugin(ScrollTrigger);
-
 /**
- * Lenis smooth scroll driven by the GSAP ticker, with ScrollTrigger kept in
- * sync (official Lenis + GSAP recipe). The tree shape never changes, so a late
+ * Lenis smooth scroll driven by the GSAP ticker. No ScrollTrigger: nothing
+ * on the page made a trigger, and the plugin alone kept a frame loop, a
+ * timer and a refresh on every resize running for the whole visit. The tree shape never changes, so a late
  * reduced-motion value does not remount the page: under reduced motion Lenis
  * follows the native scroll position instantly (`lerp: 1`).
  *
@@ -391,7 +389,6 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       }}
     >
       <ScrollerRegistration />
-      <ScrollTriggerSync />
       {children}
     </ReactLenis>
   );
@@ -445,11 +442,5 @@ function lenisDrivesTouch(lenis: object, event: Event): boolean {
 function ScrollerRegistration() {
   const lenis = useLenis();
   useLayoutEffect(() => (lenis ? registerScroller(lenis as unknown as Scroller) : undefined), [lenis]);
-  return null;
-}
-
-/** Registers `ScrollTrigger.update` on the Lenis instance once it exists. */
-function ScrollTriggerSync() {
-  useLenis(() => ScrollTrigger.update());
   return null;
 }
