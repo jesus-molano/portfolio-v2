@@ -172,3 +172,19 @@ export function quadOverlapsScreen(ndc: readonly Ndc[]): boolean {
   }
   return false;
 }
+
+/**
+ * Whether the active board is on screen for its hotspot: one of its corners
+ * on the screen (NDC within 1.05, in front of the camera: `depth`, each
+ * corner's NDC z, under 1), or, for a board drawn wider than the frame
+ * (`wide`: Logixs' wall of bills, which shows no corner on a phone), any of
+ * it over the screen with every corner in front. Only a set that asks for it
+ * gets the second rule: a close-up that fills the frame with one board
+ * (PwC's blade) is a shot, not a target, and a tap there plays the next
+ * line.
+ */
+export function boardOnScreen(ndc: readonly Ndc[], depth: readonly number[], wide: boolean): boolean {
+  if (ndc.some(([x, y], i) => depth[i] < 1 && Math.abs(x) < 1.05 && Math.abs(y) < 1.05)) return true;
+  if (!wide || depth.some((z) => z >= 1)) return false;
+  return quadOverlapsScreen(ndc);
+}

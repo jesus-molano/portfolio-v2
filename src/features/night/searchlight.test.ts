@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   boardPoint,
-  flicker,
+  breathe,
   nearestPhase,
   newSearchlight,
   SEARCHLIGHT,
@@ -175,32 +175,48 @@ describe("armed with no pointer", () => {
   });
 });
 
-describe("the hover and the rotor", () => {
-  it("drifts the spot by a few centimetres, never more", () => {
-    let max = 0;
-    for (let t = 0; t < 60; t += 0.01) {
-      const [dx, dy] = wobble(t);
-      max = Math.max(max, Math.abs(dx), Math.abs(dy));
+describe("the hover", () => {
+  it("sways the spot a visible quarter metre around its aim, never past 0.4 m, slowly", () => {
+    let maxX = 0;
+    let maxY = 0;
+    let fastest = 0;
+    let last = wobble(0);
+    for (let t = 0.01; t < 120; t += 0.01) {
+      const w = wobble(t);
+      maxX = Math.max(maxX, Math.abs(w[0]));
+      maxY = Math.max(maxY, Math.abs(w[1]));
+      fastest = Math.max(fastest, Math.hypot(w[0] - last[0], w[1] - last[1]) / 0.01);
+      last = w;
     }
-    expect(max).toBeGreaterThan(0.02);
-    expect(max).toBeLessThanOrEqual(SEARCHLIGHT.wobble.x + 1e-9);
+    expect(maxX).toBeGreaterThan(0.2);
+    expect(Math.hypot(maxX, maxY)).toBeLessThanOrEqual(0.4);
+    expect(maxY).toBeGreaterThan(0.12);
+    // A hover, not a shake: never as fast as a lazy walk.
+    expect(fastest).toBeLessThan(0.6);
+    for (const hz of SEARCHLIGHT.wobble.hz) {
+      expect(hz).toBeGreaterThanOrEqual(0.15);
+      expect(hz).toBeLessThanOrEqual(0.4);
+    }
   });
 
-  it("chops the beam a few percent, at about 11 Hz", () => {
+  it("breathes a few percent, slower than once a second: no rotor chop to alias at a low frame rate", () => {
     let min = 1;
+    let max = 0;
     let crossings = 0;
-    let last = flicker(0);
-    const mid = 1 - SEARCHLIGHT.flicker.depth / 2;
-    for (let t = 0.0005; t <= 1; t += 0.0005) {
-      const f = flicker(t);
+    let last = breathe(0);
+    const mid = 1 - SEARCHLIGHT.breathe.depth / 2;
+    for (let t = 0.001; t <= 20; t += 0.001) {
+      const f = breathe(t);
       min = Math.min(min, f);
+      max = Math.max(max, f);
       if ((last - mid) * (f - mid) < 0) crossings += 1;
       last = f;
     }
-    expect(min).toBeGreaterThan(0.94);
-    expect(min).toBeLessThan(0.99);
-    expect(crossings / 2).toBeGreaterThan(9);
-    expect(crossings / 2).toBeLessThan(13);
+    expect(max).toBeCloseTo(1, 4);
+    expect(min).toBeGreaterThan(0.9);
+    expect(min).toBeLessThan(0.98);
+    expect(crossings / 2 / 20).toBeLessThan(1);
+    expect(crossings / 2 / 20).toBeGreaterThan(0.3);
   });
 
   it("shines from high over the street toward the wall, its spot a radius across the beam", () => {
@@ -212,11 +228,13 @@ describe("the hover and the rotor", () => {
     expect(beam.from[2] - beam.to[2]).toBeGreaterThan(10);
     const length = Math.hypot(beam.from[0] - beam.to[0], beam.from[1] - beam.to[1], beam.from[2] - beam.to[2]);
     expect(beam.tan * length).toBeCloseTo(SEARCHLIGHT.radius, 9);
-    // Slanted from above by 30 to 50 degrees off the wall's normal: a spot slightly taller than wide.
+    // Steeply out of the sky, 50 to 62 degrees off the wall's normal: a spot taller than wide that still fits the board.
     const tilt = Math.atan2(beam.from[1] - beam.to[1], beam.from[2] - beam.to[2]);
-    expect(tilt).toBeGreaterThan((30 * Math.PI) / 180);
-    expect(tilt).toBeLessThan((50 * Math.PI) / 180);
-    expect(beam.level).toBeGreaterThan(1 - SEARCHLIGHT.flicker.depth - 1e-9);
+    expect(tilt).toBeGreaterThan((50 * Math.PI) / 180);
+    expect(tilt).toBeLessThan((62 * Math.PI) / 180);
+    const tall = SEARCHLIGHT.radius / Math.cos(tilt);
+    expect(2 * tall).toBeLessThan(BOARD.y1 - BOARD.y0);
+    expect(beam.level).toBeGreaterThan(1 - SEARCHLIGHT.breathe.depth - 1e-9);
   });
 
   it("is dark when off: level 0 before arming and after the fade", () => {
@@ -229,7 +247,7 @@ describe("the hover and the rotor", () => {
 });
 
 describe("still (reduced motion)", () => {
-  it("no drift, no chop, no lag, no search path", () => {
+  it("no sway, no breathing, no lag, no search path", () => {
     const light = newSearchlight();
     run(light, { armed: true, pointer: null, tap: null, still: true }, 3);
     expect(light.x).toBe(SEARCHLIGHT.search.cx);

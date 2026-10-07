@@ -1,11 +1,13 @@
+import { spotLightGlsl } from "./spotLight";
+
 /**
  * The Logixs wall and its paper. One light function for both: a violet
  * ambient, the wall lantern's warm pool, the crossing light's red spill
  * and, when the board is armed, a police helicopter's searchlight hunting
- * along the wall (searchlight.ts): a cone from the lamp over the street,
- * its spot on the wall a hot core, an even body and a crisp rim, stretched
- * upright where the slanted beam meets the brick. The brick is procedural;
- * plaster above it.
+ * along the wall (searchlight.ts, spotLight.ts): a cone from the lamp
+ * over the street, its spot on the wall a hot core, an even body and a
+ * crisp rim, stretched upright where the steep beam meets the brick. The
+ * brick is procedural; plaster above it.
  */
 const wallLight = /* glsl */ `
   uniform vec3 uAmbient;
@@ -13,10 +15,7 @@ const wallLight = /* glsl */ `
   uniform vec3 uLanternColor;
   uniform vec3 uSignalPos;
   uniform vec3 uSignalColor;
-  uniform vec3 uSpotFrom;
-  uniform vec3 uSpotAxis;
-  uniform float uSpotTan;
-  uniform vec3 uSpotColor;
+  ${spotLightGlsl}
 
   vec3 wallLight(vec3 world) {
     vec3 L = uLanternPos - world;
@@ -25,23 +24,6 @@ const wallLight = /* glsl */ `
     vec3 S = uSignalPos - world;
     light += uSignalColor * (2.2 / (1.0 + dot(S, S)));
     return light;
-  }
-
-  // The searchlight: how far off the beam's axis a point is, as a share of
-  // the cone's radius there (1 at the rim). uSpotAxis is unit (set on the
-  // CPU); behind the lamp the share is huge and the light nothing. Black
-  // uSpotColor when off: the same program either way.
-  vec3 spotLight(vec3 world) {
-    vec3 d = world - uSpotFrom;
-    float along = dot(d, uSpotAxis);
-    vec3 across = d - uSpotAxis * along;
-    float s = length(across) / max(along * uSpotTan, 1e-3);
-    // An even pool that dims a little toward its edge, cut crisp at the rim
-    // (the lamp's lens), a hot core and a faint scatter around it.
-    float body = (1.0 - smoothstep(0.9, 1.0, s)) * (1.0 - 0.35 * s * s);
-    float core = exp(-s * s * 6.0);
-    float spill = exp(-s * s * 0.5) * 0.06;
-    return uSpotColor * (0.6 * body + 0.9 * core + spill);
   }
 `;
 
@@ -170,11 +152,19 @@ export const pasteUpFragmentShader = /* glsl */ `
     vec4 art = texture2D(uMap, vUv);
     if (art.a < 0.5) discard;
     // Day-glo stays under the bloom threshold: the bills read, only bulbs bloom.
-    // In the searchlight's core the paper goes a little over it, hot white
-    // as a xenon lamp makes it, the print still readable.
-    vec3 spot = spotLight(vWorld);
+    // In the searchlight the paper goes over it, as hot as a xenon lamp makes
+    // it: past the knee its brightest channel rolls off on a soft shoulder
+    // (toward 0.8 + 2.6) and the others keep their share of it, so
+    // the print keeps its colours and stays readable, the core still hotter
+    // than the body, and tone mapping and the bloom take it from there.
+    // Unlit, the colour is never over the knee and the shoulder is a no-op.
     vec3 color = min(art.rgb * wallLight(vWorld), vec3(0.8));
-    color = min(color + art.rgb * spot, vec3(0.8 + 0.25 * min(spot.b, 1.0)));
+    color += art.rgb * spotLight(vWorld);
+    float peak = max(max(color.r, color.g), color.b);
+    if (peak > 0.8) {
+      float over = peak - 0.8;
+      color *= (0.8 + over / (1.0 + over / 2.6)) / peak;
+    }
     // Wet paste: the brush's diagonal strokes catch the lantern until the sheet dries.
     float strokes = 0.5 + 0.5 * sin((vLocal.x * 3.0 + vLocal.y * 1.4) * 7.0 + sin(vLocal.y * 11.0) * 1.2);
     color += vFresh * uWet * (0.03 + 0.04 * strokes * strokes) * vec3(1.0, 0.86, 0.7);

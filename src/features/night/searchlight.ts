@@ -12,11 +12,14 @@
  *   settles where the tap landed if it knows it (`tap`), and otherwise
  *   searches on its own: a slow lazy eight over the run of bills, picked up
  *   at the point of the eight nearest where the light is.
- * - The helicopter hovers: the spot drifts a few centimetres (`wobble`) and
- *   the rotor chops the beam a few percent at about 11 Hz (`flicker`).
+ * - The helicopter hovers: the spot sways a quarter of a metre around its
+ *   aim, slowly, as a hovering helicopter cannot hold still (`wobble`), and
+ *   the lamp breathes a few percent, slower than once a second
+ *   (`breathe`): a rotor's chop at 11 Hz could not be seen, and at a low
+ *   frame rate it beat into a slow flicker of its own.
  * - Armed, it fades in where it is aimed in 0.3 s; disarmed, it fades out
  *   where it is in 0.3 s. It never loops back or restarts on its own.
- * - `still` (reduced motion): no wobble, no flicker, no lag, no search
+ * - `still` (reduced motion): no sway, no breathing, no lag, no search
  *   path; the light rests where it is aimed, or on the run's middle.
  */
 
@@ -32,21 +35,22 @@ export const SEARCHLIGHT = {
   /** The follow's natural frequency (rad/s), critically damped: 63 % of a jump in about 0.4 s, 95 % in 1.1 s. */
   follow: 4.2,
   /** The spot's radius across the beam where it meets the wall, metres; the wall's tilt to the beam stretches it upright. */
-  radius: 0.92,
+  radius: 0.8,
   /**
    * Where the helicopter hovers from the spot: a little to the right, high
-   * over the street and out over it toward the camera, so the beam meets the
-   * wall at about 40 degrees from below its normal and the spot is about a
-   * third taller than wide. It drifts after the spot at a quarter of its
-   * travel, so the beam's slant changes as it hunts.
+   * over the street and out over it toward the camera, so the beam comes
+   * steeply out of the sky, meets the wall at about 53 degrees from its
+   * normal and the spot is about 1.65 times as tall as wide (its pool breaks
+   * onto the pavement at the bills' feet). It drifts after the spot at a
+   * quarter of its travel, so the beam's slant changes as it hunts.
    */
-  hover: { x: 2.2, y: 13.5, z: 16, follow: 0.25 },
-  /** The hover's drift of the spot, metres per axis: two slow incommensurate sines each. */
-  wobble: { x: 0.05, y: 0.035, hz: [0.21, 0.37, 0.29, 0.53] },
+  hover: { x: 1.6, y: 17, z: 13, follow: 0.25 },
+  /** The hover's sway of the spot, metres per axis: two slow incommensurate sines each (0.15 to 0.4 Hz). */
+  wobble: { x: 0.3, y: 0.2, hz: [0.17, 0.31, 0.23, 0.37] },
   /** The helicopter itself bobs (metres), which tilts the beam a touch. */
   bob: { x: 0.35, y: 0.25, hz: [0.13, 0.19] },
-  /** The rotor's chop: a share of the light, at its blade-pass frequency. */
-  flicker: { depth: 0.035, hz: 11.3 },
+  /** The lamp's breathing: a share of the light, slower than once a second. */
+  breathe: { depth: 0.06, hz: 0.55 },
   /**
    * The search with no pointer: a lazy eight (x = sin φ, y = sin 2φ) over
    * the run of bills, centre and half-extents in metres, one lap in
@@ -71,7 +75,7 @@ export type Searchlight = {
   phase: number;
   /** Whether the last frame searched: entering the search picks the eight up nearest the light. */
   searching: boolean;
-  /** Its own clock, seconds: the hover and the rotor read it. */
+  /** Its own clock, seconds: the hover and the lamp's breathing read it. */
   t: number;
 };
 
@@ -180,7 +184,7 @@ export function stepSearchlight(light: Searchlight, area: SpotArea, input: SpotI
   }
 }
 
-/** The hover's drift of the spot at a time, metres. */
+/** The hover's sway of the spot at a time, metres. */
 export function wobble(t: number): [number, number] {
   const w = SEARCHLIGHT.wobble;
   const [a, b, c, d] = w.hz;
@@ -191,11 +195,10 @@ export function wobble(t: number): [number, number] {
   ];
 }
 
-/** The rotor's chop: a multiplier on the light, within 1 - depth .. 1. */
-export function flicker(t: number): number {
-  const f = SEARCHLIGHT.flicker;
-  const chop = 0.5 + 0.5 * Math.sin(Math.PI * 2 * f.hz * t);
-  return 1 - f.depth * chop * chop;
+/** The lamp's breathing: a multiplier on the light, within 1 - depth .. 1. */
+export function breathe(t: number): number {
+  const b = SEARCHLIGHT.breathe;
+  return 1 - b.depth * (0.5 + 0.5 * Math.sin(Math.PI * 2 * b.hz * t));
 }
 
 export type SpotBeam = {
@@ -203,7 +206,7 @@ export type SpotBeam = {
   from: [number, number, number];
   /** Where the beam's axis meets the wall. */
   to: [number, number, number];
-  /** The light's strength, 0..1: the eased fade times the rotor's chop. */
+  /** The light's strength, 0..1: the eased fade times the lamp's breathing. */
   level: number;
   /** The cone's half-angle as a tangent: `radius` across the beam at the wall. */
   tan: number;
@@ -228,7 +231,7 @@ export function spotBeam(light: Searchlight, wallZ: number, still = false): Spot
   return {
     from,
     to,
-    level: eased * (still ? 1 : flicker(light.t)),
+    level: eased * (still ? 1 : breathe(light.t)),
     tan: SEARCHLIGHT.radius / Math.max(length, 1e-3),
   };
 }

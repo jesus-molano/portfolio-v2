@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ARM, DISARMED, insideQuad, quadArea, quadClipPath, quadIsTargetable, quadOverlapsScreen, quadUv, stepArm } from "./hotspot";
+import { ARM, boardOnScreen, DISARMED, insideQuad, quadArea, quadClipPath, quadIsTargetable, quadOverlapsScreen, quadUv, stepArm } from "./hotspot";
 
 const quad = [
   [-0.5, 0.5],
@@ -89,6 +89,35 @@ describe("hotspot geometry", () => {
     expect(quadOverlapsScreen(offRight)).toBe(false);
     const above = quad.map(([x, y]) => [x * 6, y + 3] as const);
     expect(quadOverlapsScreen(above)).toBe(false);
+  });
+
+  it("lets only a wide board count as on screen with no corner on it", () => {
+    // From a clip-path in percent of the frame (x right, y down) to NDC.
+    const ndc = (pts: [number, number][]) => pts.map(([x, y]) => [x / 50 - 1, 1 - y / 50] as const);
+    const near = [0.99, 0.99, 0.99, 0.99];
+    // PwC's blade in its close-up at 960 x 600: a column through the frame, no corner on it. A shot, not a target.
+    const blade = ndc([
+      [24, -173],
+      [81, -295],
+      [100, 333],
+      [15, 231],
+    ]);
+    expect(boardOnScreen(blade, near, false)).toBe(false);
+    // Logixs' wall on a phone: past both sides of the frame, a band across its middle.
+    const wall = ndc([
+      [-160, 34],
+      [210, 33],
+      [212, 53],
+      [-158, 54],
+    ]);
+    expect(boardOnScreen(wall, near, true)).toBe(true);
+    expect(boardOnScreen(wall, near, false)).toBe(false);
+    // A corner behind the camera: never by the wide rule.
+    expect(boardOnScreen(wall, [0.99, 1.2, 0.99, 0.99], true)).toBe(false);
+    // A corner on the screen counts for every board.
+    expect(boardOnScreen(quad, near, false)).toBe(true);
+    expect(boardOnScreen(quad, [1.2, 0.99, 0.99, 0.99], false)).toBe(true);
+    expect(boardOnScreen(quad, [1.2, 1.2, 1.2, 1.2], false)).toBe(false);
   });
 
   it("knows a point inside a quad", () => {

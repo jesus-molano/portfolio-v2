@@ -299,6 +299,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       let arm = DISARMED;
       let quadPath = "";
       let quadPathAt = 0;
+      /** The mouse's last place (client px; NaN before it moves): its place on the board is read again as the board moves under it. */
+      let pointer = { x: Number.NaN, y: Number.NaN };
       /** A press that rides a held drive on to its next line; any input of hers since lets it go. */
       let carry: { to: number; at: number } | null = null;
       let lastPushedAt = scrollGate.pushedAt;
@@ -519,6 +521,10 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           attr(el.hotspot, "data-live", Boolean(path));
         }
         if (!targetable && arm.via === "pointer") fire({ type: "pointermove", overQuad: false, resting: false });
+        // The board moves under a still mouse (the scroll, the camera's hand-held life): its place on it moves too.
+        if (arm.via === "pointer" && Number.isFinite(night.pointerU) && Number.isFinite(pointer.x)) {
+          [night.pointerU, night.pointerV] = quadUv(night.quad, (pointer.x / window.innerWidth) * 2 - 1, 1 - (pointer.y / window.innerHeight) * 2);
+        }
         if (el.reticle) {
           const shown = targetable && night.armTarget > 0;
           const hint = targetable && touch && active >= 0;
@@ -850,7 +856,6 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       const boardUv = (clientX: number, clientY: number) =>
         quadUv(night.quad, (clientX / window.innerWidth) * 2 - 1, 1 - (clientY / window.innerHeight) * 2);
 
-      let pointer = { x: Number.NaN, y: Number.NaN };
       const onPointerMove = (event: PointerEvent) => {
         if (event.pointerType === "touch") return;
         const resting = event.clientX === pointer.x && event.clientY === pointer.y;

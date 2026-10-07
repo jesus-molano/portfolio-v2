@@ -33,6 +33,12 @@ export type NightSet = {
   /** The board's corners (top left, top right, bottom right, bottom left) and its facing. */
   board: readonly [Vec3, Vec3, Vec3, Vec3];
   boardNormal: Vec3;
+  /**
+   * The board is drawn wider than a phone's frame (Logixs' wall): it is on
+   * screen for its hotspot when it covers any of the screen, not only when
+   * a corner shows (hotspot.ts `boardOnScreen`).
+   */
+  boardWide?: boolean;
   /** What a portrait fit frames for a pose at film position p (default: the board and the car at its line; the shots are direction.ts'). */
   subject?: (pose: Pose, p: number, car: readonly Vec3[]) => readonly Vec3[];
   /** How far a portrait fit may pull the camera back (m). */

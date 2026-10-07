@@ -15,6 +15,7 @@ import {
   Matrix4,
   type Mesh,
   type MeshBasicMaterial,
+  MeshStandardMaterial,
   Quaternion,
   type ShaderMaterial,
   UniformsLib,
@@ -29,8 +30,9 @@ import { type BoxItem, Boxes } from "../parts/Boxes";
 import { NightPalms, type NightPalm } from "../parts/NightPalms";
 import { type Pane, Windows } from "../parts/Windows";
 import { type Glow, type GlowHandle, Glows } from "../parts/Glows";
-import { beamVertexShader, searchBeamFragmentShader } from "../shaders/beam";
+import { searchBeamFragmentShader, searchBeamVertexShader } from "../shaders/beam";
 import { pasteUpFragmentShader, pasteUpVertexShader, wallFragmentShader, wallVertexShader } from "../shaders/pasteUp";
+import { litBySearchlight } from "../shaders/spotLight";
 import { type BoardUv, newSearchlight, SEARCHLIGHT, type SpotArea, spotBeam, stepSearchlight } from "../searchlight";
 import { beatP } from "../timelineKeys";
 import { COLLAGE, LOGIXS_ATLAS, paintLogixs, RECTS } from "./art/logixs";
@@ -64,9 +66,13 @@ const LENS_OFF = ["#3a1820", "#3a2a14", "#14301f"] as const;
 const LENS_ON = [new Color("#ff3a5c").multiplyScalar(2.2), new Color("#4dffb0").multiplyScalar(2.2)] as const;
 /** The board (the hotspot's quad) on the wall, metres: the searchlight's pointer and tap land on it. */
 const BOARD: SpotArea = { x0: -9.5, x1: 7.0, y0: 0.6, y1: 4.4 };
-/** The searchlight on the wall at its full level (linear light), and its shaft in the haze. */
-const SPOT_LIGHT = new Color(palette.searchlight).multiplyScalar(1.3);
-const SPOT_HAZE = new Color(palette.searchlight).multiplyScalar(0.1);
+/**
+ * The searchlight on the wall at its full level (linear light): the
+ * brightest thing in the frame, its core over the bloom's threshold even on
+ * dark brick, the lantern's pool a glow beside it. And its shaft in the haze.
+ */
+const SPOT_LIGHT = new Color(palette.searchlight).multiplyScalar(3.9);
+const SPOT_HAZE = new Color(palette.searchlight).multiplyScalar(0.9);
 
 type Poster = { x: number; y: number; w: number; h: number; rect: readonly number[]; layer: number; lift: number; turn?: number; fresh?: boolean };
 
@@ -233,11 +239,22 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     return {
       wall: { ...fog(), ...light, uBrickTop: { value: BRICK_TOP } },
       posters: { ...fog(), ...light, uMap: { value: atlas }, uTime: { value: 0 }, uLiftExtra: { value: 0 }, uReveal: { value: 0 }, uWet: { value: 0 } },
-      haze: { ...fog(), uColor: { value: SPOT_HAZE.clone() }, uLevel: { value: 0 } },
+      haze: { ...fog(), uColor: { value: SPOT_HAZE.clone() }, uLevel: { value: 0 }, uTime: { value: 0 } },
     };
   }, [light, atlas]);
   // R3F copies a uniform object into the material, so the frame writes through the materials themselves.
   const wallMaterial = useRef<ShaderMaterial>(null);
+  // The set's standard surfaces in the searchlight's pool take it too (its uniforms are `light`'s own objects):
+  // the cornice, the plinth and the balconies, the pavement under the bills, the paste's roll.
+  const lit = useMemo(
+    () => ({
+      boxes: litBySearchlight(new MeshStandardMaterial({ color: "#2a2140", roughness: 0.55, metalness: 0.45 }), light),
+      pavement: litBySearchlight(new MeshStandardMaterial({ color: "#33284a", roughness: 0.85 }), light),
+      roll: litBySearchlight(new MeshStandardMaterial({ color: "#e9d9b4", roughness: 0.9 }), light),
+    }),
+    [light],
+  );
+  useEffect(() => () => Object.values(lit).forEach((material) => material.dispose()), [lit]);
   const posterMaterial = useRef<ShaderMaterial>(null);
 
   const posters = useRef<InstancedMesh>(null);
@@ -358,21 +375,21 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     spot.axis.subVectors(spot.to, spot.from);
     const length = spot.axis.length();
     spot.axis.divideScalar(Math.max(length, 1e-3));
-    for (const material of [wallMaterial.current, posterMaterial.current]) {
-      const u = material?.uniforms;
+    for (const u of [light, wallMaterial.current?.uniforms, posterMaterial.current?.uniforms]) {
       if (!u?.uSpotFrom) continue;
       (u.uSpotFrom.value as Vector3).copy(spot.from);
       (u.uSpotAxis.value as Vector3).copy(spot.axis);
       u.uSpotTan.value = beam.tan;
       (u.uSpotColor.value as Color).copy(SPOT_LIGHT).multiplyScalar(beam.level);
     }
+    // The shaft is always drawn (its program compiled with the set, never at arming); off, it discards.
     if (haze.current) {
-      haze.current.visible = beam.level > 0.001;
       spot.q.setFromUnitVectors(spot.down, spot.axis);
       haze.current.quaternion.copy(spot.q);
       haze.current.position.copy(spot.from).lerp(spot.to, 0.5);
       haze.current.scale.set(SEARCHLIGHT.radius, length, SEARCHLIGHT.radius);
       setUniform(hazeMaterial.current, "uLevel", beam.level);
+      setUniform(hazeMaterial.current, "uTime", searchlight.t);
     }
     // The plane folds off the lounge bill with card 0, 1:1 with the scroll, and leaves frame right.
     const k = Math.min(1, Math.max(0, (p - beats.card0[0]) / Math.max(1e-6, beats.card0[1] - beats.card0[0])));
@@ -420,7 +437,7 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
         <shaderMaterial ref={wallMaterial} uniforms={uniforms.wall} vertexShader={wallVertexShader} fragmentShader={wallFragmentShader} fog />
       </mesh>
       <Boxes items={balconies}>
-        <meshStandardMaterial color="#2a2140" roughness={0.55} metalness={0.45} />
+        <primitive object={lit.boxes} attach="material" />
       </Boxes>
       <Windows panes={rooms} gain={1} />
       {atlas ? (
@@ -437,7 +454,7 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
       {/* The roll of the fresh bill, coming down the wall as it is pasted. */}
       <mesh ref={roll} position={[GIG.x, GIG.y, WALL_Z + 0.1]} rotation-z={Math.PI / 2} visible={false}>
         <cylinderGeometry args={[0.075, 0.075, GIG.w + 0.06, 18]} />
-        <meshStandardMaterial color="#e9d9b4" roughness={0.9} />
+        <primitive object={lit.roll} attach="material" />
       </mesh>
       {/* The lantern on its bracket, the crossing light at the corner. */}
       <mesh position={[LANTERN[0], LANTERN[1] + 0.35, (LANTERN[2] + WALL_Z) / 2]}>
@@ -472,28 +489,26 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
       <NightPalms palms={high ? LOGIXS_PALMS : LOGIXS_PALMS.slice(0, 2)} />
       <Glows glows={glowList} handle={glows} />
       {/* The searchlight's shaft in the haze, down from the helicopter over the frame to its spot on the wall. */}
-      {high ? (
-        <mesh ref={haze} visible={false} renderOrder={4} frustumCulled={false}>
-          <coneGeometry args={[1, 1, 24, 1, true]} />
-          <shaderMaterial
-            ref={hazeMaterial}
-            uniforms={uniforms.haze}
-            vertexShader={beamVertexShader}
-            fragmentShader={searchBeamFragmentShader}
-            transparent
-            depthWrite={false}
-            blending={AdditiveBlending}
-            fog
-          />
-        </mesh>
-      ) : null}
+      <mesh ref={haze} renderOrder={4} frustumCulled={false}>
+        <coneGeometry args={[1, 1, 24, 1, true]} />
+        <shaderMaterial
+          ref={hazeMaterial}
+          uniforms={uniforms.haze}
+          vertexShader={searchBeamVertexShader}
+          fragmentShader={searchBeamFragmentShader}
+          transparent
+          depthWrite={false}
+          blending={AdditiveBlending}
+          fog
+        />
+      </mesh>
       <mesh ref={plane} geometry={planeGeo} visible={false}>
         <meshStandardMaterial color="#f2c46a" emissive="#4a2a24" side={DoubleSide} roughness={0.7} />
       </mesh>
       {/* The pavement under the wall. */}
       <mesh position={[0, 0.1, (WALL_Z - 5.4) / 2]}>
         <boxGeometry args={[60, 0.2, Math.abs(WALL_Z + 5.4)]} />
-        <meshStandardMaterial color="#33284a" roughness={0.85} />
+        <primitive object={lit.pavement} attach="material" />
       </mesh>
     </group>
   );
@@ -508,6 +523,8 @@ export const logixs: NightSet = {
     [BOARD.x0, BOARD.y0, WALL_Z + 0.05],
   ],
   boardNormal: [0, 0, 1],
+  // On a phone the wall runs past both sides of the frame and shows no corner.
+  boardWide: true,
   // On a phone: the run the lines are about, the ban over it to the bills' feet (RUN), and the car at its line.
   subject: (_pose, _p, car) => [...RUN, ...car],
   maxBack: 12,
