@@ -3761,12 +3761,19 @@ const CHECKS = {
     /** Page travel (px, positive the swipe's way) of one swipe from `home`, the median of three. */
     const travel = async (s, home, swipe) => {
       const runs = [];
+      // Lenis writes over a native jump while it glides: a fling still in its tail sent the page
+      // back near the wall, and the next flick, starting there, flew nothing (a false 160).
+      const glideEnds = async () => {
+        for (let k = 0; k < 40 && (await s.page.evaluate(() => document.documentElement.classList.contains("lenis-smooth"))); k += 1) await sleep(100);
+      };
       for (let i = 0; i < 3; i += 1) {
+        await glideEnds();
         await s.page.evaluate((top) => window.scrollTo({ top, behavior: "instant" }), home);
         await sleep(700);
         const before = await s.page.evaluate(() => scrollY);
         await iosSwipe(s.cdp, { x: W / 2, y0: swipe.dy > 0 ? H * 0.8 : H * 0.2, ...swipe });
         await sleep(1700);
+        await glideEnds();
         runs.push(Math.round((await s.page.evaluate(() => scrollY)) - before) * Math.sign(swipe.dy));
       }
       return median(runs);
