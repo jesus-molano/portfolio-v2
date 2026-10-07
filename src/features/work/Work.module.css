@@ -1074,9 +1074,20 @@
 }
 
 .recordClose {
+  /*
+   * The cross and the word centred both ways: a flex row, the caps trimmed
+   * to their own height where the browser can (the typewriter face sits
+   * its capitals high in its line box), and the right padding less the
+   * tracking the last letter carries.
+   */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55em;
   min-width: 2.75rem;
   min-height: 2.75rem;
-  padding: 0 1.1rem;
+  padding: 0 calc(1.1rem - 0.14em) 0 1.1rem;
+  text-box: trim-both cap alphabetic;
   border: 1.5px solid var(--va-record-print);
   border-radius: 0.2rem;
   background: var(--va-record-paper-light);
@@ -1088,9 +1099,15 @@
   cursor: pointer;
 }
 
+/* The cross is drawn, not a glyph: the typewriter face has none, and a fallback face's cross sat off the caps' middle. */
 .recordClose::before {
-  content: "✕" / "";
-  margin-right: 0.55em;
+  content: "";
+  flex: none;
+  width: 0.62em;
+  height: 0.62em;
+  background:
+    linear-gradient(45deg, transparent calc(50% - 0.06em), currentColor calc(50% - 0.06em) calc(50% + 0.06em), transparent calc(50% + 0.06em)),
+    linear-gradient(-45deg, transparent calc(50% - 0.06em), currentColor calc(50% - 0.06em) calc(50% + 0.06em), transparent calc(50% + 0.06em));
 }
 
 @media (hover: hover) {
