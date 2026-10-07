@@ -224,16 +224,29 @@ async function land(page, hash, settle = 3000) {
 }
 
 async function layers(s) {
-  await s.cdp.send("LayerTree.enable");
+  // Listen before enabling: Chrome sends the whole tree as enable answers,
+  // and a page whose scroll repaints nothing sends nothing after it.
   let latest = null;
   const onChange = (event) => {
     if (event.layers) latest = event.layers;
   };
   s.cdp.on("LayerTree.layerTreeDidChange", onChange);
+  await s.cdp.send("LayerTree.enable");
   await s.page.evaluate(() => window.scrollBy(0, 1));
   await sleep(600);
   await s.page.evaluate(() => window.scrollBy(0, -1));
   await sleep(600);
+  // A still section (no loop, nothing painting) commits no new tree, so
+  // nothing is reported: paint one invisible pixel to ask for it.
+  if (latest === null) {
+    await s.page.evaluate(() => {
+      const dot = document.createElement("div");
+      dot.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none";
+      document.body.append(dot);
+      return new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => (dot.remove(), done()))));
+    });
+    await sleep(600);
+  }
   s.cdp.off("LayerTree.layerTreeDidChange", onChange);
   await s.cdp.send("LayerTree.disable");
   return latest?.length ?? null;
