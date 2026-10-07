@@ -32,7 +32,18 @@ import {
   type SlotId,
 } from "./lineup";
 import { newSelect, pick, PLAYER_KEY, REFUSALS, rememberedChoice, rovingIndex, settle } from "./select";
-import { BAR_WINDOW_MS, CROWN_HEADROOM_REM, isStacked, keyAtWall, keyForward, PROMPT_MS, selectFrontier, selectGate, wallVerdict } from "./selectWall";
+import {
+  BAR_WINDOW_MS,
+  CROWN_HEADROOM_REM,
+  isStacked,
+  keyAtWall,
+  keyForward,
+  PROMPT_MS,
+  selectFrontier,
+  selectGate,
+  setSelectHeld,
+  wallVerdict,
+} from "./selectWall";
 import { tryDante } from "./wanted";
 import styles from "./Suspects.module.css";
 
@@ -294,6 +305,7 @@ export function CharacterSelect({ dict, lang }: Props) {
   const openWall = useCallback(() => {
     wall.current.closed = false;
     selectGate.maxScroll = Number.POSITIVE_INFINITY;
+    setSelectHeld(false);
   }, []);
 
   const onPick = useCallback(
@@ -391,6 +403,8 @@ export function CharacterSelect({ dict, lang }: Props) {
     const w = wall.current;
     w.closed = !state.chosen;
     if (state.chosen) selectGate.maxScroll = Number.POSITIVE_INFINITY;
+    setSelectHeld(w.closed);
+    return () => setSelectHeld(false);
   }, [state.chosen]);
 
   useEffect(() => {

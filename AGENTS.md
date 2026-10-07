@@ -255,6 +255,15 @@ also exists as real DOM for keyboard and screen-reader users.
     finger's coalesced move or a pressure change, before it cancels it,
     and a move nobody cancels hands the rest of the stroke to the
     browser's own scrolling, past every wall; `lenisContract.test.ts`;
+    and wherever Lenis will drive the next stroke (the hero, a closed
+    wall, the career city's film), `html[data-touch-held]`
+    (`touch-action: pinch-zoom`, set by SmoothScroll every frame from
+    browserStroke) keeps the browser from panning the page at all: a
+    phone too busy to answer a touch in time gets its moves uncancelable
+    (Chrome stops waiting), and the browser ran past the character
+    select's wall while the wall pulled the page back a frame later,
+    over and over, the page trembling under her finger (a mid-range
+    Xiaomi); pinch zoom stays, and a scroller inside pans as ever;
     below the hero, every wall open (the career city's too: a closed one
     there is gated like the hero's, and a fling's momentum within 1.5 s
     of the lift is still hers, never navigation), a stroke is the
@@ -922,7 +931,10 @@ also exists as real DOM for keyboard and screen-reader users.
     in both locales and only for Heuristik, whose stop shows role and
     dates only.
 - `src/features/night` — the night canvas under `#work`: mounted only near
-  the stage (within 1.5 screens) and released only far from it (six
+  the stage (within 1.5 screens), never while the character select holds
+  her (`setSelectHeld` in `selectWall.ts`: the city is out of her reach
+  until she chooses, and its mount landed on a phone pushing at that
+  wall), and released only far from it (six
   screens: a pass back up into the hero's end keeps it, or the night came
   back under its cover, compiling, over the first stops), rendering only
   while it is on screen and not under the stage's own opaque night
@@ -1038,7 +1050,11 @@ also exists as real DOM for keyboard and screen-reader users.
   looking while the frame loop runs (a set's art lands after its fonts
   and adds meshes then), and all five warm with nothing loading is
   `night.warm`. Board art is painted once per stop into canvases in
-  the site's fonts (`sets/art/`). `palette.onAir` is the LIVE tally's red
+  the site's fonts (`sets/art/`), in turns (`artQueue.ts`, tested;
+  `paintSet.ts`): one painter per task with a frame between, her next
+  stop first, Logixs' wall a bill at a time (`paintLogixsSteps`). Run
+  as each set's faces came in, all five painted in one task as the
+  night mounted, up to twenty seconds without a frame on a slow phone. `palette.onAir` is the LIVE tally's red
   and nothing else's. Armed, Logixs' wall is hunted by a police
   helicopter's searchlight (`searchlight.ts`, pure and tested;
   `palette.searchlight`; `shaders/spotLight.ts` lights the brick, the

@@ -8,6 +8,7 @@ import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { StageTimeline } from "@/features/work/workTimeline";
 import styles from "./Night.module.css";
+import { getSelectHeld, subscribeSelectHeld } from "@/features/suspects/selectWall";
 import { getNightCovered, setNightReadiness, subscribeNightCovered } from "./nightState";
 
 const NightScene = dynamic(() => import("./NightScene").then((m) => m.NightScene), { ssr: false });
@@ -20,7 +21,9 @@ type Props = { timeline: StageTimeline; work: Dictionary["work"]; locale: Locale
  * only while the stage is on screen and not under its own opaque night
  * (nightCover.ts: the closed iris, the opening's full cover), and unmounts again when the visitor is
  * far away (six screens), so a phone
- * never keeps two scenes busy. A failed scene (no
+ * never keeps two scenes busy. While the character select holds her (her
+ * choice still ahead) it waits: the city is out of her reach, and its
+ * mount, painting every board, landed on a phone pushing at that wall. A failed scene (no
  * WebGL) marks the night as failed and the stage shows its text.
  */
 export function NightCanvas({ timeline, work, locale }: Props) {
@@ -29,6 +32,7 @@ export function NightCanvas({ timeline, work, locale }: Props) {
   const [near, setNear] = useState(false);
   const [onScreen, setOnScreen] = useState(false);
   const covered = useSyncExternalStore(subscribeNightCovered, getNightCovered, () => false);
+  const held = useSyncExternalStore(subscribeSelectHeld, getSelectHeld, () => false);
 
   useEffect(() => {
     const element = host.current?.closest("section");
@@ -58,7 +62,7 @@ export function NightCanvas({ timeline, work, locale }: Props) {
 
   return (
     <div ref={host} className={styles.canvas} aria-hidden="true">
-      {near ? (
+      {near && !held ? (
         <SceneErrorBoundary name="Night scene" onError={() => setNightReadiness("failed")}>
           <NightScene tier={tier} active={onScreen && !covered} timeline={timeline} work={work} locale={locale} />
         </SceneErrorBoundary>

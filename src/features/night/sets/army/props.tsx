@@ -14,7 +14,8 @@ import {
   Vector3,
 } from "three";
 import type { QualityTier } from "@/features/hero/useQualityTier";
-import { loadFaces, toTexture } from "../../artCanvas";
+import { toTexture } from "../../artCanvas";
+import { paintSet } from "../../paintSet";
 import type { BoardFrame } from "../../boardFrame";
 import type { Vec3 } from "../../frame";
 import { kitFaces, paintBurlap, paintKitAtlas } from "../art/armyProps";
@@ -74,24 +75,24 @@ function Instanced({ geometry, material, items, children }: { geometry: BufferGe
   );
 }
 
-export function ArmyProps({ frame, tier }: { frame: BoardFrame; tier: QualityTier }) {
+export function ArmyProps({ frame, tier, index }: { frame: BoardFrame; tier: QualityTier; index: number }) {
   const high = tier === "high";
   const [art, setArt] = useState<{ burlap: CanvasTexture; kit: CanvasTexture } | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    let made: { burlap: CanvasTexture; kit: CanvasTexture } | null = null;
-    loadFaces(kitFaces()).then(() => {
-      if (cancelled) return;
-      made = { burlap: toTexture(paintBurlap()), kit: toTexture(paintKitAtlas(), 8) };
-      setArt(made);
-    });
-    return () => {
-      cancelled = true;
-      made?.burlap.dispose();
-      made?.kit.dispose();
-    };
-  }, []);
+  useEffect(
+    () =>
+      paintSet(
+        kitFaces(),
+        index,
+        () => () => ({ burlap: toTexture(paintBurlap()), kit: toTexture(paintKitAtlas(), 8) }),
+        setArt,
+        (made) => {
+          made.burlap.dispose();
+          made.kit.dispose();
+        },
+      ),
+    [index],
+  );
 
   const layout = useMemo(() => settledProps(high), [high]);
 

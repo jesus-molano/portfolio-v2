@@ -354,7 +354,18 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("touchcancel", cancel);
   }, []);
 
+  // Where Lenis drives a stroke, the browser may not pan the page itself (globals.css data-touch-held).
+  const reducedRef = useRef(reducedMotion);
   useEffect(() => {
+    reducedRef.current = reducedMotion;
+  }, [reducedMotion]);
+  useEffect(() => {
+    let held = false;
+    const hold = (next: boolean) => {
+      if (next === held) return;
+      held = next;
+      document.documentElement.toggleAttribute("data-touch-held", next);
+    };
     const update = (time: number, deltaMs: number) => {
       const lenis = lenisRef.current?.lenis;
       if (!lenis) return;
@@ -362,6 +373,23 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       scrollDrive.step?.(deltaMs, lenis);
       for (const step of scrollDrive.steps) step(deltaMs, lenis);
       lenis.raf(time * 1000);
+      // The next stroke is Lenis' (the hero, a closed wall, the career city's film: gate.ts
+      // browserStroke): the browser must not pan it. A phone too busy to answer a touch in time
+      // gets its moves uncancelable (Chrome stops waiting), so they were never cancelled: the
+      // browser scrolled past the character select's wall and the wall pulled the page back a
+      // frame later, over and over, the page trembling under her finger. With touch-action set
+      // ahead of the stroke (the compositor reads it at the touch, not the page) nothing pans,
+      // however late the page answers. Pinch zoom stays.
+      hold(
+        !reducedRef.current &&
+          !browserStroke(
+            lenis.animatedScroll,
+            scrollGate.heroEnd,
+            firstWall(scrollGate.maxScroll, selectGate.maxScroll, stageGate.maxScroll),
+            { from: stageGate.pinFrom, to: stageGate.pinTo },
+            lenis.isScrolling === "native",
+          ),
+      );
     };
     // First on the ticker: the hero then draws this frame's scroll, not the last one's.
     gsap.ticker.add(update, false, true);
@@ -369,6 +397,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
     return () => {
       gsap.ticker.remove(update);
       gsap.ticker.lagSmoothing(500, 33);
+      hold(false);
     };
   }, []);
 

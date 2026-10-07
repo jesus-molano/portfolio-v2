@@ -19,7 +19,8 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { createRandom } from "@/features/hero/scene/world";
 import type { QualityTier } from "@/features/hero/useQualityTier";
 import type { StageTimeline } from "@/features/work/workTimeline";
-import { fonts, forTier, loadFaces, toTexture } from "../../artCanvas";
+import { fonts, forTier, toTexture } from "../../artCanvas";
+import { paintSet } from "../../paintSet";
 import type { Vec3 } from "../../frame";
 import { night } from "../../nightState";
 import { Boxes, type BoxItem } from "../../parts/Boxes";
@@ -214,33 +215,33 @@ export function ArmySite({ tier, timeline, index }: { tier: QualityTier; timelin
   const high = tier === "high";
   const [art, setArt] = useState<Art | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    let made: Art | null = null;
-    loadFaces([`400 100px ${fonts.condensed()}`]).then(() => {
-      if (cancelled) return;
-      const apron = paintApron(!high);
-      const surface = new CanvasTexture(apron.surface);
-      surface.colorSpace = NoColorSpace;
-      surface.anisotropy = 8;
-      made = {
-        apron: toTexture(apron.color, 8),
-        surface,
-        tuft: toTexture(paintTuft()),
-        sign: toTexture(forTier(paintSign(), !high)),
-        boom: toTexture(paintBoom()),
-        alto: toTexture(paintAlto()),
-        panel: toTexture(paintBoothPanel()),
-        window: toTexture(paintBoothWindow()),
-        cabinet: toTexture(paintCabinet()),
-      };
-      setArt(made);
-    });
-    return () => {
-      cancelled = true;
-      if (made) Object.values(made).forEach((texture) => texture.dispose());
-    };
-  }, [high]);
+  useEffect(
+    () =>
+      paintSet(
+        [`400 100px ${fonts.condensed()}`],
+        index,
+        () => (): Art => {
+          const apron = paintApron(!high);
+          const surface = new CanvasTexture(apron.surface);
+          surface.colorSpace = NoColorSpace;
+          surface.anisotropy = 8;
+          return {
+            apron: toTexture(apron.color, 8),
+            surface,
+            tuft: toTexture(paintTuft()),
+            sign: toTexture(forTier(paintSign(), !high)),
+            boom: toTexture(paintBoom()),
+            alto: toTexture(paintAlto()),
+            panel: toTexture(paintBoothPanel()),
+            window: toTexture(paintBoothWindow()),
+            cabinet: toTexture(paintCabinet()),
+          };
+        },
+        setArt,
+        (made) => Object.values(made).forEach((texture) => texture.dispose()),
+      ),
+    [high, index],
+  );
 
   const geometries = useMemo(
     () => ({

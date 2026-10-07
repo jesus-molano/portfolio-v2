@@ -36,6 +36,29 @@ export const selectGate = {
 };
 
 /**
+ * Whether her choice is still ahead (the wall closed), for what waits on
+ * it: the career city's night does not mount while she cannot reach it,
+ * so its painting never lands on a phone held at the wall.
+ */
+let held = false;
+const heldListeners = new Set<() => void>();
+
+export function setSelectHeld(next: boolean): void {
+  if (next === held) return;
+  held = next;
+  heldListeners.forEach((listener) => listener());
+}
+
+export function getSelectHeld(): boolean {
+  return held;
+}
+
+export function subscribeSelectHeld(listener: () => void): () => void {
+  heldListeners.add(listener);
+  return () => heldListeners.delete(listener);
+}
+
+/**
  * Where the wall stands: the page scroll at which the select's foot meets
  * the bottom of a `screen` px tall screen, never above the select's own
  * top (a select shorter than the screen holds the page at its top). On a

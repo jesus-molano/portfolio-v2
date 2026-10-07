@@ -6,7 +6,8 @@ import { AdditiveBlending, type CanvasTexture, Color, type Mesh, UniformsLib, Un
 import { palette } from "@/design/tokens";
 import { createRandom } from "@/features/hero/scene/world";
 import { glowFragmentShader, glowVertexShader } from "@/features/hero/shaders/neon";
-import { fonts, loadFaces, toTexture } from "../artCanvas";
+import { fonts, toTexture } from "../artCanvas";
+import { paintSet } from "../paintSet";
 import { createFloods } from "../floods";
 import type { Vec3 } from "../frame";
 import { night } from "../nightState";
@@ -177,25 +178,22 @@ function PwcSet({ work, tier, index, timeline }: SetProps) {
   const board = work.stops.pwc.board;
   const [art, setArt] = useState<{ blade: CanvasTexture; ray: CanvasTexture; glass: CanvasTexture } | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    let made: { blade: CanvasTexture; ray: CanvasTexture; glass: CanvasTexture } | null = null;
-    loadFaces([`800 200px ${fonts.display()}`, `400 120px ${fonts.script()}`, `700 50px ${fonts.mono()}`, `400 100px ${fonts.condensed()}`]).then(() => {
-      if (cancelled) return;
-      made = {
-        blade: toTexture(paintBlade(board.blade), 8),
-        ray: toTexture(paintDyingRay(), 4),
-        glass: toTexture(paintMarquee(board), 8),
-      };
-      setArt(made);
-    });
-    return () => {
-      cancelled = true;
-      made?.blade.dispose();
-      made?.ray.dispose();
-      made?.glass.dispose();
-    };
-  }, [board]);
+  useEffect(
+    () =>
+      paintSet(
+        [`800 200px ${fonts.display()}`, `400 120px ${fonts.script()}`, `700 50px ${fonts.mono()}`, `400 100px ${fonts.condensed()}`],
+        index,
+        () =>
+          (function* () {
+            const blade = toTexture(paintBlade(board.blade), 8);
+            yield;
+            return { blade, ray: toTexture(paintDyingRay(), 4), glass: toTexture(paintMarquee(board), 8) };
+          })(),
+        setArt,
+        (made) => Object.values(made).forEach((texture) => texture.dispose()),
+      ),
+    [board, index],
+  );
 
   // Peach uplights wash the wall from the pavement; the blade throws a pink aura.
   const floods = useMemo(

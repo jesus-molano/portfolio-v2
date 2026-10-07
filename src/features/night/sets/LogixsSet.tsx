@@ -23,7 +23,8 @@ import {
   Vector3,
 } from "three";
 import { palette } from "@/design/tokens";
-import { fonts, loadFaces, makeCanvas, toTexture } from "../artCanvas";
+import { fonts, makeCanvas, toTexture } from "../artCanvas";
+import { paintSet } from "../paintSet";
 import type { Vec3 } from "../frame";
 import { night } from "../nightState";
 import { type BoxItem, Boxes } from "../parts/Boxes";
@@ -35,7 +36,7 @@ import { pasteUpFragmentShader, pasteUpVertexShader, wallFragmentShader, wallVer
 import { litBySearchlight } from "../shaders/spotLight";
 import { type BoardUv, newSearchlight, SEARCHLIGHT, type SpotArea, spotBeam, stepSearchlight } from "../searchlight";
 import { beatP } from "../timelineKeys";
-import { COLLAGE, LOGIXS_ATLAS, paintLogixs, RECTS } from "./art/logixs";
+import { COLLAGE, LOGIXS_ATLAS, paintLogixsSteps, RECTS } from "./art/logixs";
 import { PANE } from "./art/windows";
 import type { NightSet, SetProps } from "./types";
 
@@ -197,27 +198,30 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
   const board = work.stops.logixs.board;
   const [atlas, setAtlas] = useState<CanvasTexture | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    let made: CanvasTexture | null = null;
-    loadFaces([
-      `800 90px ${fonts.display()}`,
-      `400 60px ${fonts.deco()}`,
-      `400 100px ${fonts.condensed()}`,
-      `700 30px ${fonts.serif()}`,
-      `italic 700 30px ${fonts.serif()}`,
-      `400 60px ${fonts.block()}`,
-      `700 30px ${fonts.mono()}`,
-    ]).then(() => {
-      if (cancelled) return;
-      made = toTexture(scaled(paintLogixs(board), high ? 1 : 0.75), 8);
-      setAtlas(made);
-    });
-    return () => {
-      cancelled = true;
-      made?.dispose();
-    };
-  }, [board, high]);
+  useEffect(
+    () =>
+      paintSet(
+        [
+          `800 90px ${fonts.display()}`,
+          `400 60px ${fonts.deco()}`,
+          `400 100px ${fonts.condensed()}`,
+          `700 30px ${fonts.serif()}`,
+          `italic 700 30px ${fonts.serif()}`,
+          `400 60px ${fonts.block()}`,
+          `700 30px ${fonts.mono()}`,
+        ],
+        index,
+        () =>
+          (function* () {
+            const canvas: HTMLCanvasElement = yield* paintLogixsSteps(board);
+            yield;
+            return toTexture(scaled(canvas, high ? 1 : 0.75), 8);
+          })(),
+        setAtlas,
+        (made) => made.dispose(),
+      ),
+    [board, high, index],
+  );
 
   const light = useMemo(
     () => ({

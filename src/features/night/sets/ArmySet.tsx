@@ -14,7 +14,8 @@ import {
   Vector3,
 } from "three";
 import { palette } from "@/design/tokens";
-import { forTier, loadFaces, toTexture } from "../artCanvas";
+import { forTier, toTexture } from "../artCanvas";
+import { paintSet } from "../paintSet";
 import { type BoardFrame, boardCorners, boardNormal, toSet } from "../boardFrame";
 import { createFloods } from "../floods";
 import type { Vec3 } from "../frame";
@@ -158,19 +159,17 @@ function ArmySet({ work, tier, timeline, index }: SetProps) {
   const board = work.stops.army.board;
   const [art, setArt] = useState<{ poster: CanvasTexture } | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    let made: { poster: CanvasTexture } | null = null;
-    loadFaces(armyFaces()).then(() => {
-      if (cancelled) return;
-      made = { poster: toTexture(forTier(paintArmyPoster(board), !high), 8) };
-      setArt(made);
-    });
-    return () => {
-      cancelled = true;
-      made?.poster.dispose();
-    };
-  }, [board, high]);
+  useEffect(
+    () =>
+      paintSet(
+        armyFaces(),
+        index,
+        () => () => ({ poster: toTexture(forTier(paintArmyPoster(board), !high), 8) }),
+        setArt,
+        (made) => made.poster.dispose(),
+      ),
+    [board, high, index],
+  );
 
   const floods = useMemo(() => createFloods(HEADS, AIMS, palette.sodiumNight, [78, 30]), []);
   const posterFloods = useMemo(() => createFloods(HEADS, POSTER_AIMS, POSTER_FLOOD, [50, 14]), []);
@@ -307,7 +306,7 @@ function ArmySet({ work, tier, timeline, index }: SetProps) {
           </Boxes>
         </group>
       </group>
-      <ArmyProps frame={FRAME} tier={tier} />
+      <ArmyProps frame={FRAME} tier={tier} index={index} />
 
       <Glows glows={lampGlows} handle={glowHandle} />
       {beamItems.slice(0, high ? 4 : 2).map((beam, i) => (

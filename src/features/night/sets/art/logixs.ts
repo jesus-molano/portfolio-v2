@@ -980,7 +980,11 @@ function lastRun(ctx: Ctx, random: Random): void {
   }
 }
 
-export function paintLogixs(copy: LogixsCopy): HTMLCanvasElement {
+/**
+ * The wall a cell at a time: it yields after every bill, so the night
+ * paints it in turns (artQueue.ts) and a phone keeps its frames.
+ */
+export function* paintLogixsSteps(copy: LogixsCopy): Generator<void, HTMLCanvasElement, unknown> {
   const [canvas, ctx] = makeCanvas(LOGIXS_ATLAS.w, LOGIXS_ATLAS.h);
   ctx.clearRect(0, 0, LOGIXS_ATLAS.w, LOGIXS_ATLAS.h);
   const random = createRandom(2025);
@@ -995,15 +999,25 @@ export function paintLogixs(copy: LogixsCopy): HTMLCanvasElement {
     if (noise > 0) grain(ctx, rect[0], rect[1], rect[2], rect[3], random, noise);
   };
   cell(RECTS.collage, (c, w, h) => collage(c, w, h, random), 7);
+  yield;
   cell(RECTS.snipe, (c, w, h) => snipe(c, w, h, copy, random), 0);
+  yield;
   cell(RECTS.ban, (c, w, h) => ban(c, w, h, copy, random), 0);
+  yield;
   cell(RECTS.bytetravel, (c, w, h) => bytetravel(c, w, h, copy, random));
+  yield;
   cell(RECTS.retech, (c, w, h) => retech(c, w, h, copy, random));
+  yield;
   cell(RECTS.gig, (c, w, h) => gig(c, w, h, copy, random));
+  yield;
   cell(RECTS.visa, (c, w, h) => visa(c, w, h, copy, random));
+  yield;
   cell(RECTS.esim, (c, w, h) => esim(c, w, h, copy, random));
+  yield;
   cell(RECTS.lounge, (c, w, h) => lounge(c, w, h, copy, random));
+  yield;
   lastRun(ctx, random);
+  yield;
   // The lounge bill's corner: copied to its own cell (the flap), then cut from the bill along the fold.
   const [lx, ly, lw, lh] = RECTS.lounge;
   const [cx, cy] = RECTS.corner;

@@ -22,7 +22,8 @@ import {
 import { palette } from "@/design/tokens";
 import { createRandom } from "@/features/hero/scene/world";
 import { glowFragmentShader, glowVertexShader } from "@/features/hero/shaders/neon";
-import { fonts, forTier, loadFaces, toTexture } from "../artCanvas";
+import { fonts, forTier, toTexture } from "../artCanvas";
+import { paintSet } from "../paintSet";
 import { cloneOwned } from "../cloneBare";
 import { createFloods } from "../floods";
 import type { Vec3 } from "../frame";
@@ -156,29 +157,26 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
   useEffect(() => () => telparkCopy.dispose(), [telparkCopy]);
   const telpark = telparkCopy.object;
 
-  useEffect(() => {
-    let cancelled = false;
-    let made: { faces: CanvasTexture; piece: CanvasTexture; signs: CanvasTexture; cafe: CanvasTexture; room: CanvasTexture } | null = null;
-    loadFaces([`800 200px ${fonts.display()}`, `700 60px ${fonts.mono()}`, `400 180px ${fonts.script()}`, `italic 600 60px ${fonts.body()}`, `600 60px ${fonts.body()}`, `italic 600 60px ${fonts.serif()}`]).then(() => {
-      if (cancelled) return;
-      made = {
-        faces: toTexture(forTier(paintTrivision(board.faces, board.pieces), !high), 8),
-        piece: toTexture(paintPiece(board.faces[1], board.pieces), 4),
-        signs: toTexture(paintCloudSigns(board.nameplate), 4),
-        cafe: toTexture(paintCafeSign(board.cafe), 4),
-        room: toTexture(forTier(paintCafeRoom(), !high), 4),
-      };
-      setArt(made);
-    });
-    return () => {
-      cancelled = true;
-      made?.faces.dispose();
-      made?.piece.dispose();
-      made?.signs.dispose();
-      made?.cafe.dispose();
-      made?.room.dispose();
-    };
-  }, [board, high]);
+  useEffect(
+    () =>
+      paintSet(
+        [`800 200px ${fonts.display()}`, `700 60px ${fonts.mono()}`, `400 180px ${fonts.script()}`, `italic 600 60px ${fonts.body()}`, `600 60px ${fonts.body()}`, `italic 600 60px ${fonts.serif()}`],
+        index,
+        () =>
+          (function* () {
+            const faces = toTexture(forTier(paintTrivision(board.faces, board.pieces), !high), 8);
+            yield;
+            const piece = toTexture(paintPiece(board.faces[1], board.pieces), 4);
+            const signs = toTexture(paintCloudSigns(board.nameplate), 4);
+            const cafe = toTexture(paintCafeSign(board.cafe), 4);
+            yield;
+            return { faces, piece, signs, cafe, room: toTexture(forTier(paintCafeRoom(), !high), 4) };
+          })(),
+        setArt,
+        (made) => Object.values(made).forEach((texture) => texture.dispose()),
+      ),
+    [board, high, index],
+  );
 
   const heads: Vec3[] = useMemo(() => [-6.5, -1.5, 3.5, 8.5].map((x) => [x, BOARD.y - BOARD.h / 2 - 0.6, BOARD.z + 1.6] as Vec3), []);
   const floods = useMemo(

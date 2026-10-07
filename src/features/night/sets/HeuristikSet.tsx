@@ -8,7 +8,8 @@ import { buildLandmark, LANDMARK } from "@/features/hero/scene/landmarkLayout";
 import { glowFragmentShader, glowVertexShader } from "@/features/hero/shaders/neon";
 import type { Vec3 } from "../frame";
 import { night } from "../nightState";
-import { fonts, loadFaces, makeCanvas, toTexture } from "../artCanvas";
+import { fonts, makeCanvas, toTexture } from "../artCanvas";
+import { paintSet } from "../paintSet";
 import { Glows, type Glow } from "../parts/Glows";
 import { NightPalms, type NightPalm } from "../parts/NightPalms";
 import { Lamps } from "../parts/Lamps";
@@ -300,23 +301,21 @@ function paintPlaque(name: string): HTMLCanvasElement {
   return canvas;
 }
 
-function GroundFloor({ name }: { name: string }) {
+function GroundFloor({ name, index }: { name: string; index: number }) {
   const solids = useMemo(() => groundSolids(), []);
   const lobby = useMemo(() => lobbyPanes(), []);
   const [plaque, setPlaque] = useState<CanvasTexture | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    let texture: CanvasTexture | null = null;
-    loadFaces([`800 132px ${fonts.display()}`]).then(() => {
-      if (cancelled) return;
-      texture = toTexture(paintPlaque(name), 4);
-      setPlaque(texture);
-    });
-    return () => {
-      cancelled = true;
-      texture?.dispose();
-    };
-  }, [name]);
+  useEffect(
+    () =>
+      paintSet(
+        [`800 132px ${fonts.display()}`],
+        index,
+        () => () => toTexture(paintPlaque(name), 4),
+        setPlaque,
+        (texture) => texture.dispose(),
+      ),
+    [name, index],
+  );
   const uniforms = useMemo(
     () => ({
       leds: UniformsUtils.merge([UniformsLib.fog, { uIntensity: { value: 1.6 }, uFogAmount: { value: 0.3 } }]),
@@ -399,19 +398,17 @@ function HeuristikSet({ work, tier, timeline, index }: SetProps) {
   const live = work.live;
   const { name, ticker } = work.stops.heuristik.board;
 
-  useEffect(() => {
-    let cancelled = false;
-    let texture: CanvasTexture | null = null;
-    loadFaces([`800 100px ${fonts.display()}`, `400 120px ${fonts.condensed()}`]).then(() => {
-      if (cancelled) return;
-      texture = paintAtlas(name, ticker, live);
-      setAtlas(texture);
-    });
-    return () => {
-      cancelled = true;
-      texture?.dispose();
-    };
-  }, [name, ticker, live]);
+  useEffect(
+    () =>
+      paintSet(
+        [`800 100px ${fonts.display()}`, `400 120px ${fonts.condensed()}`],
+        index,
+        () => () => paintAtlas(name, ticker, live),
+        setAtlas,
+        (texture) => texture.dispose(),
+      ),
+    [name, ticker, live, index],
+  );
 
   const uniforms = useMemo(
     () => ({
@@ -526,7 +523,7 @@ function HeuristikSet({ work, tier, timeline, index }: SetProps) {
         <shaderMaterial uniforms={uniforms.glow} vertexShader={glowVertexShader} fragmentShader={glowFragmentShader} fog />
       </instancedMesh>
       <Windows panes={towerPanes} gain={1.05} fogAmount={0.45} />
-      <GroundFloor name={name} />
+      <GroundFloor name={name} index={index} />
       <NightPalms palms={tier === "high" ? HEURISTIK_PALMS : HEURISTIK_PALMS.slice(0, 2)} />
       {atlas ? (
         <>

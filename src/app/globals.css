@@ -59,6 +59,16 @@ html.lenis.lenis-stopped:not(.lenis-autoToggle) {
   overflow: hidden;
 }
 
+/* Where Lenis drives a finger's stroke (SmoothScroll sets it: the hero, a
+   closed wall, the career city's film), the browser never pans the page on
+   its own, even when a busy phone sends the stroke's moves uncancelable: it
+   scrolled past the character select's wall and the wall pulled it back,
+   frame after frame. Pinch zoom stays, and a scroller inside (a dialog, the
+   service record) pans as ever: the browser re-enables panning for it. */
+html[data-touch-held] {
+  touch-action: pinch-zoom;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
