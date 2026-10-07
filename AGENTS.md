@@ -389,8 +389,10 @@ also exists as real DOM for keyboard and screen-reader users.
     `fitCards.ts`, the one fitting of every card: the hero's and the
     career city's; measured with the viewport, once
     the fonts have arrived and when the subtitle size changes, never in
-    the frame); the reading bar and then the marker sit under the block,
-    never in the text. Her first
+    the frame, and measured again in its fitted box until it settles:
+    balance re-wraps a narrower box onto other breaks, `settleFits`);
+    the reading bar and then the marker sit under the block, never in
+    the text. Her first
     input is answered in place of the title hint ("You have the wheel",
     which replaces the "you drive" line under it: never more than two
     "you drive" messages on screen at once, counting the dash's YOU DRIVE

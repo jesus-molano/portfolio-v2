@@ -1454,52 +1454,80 @@ const CHECKS = {
   async blocks(device, lang) {
     if (device !== "mobile") return;
     const s = await session(device, lang, { enter: false });
+    // The stages fit their cards once they have mounted. Until then the
+    // server's cards (unseen: at opacity 0, under the start menu) keep the
+    // band's width, and on a cold dev server the stages mount over a second
+    // after load: the first width read those, not a fit.
+    await s.page
+      .waitForFunction(
+        () => {
+          const laid = [...document.querySelectorAll("[data-card-text]")].filter((text) => text.getClientRects().length > 0);
+          return laid.length > 0 && laid.every((text) => text.style.getPropertyValue("--fit"));
+        },
+        null,
+        { timeout: 30_000 },
+      )
+      .catch(() => {});
     const bad = [];
-    for (const width of [320, 360, 375, 390, 414, 768, 1024, 1440]) {
-      await s.page.setViewportSize({ width, height: width > 800 ? 900 : 844 });
-      // The blocks are fitted to their lines when the viewport changes.
-      await sleep(400);
-      bad.push(
-        ...(await s.page.evaluate((width) => {
-          const out = [];
-          for (const card of document.querySelectorAll("[data-card]")) {
-            card.style.opacity = "1";
-            const text = card.querySelector("[data-card-text]");
-            const boxes = text.getClientRects().length;
-            // Lines from the words' own boxes: the last line never holds a word alone (balanced).
-            const lines = [];
-            const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT);
-            for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-              for (const match of n.data.matchAll(/\S+/g)) {
-                const range = document.createRange();
-                range.setStart(n, match.index);
-                range.setEnd(n, match.index + match[0].length);
-                const r = range.getBoundingClientRect();
-                const mid = (r.top + r.bottom) / 2;
-                const line = lines.find((l) => Math.abs(l.mid - mid) < 4);
-                if (line) {
-                  line.words += 1;
-                  line.left = Math.min(line.left, r.left);
-                  line.right = Math.max(line.right, r.right);
-                } else lines.push({ mid, words: 1, left: r.left, right: r.right });
+    // At every subtitle size, applied as setSubtitleSize does (lib/subtitleSize.ts): the cards are fitted again.
+    for (const size of ["m", "s", "l"]) {
+      await s.page.evaluate((size) => {
+        const root = document.documentElement;
+        if (size === "m") {
+          root.removeAttribute("data-subtitles");
+          root.style.removeProperty("--va-subtitle-scale");
+        } else {
+          root.setAttribute("data-subtitles", size);
+          root.style.setProperty("--va-subtitle-scale", size === "s" ? "0.85" : "1.2");
+        }
+        window.dispatchEvent(new Event("va:subtitles"));
+      }, size);
+      for (const width of [320, 360, 375, 390, 414, 540, 768, 1024, 1180, 1280, 1440]) {
+        await s.page.setViewportSize({ width, height: width > 800 ? 900 : 844 });
+        // The blocks are fitted to their lines when the viewport changes.
+        await sleep(400);
+        bad.push(
+          ...(await s.page.evaluate(({ width, size }) => {
+            const out = [];
+            for (const card of document.querySelectorAll("[data-card]")) {
+              card.style.opacity = "1";
+              const text = card.querySelector("[data-card-text]");
+              const boxes = text.getClientRects().length;
+              // Lines from the words' own boxes: the last line never holds a word alone (balanced).
+              const lines = [];
+              const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT);
+              for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+                for (const match of n.data.matchAll(/\S+/g)) {
+                  const range = document.createRange();
+                  range.setStart(n, match.index);
+                  range.setEnd(n, match.index + match[0].length);
+                  const r = range.getBoundingClientRect();
+                  const mid = (r.top + r.bottom) / 2;
+                  const line = lines.find((l) => Math.abs(l.mid - mid) < 4);
+                  if (line) {
+                    line.words += 1;
+                    line.left = Math.min(line.left, r.left);
+                    line.right = Math.max(line.right, r.right);
+                  } else lines.push({ mid, words: 1, left: r.left, right: r.right });
+                }
               }
+              const widest = Math.max(...lines.map((l) => l.right - l.left));
+              const style = getComputedStyle(text);
+              const content = text.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+              const words = lines.reduce((n, l) => n + l.words, 0);
+              const orphan = lines.length > 1 && words > 2 && lines.at(-1).words < 2;
+              // The block hugs its widest line (a few px for rounding), and the marker is never in the text.
+              const loose = content - widest > 4;
+              const inside = text.contains(card.querySelector("[class*='cueTail']"));
+              if (boxes !== 1 || orphan || loose || inside) out.push({ width, size, card: text.textContent.slice(0, 30), boxes, orphan, slack: Math.round(content - widest), inside });
+              card.style.opacity = "";
             }
-            const widest = Math.max(...lines.map((l) => l.right - l.left));
-            const style = getComputedStyle(text);
-            const content = text.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-            const words = lines.reduce((n, l) => n + l.words, 0);
-            const orphan = lines.length > 1 && words > 2 && lines.at(-1).words < 2;
-            // The block hugs its widest line (a few px for rounding), and the marker is never in the text.
-            const loose = content - widest > 4;
-            const inside = text.contains(card.querySelector("[class*='cueTail']"));
-            if (boxes !== 1 || orphan || loose || inside) out.push({ width, card: text.textContent.slice(0, 30), boxes, orphan, slack: Math.round(content - widest), inside });
-            card.style.opacity = "";
-          }
-          return out;
-        }, width)),
-      );
+            return out;
+          }, { width, size })),
+        );
+      }
     }
-    report(`${device} ${lang} blocks: every card one block, balanced, fitted to its lines, its marker outside, 320 to 1440 px wide`, bad.length === 0, bad.slice(0, 4));
+    report(`${device} ${lang} blocks: every card one block, balanced, fitted to its lines, its marker outside, 320 to 1440 px wide, at every subtitle size`, bad.length === 0, bad.slice(0, 4));
     await s.close();
   },
 
