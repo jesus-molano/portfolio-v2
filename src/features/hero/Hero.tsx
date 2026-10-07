@@ -4,10 +4,15 @@ import { HeroStage } from "./HeroStage";
 
 type Props = { dict: Dictionary["hero"]; cues: Dictionary["common"]["cues"] };
 
-/** Semantic wrapper for the cinematic hero. */
+/**
+ * Semantic wrapper for the cinematic hero. `data-loops`: its looping cues
+ * (the hint's blink, the way-on glyph's bob) are paused while it is off
+ * screen (PauseOffscreen), or they restyled the page every frame wherever
+ * she was, down to the credits.
+ */
 export function Hero({ dict, cues }: Props) {
   return (
-    <section className={styles.hero} aria-labelledby="hero-title" aria-describedby="hero-help">
+    <section className={styles.hero} aria-labelledby="hero-title" aria-describedby="hero-help" data-loops>
       <HeroStage
         name={dict.name}
         role={dict.role}

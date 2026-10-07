@@ -599,3 +599,12 @@
     transform: none;
   }
 }
+
+/*
+ * Off screen (PauseOffscreen) a case's chase is taken off, not just paused
+ * (see Marquee.module.css). Last in the file, so it outranks the hover and
+ * focus rules above.
+ */
+[data-offscreen] .link .bulb {
+  animation-name: none;
+}

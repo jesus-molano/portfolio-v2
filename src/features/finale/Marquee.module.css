@@ -112,6 +112,15 @@
   animation-delay: calc((var(--phase) - 4) * 0.4s);
 }
 
+/*
+ * Off screen (PauseOffscreen) the chase is taken off, not just paused: a
+ * paused animation kept a compositor layer per bulb for the whole page.
+ * Back on screen it starts again, at a step nobody saw it leave.
+ */
+[data-offscreen] .stripBulb {
+  animation-name: none;
+}
+
 @keyframes strip-chase {
   0% {
     opacity: 1;
