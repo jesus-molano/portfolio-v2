@@ -166,6 +166,31 @@ also exists as real DOM for keyboard and screen-reader users.
   `https://$VERCEL_PROJECT_PRODUCTION_URL` (Vercel sets it on every
   deployment, previews too: the production domain,
   portfolio-v2-sage-six-74.vercel.app today), else `http://localhost:3000`.
+  The icons (`lib/siteIcons.ts`, listed by the layout's metadata in every
+  locale and by `src/app/manifest.ts`; `siteIcons.test.ts`) are an enamel
+  badge (the owner's pick): a pink-to-asphalt enamel rim with a gloss, a
+  deep-violet palm leaning over a plain afterglow sun on pink water, and
+  from 48 px the causeway with its lamps running into the sun, two birds
+  and ripples; every colour a token, no stripes on the sun. The tab gets
+  pixel drawings, one at 16 and one at 32 (`TAB_16`, `TAB_32` in the
+  build script, one letter a pixel): the palm a silhouette on a plain
+  sky, the sun cream over sodium (all cream, it read as a cloud), the rim
+  magenta going deep rose at its foot (a dark foot sank into a dark tab),
+  a keyline outside it at 32. Chrome rasterises an SVG
+  favicon at 32 and halves it (soft at 1x), so the .ico is listed with its
+  sizes and Chrome takes its exact 16 or 32 entry, those pixels exactly
+  (tested); `public/favicon.svg` holds both drawings for Firefox, the 16
+  under 24 px, one `<style>` switching them, under 6 KB, no text or
+  raster. Change them in `tools/art/favicon/build.mjs` (`node
+  tools/art/favicon/build.mjs`), never in the files: it writes
+  `public/favicon.svg` and the badge's SVGs (`tools/art/favicon/badge.svg`,
+  and `tile.svg`, the badge on a full-bleed night, since iOS rounds its
+  own corners and no clear corner may show), writes the .ico's 16 and 32
+  itself and renders with Playwright's Chromium its 48 (the badge),
+  `apple-touch-icon.png` (the tile at 180), `icon-192.png` and
+  `icon-512.png` (the badge; a fine grain on the 512's sky only, where it
+  shows); a rerun writes the same bytes. Look at them in a real tab strip,
+  light and dark, at 1x and 2x, before calling a change done.
 - `src/proxy.ts` — redirects `/` to `/en` or `/es` from `Accept-Language`.
 - `src/i18n` — locale config and JSON dictionaries. English is the default,
   Spanish is the second language. Add keys to both files.

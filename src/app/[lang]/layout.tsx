@@ -26,6 +26,7 @@ import { SegmentedNav } from "@/components/ui/SegmentedNav";
 import { defaultLocale, hasLocale, localeNames, locales, openGraphLocales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { SHARE_CARD, shareCardPath } from "@/lib/shareCard";
+import { SITE_ICONS } from "@/lib/siteIcons";
 import { siteUrl } from "@/lib/siteUrl";
 
 const displayFont = Unbounded({
@@ -198,7 +199,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { lang } = await params;
-  if (!hasLocale(lang)) return {};
+  if (!hasLocale(lang)) return { icons: SITE_ICONS };
   const dict = await getDictionary(lang);
   // The link preview card: the cinema at night with his name on the marquee (tools/art/og).
   const card = { url: shareCardPath(lang), alt: dict.meta.imageAlt };
@@ -206,7 +207,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     metadataBase: new URL(siteUrl()),
     title: dict.meta.title,
     description: dict.meta.description,
-    icons: { icon: "/favicon.svg" },
+    icons: SITE_ICONS,
     alternates: {
       canonical: `/${lang}`,
       languages: {
