@@ -139,8 +139,8 @@ also exists as real DOM for keyboard and screen-reader users.
   writes), it draws again once she enters; no canvas draws under opaque
   night (Skip, the hero's strip over THE CREW, the city under STATS); one
   frame loop at most at rest at the cinema and the credits; the playing
-  radio's button costs no layout, and radio off or a hidden tab puts its
-  AudioContext to sleep; no compositor layer for a bulb out of sight;
+  radio's button costs no layout, and radio off (through her taps and
+  keys after) or a hidden tab puts its AudioContext to sleep; no compositor layer for a bulb out of sight;
   eight passes down into the city and back keep the JS heap flat (from
   the third pass, after the JIT's own warm-up) and no WebGL context
   outlives its canvas. Run it after any change to a canvas, a looping
@@ -623,8 +623,10 @@ also exists as real DOM for keyboard and screen-reader users.
   the radio off (once the static and the fade are over) and while the
   tab is hidden the AudioContext is suspended and an off deck lets its
   file go (`sleepIfSilent`): a running context mixed silence for the
-  rest of the visit. Her next tune, the tab coming back or her next
-  gesture wakes it (`wake`). The
+  rest of the visit. Her next tune wakes it (`wake`), and so do the tab
+  coming back and her next gesture while the radio is on; off, her
+  gestures leave it asleep (`wakeOnGesture`: every swipe's touchend woke
+  it again). The
   decks play through one Web Audio bus (a low-pass and a gain, built in
   the gesture that first tunes the radio, a deck joining it only once the
   AudioContext runs: routed into a stopped one it would go silent), which
@@ -1032,8 +1034,10 @@ also exists as real DOM for keyboard and screen-reader users.
   on every tier. Speed: the hero's dpr (`FULL_DPR`) and its one
   step down on a slow device (production, `PerformanceMonitor`); every
   stop's materials are compiled and its textures uploaded ahead of its
-  cut (`Warmup` in `NightScene.tsx`), the next stop first, and it stops
-  looking once all five are warm and nothing loads. Board art is painted once per stop into canvases in
+  cut (`Warmup` in `NightScene.tsx`), the next stop first; it keeps
+  looking while the frame loop runs (a set's art lands after its fonts
+  and adds meshes then), and all five warm with nothing loading is
+  `night.warm`. Board art is painted once per stop into canvases in
   the site's fonts (`sets/art/`). `palette.onAir` is the LIVE tally's red
   and nothing else's. Armed, Logixs' wall is hunted by a police
   helicopter's searchlight (`searchlight.ts`, pure and tested;

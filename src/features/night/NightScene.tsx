@@ -88,9 +88,9 @@ function uploadTextures(gl: WebGLRenderer, group: Group, seen: WeakSet<Texture>)
  * Warms every stop up before its cut: compiles its materials (in parallel
  * where the GPU allows) and uploads its textures while another stop is on
  * screen, the next one first, so the first frame of a stop never stalls on
- * a shader or a texture. A set that loads more later is warmed again;
- * once every stop is warm and nothing loads, it stops looking (`night.warm`,
- * which also lets the opening cover rest the canvas: nightCover.ts).
+ * a shader or a texture. A set that loads more later is warmed again.
+ * Every stop warm and nothing loading is `night.warm`, which lets the
+ * opening cover rest the canvas (nightCover.ts).
  */
 function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
   const gl = useThree((state) => state.gl);
@@ -116,8 +116,10 @@ function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
   );
 
   useFrame(({ clock }) => {
-    // Every stop warm and nothing loading: no more traversals until the scene mounts again.
-    if (night.warm || busy.current || clock.elapsedTime < lookAt.current) return;
+    // It keeps looking while the frame loop runs (a few small traversals every WARM_EVERY): a set's
+    // art lands after its fonts and adds its meshes then, and a stop counted warm before that
+    // compiled them in its first frame on screen.
+    if (busy.current || clock.elapsedTime < lookAt.current) return;
     lookAt.current = clock.elapsedTime + WARM_EVERY;
     const count = groups.current.length;
     let ready = 0;
@@ -132,6 +134,7 @@ function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
         continue;
       }
       warm.current.set(i, meshes);
+      night.warm = false;
       busy.current = true;
       uploadTextures(gl, group, textures.current);
       gl.compileAsync(group, camera, scene)
@@ -141,7 +144,7 @@ function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
         });
       return;
     }
-    if (count > 0 && ready === count && !loadingRef.current) night.warm = true;
+    night.warm = count > 0 && ready === count && !loadingRef.current;
   });
   return null;
 }
