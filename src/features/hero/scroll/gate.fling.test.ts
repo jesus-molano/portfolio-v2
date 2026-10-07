@@ -71,3 +71,82 @@ describe("steadyFling", () => {
     expect(steadyFling(s, 1.7, 64)).toBeGreaterThan((300 / 60 * GATE.flingFrameMs * 0.9) ** 1.7);
   });
 });
+
+/**
+ * A flick as iOS reports it: 160 px over 90 ms, the finger sampled once a display frame (60 Hz),
+ * accelerating into the lift; `tail` moves that did not move (a force or contact change as the finger
+ * leaves the glass, `dt` ms apart) after it, and the lift `gap` ms after the last one.
+ */
+function iosFlick({ step = 1000 / 60, gap = 16, tail = [] as number[], ios = true } = {}) {
+  const stroke = newStroke();
+  resetStroke(stroke, 0);
+  const n = Math.round(90 / step);
+  let y = 0;
+  let t = 0;
+  for (let i = 1; i <= n; i += 1) {
+    t = (90 * i) / n;
+    const next = 160 * (i / n) ** 2;
+    strokeMove(stroke, next - y, t, ios && next === y);
+    y = next;
+  }
+  for (const dt of tail) {
+    t += dt;
+    strokeMove(stroke, 0, t, ios);
+  }
+  const at = t + gap;
+  return { lift: strokeLift(stroke, at), fling: strokeLift(stroke, at) === 0 ? 0 : steadyFling(stroke, 1.7, at, ios) };
+}
+
+describe("steadyFling on iOS", () => {
+  const prompt = iosFlick({ gap: 16 }).fling;
+
+  it("flings a flick whose lift comes a frame or more behind its last move", () => {
+    expect(prompt).toBeGreaterThan(500);
+    for (const gap of [41, 50, 80, GATE.flingStaleMsIos]) {
+      const late = iosFlick({ gap });
+      expect(late.lift).toBe(1);
+      expect(late.fling).toBe(prompt);
+    }
+    // Read by the rest of the page's rule, the same lifts flew nothing: the page moved only as far as the finger.
+    expect(iosFlick({ gap: 50, ios: false }).fling).toBe(0);
+  });
+
+  it("takes no speed from moves that did not move before the lift", () => {
+    expect(iosFlick({ tail: [16, 16], gap: 8 }).fling).toBe(prompt);
+    // Read as samples of the finger's speed, two of them took the fling down to a few px.
+    expect(iosFlick({ tail: [16, 16], gap: 8, ios: false }).fling).toBeLessThan(prompt * 0.05);
+  });
+
+  it("still flings nothing for a finger that stopped before it lifted", () => {
+    // Its moves stopped moving for 150 ms: it came to rest.
+    expect(iosFlick({ tail: Array(9).fill(16), gap: 8 })).toEqual({ lift: 0, fling: 0 });
+    // A lift past the window, or after a finger that rested with no moves at all.
+    expect(iosFlick({ gap: GATE.flingStaleMsIos + 1 }).fling).toBe(0);
+    expect(iosFlick({ gap: 160 })).toEqual({ lift: 0, fling: 0 });
+  });
+
+  it("leaves every other platform's rule as it was", () => {
+    // A 120 Hz flick (Android): flung up to 40 ms after the last move, nothing after.
+    const android = (gap: number) => iosFlick({ step: 90 / 11, gap, ios: false });
+    expect(android(6).fling).toBeGreaterThan(500);
+    expect(android(GATE.flingStaleMs).fling).toBe(android(6).fling);
+    expect(android(GATE.flingStaleMs + 1).fling).toBe(0);
+    expect(GATE.flingStaleMs).toBe(40);
+  });
+
+  it("keeps a move that did not move in the stroke's slop and rest", () => {
+    const s = newStroke();
+    resetStroke(s, 0);
+    expect(strokeMove(s, 0, 16, true)).toBe(0);
+    expect(s.speedAt).toBe(0);
+    expect(strokeMove(s, 10, 32, false)).toBe(10);
+    expect(s.speedAt).toBe(32);
+    const speed = s.speed;
+    expect(strokeMove(s, 0, 48, true)).toBe(0);
+    expect(s.speed).toBe(speed);
+    expect(s.speedAt).toBe(32);
+    // Standing that way for restMs, it has come to rest all the same.
+    strokeMove(s, 0, 32 + GATE.restMs, true);
+    expect(strokeMove(s, GATE.touchSlop, 32 + GATE.restMs + 16)).toBe(0);
+  });
+});

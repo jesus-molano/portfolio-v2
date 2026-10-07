@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { browserStroke, GATE, gateAction, keyScrollsPage, lenisMissed, liftFling, newStroke, pageScroll, resetStroke, strokeLift, strokeMove } from "./gate";
+import { browserStroke, firstWall, GATE, gateAction, iosTouch, keyScrollsPage, lenisMissed, liftFling, newStroke, pageScroll, resetStroke, strokeLift, strokeMove } from "./gate";
 
 describe("where the page is", () => {
   it("draws from Lenis' sub-pixel value while it agrees with the page", () => {
@@ -218,5 +218,53 @@ describe("a key below the hero", () => {
     expect(keyScrollsPage(" ", "field")).toBe(false);
     expect(keyScrollsPage(" ", "control")).toBe(false);
     for (const key of ["q", "[", "]", "Tab", "Enter", "Escape", "w"]) expect(keyScrollsPage(key, "page")).toBe(false);
+  });
+});
+
+describe("a finger in THE USUAL SUSPECTS' character select", () => {
+  // A 390 x 844 phone: the film ends five screens down the stage, the select below it, then the city.
+  const heroEnd = 5 * 844;
+  const select = { top: heroEnd + 900, wall: heroEnd + 2150 };
+  const pinned = { from: heroEnd + 3200, to: heroEnd + 12000 };
+  const cityWall = pinned.from + 400;
+
+  it("is Lenis' stroke while the select's wall holds, before the choice", () => {
+    const wall = firstWall(Number.POSITIVE_INFINITY, select.wall, cityWall);
+    expect(wall).toBe(select.wall);
+    for (const page of [select.top, select.top + 600, select.wall]) {
+      expect(browserStroke(page, heroEnd, wall, pinned)).toBe(false);
+      expect(browserStroke(page, heroEnd, wall, pinned, true)).toBe(false);
+    }
+  });
+
+  it("stays Lenis' once he is chosen, while the career city's wall is closed ahead", () => {
+    const wall = firstWall(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, cityWall);
+    expect(wall).toBe(cityWall);
+    for (const page of [select.top, select.wall, select.wall + 400]) expect(browserStroke(page, heroEnd, wall, pinned)).toBe(false);
+  });
+
+  it("is the browser's once every wall is open, as anywhere below the hero", () => {
+    const wall = firstWall(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+    expect(browserStroke(select.top, heroEnd, wall, pinned)).toBe(true);
+  });
+
+  it("binds to the first wall on the page", () => {
+    expect(firstWall(1200, select.wall, cityWall)).toBe(1200);
+    expect(firstWall(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, cityWall)).toBe(cityWall);
+  });
+});
+
+describe("iosTouch", () => {
+  it("knows iOS and iPadOS, where every browser is WebKit, and nothing else", () => {
+    const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1";
+    const chromeIos = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/140.0 Mobile/15E148 Safari/604.1";
+    const ipados = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15";
+    const android = "Mozilla/5.0 (Linux; Android 16; SM-S948B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36";
+    expect(iosTouch(iphone, 5)).toBe(true);
+    expect(iosTouch(chromeIos, 5)).toBe(true);
+    expect(iosTouch(ipados, 5)).toBe(true);
+    // A Mac without a touch screen, and Android, keep the rest of the page's rule.
+    expect(iosTouch(ipados, 0)).toBe(false);
+    expect(iosTouch(android, 10)).toBe(false);
   });
 });

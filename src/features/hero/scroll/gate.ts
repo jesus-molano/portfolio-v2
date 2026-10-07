@@ -71,7 +71,33 @@ export const GATE = {
    * the finger had stopped (Android's VelocityTracker assumes a pointer stopped after 40 ms).
    */
   flingStaleMs: 40,
+  /**
+   * The same on iOS (WebKit, every browser there): its touch events carry the UIKit touch's own time
+   * (WKTouchEventsGestureRecognizer: `timestamp = touches.anyObject.timestamp`), delivered a display
+   * frame at a time, and the lift's sample comes a frame or two behind the last move, more as the
+   * finger leaves the glass: 40 ms left about a frame's margin, and past it a flick flew nothing, the
+   * page moving only as far as the finger did. Android's VelocityTracker reads 100 ms of samples.
+   * A finger that really stopped still flings nothing: it comes to rest first (`restMs`).
+   */
+  flingStaleMsIos: 100,
 } as const;
+
+/**
+ * Whether the page runs on iOS or iPadOS, where every browser is WebKit (its touch clock, above):
+ * an iPhone, iPad or iPod in the user agent (Lenis' own `isIos`), or a "Macintosh" with a touch
+ * screen, as iPadOS' Safari calls itself.
+ */
+export function iosTouch(userAgent: string, maxTouchPoints: number): boolean {
+  return /(iPad|iPhone|iPod)/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
+}
+
+/**
+ * The page's first wall (px of page scroll) a stroke or a notch is trimmed to: the smallest of the
+ * hero's, the character select's and the career city's (Infinity once every one is open).
+ */
+export function firstWall(hero: number, select: number, city: number): number {
+  return Math.min(hero, select, city);
+}
 
 /**
  * A finger's stroke, as the gate reads it (SmoothScroll, the scroller
@@ -122,16 +148,22 @@ export function resetStroke(stroke: Stroke, at = Number.NaN): void {
  * One move of the finger (`delta` px, positive forward) at `at` ms (the
  * event's own time): how far it scrolls the page, 0 while the finger is
  * still (within the slop, trembling back from the furthest it went, or
- * resting).
+ * resting). `stationary`: the move carried no movement at all, and the
+ * page runs on iOS (SmoothScroll): it leaves the finger's speed as it was.
  */
-export function strokeMove(stroke: Stroke, delta: number, at: number): number {
+export function strokeMove(stroke: Stroke, delta: number, at: number, stationary = false): number {
   if (!Number.isFinite(delta)) return 0;
   // The finger's own speed, on its moves' clock: a frame's coalesced moves count over the time they took.
-  if (Number.isFinite(stroke.speedAt) && at > stroke.speedAt) {
-    const dt = at - stroke.speedAt;
-    stroke.speed += (delta / dt - stroke.speed) * (1 - Math.exp(-dt / GATE.flingTau));
+  // A move that did not move (`stationary`: iOS reports a touch whose force or contact changed, as a
+  // finger leaves the glass) is no sample of its speed: read as one, two of them just before the lift
+  // took a flick's fling from 700 px to 24.
+  if (!stationary) {
+    if (Number.isFinite(stroke.speedAt) && at > stroke.speedAt) {
+      const dt = at - stroke.speedAt;
+      stroke.speed += (delta / dt - stroke.speed) * (1 - Math.exp(-dt / GATE.flingTau));
+    }
+    if (!(at <= stroke.speedAt)) stroke.speedAt = at;
   }
-  if (!(at <= stroke.speedAt)) stroke.speedAt = at;
   // Gone less than restPx its way for restMs: it has come to rest, and lands still where it is.
   if (stroke.dir !== 0 && at - stroke.paceAt >= GATE.restMs) {
     stroke.dir = 0;
@@ -183,10 +215,11 @@ export function strokeLift(stroke: Stroke, at: number): -1 | 0 | 1 {
  * its velocity was still the frame before's (or zeroed), and the same flick flew 150 px, then
  * nothing. The finger's speed, on its events' own clock, is the same whatever the frame rate. It
  * counts only while the finger is still moving as it lifts (`at`, the lift's own time, within
- * `flingStaleMs` of its last move): a finger that stopped before lifting flings nothing.
+ * `flingStaleMs` of its last move, `flingStaleMsIos` on iOS): a finger that stopped before lifting
+ * flings nothing.
  */
-export function steadyFling(stroke: Stroke, exponent: number, at: number): number {
-  if (!(at - stroke.speedAt <= GATE.flingStaleMs)) return 0;
+export function steadyFling(stroke: Stroke, exponent: number, at: number, ios = false): number {
+  if (!(at - stroke.speedAt <= (ios ? GATE.flingStaleMsIos : GATE.flingStaleMs))) return 0;
   const perFrame = Math.abs(stroke.speed) * GATE.flingFrameMs;
   return perFrame > 0 ? perFrame ** exponent : 0;
 }

@@ -14,6 +14,10 @@ import { describe, expect, it } from "vitest";
  *    computed after the callback from Lenis' own velocity: the gate
  *    zeroes the deltas (2) and glides the same law itself, from the
  *    finger's own speed (gate.ts steadyFling), into the wall at most.
+ *    That speed is read from the touchmove's deltas, which Lenis takes
+ *    from the touch's clientX and clientY against the move before: a move
+ *    with both deltas 0 did not move (on iOS, a force or contact change),
+ *    and is no sample of the finger's speed there (gate.ts strokeMove).
  * And HeroStage's frame (gate.ts) on two more:
  * 4. Lenis can miss a native move of the page: it drops the scroll event
  *    after its own landing (preventNextNativeScrollEvent, cleared on the
@@ -102,6 +106,14 @@ describe("Lenis contract", () => {
     const tapStops = body.indexOf('this.options.syncTouch && isTouch && event.type === "touchstart" && isClickOrTap');
     expect(tapStops).toBeGreaterThan(body.indexOf("const isClickOrTap"));
     expect(body.slice(tapStops, tapStops + 200)).toContain("this.reset();");
+  });
+
+  it("still reads a touchmove's deltas from where the finger was at the move before", () => {
+    const source = readFileSync(new URL("dist/lenis.mjs", root), "utf8");
+    const move = source.slice(source.indexOf("onTouchMove = (event) => {"), source.indexOf("onTouchEnd = (event) => {"));
+    expect(move).toContain("const deltaX = -(clientX - this.touchStart.x) * this.options.touchMultiplier;");
+    expect(move).toContain("const deltaY = -(clientY - this.touchStart.y) * this.options.touchMultiplier;");
+    expect(move).toContain("this.touchStart.y = clientY;");
   });
 
   it("still re-measures and stands where the page is on resize() and reset(), which also stops a glide", () => {

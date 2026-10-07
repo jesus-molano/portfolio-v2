@@ -14,7 +14,9 @@ import { selectGate } from "@/features/suspects/selectWall";
 import { stageGate } from "@/features/work/stageGate";
 import {
   browserStroke,
+  firstWall,
   GATE,
+  iosTouch,
   keyScrollsPage,
   lenisMissed,
   liftFling,
@@ -71,6 +73,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
   const browserOwns = useRef(false);
   /** The career city's pinned film (px), read at each finger's landing. */
   const pinned = useRef({ from: Number.POSITIVE_INFINITY, to: Number.NEGATIVE_INFINITY });
+  /** iOS or iPadOS (WebKit's touch clock, gate.ts flingStaleMsIos), read once on the client. */
+  const ios = useRef<boolean | null>(null);
 
   /*
    * Gate for wheel and touch input, run by Lenis before it scrolls. It
@@ -147,6 +151,9 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       // Pinch zoom on a trackpad (ctrlKey), sideways gestures and input before the visitor entered are not scrolling.
       if (reducedMotion || event.ctrlKey || !getSceneLoading().entered) return true;
       const lenis = lenisRef.current?.lenis;
+      ios.current ??= iosTouch(navigator.userAgent, navigator.maxTouchPoints);
+      // On iOS a move that did not move (a force or contact change) is no sample of the finger's speed.
+      const stationary = ios.current && data.deltaX === 0 && data.deltaY === 0;
       // Every finger lands still.
       if (event.type === "touchstart") resetStroke(stroke.current, event.timeStamp);
       // Scroll held (the radio wheel is open): nothing reaches the hero, not
@@ -182,7 +189,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         browserOwns.current = browserStroke(
           window.scrollY,
           scrollGate.heroEnd,
-          Math.min(scrollGate.maxScroll, stageGate.maxScroll, selectGate.maxScroll),
+          firstWall(scrollGate.maxScroll, selectGate.maxScroll, stageGate.maxScroll),
           pinned.current,
           lenis?.isScrolling === "native",
         );
@@ -197,7 +204,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         // The stroke is still her input, through its slop, for the hero she may scroll back into.
         const now = performance.now();
         if (event.type === "touchmove") {
-          const move = strokeMove(stroke.current, data.deltaY, event.timeStamp);
+          const move = strokeMove(stroke.current, data.deltaY, event.timeStamp, stationary);
           if (move !== 0) {
             strokeMoved.current = true;
             recordInput(move, "touch", now);
@@ -213,7 +220,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       if (event.type === "touchmove") {
         // A finger moves the page only once it is past its slop (gate.ts).
         // On the event's own clock: a slow frame never turns a move into a rest.
-        const move = strokeMove(stroke.current, data.deltaY, event.timeStamp);
+        const move = strokeMove(stroke.current, data.deltaY, event.timeStamp, stationary);
         if (move === 0) {
           // Still, or a move with nothing vertical in it: nothing scrolls,
           // and the move is cancelled here, or the browser takes the rest of
@@ -224,7 +231,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         data.deltaY = move;
       }
       // The first wall on the page binds: the hero's, the character select's, or the career city's.
-      const maxScroll = Math.min(scrollGate.maxScroll, stageGate.maxScroll, selectGate.maxScroll);
+      const maxScroll = firstWall(scrollGate.maxScroll, selectGate.maxScroll, stageGate.maxScroll);
       const gated = Boolean(lenis) && Number.isFinite(maxScroll);
       const room = lenis && gated ? maxScroll - Math.max(lenis.targetScroll, lenis.actualScroll) : Infinity;
       const now = performance.now();
@@ -238,7 +245,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         if (lift === 0) data.deltaX = 0;
         data.deltaY = lift;
         // The fling is the finger's, read at a 60 fps frame (gate.ts
-        // steadyFling): Lenis' own grows with the frame, so a loaded phone's
+        // steadyFling; on iOS, whose lift comes a frame or two behind the
+        // last move, with a longer window): Lenis' own grows with the frame, so a loaded phone's
         // flick flew from the career city to the top of the hero, and once
         // the lift came in the same task as the last moves its velocity was
         // stale, so a hard flick barely flew at all. The gate always flies it
@@ -247,7 +255,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         // its inertia.
         // (Not under data-lenis-prevent or a selection handle, where Lenis flings nothing either.)
         if (lenis && lift !== 0 && lenisDrivesTouch(lenis, event)) {
-          const steady = steadyFling(stroke.current, lenis.options.touchInertiaExponent, event.timeStamp);
+          const steady = steadyFling(stroke.current, lenis.options.touchInertiaExponent, event.timeStamp, ios.current);
           const fly = lift > 0 && Number.isFinite(room) ? liftFling(steady, room, window.innerHeight) : steady;
           // Internal 2: zero deltas return as a tap, so Lenis flings nothing (internal 3)...
           data.deltaX = 0;

@@ -58,7 +58,12 @@ also exists as real DOM for keyboard and screen-reader users.
   momentum, until Jesús is chosen; Tab onto the locked way on; at 1366 x
   657, 960 x 600 and 844 x 390 the wall at the select's foot; links, Back and a fragment passing it, then free
   both ways, remembered for the visit; every other check starts with him
-  chosen), the pedal (a thumb, the mouse, W and Space
+  chosen), an iPhone's swipes (`ios`, a phone only: each touch stamped
+  on its own clock, the lift a frame or more behind the last move; in
+  the select before and after the choice and in the hero a drag follows
+  the finger, a flick flings, and one lifted 60 ms late flings at least
+  half as far; without an iPhone's user agent that late lift still
+  flings nothing; `--verbose` prints a PASS's numbers too), the pedal (a thumb, the mouse, W and Space
   held, two fingers, blur, a lost keyup, Q, the end, reduced motion) and
   its layout from 360 x 640 to 1440 x 900, a phone's swipes and flings
   in the career city at a closed wall (every move gated, nothing past
@@ -188,7 +193,15 @@ also exists as real DOM for keyboard and screen-reader users.
     passes never goes past it (a finger's fling flies up to the wall and
     no further, and the gate flies it itself, read at a 60 fps frame
     from the finger's own speed on the events' clock, `gate.ts`
-    steadyFling, nothing once the finger lifts 40 ms after its last move:
+    steadyFling, nothing once the finger lifts 40 ms after its last move,
+    100 ms on iOS and iPadOS (`iosTouch`): WebKit stamps a touch with the
+    UIKit touch's own time, a display frame apart, and its lift comes a
+    frame or more behind the last move, so past 40 ms an iPhone's flick
+    flew nothing and the page went only as far as the finger, in the
+    character select and everywhere Lenis drives; and there a move that
+    did not move, a force or contact change as the finger leaves the
+    glass, is no sample of its speed (two of them cut a fling to a few
+    px); a finger that stopped still flings nothing, at rest first:
     Lenis flings |its last frame's move|^1.7 from a velocity set in its
     frame, so on a loaded phone a frame's coalesced moves made the same
     flick fly four to seven times as far, from the career city to the top

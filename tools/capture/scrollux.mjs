@@ -6,7 +6,7 @@
  * and prints PASS or FAIL per check.
  *
  *   node tools/capture/scrollux.mjs [--url http://localhost:3000]
- *     [--lang en|es|both] [--device desktop|mobile|both] [--only a,b,...]
+ *     [--lang en|es|both] [--device desktop|mobile|both] [--only a,b,...] [--verbose]
  *     [--webgl] [--out .captures/cityloop] [--replay <dir>]
  *
  * Checks: swipe (a thumb resting before a swipe never opens the radio; a
@@ -96,8 +96,14 @@
  * description in reach; a cat refuses and the wall holds; a
  * link, Back and Forward and a fragment pass it; Jesús chosen by the
  * arrows and Enter, or a tap, she scrolls on and back freely, a reload in
- * the visit remembers it, and nothing shifts). Every other check starts
- * with Jesús already chosen, as earlier in the visit.
+ * the visit remembers it, and nothing shifts), ios (a phone only: an
+ * iPhone's swipes, each touch stamped on its own clock as WebKit stamps
+ * it, its lift a frame or more behind the last move: in the select
+ * before and after the choice and in the hero, a drag moves the page as
+ * far as the finger, a flick flings, and one lifted 60 ms after its last
+ * move flings at least half as far; elsewhere that late lift still flings
+ * nothing). Every other check starts with Jesús already chosen, as
+ * earlier in the visit.
  *
  * WebGL is off by default: the checks read the DOM and its timing, and a
  * machine without a GPU renders the scene at a few frames a second
@@ -116,6 +122,8 @@ const { values } = parseArgs({
     replay: { type: "string", default: "" },
     // CDP CPU throttling for cityloop (4 or 6: a loaded phone), set once the visitor is in.
     cpu: { type: "string", default: "1" },
+    // Print every check's measurements, a PASS's too.
+    verbose: { type: "boolean", default: false },
   },
 });
 
@@ -141,7 +149,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const results = [];
 const report = (name, ok, detail) => {
   results.push(ok);
-  console.log(`${ok ? "PASS" : "FAIL"} ${name}${ok ? "" : ` ${JSON.stringify(detail)}`}`);
+  console.log(`${ok ? "PASS" : "FAIL"} ${name}${ok && !values.verbose ? "" : ` ${JSON.stringify(detail)}`}`);
 };
 
 /**
@@ -164,8 +172,8 @@ let browser = null;
  * a visitor who picked him earlier in the visit, so the checks that drive
  * on past it are not held at its wall; the `select` check starts unchosen.
  */
-async function session(device, lang, { reducedMotion = "no-preference", enter = true, hash = "", init = null, chosen = true, viewport = null } = {}) {
-  const context = await browser.newContext({ ...DEVICES[device], ...(viewport ? { viewport } : {}), reducedMotion });
+async function session(device, lang, { reducedMotion = "no-preference", enter = true, hash = "", init = null, chosen = true, viewport = null, userAgent = null } = {}) {
+  const context = await browser.newContext({ ...DEVICES[device], ...(viewport ? { viewport } : {}), ...(userAgent ? { userAgent } : {}), reducedMotion });
   if (chosen) {
     await context.addInitScript(() => {
       try {
@@ -234,6 +242,40 @@ async function touchStrokes(cdp, strokes, { x = 195, y0 = 640 } = {}) {
 }
 
 const probe = (page) => page.evaluate(() => window.__vaProbe?.at?.(-1) ?? null);
+
+/** Safari on an iPhone (every iOS browser is WebKit). */
+const IPHONE_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1";
+
+/**
+ * One stroke as an iPhone delivers it: every touch stamped with its own time (CDP `timestamp`, as
+ * WebKit stamps a touch event with the UIKit touch's), a move a display frame (60 Hz) apart, `dy` px
+ * up over `ms` (`flick`: accelerating into the lift), lifted `gap` ms after the last move. Sent at
+ * those times without waiting for the page.
+ */
+async function iosSwipe(cdp, { dy, ms, gap = 16, flick = false, x, y0 }) {
+  const step = 1000 / 60;
+  const n = Math.max(2, Math.round(ms / step));
+  const points = [{ t: 0, type: "touchStart", y: y0 }];
+  for (let i = 1; i <= n; i += 1) points.push({ t: (ms * i) / n, type: "touchMove", y: y0 - dy * (flick ? (i / n) ** 2 : i / n) });
+  points.push({ t: ms + gap, type: "touchEnd" });
+  const t0 = Date.now();
+  const sent = [];
+  for (const point of points) {
+    const wait = t0 + point.t - Date.now();
+    if (wait > 0) await sleep(wait);
+    sent.push(
+      cdp
+        .send("Input.dispatchTouchEvent", {
+          type: point.type,
+          touchPoints: point.type === "touchEnd" ? [] : [{ x, y: point.y }],
+          timestamp: (t0 + point.t) / 1000,
+        })
+        .catch(() => {}),
+    );
+  }
+  await Promise.all(sent);
+}
 
 /**
  * Logs what every frame shows, from the DOM, into window.__frames: the
@@ -3700,6 +3742,106 @@ const CHECKS = {
       );
       await v.close();
     }
+  },
+
+  async ios(device, lang) {
+    // An iPhone's swipes (WebKit: a touch event carries the UIKit touch's own time, a display frame
+    // apart, and the lift's comes a frame or more behind the last move as the finger leaves the
+    // glass). Lenis drives every stroke in the character select, before the choice (its wall) and
+    // after it (the career city's wall closed ahead), and in the hero; the page follows the finger and
+    // flies the finger's own fling (gate.ts steadyFling). A lift 60 ms after the last move flew
+    // nothing there before (the page went only as far as the finger: "you had to move the finger a
+    // lot"); on iOS it flings (flingStaleMsIos), and everywhere else it still flings nothing.
+    if (device !== "mobile") return;
+    const W = DEVICES.mobile.viewport.width;
+    const H = DEVICES.mobile.viewport.height;
+    const DRAG = { dy: 200, ms: 600 };
+    const FLICK = { dy: 160, ms: 90, flick: true };
+    const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+    /** Page travel (px, positive the swipe's way) of one swipe from `home`, the median of three. */
+    const travel = async (s, home, swipe) => {
+      const runs = [];
+      for (let i = 0; i < 3; i += 1) {
+        await s.page.evaluate((top) => window.scrollTo({ top, behavior: "instant" }), home);
+        await sleep(700);
+        const before = await s.page.evaluate(() => scrollY);
+        await iosSwipe(s.cdp, { x: W / 2, y0: swipe.dy > 0 ? H * 0.8 : H * 0.2, ...swipe });
+        await sleep(1700);
+        runs.push(Math.round((await s.page.evaluate(() => scrollY)) - before) * Math.sign(swipe.dy));
+      }
+      return median(runs);
+    };
+    /** The drag, a prompt flick and a late one, `dir` 1 forward or -1 back. */
+    const measure = async (s, home, dir) => {
+      const drag = await travel(s, home, { ...DRAG, dy: dir * DRAG.dy });
+      const prompt = await travel(s, home, { ...FLICK, dy: dir * FLICK.dy, gap: 16 });
+      const late = await travel(s, home, { ...FLICK, dy: dir * FLICK.dy, gap: 60 });
+      return { drag, prompt, late, finger: { drag: DRAG.dy, flick: FLICK.dy } };
+    };
+    const holds = (m) =>
+      m.drag >= DRAG.dy * 0.85 && m.drag <= DRAG.dy * 1.25 && m.prompt >= FLICK.dy * 2.5 && m.late >= FLICK.dy * 2 && m.late >= m.prompt * 0.5;
+    const where = (s) =>
+      s.page.evaluate(() => {
+        const section = document.getElementById("suspects");
+        const box = section.getBoundingClientRect();
+        const crown = section.querySelector("[data-crown]")?.getBoundingClientRect();
+        const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const foot = box.bottom + scrollY - innerHeight;
+        return {
+          top: Math.round(box.top + scrollY),
+          wall: Math.round(Math.max(box.top + scrollY, Math.min(foot, crown ? crown.top + scrollY - 7 * rem : foot))),
+          chosen: sessionStorage.getItem("va-player-one"),
+        };
+      });
+    const skip = async (s) => {
+      await sleep(1500);
+      await s.page.locator("[data-skip] button, button[data-skip]").first().tap({ timeout: 8000 }).catch(() => s.page.keyboard.press("End"));
+      await sleep(1600);
+    };
+
+    // 1. The select, its wall closed: forward from its top, back from the wall.
+    const s = await session(device, lang, { chosen: false, userAgent: IPHONE_UA });
+    await skip(s);
+    const geo = await where(s);
+    const closedFwd = await measure(s, geo.top, 1);
+    const closedBack = await measure(s, geo.wall, -1);
+    const still = await where(s);
+    report(`${device} ${lang} ios: in the select before the choice a drag follows the finger, and a flick flings, lifted late too`, holds(closedFwd) && holds(closedBack) && still.chosen === null, { geo, closedFwd, closedBack, chosen: still.chosen });
+
+    // 2. Jesús chosen: the same, the career city's wall closed ahead.
+    const pick = s.page.locator('[data-slot="jesus"] [data-pick]');
+    await pick.scrollIntoViewIfNeeded();
+    await sleep(500);
+    await pick.tap();
+    await sleep(1200);
+    const chosenFwd = await measure(s, geo.top, 1);
+    const chosenBack = await measure(s, geo.wall, -1);
+    const picked = await where(s);
+    report(`${device} ${lang} ios: in the select with Jesús chosen a drag follows the finger, and a flick flings, lifted late too`, picked.chosen === "jesus" && holds(chosenFwd) && holds(chosenBack), { chosen: picked.chosen, chosenFwd, chosenBack });
+    await s.close();
+
+    // 3. The hero, going back from late in the film (its walls opened by the jump).
+    const h = await session(device, lang, { userAgent: IPHONE_UA });
+    await sleep(1500);
+    await h.page.evaluate(() => window.__vaJump?.(0.9));
+    await sleep(1500);
+    const heroHome = await h.page.evaluate(() => Math.round(scrollY));
+    const heroBack = await measure(h, heroHome, -1);
+    report(`${device} ${lang} ios: in the hero a drag back follows the finger, and a flick back flings, lifted late too`, holds(heroBack), { heroHome, heroBack });
+    await h.close();
+
+    // 4. Not an iPhone: the late lift still flings nothing (the rest of the page's rule, unchanged).
+    const a = await session(device, lang, { chosen: false });
+    await skip(a);
+    const ageo = await where(a);
+    const prompt = await travel(a, ageo.top, { ...FLICK, gap: 16 });
+    const late = await travel(a, ageo.top, { ...FLICK, gap: 60 });
+    report(
+      `${device} ${lang} ios: elsewhere a flick flings, and one lifted 60 ms after its last move still flings nothing`,
+      prompt >= FLICK.dy * 2.5 && late >= FLICK.dy * 0.9 && late <= FLICK.dy * 1.15,
+      { prompt, late, finger: FLICK.dy },
+    );
+    await a.close();
   },
 
   async loader(device, lang) {
