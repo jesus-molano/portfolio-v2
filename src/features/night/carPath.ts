@@ -7,9 +7,9 @@
  * the stop's leave beat. The only discontinuity is between two stops, at
  * the cut, which the picture's dip to night hides (work/dip.ts).
  *
- * On the first stop the car rolls in under the bridge line, while the night
- * fades in over the chapter card, and brakes in `army.arrive`; on the others
- * the whole `<stop>.open` beat is its arrival.
+ * On the first stop the car rolls in from the chapter card on, while the
+ * night fades in under it, and brakes in `army.arrive`; on the others the
+ * whole `<stop>.open` beat is its arrival.
  */
 
 import type { StageTimeline } from "@/features/work/workTimeline";
@@ -18,7 +18,7 @@ import type { StageTimeline } from "@/features/work/workTimeline";
 export const HEADLIGHT = "#ffd9a8";
 
 export const CAR_PATH = {
-  /** Metres the car rolls in from on the first stop (it has the bridge line's time). */
+  /** Metres the car rolls in from on the first stop (it has the chapter card's time too). */
   firstFrom: -48,
   /** Metres it rolls in from at every other stop. */
   arriveFrom: -34,
@@ -164,14 +164,14 @@ export function carLegs(timeline: StageTimeline): Leg[] {
   const cached = legsOf.get(timeline);
   if (cached) return cached;
   const legs: Leg[] = [];
-  const bridge = timeline.beats.find((b) => b.id === "bridge");
+  const title = timeline.beats.find((b) => b.kind === "title");
   for (let s = 0; s < timeline.stops.length; s += 1) {
     const own = timeline.beats.filter((b) => b.stop === s);
     if (own.length === 0) continue;
     if (s === 0) {
-      // Rolls in under the bridge line (the night fading in), brakes in the arrival.
+      // Rolls in under the chapter card (the night fading in), brakes in the arrival.
       const arrive = own.find((b) => b.id.endsWith(".arrive")) ?? own[0];
-      const from = bridge?.start ?? arrive.start;
+      const from = title?.start ?? arrive.start;
       legs.push({
         kind: "arrive",
         stop: s,
@@ -191,7 +191,7 @@ export function carLegs(timeline: StageTimeline): Leg[] {
   return legs;
 }
 
-/** The stop on screen at film position p (the title and the bridge belong to the first). */
+/** The stop on screen at film position p (the title belongs to the first). */
 export function stopAt(timeline: StageTimeline, p: number): number {
   const { stops } = timeline;
   for (let s = stops.length - 1; s > 0; s -= 1) if (p >= stops[s].from) return s;

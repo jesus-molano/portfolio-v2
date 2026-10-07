@@ -60,7 +60,7 @@ export type StageTimeline = {
  */
 export const BEAT_SECONDS = {
   title: 1.2,
-  /** The first stop: the car brakes to the army's board (it has rolled in under the bridge line). */
+  /** The first stop: the car brakes to the army's board (it has rolled in under the chapter card). */
   arrive: 2.2,
   /** Every other stop: up out of the dip, the car rolls in and brakes at the board. */
   open: 2.4,
@@ -170,11 +170,8 @@ const STOP_KEY: Record<StopId, string> = {
 /** The beats of the work stage (section 6.0 of the spec), from the dictionary. */
 export function workBeats(work: WorkDict): BeatInput[] {
   const S = BEAT_SECONDS;
-  const beats: BeatInput[] = [
-    { kind: "title", id: "title", seconds: S.title, stop: -1 },
-    // From the cats to the work: a line over the title card, while the night fades in and the car rolls up.
-    { kind: "card", id: "bridge", text: work.bridge, stop: -1 },
-  ];
+  // The chapter card on night, while the night fades up under it and the car starts rolling in.
+  const beats: BeatInput[] = [{ kind: "title", id: "title", seconds: S.title, stop: -1 }];
   const cards = (stop: number, key: string, texts: readonly string[], from = 0) =>
     texts.map((text, i): BeatInput => ({ kind: "card", id: `${key}.card${from + i}`, text, stop }));
 

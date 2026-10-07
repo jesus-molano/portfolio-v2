@@ -844,8 +844,11 @@ also exists as real DOM for keyboard and screen-reader users.
   `layoutShift.test.ts`).
   The film opens on the chapter card «Historia principal» / "Main story"
   (the game's main storyline, as STATS's main missions are; ribbon
-  «Trayectoria · 2018 — LIVE» / "Career · 2018 — LIVE"), after a bridge
-  card from the cats.
+  «Trayectoria · 2018 — LIVE» / "Career · 2018 — LIVE"), held 1.2 s
+  while the night fades up under it, then straight into the drive: no
+  line opens it (the owner took the bridge line out: the night faded up
+  over the whole of it, at its reading pace with the limiter on, and a
+  first pass read seconds of dark screen as the end of the page).
   The route at the top is one link per stop («PARADA 1…5»), never a video
   scrubber. While the car is stopped, the super shows «PARADA 0X/05 ·
   company» and, under it, the stop's one `line` (clients and stack); the
@@ -853,8 +856,8 @@ also exists as real DOM for keyboard and screen-reader users.
   Skip) are the hero's own words, `common.cues`, shared by both stages.
   Its subtitle cards are the hero's (one block, balanced, fitted by
   `hero/fitCards.ts`, the reading bar and the marker under the block) and
-  stand with their cue over the night cover and the dip, so the opening
-  line, played as the night fades up, reads at full strength. The HUD
+  stand with their cue over the night cover and the dip, so a line
+  played as the picture dips reads at full strength. The HUD
   names the section as its ribbon does («Trayectoria» / "Career"). On a
   portrait screen a stop whose art holds the top left of its shots puts
   the HUD and the super on the right (`phoneCaptions` in
@@ -880,8 +883,8 @@ also exists as real DOM for keyboard and screen-reader users.
   flick. Once complete (every wall open) the film is a free scrub both
   ways, 1:1: no wall, no held beat, no ride slows it; only the dip keeps
   its minimum fade times over a cut (below). The chapter card has a
-  layer of its own (`will-change`), since its fade and rise as the bridge
-  line plays repainted the whole sign every frame (100 to 400 ms frames
+  layer of its own (`will-change`), since its fade and rise as the drive
+  starts repainted the whole sign every frame (100 to 400 ms frames
   on a slow device at every pass through the top of the city).
   - Pacing and continuity, as polished as the hero: every drive between
     two stops is held (`workTimeline.ts` BEAT_SECONDS: each stop's
@@ -901,7 +904,7 @@ also exists as real DOM for keyboard and screen-reader users.
     is one continuous function of the film inside every stop
     (`night/carPath.ts` `carAt`, tested; the car chases it smoothly,
     `night/carMotion.ts`): on the first stop it rolls in
-    under the bridge line as the night fades in, never stands at the
+    under the chapter card as the night fades in, never stands at the
     board before it gets there; at every stop it cruises in, brakes to
     the line, waits with the brake lights on and pulls away. The stop
     changes under a dip to night (`dip.ts`, tested: the leave's end fades
@@ -909,11 +912,12 @@ also exists as real DOM for keyboard and screen-reader users.
     hard cut; on screen the dip never plays faster than 0.3 s out and
     0.35 s back, and the set changes only once the screen is night
     (`stepDipView`: the old stop held at its edge till then), so a fast
-    pass with the walls open still dissolves. The chapter card fades out
-    over the bridge line's first 28 % and the chrome (route, HUD, super,
+    pass with the walls open still dissolves. The night fades up under
+    the chapter card over its own beat, and the card fades out over the
+    first 28 % of the drive's first beat; the chrome (route, HUD, super,
     chip) comes up only once it has gone (`opening.ts`, tested): the card
-    scrolls up with the page, and faded over the whole line it slid over
-    the route. The letterbox bars slide away as the first stop fades in,
+    scrolls up with the page, and faded slowly it slid over the route.
+    The letterbox bars slide away as the first stop fades in,
     as in the hero, and soft night scrims at the frame's top and bottom
     carry the chrome; the cover's night starts and ends on the line-up's
     floor, the colour on both sides of the stage, so neither seam shows.

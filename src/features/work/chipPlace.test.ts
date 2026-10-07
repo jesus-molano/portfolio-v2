@@ -6,7 +6,7 @@ describe("tallestCards", () => {
     expect(tallestCards([55, 81.2, 55, 34, 107.5], [0, 0, 1, 2, 2], 3)).toEqual([82, 55, 108]);
   });
 
-  it("ignores the bridge card, which belongs to no stop", () => {
+  it("ignores a card that belongs to no stop", () => {
     expect(tallestCards([200, 55], [-1, 0], 1)).toEqual([55]);
   });
 

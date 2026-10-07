@@ -128,9 +128,9 @@ describe("the camera's direction", () => {
       it(`picks the car up as it arrives: on screen for most of every arrival (${name}, ${screen})`, () => {
         SETS.forEach((_, stop) => {
           const arrival = timeline.beats.find((b) => b.stop === stop && (b.id.endsWith(".open") || b.id.endsWith(".arrive")))!;
-          // The first stop's car rolls in under the bridge line, as the night fades up: from its middle on.
-          const bridge = beat(timeline, "bridge");
-          const start = stop === ARMY ? (bridge.start + bridge.end) / 2 : arrival.start;
+          // The first stop's car rolls in under the chapter card, as the night fades up: from its middle on.
+          const title = beat(timeline, "title");
+          const start = stop === ARMY ? (title.start + title.end) / 2 : arrival.start;
           let seen = 0;
           let total = 0;
           for (let i = 0; i <= 60; i += 1) {

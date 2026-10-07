@@ -70,12 +70,13 @@ describe("the work stage", () => {
     expect(workBeats(es.work).map((b) => b.id)).toEqual(workBeats(en.work).map((b) => b.id));
   });
 
-  it("plays the bridge from the cats, five stops, ten cards and ends on the iris", () => {
+  it("opens on the chapter card straight into the drive, five stops, ten cards and ends on the iris", () => {
     for (const timeline of timelines) {
       expect(timeline.stops).toHaveLength(5);
-      expect(timeline.cards).toHaveLength(11);
+      expect(timeline.cards).toHaveLength(10);
       expect(timeline.beats[0].id).toBe("title");
-      expect(timeline.beats[1].id).toBe("bridge");
+      // No line to wait on before the first stop: the drive starts as the chapter card lifts.
+      expect(timeline.beats[1].id).toBe("army.arrive");
       expect(timeline.beats.at(-1)?.id).toBe("end");
     }
   });

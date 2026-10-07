@@ -19,12 +19,23 @@ describe("the stage's opening", () => {
       }
     });
 
-    it(`brings the chrome up during the bridge line, and the night over all of it (${name})`, () => {
-      const bridge = timeline.beats[1];
-      expect(openingAt(timeline, bridge.start + (bridge.end - bridge.start) * 0.5).chrome).toBe(true);
-      expect(openingAt(timeline, bridge.start + (bridge.end - bridge.start) * 0.5).sceneIn).toBeCloseTo(0.5, 6);
-      expect(openingAt(timeline, bridge.start).chrome).toBe(false);
+    it(`brings the chrome up early in the drive's first beat (${name})`, () => {
+      const first = timeline.beats[1];
+      expect(first.id).toBe("army.arrive");
+      expect(openingAt(timeline, first.start + (first.end - first.start) * 0.5).chrome).toBe(true);
+      expect(openingAt(timeline, first.start).chrome).toBe(false);
       expect(openingAt(timeline, 1).chrome).toBe(false);
+    });
+
+    it(`opens on the chapter card with the night fading up under it, no line to wait on (${name})`, () => {
+      const [title, first] = timeline.beats;
+      expect(title.kind).toBe("title");
+      expect(first.kind).not.toBe("card");
+      expect(openingAt(timeline, title.start).sceneIn).toBe(0);
+      expect(openingAt(timeline, (title.start + title.end) / 2).sceneIn).toBeCloseTo(0.5, 6);
+      // The whole picture is up by the end of the card's own beat, which holds it 1.2 s.
+      expect(openingAt(timeline, first.start).sceneIn).toBe(1);
+      expect(openingAt(timeline, first.start).titleOut).toBe(0);
     });
   }
 });

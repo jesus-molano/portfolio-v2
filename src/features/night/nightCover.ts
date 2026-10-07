@@ -7,8 +7,8 @@
  *   under STATS's chapter card and veil, or the stage's end where a link
  *   lands; the iris is drawn only once the night has faded in (`sceneIn`
  *   1), and closed from the end beat's end (`endT` 1);
- * - the opening cover still fully up (`sceneIn` 0: through the chapter
- *   card and before the bridge line), once the scene is ready and every
+ * - the opening cover still fully up (`sceneIn` 0: before the chapter
+ *   card's beat plays), once the scene is ready and every
  *   stop has been warmed up (compiled and uploaded), since that warm-up
  *   runs in the frame loop.
  */

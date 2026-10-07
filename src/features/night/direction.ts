@@ -51,7 +51,7 @@ const TRACK = { track: 1 } as const;
 const OWN = { fit: 0 } as const;
 
 /**
- * The army: the roadside billboard. Under the bridge line the camera rides
+ * The army: the roadside billboard. Under the chapter card the camera rides
  * behind the car down the coast road, the board ahead; as the car brakes at
  * its foot the camera comes round low behind its rear quarter, his head
  * and shoulder a dark shape under the board, and holds there for the lines.
@@ -66,7 +66,6 @@ const army: Direction = {
     const letGo = pose([-6.9, 1.66, 2.5], [13.5, 3.75, -12], LENS.mm28);
     return [
       keyAt(timeline, "title", 0, chaseFar),
-      keyAt(timeline, "bridge", 0.15, chaseFar),
       keyAt(timeline, "army.arrive", 0, chaseNear),
       keyAt(timeline, "army.arrive", 1, read),
       keyAt(timeline, "army.card0", 1, readOn),
@@ -81,7 +80,6 @@ const army: Direction = {
     const chaseNear = pose([-22, 2.2, 8.5], [-8, 1.2, 0], 50, { ...TRACK, ...OWN });
     return [
       keyAt(timeline, "title", 0, chaseFar),
-      keyAt(timeline, "bridge", 0.15, chaseFar),
       keyAt(timeline, "army.arrive", 0, chaseNear),
       keyAt(timeline, "army.arrive", 1, pose([-8.6, 2.25, 12.6], [9, 5.2, -13], LENS.mm35)),
       keyAt(timeline, "army.card1", 1, pose([-8, 2.3, 12], [9, 5.2, -13], LENS.mm35)),

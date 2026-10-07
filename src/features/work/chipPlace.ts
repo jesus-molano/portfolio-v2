@@ -9,7 +9,7 @@
  * band, from the bottom of the pinned frame (Work.module.css .chipSlot).
  */
 
-/** The tallest card block of each stop, in px: `heights[i]` belongs to stop `stops[i]`; a card with no stop (-1, the bridge) counts for none. */
+/** The tallest card block of each stop, in px: `heights[i]` belongs to stop `stops[i]`; a card with no stop (-1) counts for none. */
 export function tallestCards(heights: readonly number[], stops: readonly number[], count: number): number[] {
   const tallest = Array.from({ length: count }, () => 0);
   heights.forEach((height, i) => {

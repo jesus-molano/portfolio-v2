@@ -93,12 +93,12 @@ describe("carAt", () => {
       }
     });
 
-    it(`is up the road and out of the light while the title holds (${name})`, () => {
-      expect(carAt(timeline, at("title", 0.5)).x).toBe(CAR_PATH.firstFrom);
-      // Rolls in under the bridge line, never stands at the board before it gets there.
-      const bridgeMid = carAt(timeline, at("bridge", 0.5)).x;
-      expect(bridgeMid).toBeGreaterThan(CAR_PATH.firstFrom);
-      expect(bridgeMid).toBeLessThan(-10);
+    it(`rolls in from up the road under the chapter card, never at the board before it gets there (${name})`, () => {
+      expect(carAt(timeline, at("title", 0)).x).toBe(CAR_PATH.firstFrom);
+      // Rolling as the night fades up under the card, still well up the road.
+      const titleMid = carAt(timeline, at("title", 0.5)).x;
+      expect(titleMid).toBeGreaterThan(CAR_PATH.firstFrom);
+      expect(titleMid).toBeLessThan(-10);
       expect(carAt(timeline, at("army.arrive", 0.5)).x).toBeLessThan(0);
       expect(carAt(timeline, at("army.arrive", 1) - 1e-9).x).toBeGreaterThan(-0.05);
     });
@@ -122,9 +122,9 @@ describe("carAt", () => {
       expect(carLegs(timeline).filter((leg) => leg.kind === "arrive")).toHaveLength(5);
     });
 
-    it(`puts the title and the bridge on the first stop (${name})`, () => {
+    it(`puts the title on the first stop (${name})`, () => {
       expect(stopAt(timeline, 0)).toBe(0);
-      expect(stopAt(timeline, at("bridge", 0.5))).toBe(0);
+      expect(stopAt(timeline, at("title", 0.5))).toBe(0);
       expect(stopAt(timeline, at("pwc.open", 0))).toBe(1);
       expect(stopAt(timeline, 1)).toBe(4);
     });

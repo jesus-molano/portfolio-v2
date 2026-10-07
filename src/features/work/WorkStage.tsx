@@ -466,7 +466,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         const idle = (now - scrollInput.at) / 1000;
 
         // ---- draw ----
-        // The title card on night, lifting away early in the bridge line (opening.ts): it scrolls up
+        // The title card on night, lifting away early in the drive (opening.ts): it scrolls up
         // with the page, and gone before it reaches the top band, it never sits on the route.
         const { titleOut, sceneIn, chrome: showChrome } = openingAt(timeline, p, openState);
         set(el.title, "opacity", (1 - titleOut).toFixed(3));
@@ -1036,9 +1036,6 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       <div className={styles.chapterBand} data-title>
         <ChapterCard id="work-title" chapter={work.chapter} lang={locale} />
       </div>
-      <p className="sr-only">
-        {work.speaker}: {work.bridge}
-      </p>
       <p id="work-help" className="sr-only">
         {reducedMotion ? work.helpStill : work.help}
       </p>
