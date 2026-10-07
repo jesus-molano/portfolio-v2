@@ -98,6 +98,9 @@ describe("Lenis contract", () => {
     expect(source).toContain('this.element.addEventListener("touchmove", this.onTouchMove, listenerOptions);');
     // ...and the strokes it leaves to the browser, which the gate leaves alone too.
     expect(body).toContain("if (this._isDraggingSelection) {");
+    // Only on iOS, as Lenis tells it (the touch hold lets go there while a selection is up: gate.ts touchHeld).
+    expect(body).toContain("if (isTouch && this.isIos) {");
+    expect(source).toContain("this.isIos = /(iPad|iPhone|iPod)/g.test(navigator.userAgent);");
     for (const attribute of ["data-lenis-prevent", "data-lenis-prevent-vertical", "data-lenis-prevent-horizontal", "data-lenis-prevent-touch"]) {
       expect(body).toContain(`node.hasAttribute?.("${attribute}")`);
     }

@@ -115,10 +115,15 @@ describe("artQueue", () => {
     expect(nextJob([])).toBeUndefined();
   });
 
-  it("counts stops on from the one on screen", () => {
-    expect(stopRank(0, 0)).toBe(0);
-    expect(stopRank(4, 0)).toBe(4);
-    expect(stopRank(1, 3)).toBe(3);
+  it("ranks the stops by how soon she reaches them along the film, never round", () => {
     expect(stopRank(3, 3)).toBe(0);
+    const order = (current: number) => [0, 1, 2, 3, 4].sort((a, b) => stopRank(a, current) - stopRank(b, current));
+    // Driving in from the line-up: in the film's order.
+    expect(order(0)).toEqual([0, 1, 2, 3, 4]);
+    // Back up from STATS: Heuristik, then Logixs, the army last.
+    expect(order(4)).toEqual([4, 3, 2, 1, 0]);
+    // A link to PwC: PwC, then the stop ahead before the one behind.
+    expect(order(1)).toEqual([1, 2, 0, 3, 4]);
+    expect(order(2)).toEqual([2, 3, 1, 4, 0]);
   });
 });

@@ -323,6 +323,20 @@ export function browserStroke(
   return open && page >= heroEnd - 0.5;
 }
 
+/**
+ * Whether the browser may not pan the next stroke at all
+ * (html[data-touch-held], `touch-action: pinch-zoom`), set ahead of the
+ * touch since the compositor reads it there: where Lenis drives it
+ * (`lenisDrives`, browserStroke's opposite), but never under reduced
+ * motion (no Lenis: the browser scrolls) nor on iOS with a text selection
+ * up (`iosSelection`), where Lenis leaves a stroke that lands near the
+ * selection's ends to the browser (its `_isDraggingSelection`) and the
+ * browser must be free to pan it, or that swipe moved nothing.
+ */
+export function touchHeld(lenisDrives: boolean, reduced: boolean, iosSelection: boolean): boolean {
+  return lenisDrives && !reduced && !iosSelection;
+}
+
 /** The keys whose default action scrolls the page (with or without modifiers: Ctrl+End, Cmd+Down). */
 const PAGE_KEYS = new Set(["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "]);
 

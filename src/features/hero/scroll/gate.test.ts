@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { browserStroke, firstWall, GATE, gateAction, iosTouch, keyScrollsPage, lenisMissed, liftFling, newStroke, pageScroll, resetStroke, strokeLift, strokeMove } from "./gate";
+import { browserStroke, firstWall, GATE, gateAction, iosTouch, keyScrollsPage, lenisMissed, liftFling, newStroke, pageScroll, resetStroke, strokeLift, strokeMove, touchHeld } from "./gate";
 
 describe("where the page is", () => {
   it("draws from Lenis' sub-pixel value while it agrees with the page", () => {
@@ -266,5 +266,20 @@ describe("iosTouch", () => {
     // A Mac without a touch screen, and Android, keep the rest of the page's rule.
     expect(iosTouch(ipados, 0)).toBe(false);
     expect(iosTouch(android, 10)).toBe(false);
+  });
+});
+
+describe("touchHeld", () => {
+  it("holds the browser's pan only where Lenis drives the stroke", () => {
+    expect(touchHeld(true, false, false)).toBe(true);
+    expect(touchHeld(false, false, false)).toBe(false);
+  });
+
+  it("never holds under reduced motion, where the browser scrolls", () => {
+    expect(touchHeld(true, true, false)).toBe(false);
+  });
+
+  it("lets go on iOS while a text selection is up: Lenis leaves strokes near its ends to the browser", () => {
+    expect(touchHeld(true, false, true)).toBe(false);
   });
 });

@@ -104,7 +104,13 @@ export function createArtQueue(defer: (run: () => void) => void = afterFrame) {
 /** The page's one queue: every set of the night paints through it. */
 export const artQueue = createArtQueue();
 
-/** How soon she reaches stop `index` (0 next), counting on from the stop on screen. */
-export function stopRank(index: number, current: number, count = 5): number {
-  return (((index - current) % count) + count) % count;
+/**
+ * How soon she reaches stop `index` from the stop on screen (0: that one).
+ * The film runs from the first stop to the last, never round: nearer
+ * first, and the stop ahead before the one behind at equal distance (from
+ * STATS, Logixs right after Heuristik, the army last).
+ */
+export function stopRank(index: number, current: number): number {
+  const ahead = index - current;
+  return ahead >= 0 ? 2 * ahead : 1 - 2 * ahead;
 }

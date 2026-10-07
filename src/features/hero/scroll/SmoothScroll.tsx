@@ -20,11 +20,12 @@ import {
   lenisMissed,
   liftFling,
   newStroke,
-  type PageReading,
   resetStroke,
   steadyFling,
   strokeLift,
   strokeMove,
+  touchHeld,
+  type PageReading,
 } from "./gate";
 import { recordInput, scrollDrive, scrollGate, scrollInput } from "./heroProgress";
 
@@ -366,6 +367,12 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       held = next;
       document.documentElement.toggleAttribute("data-touch-held", next);
     };
+    // A text selection on the page (iOS leaves strokes near its ends to the browser: gate.ts touchHeld).
+    let selecting = false;
+    const onSelection = () => {
+      selecting = !(document.getSelection()?.isCollapsed ?? true);
+    };
+    document.addEventListener("selectionchange", onSelection);
     const update = (time: number, deltaMs: number) => {
       const lenis = lenisRef.current?.lenis;
       if (!lenis) return;
@@ -381,7 +388,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       // ahead of the stroke (the compositor reads it at the touch, not the page) nothing pans,
       // however late the page answers. Pinch zoom stays.
       hold(
-        !reducedRef.current &&
+        touchHeld(
           !browserStroke(
             lenis.animatedScroll,
             scrollGate.heroEnd,
@@ -389,6 +396,9 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
             { from: stageGate.pinFrom, to: stageGate.pinTo },
             lenis.isScrolling === "native",
           ),
+          reducedRef.current,
+          selecting && (lenis as unknown as LenisTouch).isIos === true,
+        ),
       );
     };
     // First on the ticker: the hero then draws this frame's scroll, not the last one's.
@@ -397,6 +407,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
     return () => {
       gsap.ticker.remove(update);
       gsap.ticker.lagSmoothing(500, 33);
+      document.removeEventListener("selectionchange", onSelection);
       hold(false);
     };
   }, []);
@@ -434,7 +445,7 @@ function fingersOnPicture(touches: TouchList): number {
 }
 
 /** Lenis' touch handling that the gate mirrors (lenisContract.test.ts). */
-type LenisTouch = { rootElement: HTMLElement; _isDraggingSelection?: boolean };
+type LenisTouch = { rootElement: HTMLElement; _isDraggingSelection?: boolean; isIos?: boolean };
 
 /**
  * Lenis drives this touch stroke: it cancels the moves it scrolls, so the
