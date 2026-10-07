@@ -1833,9 +1833,15 @@
   display: none;
 }
 
-/* Where there is a keyboard, the hinge is a W keycap: it teaches the key without a word. */
+/*
+ * Where there is a keyboard, the hinge is a W keycap: it teaches the key without a word.
+ * The pedal is the hero's and the career city's (WorkStage, data-work-stage),
+ * and both stages write data-input; .stage alone is the hero's, so the city's
+ * pedal drew no W.
+ */
 @media (pointer: fine) {
-  .stage:not([data-input="touch"]) .hinge {
+  .stage:not([data-input="touch"]) .hinge,
+  :global([data-work-stage]):not([data-input="touch"]) .hinge {
     left: 1.1em;
     right: 1.1em;
     bottom: -0.2em;
@@ -1845,11 +1851,13 @@
     box-shadow: 0 2px 0 color-mix(in srgb, var(--va-color-cream) 30%, transparent);
   }
 
-  .stage:not([data-input="touch"]) .hinge::before {
+  .stage:not([data-input="touch"]) .hinge::before,
+  :global([data-work-stage]):not([data-input="touch"]) .hinge::before {
     display: none;
   }
 
-  .stage:not([data-input="touch"]) .hingeKey {
+  .stage:not([data-input="touch"]) .hingeKey,
+  :global([data-work-stage]):not([data-input="touch"]) .hingeKey {
     display: block;
     font-family: var(--va-font-mono);
     font-size: 0.74em;
@@ -1858,7 +1866,8 @@
     color: var(--va-color-cream);
   }
 
-  .stage:not([data-input="touch"]) .pedal[data-down] .hinge {
+  .stage:not([data-input="touch"]) .pedal[data-down] .hinge,
+  :global([data-work-stage]):not([data-input="touch"]) .pedal[data-down] .hinge {
     translate: 0 1px;
     border-color: var(--tone);
     box-shadow:
@@ -1866,7 +1875,8 @@
       0 0 0.6em color-mix(in srgb, var(--tone) 55%, transparent);
   }
 
-  .stage:not([data-input="touch"]) .pedal[data-down] .hingeKey {
+  .stage:not([data-input="touch"]) .pedal[data-down] .hingeKey,
+  :global([data-work-stage]):not([data-input="touch"]) .pedal[data-down] .hingeKey {
     color: var(--tone);
   }
 }
