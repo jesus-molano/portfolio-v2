@@ -391,7 +391,13 @@ class FakeContext {
   constructor() {
     FakeContext.last = this;
   }
+  resumes = 0;
   resume() {
+    this.resumes += 1;
+    return Promise.resolve();
+  }
+  suspend() {
+    this.state = "suspended";
     return Promise.resolve();
   }
   close() {
@@ -565,6 +571,51 @@ describe("the radio behind the pause menu", () => {
       const before = FakeContext.last!.oscillators.length;
       silent.blip("resume");
       expect(FakeContext.last!.oscillators.length).toBe(before);
+    });
+
+    it("puts the context to sleep once the radio is off and faded out, and lets the deck's file go", async () => {
+      const player = createPlayer()!;
+      await player.tune(STATION, { crackle: false });
+      finishFades();
+      const { ctx } = bus();
+      const [deck] = FakeAudio.all;
+      await player.tune(null, { crackle: false });
+      // Still fading out: awake.
+      vi.advanceTimersByTime(200);
+      expect(ctx.state).toBe("running");
+      finishFades();
+      expect(ctx.state).toBe("suspended");
+      expect(deck.paused).toBe(true);
+      expect(deck.getAttribute("src")).toBeNull();
+      // Back on: it wakes in her gesture.
+      const before = ctx.resumes;
+      await player.tune(OTHER, { crackle: false });
+      expect(ctx.resumes).toBeGreaterThan(before);
+    });
+
+    it("keeps the context awake when another station follows within the fade", async () => {
+      const player = createPlayer()!;
+      await player.tune(STATION, { crackle: false });
+      finishFades();
+      const { ctx } = bus();
+      await player.tune(null, { crackle: false });
+      vi.advanceTimersByTime(100);
+      await player.tune(OTHER, { crackle: false });
+      finishFades();
+      expect(ctx.state).toBe("running");
+      expect(playing().map((deck) => deck.src)).toEqual(["/music/x.mp3"]);
+    });
+
+    it("puts the context to sleep while the tab is hidden and wakes it on return", async () => {
+      const player = createPlayer()!;
+      await player.tune(STATION, { crackle: false });
+      finishFades();
+      const { ctx } = bus();
+      player.setHidden(true);
+      expect(ctx.state).toBe("suspended");
+      const before = ctx.resumes;
+      player.setHidden(false);
+      expect(ctx.resumes).toBeGreaterThan(before);
     });
 
     it("keeps the crossfade: a new station's deck joins the bus too", async () => {

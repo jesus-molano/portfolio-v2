@@ -204,11 +204,26 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
     media.load();
   };
 
+  /**
+   * Puts the AudioContext to sleep once nothing can sound (no station on
+   * air, nothing fading out): a running context kept the audio thread
+   * mixing silence for the rest of the visit after the radio went off. Her
+   * next tune, or her next gesture, wakes it (`wake`, `audio`).
+   */
+  const sleepIfSilent = () => {
+    if (live || fading.size > 0 || !context || context.state !== "running") return;
+    void context.suspend().catch(() => {});
+  };
+
   const release = (media: HTMLAudioElement) => {
     fading.add(media);
     fade(media, 0, FADE_OUT_MS, () => {
       fading.delete(media);
-      if (media !== live?.deck) media.pause();
+      if (media === live?.deck) return;
+      // Radio off: the deck lets its file go too (no download, no buffer held); switching, it waits paused.
+      if (live) media.pause();
+      else unload(media);
+      sleepIfSilent();
     });
   };
 
@@ -441,14 +456,19 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
 
   return {
     async tune(station, { crackle: withStatic = true, fromTop = false } = {}) {
-      // Called in her gesture: the one moment a new AudioContext is sure to run.
-      if (station) ensureBus();
+      // Called in her gesture: the one moment a new AudioContext is sure to run (and a sleeping one wakes).
+      if (station) {
+        ensureBus();
+        wake();
+      }
       if (withStatic) crackle();
       const previous = live?.deck ?? null;
       if (!station || station.tracks.length === 0) {
         live = null;
         dropQueue();
         if (previous) release(previous);
+        // Once the static and the fade are over, the context sleeps (sleepIfSilent).
+        setTimeout(sleepIfSilent, Math.max(FADE_OUT_MS, STATIC_MS) + 100);
         return;
       }
       if (live?.station.id === station.id && !fromTop) {
@@ -473,12 +493,14 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
     },
     setHidden(next) {
       hidden = next;
-      if (!live) return;
-      const media = live.deck;
       if (next) {
-        media.pause();
+        live?.deck.pause();
+        // Nothing to hear while hidden: the audio thread sleeps too (wake() below, or her next gesture).
+        if (context?.state === "running") void context.suspend().catch(() => {});
         return;
       }
+      if (!live) return;
+      const media = live.deck;
       // A context the browser stopped while hidden plays again (the bus carries the decks).
       wake();
       // Back on air where the broadcast is now, which may be a later track.

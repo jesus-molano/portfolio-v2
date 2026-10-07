@@ -37,20 +37,28 @@
   }
 }
 
-/* A tiny equalizer inside the button: it dances while the radio plays. */
+/*
+ * A tiny equalizer inside the button: it dances while the radio plays.
+ * Each bar is full height and scaled from its foot, and the glow is the
+ * row's, so the dance runs on the compositor: animated as heights (with a
+ * glow on each bar) it laid out and repainted the controls every frame for
+ * as long as the music played.
+ */
 .bars {
   display: inline-flex;
   align-items: flex-end;
   gap: 2px;
   height: 0.7rem;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--station, currentColor) 70%, transparent));
 }
 
 .bars span {
   width: 2px;
-  height: 25%;
+  height: 100%;
   border-radius: 1px;
   background: var(--station, currentColor);
-  box-shadow: 0 0 4px color-mix(in srgb, var(--station, currentColor) 70%, transparent);
+  transform: scaleY(0.25);
+  transform-origin: bottom;
 }
 
 .bars[data-playing="true"] span {
@@ -72,10 +80,10 @@
 @keyframes eq {
   0%,
   100% {
-    height: 25%;
+    transform: scaleY(0.25);
   }
   50% {
-    height: 100%;
+    transform: scaleY(1);
   }
 }
 
@@ -177,7 +185,7 @@
 @media (prefers-reduced-motion: reduce) {
   .bars[data-playing="true"] span {
     animation: none;
-    height: 70%;
+    transform: scaleY(0.7);
   }
 
   .callout {

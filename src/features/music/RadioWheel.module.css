@@ -159,7 +159,11 @@
   stroke-width: 0.6;
 }
 
-/* The station on air: a lit arc along its rim, breathing while it plays. */
+/*
+ * The station on air: a lit arc along its rim, breathing while it plays.
+ * Only while the wheel is open: closed (hidden, always mounted) it
+ * restyled the page every frame for the whole visit with the radio on.
+ */
 .rim {
   fill: none;
   stroke: var(--wedge);
@@ -167,11 +171,15 @@
   stroke-linecap: round;
   filter: drop-shadow(0 0 2.5px var(--wedge));
   pointer-events: none;
+}
+
+.overlay[data-open="true"] .rim {
   animation: rim-breathe 2.4s ease-in-out infinite;
 }
 
 /* Tuned but silent (blocked or failed): the rim stays dim and still. */
-.rim[data-playing="false"] {
+.rim[data-playing="false"],
+.overlay[data-open="true"] .rim[data-playing="false"] {
   stroke-dasharray: 2 2.5;
   opacity: 0.55;
   animation: none;
@@ -532,7 +540,8 @@
     transform: none;
   }
 
-  .rim {
+  .rim,
+  .overlay[data-open="true"] .rim {
     animation: none;
   }
 }
