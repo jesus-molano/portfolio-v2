@@ -56,7 +56,7 @@ import numpy as np  # noqa: E402
 
 import bpy  # noqa: E402
 
-from cats import base, catspace, coat, eyes, fur, halo, pose, review, rig, shape, skin, stage, suspects, whiskers  # noqa: E402,E501
+from cats import base, catspace, claws, coat, eyes, fur, halo, pose, review, rig, shape, skin, stage, suspects, whiskers  # noqa: E402,E501
 from cats.vecmath import mat4, rot_axis, vertex_normals, xform  # noqa: E402
 
 T0 = time.time()
@@ -170,6 +170,18 @@ def build(b, spec, quality, work, field=None, density=None, log=log):
     # fur and whiskers
     cat.strands = 0
     cat.extra_points = [V]
+
+    # claws out (a strike): out of the toe tips, through the fur
+    cat.claws = 0
+    for key, cp in spec.claws.items():
+        frames, cpp = claws.place(V, Pw, b.names, rig_subtree_weight(b, rig.LEGS[key][3]), masks["pads"], key, cp)
+        ob, pts = claws.build(frames, cpp)
+        if clay or field:
+            ob.data.materials[0] = mat
+        cat.objects.append(ob)
+        cat.extra_points.append(pts)
+        cat.claws += len(frames)
+        log(f"{spec.key}: {len(frames)} claws out on {key}")
     bvh = fur.bvh_of(V, b.Q)
     fp = fur.params(spec.fur)
     L, dens, regions = fur.length_field(cs, fp, masks)

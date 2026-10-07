@@ -22,7 +22,10 @@ at rest, because that frame has the eyes shut and the brows down. Then:
    named controls do not cover;
 7. paws stay planted: each paw is locked where step 1 left it, and two-bone
    IK on the upper and lower leg brings it back after the body edits, plus
-   its own offset (`paws.fore.R.lift` lifts it, in cm) and tilt;
+   its own offset (`paws.fore.R.lift` lifts it, in cm), `tilt` (about the
+   image's horizontal, + turns the pads up toward the lens), `roll` (about
+   the lens axis, + tips the paw's top toward image right, seen from the
+   camera) and `yaw` (about the vertical);
 8. after the floor is known (see build_cats.py), the tail follows a path in
    floor coordinates (cm, origin at the footprint centre on the floor, x to
    image right, y away from the camera, z up): each tail joint is aimed at
@@ -60,10 +63,10 @@ DEFAULT = dict(
     lids=dict(L=dict(upper=0.2, lower=0.0), R=dict(upper=0.2, lower=0.0)),
     bones={},
     paws=dict(
-        fore=dict(L=dict(lift=0.0, forward=0.0, out=0.0, tilt=0.0),
-                  R=dict(lift=0.0, forward=0.0, out=0.0, tilt=0.0)),
-        hind=dict(L=dict(lift=0.0, forward=0.0, out=0.0, tilt=0.0),
-                  R=dict(lift=0.0, forward=0.0, out=0.0, tilt=0.0)),
+        fore=dict(L=dict(lift=0.0, forward=0.0, out=0.0, tilt=0.0, roll=0.0, yaw=0.0),
+                  R=dict(lift=0.0, forward=0.0, out=0.0, tilt=0.0, roll=0.0, yaw=0.0)),
+        hind=dict(L=dict(lift=0.0, forward=0.0, out=0.0, tilt=0.0, roll=0.0, yaw=0.0),
+                  R=dict(lift=0.0, forward=0.0, out=0.0, tilt=0.0, roll=0.0, yaw=0.0)),
     ),
     # tail path in floor cm (see the module doc); None keeps the clip's tail
     tail=None,
@@ -242,7 +245,8 @@ def sit(skel, clip, params, unit=1.0, log=print):
         P = skel.fk(basis)
         i = skel.i(c[2])
         Rk = locks[key][:3, :3] @ np.linalg.inv(P[i, :3, :3])
-        Rk = rot_axis([1.0, 0, 0], -math.radians(o["tilt"])) @ _orth(Rk)
+        Rk = (rot_axis([0, 0, 1.0], math.radians(o["yaw"])) @ rot_axis([0, 1.0, 0], math.radians(o["roll"]))
+              @ rot_axis([1.0, 0, 0], -math.radians(o["tilt"])) @ _orth(Rk))
         basis = skel.rotate(basis, c[2], Rk)
     return basis
 

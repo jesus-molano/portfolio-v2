@@ -25,7 +25,9 @@ lenses), here on one knee so he takes less height on the chart:
   system shoes (CC0) are not installed here and the community ones are
   never used, so they are made here: lofted round each foot's own skin
   (the weights, and so the pose, are the foot's), a white rubber sole wall
-  over a dark tread line and a near-black canvas upper;
+  over a dark tread line, a near-black canvas upper with off-white bar
+  laces across the instep, rounded off at the toe and the heel (each end
+  closes on itself, no seam), the collar up under the jeans' hem;
 - at his true size on the chart, with the cats (one scale for all five:
   24 image pixels to the real centimetre, he kneeling at about 1.2 m, the
   cats 27 to 39 cm). The cats' stage is built round a 40 cm subject (the
@@ -145,7 +147,7 @@ SHOES = dict(
     sole=0.02,                # the sole under the foot (the figure stands on it)
     heel_out=0.012,            # the shoe past the heel and the toes
     toe_out=0.014,
-    collar=0.072,              # the collar height behind the instep
+    collar=0.088,              # the collar height behind the instep: up under the jeans' hem, no gap at the ankle
     instep=0.42,               # share of the foot from the heel the collar holds
     rings=30,
     crown=3.0,                 # superellipse exponents of the upper's cross-section: sides (2 round, more boxy)
@@ -157,6 +159,9 @@ SHOES = dict(
     upper="#1b1820",           # near-black canvas
     sole_colour="#ece7df",     # off-white rubber
     outsole="#3a3540",         # the thin tread line at the very bottom
+    # bar laces across the instep, in the sole's off-white: they make it a
+    # trainer (without them the plain upper read as a slip-on clog)
+    laces=dict(count=5, start=0.47, end=0.74, half=0.62, radius=0.0023, lift=0.0024),
 )
 
 
@@ -459,7 +464,11 @@ def make_trainer(body, side):
     # round off the ends: the heel over its last 2 cm, the toe over 4 cm
     d_heel = np.clip((ys - (y_heel + S["heel_out"]) + 0.02) / 0.02, 0, 1)   # 1 at the very back
     d_toe = np.clip(((y_toe - S["toe_out"]) + 0.04 - ys) / 0.04, 0, 1)      # 1 at the very tip
-    shrink = np.sqrt(np.clip(1 - np.maximum(d_heel, d_toe) ** 2, 1e-4, 1))
+    # a quarter ellipse in plan at each end, down to no width at all on the
+    # last ring: each end closes on itself (its mirrored points welded),
+    # rounded, never on a fan to one point, which drew a seam down the toe
+    shrink = np.sqrt(np.clip(1 - np.maximum(d_heel, d_toe) ** 2, 0, 1))
+    shrink[0] = shrink[-1] = 0.0
     hw = hw * shrink
     height = (top - zb) * np.sqrt(np.clip(1 - d_toe ** 2 * 0.6, 0.05, 1)) * np.where(d_heel > 0, 0.5 + 0.5 * shrink, 1)
     section, value = shoe_section(S)
@@ -477,22 +486,58 @@ def make_trainer(body, side):
                 z = zb + S["band"] + 0.001 + up * sz
             verts.append((x, ys[i], z))
             vals.append(val)
-    # the ends close on a point in the sole wall (the last rings are all but
-    # flat, so the fans that close them hardly show)
-    verts.append((cx[0], ys[0] + 0.001, zb + 0.5 * S["band"]))
-    verts.append((cx[-1], ys[-1] - 0.001, zb + 0.5 * S["band"]))
-    vals += [1.0, 1.0]
     faces = []
     for i in range(n - 1):
         for j in range(M):
             a0, a1 = i * M + j, i * M + (j + 1) % M
             faces.append((a0, a1, a1 + M, a0 + M))
-    hc, tc = n * M, n * M + 1
-    faces += [(hc, (j + 1) % M, j) for j in range(M)]
-    faces += [(tc, (n - 1) * M + j, (n - 1) * M + (j + 1) % M) for j in range(M)]
+    # the laces: bars across the instep over the upper's crown, each a
+    # little tube following the upper's arc (its own island in the mesh)
+    L = S["laces"]
+    for k in range(L["count"]):
+        uk = L["start"] + (L["end"] - L["start"]) * k / max(L["count"] - 1, 1)
+        i = int(np.argmin(np.abs(u - uk)))
+        up = max(top[i] - zb - S["band"], 0.004) * (height[i] / max(top[i] - zb, 1e-6))
+        mid = np.array([cx[i], ys[i], zb + S["band"] + 0.001 + 0.45 * up])
+        line = []
+        for th in np.linspace(math.pi / 2 - L["half"], math.pi / 2 + L["half"], 9):
+            c, sn = math.cos(th), math.sin(th)
+            sx = math.copysign(abs(c) ** (2 / S["crown"]), c)
+            sz = abs(sn) ** (2 / S["crown_top"])
+            q = np.array([cx[i] + hw[i] * sx, ys[i], zb + S["band"] + 0.001 + up * sz])
+            d = q - mid
+            line.append(q + d / max(np.linalg.norm(d), 1e-9) * L["lift"])
+        base = len(verts)
+        sides = 6
+        for a, q in enumerate(line):
+            t = line[min(a + 1, len(line) - 1)] - line[max(a - 1, 0)]
+            t = t / max(np.linalg.norm(t), 1e-9)
+            n1 = np.array([0.0, 1.0, 0.0])
+            n2 = np.cross(t, n1)
+            for b in range(sides):
+                ang = 2 * math.pi * b / sides
+                verts.append(tuple(q + L["radius"] * (math.cos(ang) * n1 + math.sin(ang) * n2)))
+                vals.append(1.0)
+        for a in range(len(line) - 1):
+            for b in range(sides):
+                b1 = (b + 1) % sides
+                faces.append((base + a * sides + b, base + a * sides + b1, base + (a + 1) * sides + b1, base + (a + 1) * sides + b))
+        for end in (0, len(line) - 1):
+            ring = [base + end * sides + b for b in range(sides)]
+            faces.append(tuple(ring if end else reversed(ring)))
     me2 = bpy.data.meshes.new(f"Trainer.{side}")
     me2.from_pydata(verts, [], faces)
+    # weld the end rings' mirrored points (no width there): each end closes on itself
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(me2)
+    bm.verts.ensure_lookup_table()
+    ends = [bm.verts[i] for i in list(range(M)) + list(range((n - 1) * M, n * M))]
+    bmesh.ops.remove_doubles(bm, verts=ends, dist=1e-6)
+    bm.to_mesh(me2)
+    bm.free()
     me2.validate()
+    keep = np.array([v.co[:] for v in me2.vertices])
     ob = bpy.data.objects.new(f"Trainer.{side}", me2)
     body.users_collection[0].objects.link(ob)
     ob.parent = body.parent
@@ -504,7 +549,7 @@ def make_trainer(body, side):
         tree.insert(p, i)
     tree.balance()
     groups = {}
-    for vi, p in enumerate(verts):
+    for vi, p in enumerate(keep):
         _, i, _ = tree.find(p)
         src = me.vertices[int(idx[i])]
         for g in src.groups:
@@ -514,7 +559,12 @@ def make_trainer(body, side):
             groups[name].add([vi], g.weight, "REPLACE")
     arm = ob.modifiers.new("Armature", "ARMATURE")
     arm.object = body.parent
-    band = np.array(vals, float)
+    # each kept vertex's colour value from the original point it stands on
+    orig = kdtree.KDTree(len(verts))
+    for i, p in enumerate(verts):
+        orig.insert(p, i)
+    orig.balance()
+    band = np.array([vals[orig.find(p)[1]] for p in keep], float)
     attr = me2.attributes.new("va_sole", "FLOAT", "POINT")
     attr.data.foreach_set("value", band)
     mat = bpy.data.materials.get("Trainers") or shoe_material()

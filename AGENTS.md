@@ -966,7 +966,9 @@ also exists as real DOM for keyboard and screen-reader users.
     and finds nothing «Sin señal · Nunca sale en el radar»; Dante, the
     culprit (`CULPRIT`, tested the smallest: the Usual Suspects twist is
     the one who looks least capable of it), lunges and strikes in his
-    `dante-swipe` render (paw up, pads to the lens; each pose dissolves
+    `dante-swipe` render (crouched, the paw thrown out mid-swipe with its
+    claws out, `tools/blender/cats/claws.py`, the ears flat, the eyes
+    narrowed, a hiss; each pose dissolves
     in over the other held at full, and every refusal render is decoded
     once it has loaded, so the first strike never paints an empty slot) and his claw swipe tears the screen:
     three marks across it (`claw.ts`, pure, tested; the pink and gash
@@ -1505,7 +1507,7 @@ also exists as real DOM for keyboard and screen-reader users.
   `build_cats.py` builds the four cats of THE USUAL SUSPECTS interlude
   (Cycles stills, one transparent layer per cat) on the XR Blocks "Cat":
   `cats/` is the shared generator (base, shape, pose, cat-space markings,
-  skin, fur, eyes, whiskers, stage, review) and
+  skin, fur, eyes, whiskers, claws for a strike, stage, review) and
   `cats/suspects/<cat>.py` holds everything that makes one cat itself
   (size, proportions, pose, palette and markings, fur, eyes, skin,
   whiskers; Odin has no halo), so each cat is tuned in its own file. Run it

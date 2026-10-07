@@ -53,6 +53,7 @@ class Spec:
         self.whiskers = getattr(mod, "WHISKERS", {})
         self.halo = getattr(mod, "HALO", {})
         self.lights = getattr(mod, "LIGHTS", {})
+        self.claws = getattr(mod, "CLAWS", {})   # {paw key: claws.py params}: unsheathed claws
         self.layer = key   # the files' name: the cat's key, or a state's (states.py)
 
 
@@ -64,6 +65,7 @@ def load(key):
         # the result with its defaults, which still refuses an unknown key
         spec.pose = _over(spec.pose, state.get("pose", {}))
         spec.eyes = _over(spec.eyes, state.get("eyes", {}))
+        spec.claws = state.get("claws", spec.claws)
         spec.layer = key
         return spec
     if key not in ALL:

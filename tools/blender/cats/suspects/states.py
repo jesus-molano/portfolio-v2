@@ -13,14 +13,15 @@ and the page swaps its layer for one of these when she tries to choose it:
   shut, the clip's blink): every other joint, and so every other strand of
   fur, is his line-up layer's, so the page can cross-fade the two images
   and only the eyes close.
-- `dante-swipe`: Dante, the one who attacks: the same sit, the right fore
-  paw up high and forward to strike, the ears flattened sideways ("airplane
-  ears"), the eyes wide with round pupils, the head down a little behind
-  the paw.
+- `dante-swipe`: Dante, the one who attacks, mid-strike: crouched, his
+  right fore paw thrown up and out toward the lens, cocked across the swing
+  with its claws out (cats/claws.py), the ears flattened back, the eyes
+  narrowed to slits under lowered brows, and a hiss: the jaw dropped, the
+  upper lip drawn up, the nose wrinkled.
 
 A state keeps its cat's key, so the generator seeds every draw (fur,
 whiskers) as for the cat itself: the same coat, strand for strand. Only
-the pose (and the eyes, for Dante) is overridden here, deep-merged into the
+the pose (and the eyes and claws, for Dante) is overridden here, deep-merged into the
 cat's own. The layer's name (`layer`) names the files.
 """
 
@@ -51,12 +52,27 @@ STATES = {
     "dante-swipe": dict(
         cat="dante",
         pose=dict(
-            head=dict(roll=4.0, pitch=-4.0),
-            lids=dict(L=dict(upper=0.12, lower=0.0), R=dict(upper=0.12, lower=0.0)),
-            ears=dict(L=dict(back=30.0, out=50.0), R=dict(back=30.0, out=50.0)),
-            paws=dict(fore=dict(R=dict(lift=11.0, forward=4.5, out=1.0, tilt=70.0))),
-            bones={"Jaw": (-16.0, 0.0, 0.0)},
+            # crouched into the strike: the head low and turned a little toward
+            # the paw, the chin tucked behind the shoulder
+            spine=dict(slump=10.0),
+            head=dict(roll=-6.0, pitch=-7.0, yaw=-8.0),
+            # a hiss: the eyes narrowed under lowered brows, the jaw dropped,
+            # the upper lip drawn up off the teeth and the nose wrinkled
+            lids=dict(L=dict(upper=0.5, lower=0.3), R=dict(upper=0.52, lower=0.3)),
+            ears=dict(L=dict(back=72.0, out=58.0, swivel=-14.0), R=dict(back=72.0, out=58.0, swivel=-14.0)),
+            bones={
+                "Jaw": (-26.0, 0.0, 0.0),
+                "UpperLip": (14.0, 0.0, 0.0), "L_UpperLip": (18.0, 0.0, 0.0), "R_UpperLip": (18.0, 0.0, 0.0),
+                "L_Nasal": (8.0, 0.0, 0.0), "R_Nasal": (8.0, 0.0, 0.0),
+                "L_InBrow": (-10.0, 0.0, 0.0), "R_InBrow": (-10.0, 0.0, 0.0),
+            },
+            # his right fore paw (image left) mid-strike: thrown up and out to
+            # the side and toward the lens, the paw cocked across the swing so
+            # its edge and its claws lead, the pads turned half to the lens
+            paws=dict(fore=dict(R=dict(lift=13.5, forward=7.0, out=9.0, tilt=30.0, roll=-62.0, yaw=0.0))),
         ),
-        eyes=dict(pupil=dict(width=0.62, height=0.78)),
+        # an aggressive cat's pupils: narrow slits
+        eyes=dict(pupil=dict(width=0.2, height=0.84)),
+        claws={"fore.R": {}},
     ),
 }

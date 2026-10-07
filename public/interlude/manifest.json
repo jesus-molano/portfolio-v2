@@ -54,19 +54,19 @@
       "cat": "tom"
     },
     "dante-swipe": {
-      "w": 497,
-      "h": 705,
-      "floorY": 678,
-      "headTopY": 25,
-      "centerX": 249,
-      "headWidth": 285,
+      "w": 603,
+      "h": 703,
+      "floorY": 673,
+      "headTopY": 16,
+      "centerX": 306,
+      "headWidth": 291,
       "cat": "dante"
     }
   },
   "jesus": {
     "w": 1888,
-    "h": 3030,
-    "floorY": 3020,
+    "h": 3031,
+    "floorY": 3021,
     "headTopY": 5,
     "centerX": 932,
     "headWidth": 414,

@@ -17,13 +17,14 @@ them.
     head a little short of the turn, an ear and a sliver of cheek over her
     shoulder); Tom falls asleep: every pixel is his layer's but the eyes,
     which are shut (same size, same box: the page can cross-fade the two);
-    Dante strikes: the same sit, the right fore paw up high, pads to the
-    lens, ears flat sideways, mouth open, pupils wide;
+    Dante strikes: crouched, his right fore paw thrown up and out toward
+    the lens mid-swipe with its claws out, ears flattened back, eyes
+    narrowed to slits, hissing;
   - `jesus`: player 1 in slot 5, the hero's driver model kneeling on one
     knee, his left forearm laid across the raised knee and the hand hanging
     off it, the right arm loose at his side, facing the lens; the hero's
     look (striped tee, gold aviators, earring, beard, crew cut), jeans and
-    dark trainers. At his true size: he kneels at about 1.2 m.
+    dark laced trainers. At his true size: he kneels at about 1.2 m.
 - One scale for all five: every image has the same number of pixels per
   real centimetre (`pxPerCm`), so the page stands them side by side on the
   height chart at their real sizes, the cats (27 to 39 cm) small beside
