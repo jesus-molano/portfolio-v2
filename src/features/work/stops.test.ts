@@ -110,9 +110,12 @@ describe("work copy", () => {
       expect(record.rows.map((row) => [row.label, row.value])).toEqual(RECORD[locale].rows);
       expect(record.stamps).toEqual(RECORD[locale].stamps);
       expect(record.remarks.label).toBe(locale === "es" ? "Observaciones" : "Remarks");
-      // The remark is the sergeant's wink at the chicharrero among canariones (the owner's ask), never the
+      // The remark is the sergeant's wink at the chicharrero (the owner's words), never the
       // hero's line retold: no "four years", no "Gran Canaria", no "nerve" or «mérito».
-      expect(record.remarks.value).toMatch(locale === "es" ? /chicharrero.*canariones/i : /Tenerife.*Gran Canarians/);
+      // The owner's own words, chicharrero in both languages.
+      expect(record.remarks.value).toBe(
+        locale === "es" ? "Buen soldado, pero chicharrero. No perder de vista." : "Good soldier, but chicharrero. Keep an eye on him.",
+      );
       expect(record.remarks.value).not.toMatch(/Gran Canaria\b|four years|cuatro años|nerve|m[eé]rito/i);
     });
 

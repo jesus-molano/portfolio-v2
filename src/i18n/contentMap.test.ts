@@ -46,7 +46,8 @@ const RULES: Rule[] = [
   },
   {
     // The rivalry itself is the hero's joke. The owner asked for one wink at it on the army's service record
-    // in the career city: his sergeant's remark, the chicharrero (from Tenerife) posted among canariones.
+    // in the career city: his sergeant's remark, in the owner's words, «Buen soldado, pero chicharrero. No
+    // perder de vista.» (chicharrero, from Tenerife, in English too).
     // That remark, and the hero, are the only places it may be said.
     subject: "the Tenerife-versus-Gran-Canaria wink",
     pattern: /chicharrer|canari[oó]n|Gran Canarians?\b|Tenerife lad/i,

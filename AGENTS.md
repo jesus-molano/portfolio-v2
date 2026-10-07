@@ -852,8 +852,9 @@ also exists as real DOM for keyboard and screen-reader users.
     years, clients, stack, link, and the army's battalion and Las Palmas.
     STATS only indexes it; the end credits carry no career. The
     Tenerife-versus-Gran-Canaria joke is the hero's; the service record's
-    remark (`work.record.remarks`), the chicharrero posted among
-    canariones, is its one wink, at the owner's request. No visible text in
+    remark (`work.record.remarks`), in the owner's words «Buen soldado,
+    pero chicharrero. No perder de vista.» (chicharrero in English too),
+    is its one wink, at the owner's request. No visible text in
     the city repeats its own board (the service record, Heuristik's
     first card).
   - Copy rules (tested): roles in English in both languages (Frontend
@@ -1828,7 +1829,7 @@ Each subject, who tells it in full, and what the rest may do:
   STATS map: the first badge, in the Gran Canaria inset, with no joke.
 - Tenerife against Gran Canaria: the hero. Elsewhere one wink only, at
   the owner's request: the army's service record's remark in the career
-  city, the chicharrero posted among canariones.
+  city, «Buen soldado, pero chicharrero. No perder de vista.»
 - The side projects: the cinema. STATS and the credits: nothing.
 - The cats: THE USUAL SUSPECTS (Dante's culprit wink is his claw swipe,
   the only cat who attacks). Winks only elsewhere: Dante as player 2 on
