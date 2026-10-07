@@ -181,11 +181,11 @@ describe("loading screen copy", () => {
     });
 
     it(`${locale}: gives away no later section, and promises nothing that is not on the page yet`, () => {
-      // The cats and their complaint, STATS (its bars, its map and his favourites), the
+      // The cats and the character select, STATS (its bars, its map and his favourites), the
       // cinema and the credits keep their own jokes. The career city's tip names no
       // employer: the city tells them.
       const later =
-        /(?<!\p{L})(cats?|gatos?|line-?up|rueda de reconocimiento|suspects?|sospechosos?|culprit|culpable|appetite|apetito|stats|estadísticas|Metal Gear|cardboard|cartón|Godfather|Padrino|Sopranos?|Breaking Bad|Pulp Fiction|Matrix|Skyrim|cinema|cine|posters?|carteles?|credits|créditos|employers?|currículum|CV)(?!\p{L})/iu;
+        /(?<!\p{L})(cats?|gatos?|line-?up|rueda de reconocimiento|character select|selector de personajes?|elige personaje|choose your character|suspects?|sospechosos?|culprit|culpable|appetite|apetito|stats|estadísticas|Metal Gear|cardboard|cartón|Godfather|Padrino|Sopranos?|Breaking Bad|Pulp Fiction|Matrix|Skyrim|cinema|cine|posters?|carteles?|credits|créditos|employers?|currículum|CV)(?!\p{L})/iu;
       for (const tip of tips) expect(tip.text).not.toMatch(later);
     });
 

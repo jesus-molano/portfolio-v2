@@ -41,6 +41,7 @@ import { tallestCards } from "./chipPlace";
 import { newDipView, stepDipView } from "./dip";
 import { openingAt } from "./opening";
 import { DISARMED, insideQuad, quadClipPath, quadIsTargetable, stepArm, type ArmEvent } from "./hotspot";
+import { selectGate } from "@/features/suspects/selectWall";
 import { stageGate } from "./stageGate";
 import { STOPS } from "./stops";
 import styles from "./Work.module.css";
@@ -306,8 +307,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       const gate = (fr: number, scroll: number, now: number) => {
         stageGate.maxScroll = Number.isFinite(fr) ? scrollFor(fr) : Number.POSITIVE_INFINITY;
         if (!lenis || lenis.isStopped || !Number.isFinite(stageGate.maxScroll)) return;
-        // The hero's wall binds first: nothing here while the hero still holds the page.
-        if (Number.isFinite(scrollGate.maxScroll) && scrollGate.maxScroll < stageGate.maxScroll) return;
+        // The hero's wall and the character select's bind first: nothing here while either still holds the page.
+        if (Math.min(scrollGate.maxScroll, selectGate.maxScroll) < stageGate.maxScroll) return;
         const max = stageGate.maxScroll;
         if (lenis.isScrolling === "smooth" && lenis.targetScroll > max + 1) {
           scrollGate.pressure += Math.min(lenis.targetScroll - max, geom.vh * 0.3);

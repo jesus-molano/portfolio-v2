@@ -109,9 +109,17 @@
     },
     "place": "Line-up · Tenerife",
     "associates": "Flatmates",
-    "description": "A police line-up of Jesús's four cats in front of a height chart, each behind a numbered plate. Tom and Kira stand the tallest, Odin a little lower, and Dante, the kitten, is the smallest by a head.",
+    "description": "A police line-up turned character select: Jesús's four cats and him, down on one knee, in front of a height chart, all at their real size, each behind a numbered plate. Of the cats, Tom and Kira stand the tallest, Odin a little lower, and Dante, the kitten, is the smallest by a head. No cat lets you pick it: only Jesús does.",
+    "title": "Choose your character",
+    "player": "Player 1",
+    "waiting": "Waiting…",
     "numberPrefix": "Nº",
-    "stamp": "Guilty",
+    "legend": {
+      "move": "Move",
+      "enter": "Enter",
+      "pick": "Select",
+      "touch": "Tap a character"
+    },
     "cats": [
       {
         "id": "kira",
@@ -138,18 +146,45 @@
         "description": "A ginger tabby, short in the leg and shorter in the tail, who flies too low to show up on radar."
       }
     ],
-    "complaint": {
-      "title": "Complaint",
-      "owner": "J. Molano",
-      "items": [
-        "Scratched wardrobes",
-        "Chewed cables",
-        "Every bowl licked clean"
-      ],
-      "tally": "Suspects: 4. Culprit: 1."
+    "refusals": {
+      "kira": {
+        "status": "Unavailable",
+        "reason": "She's not having it.",
+        "why": "Unavailable: she's not having it.",
+        "live": "Kira is unavailable: she's not having it."
+      },
+      "tom": {
+        "status": "Locked",
+        "reason": "Requires: one tin",
+        "why": "Locked: requires one tin.",
+        "live": "Tom is locked: requires one tin."
+      },
+      "dante": {
+        "status": "Hostile",
+        "reason": "He just clawed your screen",
+        "why": "Hostile: keep your distance.",
+        "live": "Dante is hostile: he just clawed your screen."
+      },
+      "odin": {
+        "status": "No signal",
+        "reason": "Never shows up on radar",
+        "why": "No signal: never shows up on radar.",
+        "live": "Odin can't be found: he never shows up on radar."
+      }
     },
-    "speaker": "Jesús",
-    "line": "Officer, I'd take a good look at number three."
+    "player1": {
+      "name": "Jesús",
+      "alias": "“The tin opener”",
+      "description": "The only one in the house who lets you pick him.",
+      "why": "Available.",
+      "chosen": "Selected.",
+      "selected": "Player 1 · Selected",
+      "live": "Player 1: Jesús, selected. On to the main story."
+    },
+    "wayOn": "Main story",
+    "orScroll": "or keep scrolling",
+    "orSwipe": "or swipe up",
+    "wall": "Choose your character to continue"
   },
   "loader": {
     "title": "Main menu",
@@ -600,12 +635,17 @@
     },
     "records": {
       "title": "RECORDS",
+      "wanted": {
+        "levels": ["One star:", "Two stars:", "Three stars:", "Four stars:", "Five stars:"],
+        "hint": "Try choosing him, then come back",
+        "top": "Most wanted"
+      },
       "items": [
         {
           "id": "wanted",
           "value": "★★★★★",
-          "spoken": "Five stars:",
-          "caption": "Dante's wanted level since the cables"
+          "spoken": "One star:",
+          "caption": "Dante's current wanted level"
         },
         {
           "id": "episode",

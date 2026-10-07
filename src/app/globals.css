@@ -175,10 +175,9 @@ body[tabindex="-1"]:focus {
 /*
  * The subtitle size she picks in STATS's settings (lib/subtitleSize.ts):
  * the hero's and the career city's cards, from their own size
- * (Hero.module.css and Work.module.css .subtitle, tested), and his line to
- * the officer at the line-up's foot, from its own (`--va-card-fs`, larger
- * on a phone). Medium sets nothing, so by default the cards keep their
- * stylesheets' size.
+ * (Hero.module.css and Work.module.css .subtitle, tested, `--va-card-fs`).
+ * Medium sets nothing, so by default the cards keep their stylesheets'
+ * size.
  */
 html[data-subtitles] [data-captions] [data-card] {
   font-size: calc(var(--va-card-fs, clamp(0.95rem, 1.35vw, 1.2rem)) * var(--va-subtitle-scale, 1));

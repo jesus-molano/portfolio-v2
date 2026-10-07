@@ -1,28 +1,28 @@
 /*
- * THE USUAL SUSPECTS: a police line-up wall with a centimetre height chart.
+ * THE USUAL SUSPECTS as a character select: the police line-up wall with
+ * its centimetre height chart, five slots (the four cats, then Jesús on
+ * one knee), each a real button over its plate.
  *
- * One length, --cm, is a centimetre of the chart: the chart and the cats
- * (placed in centimetres by lineup.ts and the renders' manifest) both
- * multiply it, so every cat keeps its real size next to the others.
+ * One length, --cm, is a centimetre of the chart: the chart and the
+ * figures (placed in centimetres by lineup.ts from the renders' manifest)
+ * both multiply it, so every figure keeps its real size next to the
+ * others: one true scale, the cats at their 27 to 39 cm at the chart's
+ * foot and Jesús on one knee at his real height beside them.
  *
- * The section opens on its chapter card (THE CREW, ChapterCard), on the
- * night the hero fades out to; the board under it is the line-up, one
- * screen tall, sized exactly as it was before the card.
+ * Every state is in the DOM from the first paint and switches only
+ * opacity, visibility, transforms and filters: nothing ever reflows (the
+ * waiting and chosen words share one cell, the controls' legend and the
+ * way on another).
  *
- * Wide screens: one wall, the floor line low on it, four slots at 36, 52,
- * 68 and 84% of the width, his complaint taped on the left, the plates
- * and their descriptions on the floor, the caption under them.
- * Phones and portrait screens: two strips of two at one shared scale, then
- * the slip, then the caption.
+ * Wide screens: one wall to 140 cm, the header painted on it over the
+ * cats, five slots across (his wider), the foot under the plates (the
+ * legend, then the banner and the way on). Phones and portrait screens:
+ * two strips of two cats, then Jesús on a strip of his own, all at one
+ * scale.
  */
 
 .suspects {
-  /*
-   * 8.9 px at 1440 x 900; a short window shrinks it so the wall, the floor
-   * and the caption still fit, but never below 4.5 px (cats of about 13
-   * rem): under that the section grows instead.
-   */
-  --cm: min(0.62vw, 1.25 * var(--va-svh), max((100 * var(--va-svh) - 18rem) / 56, 4.5px));
+  --head: 6.6rem;
   --chart-major: color-mix(in srgb, var(--va-color-lilac) 34%, transparent);
   --chart-minor: color-mix(in srgb, var(--va-color-lilac) 14%, transparent);
   --floor-line: color-mix(in srgb, var(--va-color-cream) 30%, transparent);
@@ -39,40 +39,6 @@
    * card already clears the page controls (globals.css scroll-padding).
    */
   scroll-margin-top: calc(-1 * (1rem + var(--va-control-height-sm) + 1rem));
-}
-
-/* The line-up under the card: one screen, as before the card came. */
-.board {
-  display: grid;
-  /* Slot centres at 36, 52, 68 and 84%: four 16% columns from 28%. */
-  grid-template-columns: 28% repeat(4, minmax(0, 1fr)) 8%;
-  /* The wall (slug, slip, cats), the floor (plates), the caption. */
-  grid-template-rows: minmax(calc(var(--cm) * 53 + 6rem), 1fr) auto auto;
-  min-height: calc(100 * var(--va-svh));
-}
-
-/* ---------------------------------------------------------------- the card */
-
-/*
- * THE CREW on the night the hero fades out to, centred over the wall,
- * clear of the page controls when the section sits at the top of the
- * screen (where Skip lands it). The wall below starts on the same night.
- */
-.chapter {
-  padding: calc(1rem + var(--va-control-height-sm) + 1rem) 0 1.25rem;
-  background: var(--va-color-night);
-}
-
-/*
- * From 64rem, as in the mockup: 3rem of night between the controls' row
- * and the word, and the wall straight under the banner (the slug's own
- * top padding is the air there), so the card sits in its night rather
- * than under the screen's top edge.
- */
-@media (min-width: 64rem) {
-  .chapter {
-    padding: calc(1rem + var(--va-control-height-sm) + 3rem) 0 0;
-  }
 }
 
 /* Focus arrives here from the hero's Skip; the section is not a control. */
@@ -105,12 +71,57 @@
   );
 }
 
-/* ---------------------------------------------------------------- the wall */
+/* ---------------------------------------------------------------- the card */
 
-/* Night at the top edge, where the hero fades out, easing into the wall's violet. */
-.wall {
-  grid-area: 1 / 1 / 2 / -1;
+/*
+ * THE CREW on the night the hero fades out to, centred over the wall,
+ * clear of the page controls when the section sits at the top of the
+ * screen (where Skip lands it).
+ */
+.chapter {
+  padding: calc(1rem + var(--va-control-height-sm) + 1rem) 0 1.25rem;
+  background: var(--va-color-night);
+}
+
+@media (min-width: 64rem) {
+  .chapter {
+    padding: calc(1rem + var(--va-control-height-sm) + 3rem) 0 0;
+  }
+}
+
+/* ---------------------------------------------------------------- the board */
+
+/*
+ * The select, one screen tall: the header, the wall with the five slots,
+ * the floor with their plates, the foot. Its bottom edge is where the wall
+ * holds the page until Jesús is chosen (selectWall.ts); the bounce under a
+ * push moves it with `translate`, Dante's shake with `transform`.
+ */
+.board {
+  /*
+   * A chart centimetre (lineup.ts wideCm): 4.3 px at 1440 x 900, the most
+   * that keeps his head and the cursor over it under the page controls
+   * with the plates and the foot under the floor on one screen, no wider
+   * than his column lets his reach be, and never under 4 px for the
+   * height, where a cat's face is still 44 px across (a shorter window
+   * scrolls instead). --player-head,
+   * --player-reach and --cats-head come from the board's style.
+   */
+  --cm: min(0.6vw, 15vw / var(--player-reach), max(4px, (100 * var(--va-svh) - 22.5rem) / var(--player-head)));
+  /* The wall from the floor to the top of the screen: his height and 8.5rem over his head. */
+  --stage: calc(var(--cm) * var(--player-head) + 8.5rem);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100 * var(--va-svh));
+}
+
+/* The wall behind the header and the slots: night at the top edge, easing into the wall's violet. */
+.board::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--stage);
   border-bottom: 1px solid var(--floor-line);
   background: linear-gradient(
     180deg,
@@ -120,29 +131,25 @@
   );
 }
 
-/* The chart: a line every 10 cm, a fainter one every 5 cm, from the floor to 50 cm. */
-.wall::before {
+/* The booking light spilling over the floor in front of the wall. */
+.board::after {
   content: "";
   position: absolute;
-  inset: auto 0 0;
-  height: calc(var(--cm) * 50 + 1px);
+  inset: var(--stage) 0 auto;
+  height: calc(var(--cm) * 16);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--va-lineup-wall-low) 70%, transparent), transparent);
+  pointer-events: none;
+}
+
+/* The chart: a line every 10 cm, a fainter one every 5 cm, from the floor to 140 cm (lineup.ts CHART). */
+.chart {
+  position: absolute;
+  inset: calc(var(--stage) - var(--cm) * 140 - 1px) 0 auto;
+  height: calc(var(--cm) * 140 + 1px);
+  pointer-events: none;
   background:
     repeating-linear-gradient(to top, var(--chart-major) 0 1px, transparent 1px calc(var(--cm) * 10)),
     repeating-linear-gradient(to top, var(--chart-minor) 0 1px, transparent 1px calc(var(--cm) * 5));
-}
-
-/* The booking light spilling over the floor in front of the wall. */
-.wall::after {
-  content: "";
-  position: absolute;
-  inset: 100% 0 auto;
-  height: calc(var(--cm) * 16);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--va-lineup-wall-low) 70%, transparent),
-    transparent
-  );
-  pointer-events: none;
 }
 
 /* Labels at both edges, just above their line. */
@@ -159,20 +166,26 @@
   color: var(--label);
 }
 
-/* ---------------------------------------------------------------- the slug */
+/* ---------------------------------------------------------------- the header */
 
-/*
- * The case label on the wall, in the hero's HUD voice: mono caps, the
- * magenta record dot on its first line. The card above is the heading.
- */
-.slug {
-  grid-area: 1 / 1 / 2 / -1;
-  align-self: start;
-  justify-self: start;
+/* Painted on the wall over the cats, the chart's lines running behind it. */
+.head {
+  position: absolute;
+  inset: 0 0 auto;
   z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  column-gap: 1.5rem;
+  align-items: start;
+  height: var(--head);
+  padding: 1.7rem max(4vw, 1.25rem) 0;
+}
+
+/* The case label on the wall, in the hero's HUD voice: mono caps, the magenta record dot. */
+.slug {
   display: flex;
   flex-direction: column;
-  padding: max(5.5 * var(--va-svh), 2.25rem) 1.25rem 0 max(4vw, 1.25rem);
+  margin: 0;
   font-family: var(--va-font-mono);
   font-size: 0.6875rem;
   line-height: 1.75;
@@ -185,7 +198,6 @@
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  color: var(--va-color-cream);
 }
 
 .place::before {
@@ -203,44 +215,167 @@
   color: var(--va-color-text-muted);
 }
 
-/* ---------------------------------------------------------------- the line-up */
+/*
+ * Under 80rem the header's side column narrows: the slug tracks tighter so
+ * it keeps to two or three short lines, and the chart's top labels, which
+ * would stand under it and under the page controls, give way (their line
+ * stays).
+ */
+@media (max-width: 80rem) {
+  .slug {
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+  }
 
-.lineup {
-  grid-area: 1 / 2 / 3 / 6;
-  z-index: 1;
+  .associates {
+    padding-left: 1.2rem;
+  }
+
+  .mark:last-child {
+    visibility: hidden;
+  }
+}
+
+/* CHOOSE YOUR CHARACTER, a game's select screen, and the player's tag under it. */
+.title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.titleMain {
+  font-family: var(--va-font-display);
+  font-size: clamp(1.25rem, 1rem + 1.2vw, 2.15rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-cream);
+  text-shadow:
+    0.05em 0.05em 0 var(--va-color-magenta),
+    0.1em 0.1em 0 var(--va-color-ink);
+}
+
+.titleSub {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--va-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+/* The P1 tag: the header's, and the cursor's over a head. */
+.p1 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.35rem;
+  padding: 0 0.5rem;
+  border-radius: 0.25rem;
+  background: var(--va-color-magenta);
+  font-family: var(--va-font-display);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--va-color-night);
+}
+
+/* Waiting… and his name share one cell: the tag never moves when he is chosen. */
+.state {
   display: grid;
-  grid-template-columns: subgrid;
-  grid-template-rows: subgrid;
+}
+
+.state > span {
+  grid-area: 1 / 1;
+}
+
+.state > [data-when="chosen"] {
+  visibility: hidden;
+  color: var(--va-color-pink);
+}
+
+.board[data-chosen] .state > [data-when="chosen"] {
+  visibility: visible;
+}
+
+.board[data-chosen] .state > [data-when="waiting"] {
+  visibility: hidden;
+}
+
+/* ---------------------------------------------------------------- the roster */
+
+.roster {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  /* Five slots across 92% of the width, his half as wide again (lineup.ts WIDE). */
+  grid-template-columns: 4% repeat(4, minmax(0, 1fr)) minmax(0, 1.5fr) 4%;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* One slot: the spot on the wall, then the plate and the description on the floor. */
-.suspect {
-  grid-row: 1 / 3;
-  display: grid;
-  grid-template-rows: subgrid;
+.slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   min-width: 0;
 }
 
-/*
- * No stacking context here: every slot's wall (a phone strip's) paints
- * under every slot's pool of light, so a pool can spill into the next slot.
- */
-.spot {
-  position: relative;
+.slot:first-child {
+  grid-column: 2;
 }
 
-/* Each cat's own pool of cool booking light on the wall. */
-.spot::before {
-  content: "";
+/* A refusing slot rises over its neighbours: its chip may reach over theirs. */
+.slot[data-refusing] {
+  z-index: 6;
+}
+
+/* The whole slot is the button: the figure on the wall and its plate on the floor. */
+.pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pick:focus-visible {
+  outline: none;
+}
+
+.stage {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: var(--stage);
+}
+
+/* The slot's pool of cool booking light on the wall, warmer under the cursor. */
+.pool {
   position: absolute;
   left: 50%;
   bottom: 0;
   z-index: -1;
-  width: calc(var(--cm) * 40);
-  height: calc(var(--cm) * 58);
+  width: calc(var(--cm) * max(40, var(--cat-w)));
+  height: calc(var(--cm) * (var(--cat-head) + 20));
   translate: -50% 0;
   background: radial-gradient(
     ellipse 50% 50% at 50% 62%,
@@ -248,50 +383,92 @@
     color-mix(in srgb, var(--va-color-lilac) 16%, transparent) 45%,
     transparent 100%
   );
+  transition: opacity 0.25s;
 }
 
-/* A phone strip's own piece of wall and chart (off on wide screens). */
-.spot::after {
-  content: none;
+.pool::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse 50% 50% at 50% 62%,
+    color-mix(in srgb, var(--va-color-pink) 22%, transparent) 0%,
+    color-mix(in srgb, var(--va-color-magenta) 10%, transparent) 45%,
+    transparent 100%
+  );
+  transition: opacity 0.25s;
 }
 
-.stripMarks {
-  display: none;
-}
-
-/* The slot's number, big and thin, high on the wall. */
+/* The slot's number, big and thin, on the wall over the cats' heads (and the cursor over them). */
 .numeral {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--cm) * 42);
+  bottom: calc(var(--cats-head) * var(--cm) + 4.4rem);
   translate: -50% 0;
   font-family: var(--va-font-display);
-  font-size: calc(var(--cm) * 11);
+  font-size: clamp(2.2rem, var(--cm) * 10, 4.5rem);
   font-weight: 200;
   line-height: 0.74;
   color: color-mix(in srgb, var(--va-color-cream) 22%, transparent);
+  transition:
+    color 0.2s,
+    opacity 0.2s;
 }
 
-/* The cat: its floor contact on the floor line, centred on the slot. */
-.cat {
+/* A phone strip's own chart numbers (the wall's labels stand at the board's edges on a wide screen). */
+.ruler {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ruler > span {
+  position: absolute;
+  left: 0.5rem;
+  bottom: calc(var(--mark) * var(--cm) + 0.2rem);
+  font-family: var(--va-font-mono);
+  font-size: 0.625rem;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  color: var(--label);
+}
+
+/* The figure, clipped at the floor line: Odin ducks under it. */
+.fig {
+  position: absolute;
+  inset: calc(var(--cm) * -20) calc(var(--cm) * -12) 0;
+  clip-path: inset(-50% -50% 0 -50%);
+  pointer-events: none;
+}
+
+.figIn {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+}
+
+/* A render: its floor contact on the floor line, centred on the slot (lineup.ts placementStyle). */
+.cat,
+.swap {
   position: absolute;
   left: calc(50% + var(--cat-left) * var(--cm));
   bottom: calc(var(--cat-bottom) * var(--cm));
   width: calc(var(--cat-w) * var(--cm));
   max-width: none;
   height: auto;
+  /* Turns and nods happen about the figure's own axis, at the floor. */
+  transform-origin: calc(-1 * var(--cat-left) * var(--cm)) 96%;
+  transition: filter 0.25s;
 }
 
-/* ---------------------------------------------------------------- the floor */
-
-.tag {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 0;
-  padding-inline: 0.5rem;
-  text-align: center;
+/* Kira's back and Tom asleep wait, unseen, on their cat's slot. */
+.swap {
+  opacity: 0;
 }
+
+/* ---------------------------------------------------------------- the plate */
 
 /* A letter-board plate standing on the floor in front of the paws. */
 .plate {
@@ -307,21 +484,36 @@
   border: 1px solid color-mix(in srgb, var(--va-color-cream) 16%, transparent);
   border-radius: 0.3rem;
   background:
-    repeating-linear-gradient(
-      180deg,
-      transparent 0 3px,
-      color-mix(in srgb, var(--va-color-cream) 4%, transparent) 3px 4px
-    ),
+    repeating-linear-gradient(180deg, transparent 0 3px, color-mix(in srgb, var(--va-color-cream) 4%, transparent) 3px 4px),
     var(--va-lineup-plate);
   box-shadow: 0 0.6rem 1.4rem var(--va-color-glass);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    translate 0.2s;
 }
 
 .number {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   font-family: var(--va-font-mono);
   font-size: 0.6875rem;
   line-height: 1;
   letter-spacing: 0.2em;
   color: color-mix(in srgb, var(--va-color-cream) 62%, transparent);
+}
+
+/* A cat she has tried keeps a lock on its plate for the visit. */
+.lock {
+  display: none;
+  width: 0.62rem;
+  height: 0.7rem;
+  margin-right: -0.1rem;
+}
+
+.slot[data-tried] .lock {
+  display: inline-block;
 }
 
 .name {
@@ -345,369 +537,1295 @@
   color: var(--va-color-pink);
 }
 
-.description {
-  max-width: 15rem;
-  margin-top: 0.75rem;
+.desc {
+  max-width: 14.5rem;
+  margin: 0.75rem 0 0;
+  padding-inline: 0.5rem;
   font-family: var(--va-font-body);
   font-size: clamp(0.8125rem, 0.6rem + 0.25vw, 0.9375rem);
   line-height: 1.45;
+  text-align: center;
   text-wrap: pretty;
   color: color-mix(in srgb, var(--va-color-cream) 86%, transparent);
 }
 
-/* ---------------------------------------------------------------- the culprit */
+/* ---------------------------------------------------------------- hover and focus */
 
-/*
- * The culprit's plate: a button dressed as the others, and the verdict
- * stamped across it. The stamp is out of the flow, so the plate keeps the
- * width its own name gives it (a hidden CULPABLE must not widen it into a
- * tell), and the pair sits over the neighbours' plates, so a stamp wider
- * than its slot lands on top of them instead of under. The plate's step
- * down onto the floor moves to the pair.
- */
-.culprit {
-  position: relative;
-  z-index: 3;
+/* The 1P cursor over the head, bobbing; the slot lights up. */
+.cursor {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--cat-head) * var(--cm) + 1.1rem);
+  z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 100%;
-  margin-top: calc(var(--cm) * -0.6);
-}
-
-.plateButton {
-  margin-top: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/*
- * GUILTY in rubber-stamp ink, a double rule round it and the ink worn in
- * places. Nowhere at first sight: pointer hover and keyboard focus bring
- * it up, a click or a tap pins it (aria-expanded on the plate). It lets
- * the pointer through to the plate, so hovering it keeps it up.
- */
-.stamp {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  translate: -50% -50%;
-  z-index: 3;
-  padding: 0.3em 0.5em 0.24em 0.66em;
-  border: 2px solid currentColor;
-  border-radius: 0.3rem;
-  background: color-mix(in srgb, var(--va-lineup-plate) 90%, transparent);
-  box-shadow:
-    inset 0 0 0 2px color-mix(in srgb, var(--va-lineup-plate) 90%, transparent),
-    inset 0 0 0 3px currentColor;
-  font-family: var(--va-font-display);
-  font-size: 1.3rem;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--va-lineup-verdict);
-  rotate: -9deg;
-  pointer-events: none;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -5 0 0 0 4.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -5 0 0 0 4.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
-  visibility: hidden;
+  gap: 0.15rem;
+  translate: -50% 0;
   opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
 }
 
-.plateButton[aria-expanded="true"] + .stamp,
-.plateButton:focus-visible + .stamp {
-  visibility: visible;
+.cursor .p1 {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--va-color-magenta) 70%, transparent);
+}
+
+.cursor::after {
+  content: "";
+  border-top: 8px solid var(--va-color-magenta);
+  border-inline: 7px solid transparent;
+}
+
+.pick:focus-visible .cursor,
+.pick:focus-visible .pool::after {
   opacity: 1;
+}
+
+.pick:focus-visible .cat {
+  filter: brightness(1.1) drop-shadow(0 0 calc(var(--cm) * 1.2) color-mix(in srgb, var(--va-color-pink) 40%, transparent));
+}
+
+.pick:focus-visible .plate {
+  border-color: var(--va-color-pink);
+  outline: 2px solid var(--va-color-cream);
+  outline-offset: 4px;
+  box-shadow:
+    0 0 0 1px var(--va-color-pink),
+    0 0 22px color-mix(in srgb, var(--va-color-magenta) 45%, transparent),
+    0 0.6rem 1.4rem var(--va-color-glass);
+  translate: 0 -2px;
+}
+
+.pick:focus-visible .numeral {
+  color: color-mix(in srgb, var(--va-color-pink) 55%, transparent);
 }
 
 /* Only where a pointer really hovers: a phone's tap would leave it stuck. */
 @media (hover: hover) {
-  .plateButton:hover + .stamp {
-    visibility: visible;
+  .pick:hover .cursor,
+  .pick:hover .pool::after {
     opacity: 1;
+  }
+
+  .pick:hover .cat {
+    filter: brightness(1.1) drop-shadow(0 0 calc(var(--cm) * 1.2) color-mix(in srgb, var(--va-color-pink) 40%, transparent));
+  }
+
+  .pick:hover .plate {
+    border-color: var(--va-color-pink);
+    box-shadow:
+      0 0 0 1px var(--va-color-pink),
+      0 0 22px color-mix(in srgb, var(--va-color-magenta) 45%, transparent),
+      0 0.6rem 1.4rem var(--va-color-glass);
+    translate: 0 -2px;
+  }
+
+  .pick:hover .numeral {
+    color: color-mix(in srgb, var(--va-color-pink) 55%, transparent);
   }
 }
 
-/* The slam: it comes down from above the plate and lands; off under reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
-  .stamp {
-    scale: 1.7;
-    transition:
-      opacity 160ms ease-out,
-      visibility 0s linear 160ms,
-      scale 0s linear 160ms;
-  }
-
-  .plateButton[aria-expanded="true"] + .stamp,
-  .plateButton:focus-visible + .stamp {
-    scale: 1;
-    transition:
-      opacity 90ms ease-in,
-      visibility 0s,
-      scale 150ms cubic-bezier(0.55, 0, 0.85, 0.35);
+  .pick:focus-visible .cursor {
+    animation: bob 900ms ease-in-out infinite;
   }
 }
 
 @media (prefers-reduced-motion: no-preference) and (hover: hover) {
-  .plateButton:hover + .stamp {
-    scale: 1;
-    transition:
-      opacity 90ms ease-in,
-      visibility 0s,
-      scale 150ms cubic-bezier(0.55, 0, 0.85, 0.35);
+  .pick:hover .cursor {
+    animation: bob 900ms ease-in-out infinite;
   }
 }
 
-/* ---------------------------------------------------------------- the slip */
-
-/* His complaint: a form typed on warm paper, taped to the wall at a slant. */
-.slip {
-  grid-area: 1 / 1 / 2 / 2;
-  align-self: end;
-  justify-self: start;
-  position: relative;
-  z-index: 2;
-  width: clamp(14.5rem, 19vw, 18.5rem);
-  /*
-   * Low on the wall, 8 cm over the floor, but always clear of the slug
-   * above it (its padding, its three lines, then the tape): in a short
-   * window the wall grows rather than the slip covering the title.
-   */
-  margin: calc(max(5.5 * var(--va-svh), 2.25rem) + 6.5rem) 0 calc(var(--cm) * 8) clamp(1.75rem, 4.6vw - 1rem, 4rem);
-  padding: 1.15rem 1.1rem 1.05rem;
-  rotate: -3deg;
-  background: linear-gradient(180deg, var(--va-lineup-paper), var(--va-lineup-paper-shade));
-  box-shadow: 0.4rem 0.9rem 1.6rem var(--va-color-glass);
-  font-family: var(--va-font-mono);
-  font-size: 0.75rem;
-  line-height: 1.5;
-  color: var(--va-color-ink);
+@keyframes bob {
+  50% {
+    translate: -50% -5px;
+  }
 }
 
-.slip::before {
+/* ---------------------------------------------------------------- the refusals */
+
+/* Its status over the head while a cat refuses: why it cannot be picked. */
+.chip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--cat-head) * var(--cm) + 0.9rem);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--va-color-pink) 35%, transparent);
+  border-radius: 0.35rem;
+  background: var(--va-color-osd);
+  backdrop-filter: blur(6px);
+  font-family: var(--va-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  color: var(--va-color-cream);
+  translate: -50% 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chip b {
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--va-color-pink);
+}
+
+.chip svg {
+  flex: none;
+  width: 0.7rem;
+  height: 0.8rem;
+  color: var(--va-color-pink);
+}
+
+.slot[data-refusing] .chip {
+  animation: chip var(--dur) linear both;
+}
+
+.slot[data-refusing] .cursor {
+  visibility: hidden;
+}
+
+@keyframes chip {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  8% {
+    opacity: 1;
+    transform: none;
+  }
+
+  88% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Kira turns her back: her front folds away about her axis, her back unfolds, and back again. */
+.slot[data-slot="kira"][data-refusing] .cat {
+  animation: kiraFront var(--dur) cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+
+.slot[data-slot="kira"][data-refusing] .swap {
+  animation: kiraBack var(--dur) cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+
+@keyframes kiraFront {
+  0% {
+    scale: 1 1;
+    opacity: 1;
+  }
+
+  7% {
+    scale: 0.02 1;
+    opacity: 1;
+    filter: brightness(0.7);
+  }
+
+  7.1%,
+  86% {
+    scale: 0.02 1;
+    opacity: 0;
+  }
+
+  86.1% {
+    scale: 0.02 1;
+    opacity: 1;
+    filter: brightness(0.7);
+  }
+
+  93%,
+  100% {
+    scale: 1 1;
+    opacity: 1;
+  }
+}
+
+@keyframes kiraBack {
+  0%,
+  7% {
+    scale: 0.02 1;
+    opacity: 0;
+  }
+
+  7.1% {
+    scale: 0.02 1;
+    opacity: 1;
+    filter: brightness(0.7);
+  }
+
+  14% {
+    scale: 1 1;
+    translate: 0 0;
+  }
+
+  18% {
+    translate: 0 -1%;
+  }
+
+  23%,
+  79% {
+    scale: 1 1;
+    translate: 0 0;
+    opacity: 1;
+  }
+
+  86% {
+    scale: 0.02 1;
+    opacity: 1;
+    filter: brightness(0.7);
+  }
+
+  86.1%,
+  100% {
+    scale: 0.02 1;
+    opacity: 0;
+  }
+}
+
+/* Tom falls asleep: his eyes droop, close, half open and close for good; he nods; Zzz. */
+.slot[data-slot="tom"][data-refusing] .swap {
+  animation: tomEyes var(--dur) linear both;
+}
+
+.slot[data-slot="tom"][data-refusing] .figIn {
+  animation: nod var(--dur) ease-in-out both;
+}
+
+@keyframes tomEyes {
+  0% {
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  15% {
+    opacity: 0.35;
+  }
+
+  24%,
+  88% {
+    opacity: 1;
+  }
+
+  92% {
+    opacity: 0;
+  }
+
+  95% {
+    opacity: 0.6;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes nod {
+  0% {
+    transform: none;
+  }
+
+  24% {
+    transform: rotate(2.2deg) scaleY(0.985);
+  }
+
+  40% {
+    transform: rotate(2.6deg) scaleY(0.995);
+  }
+
+  56% {
+    transform: rotate(2.2deg) scaleY(0.982);
+  }
+
+  72% {
+    transform: rotate(2.6deg) scaleY(0.995);
+  }
+
+  88% {
+    transform: rotate(2.2deg) scaleY(0.985);
+  }
+
+  94% {
+    transform: rotate(-0.6deg);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+.zzz {
+  position: absolute;
+  left: calc(50% + var(--cm) * 3);
+  bottom: calc(var(--cat-head) * var(--cm) - var(--cm) * 4);
+  width: calc(var(--cm) * 12);
+  height: calc(var(--cm) * 12);
+}
+
+.zzz span {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  font-family: var(--va-font-display);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--va-color-cream);
+  text-shadow:
+    0.06em 0.06em 0 var(--va-color-magenta),
+    0 0 12px color-mix(in srgb, var(--va-color-night) 60%, transparent);
+  opacity: 0;
+}
+
+.zzz span:nth-child(1) {
+  font-size: 0.95rem;
+}
+
+.zzz span:nth-child(2) {
+  font-size: 1.3rem;
+}
+
+.zzz span:nth-child(3) {
+  font-size: 1.7rem;
+}
+
+.slot[data-slot="tom"][data-refusing] .zzz span {
+  animation: z 1500ms ease-out infinite;
+}
+
+.slot[data-slot="tom"][data-refusing] .zzz span:nth-child(1) {
+  animation-delay: 450ms;
+}
+
+.slot[data-slot="tom"][data-refusing] .zzz span:nth-child(2) {
+  animation-delay: 950ms;
+}
+
+.slot[data-slot="tom"][data-refusing] .zzz span:nth-child(3) {
+  animation-delay: 1450ms;
+}
+
+@keyframes z {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(-8deg);
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(1.1rem, -1.7rem) rotate(8deg);
+  }
+}
+
+/* Odin ducks under the floor line; the radar sweeps his slot and finds nothing; he peeks back. */
+.slot[data-slot="odin"][data-refusing] .cat {
+  animation: hide var(--dur) cubic-bezier(0.5, 0, 0.2, 1) both;
+}
+
+@keyframes hide {
+  0% {
+    transform: none;
+  }
+
+  4% {
+    transform: translateY(-3%) scaleY(1.03);
+  }
+
+  12%,
+  76% {
+    transform: translateY(104%);
+  }
+
+  80%,
+  88% {
+    transform: translateY(80%);
+  }
+
+  92% {
+    transform: translateY(83%);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+.radar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--cm) * 6);
+  width: calc(var(--cm) * 26);
+  aspect-ratio: 1;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    transparent 0 calc(25% - 1px),
+    color-mix(in srgb, var(--va-color-pink) 40%, transparent) calc(25% - 1px) 25%,
+    transparent 25% calc(50% - 1px),
+    color-mix(in srgb, var(--va-color-pink) 40%, transparent) calc(50% - 1px) 50%,
+    transparent 50% calc(75% - 1px),
+    color-mix(in srgb, var(--va-color-pink) 32%, transparent) calc(75% - 1px) 75%,
+    transparent 75% calc(100% - 1.5px),
+    color-mix(in srgb, var(--va-color-pink) 55%, transparent) calc(100% - 1.5px)
+  );
+  box-shadow: inset 0 0 calc(var(--cm) * 4) color-mix(in srgb, var(--va-color-magenta) 15%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.radar::before {
   content: "";
   position: absolute;
-  top: -0.65rem;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, color-mix(in srgb, var(--va-color-magenta) 55%, transparent), transparent 22%);
+}
+
+.radar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 1px;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--va-color-pink) 40%, transparent) 20% 80%, transparent);
+}
+
+.radar i {
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--va-color-pink) 40%, transparent) 20% 80%, transparent);
+}
+
+.slot[data-slot="odin"][data-refusing] .radar {
+  animation: radar var(--dur) linear both;
+}
+
+.slot[data-slot="odin"][data-refusing] .radar::before {
+  animation: sweep 1100ms linear infinite;
+}
+
+@keyframes radar {
+  0%,
+  9% {
+    opacity: 0;
+    scale: 0.7;
+  }
+
+  16%,
+  74% {
+    opacity: 1;
+    scale: 1;
+  }
+
+  80%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes sweep {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* A blip of his outline on the scan lines, gone before it can be read: no signal. */
+.ghost {
+  position: absolute;
+  left: calc(50% + var(--cat-left) * var(--cm));
+  bottom: calc(var(--cat-bottom) * var(--cm));
+  width: calc(var(--cat-w) * var(--cm));
+  aspect-ratio: var(--cat-ar);
+  -webkit-mask: url("/interlude/odin.webp") center / 100% 100% no-repeat;
+  mask: url("/interlude/odin.webp") center / 100% 100% no-repeat;
+  background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--va-color-pink) 30%, transparent) 0 2px, transparent 2px 5px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.slot[data-slot="odin"][data-refusing] .ghost {
+  animation: ghost var(--dur) steps(1) both;
+}
+
+@keyframes ghost {
+  0%,
+  14% {
+    opacity: 0;
+  }
+
+  16% {
+    opacity: 0.55;
+  }
+
+  18% {
+    opacity: 0.1;
+  }
+
+  22% {
+    opacity: 0.4;
+  }
+
+  26% {
+    opacity: 0;
+  }
+
+  30% {
+    opacity: 0.22;
+  }
+
+  32%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Dante lashes out: a crouch, a lunge at the glass, and the claw swipe tears the screen (the claw layer). */
+.slot[data-slot="dante"][data-refusing] .cat {
+  animation: lunge var(--dur) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes lunge {
+  0% {
+    transform: none;
+  }
+
+  3% {
+    transform: translateY(1.5%) scale(0.97, 1.02);
+  }
+
+  6.5% {
+    transform: translate(4%, -6%) rotate(-7deg) scale(1.14);
+  }
+
+  15% {
+    transform: translate(1%, -2%) rotate(-2deg) scale(1.05);
+  }
+
+  25%,
+  100% {
+    transform: none;
+  }
+}
+
+/* With his swipe rendered, he strikes in it: the paw up at the glass as the marks tear, then back to his sit; each change a 50 to 80 ms crossfade on the move, never a pop. */
+.slot[data-slot="dante"][data-swipe][data-refusing] .cat {
+  animation:
+    lunge var(--dur) cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    strikeHide var(--dur) linear both;
+}
+
+.slot[data-slot="dante"][data-swipe][data-refusing] .swap {
+  animation:
+    lunge var(--dur) cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    strikeShow var(--dur) linear both;
+}
+
+/* The incoming pose dissolves in over the outgoing one held at full, so the slot never shows the wall through both. */
+@keyframes strikeHide {
+  0%,
+  4.4% {
+    opacity: 1;
+  }
+
+  5.2%,
+  36.5% {
+    opacity: 0;
+  }
+
+  38.5%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes strikeShow {
+  0%,
+  2.4% {
+    opacity: 0;
+  }
+
+  4.4%,
+  38.5% {
+    opacity: 1;
+  }
+
+  41.5%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------------- Jesús */
+
+/*
+ * His numeral in the cats' row of numerals, on the wall clear of his left
+ * side (the render's elbow and hand reach about 29 cm left of his slot at
+ * that height): beside his head it hid behind his crew cut.
+ */
+.slot[data-slot="jesus"] .numeral {
+  left: auto;
+  right: calc(50% + var(--cm) * 31);
+  translate: none;
+}
+
+/* His height at his crown, read off the chart as the cats' is: from his planted trainer, the photograph's own reading. */
+.tick {
+  position: absolute;
+  left: calc(50% - var(--cm) * 13.5);
+  bottom: calc(var(--cat-head) * var(--cm));
+  width: calc(var(--cm) * 27);
+  border-top: 1px dashed color-mix(in srgb, var(--va-color-amber) 40%, transparent);
+  pointer-events: none;
+}
+
+.tick span {
+  position: absolute;
+  right: 0;
+  bottom: 0.3rem;
+  font-family: var(--va-font-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--va-color-amber) 85%, transparent);
+}
+
+/* PLAYER 1 · SELECTED over his head once he is chosen. */
+.selflag {
+  position: absolute;
   left: 50%;
-  width: 3.75rem;
-  height: 1.3rem;
-  translate: -50% 0;
-  rotate: 3deg;
-  background: color-mix(in srgb, var(--va-lineup-tape) 72%, transparent);
-  box-shadow: 0 1px 2px var(--va-color-glass);
-}
-
-.slipTitle {
-  margin-bottom: 0.65rem;
-  padding-bottom: 0.55rem;
-  border-bottom: 1px dashed color-mix(in srgb, var(--va-color-ink) 45%, transparent);
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1.35;
-  letter-spacing: 0.16em;
+  bottom: calc(var(--cat-head) * var(--cm) + 1.6rem);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.3rem;
+  background: var(--va-color-magenta);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--va-color-magenta) 60%, transparent);
+  font-family: var(--va-font-display);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-night);
+  translate: -50% 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.slipTitle > span {
-  display: block;
+.board[data-chosen] .selflag {
+  opacity: 1;
 }
 
-.slipOwner {
-  margin-top: 0.15rem;
-  font-weight: 500;
-  letter-spacing: 0.24em;
+.board[data-chosen] .slot[data-slot="jesus"] .cursor,
+.board[data-chosen] .slot[data-slot="jesus"] .numeral {
+  opacity: 0;
 }
 
-/* The damage, each line ticked off in pen in its printed box. */
-.damages {
+.board[data-chosen] .slot[data-slot="jesus"] .pool::after {
+  opacity: 1;
+}
+
+.board[data-chosen] .slot[data-slot="jesus"] .plate {
+  border-color: var(--va-color-pink);
+  box-shadow:
+    0 0 0 1px var(--va-color-pink),
+    0 0 30px color-mix(in srgb, var(--va-color-magenta) 60%, transparent);
+}
+
+.board[data-chosen] .slot[data-slot="jesus"] .cat {
+  filter: brightness(1.06) drop-shadow(0 0 calc(var(--cm) * 1.6) color-mix(in srgb, var(--va-color-pink) 45%, transparent));
+}
+
+/* The others step back into the dark. */
+.board[data-chosen] .slot:not([data-slot="jesus"]) .cat,
+.board[data-chosen] .slot:not([data-slot="jesus"]) .swap {
+  filter: brightness(0.55) saturate(0.6);
+}
+
+.board[data-chosen] .slot:not([data-slot="jesus"]) .pool {
+  opacity: 0.45;
+}
+
+/* ---------------------------------------------------------------- the foot */
+
+/* The legend while she chooses, then his banner and the way on, in one cell: nothing moves. */
+.foot {
+  z-index: 3;
   display: grid;
-  gap: 0.35rem;
+  flex: 1;
+  place-items: center;
+  padding: 1rem 1rem 1.6rem;
+}
+
+.foot > * {
+  grid-area: 1 / 1;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem 1.1rem;
   margin: 0;
-  padding: 0;
-  list-style: none;
+  font-family: var(--va-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+  transition: opacity 0.2s;
 }
 
-/*
- * The box sits on its item's first line at any size, wrap or face: the
- * tick column is a line of the slip's own type (the same font, size and
- * line height as the words), the two columns share their first baseline,
- * and in that line the box stands with its middle on the x-height's
- * centre (vertical-align: middle), where a form's printed box sits.
- */
-.damages li {
-  display: grid;
-  grid-template-columns: 1.85rem minmax(0, 1fr);
-  align-items: baseline;
-  text-wrap: pretty;
+.legend > span {
+  align-items: center;
+  gap: 0.45rem;
 }
 
-.box {
-  display: inline-block;
-  width: 1.1em;
-  height: 1.1em;
-  overflow: visible;
-  vertical-align: middle;
+.legend > .keysOnly {
+  display: inline-flex;
 }
 
-.boxLine {
-  fill: none;
-  stroke: color-mix(in srgb, var(--va-color-ink) 55%, transparent);
-  stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
+/* The prompt at the screen's foot replaces it while she pushes at the wall. */
+.board[data-walled] .legend {
+  opacity: 0;
 }
 
-/* The pen: one quick stroke in the stamp's ink, overshooting the box. */
-.pen {
-  fill: none;
-  stroke: var(--va-lineup-stamp);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.board[data-chosen] .legend {
+  visibility: hidden;
 }
 
-/* The tally, typed under a dashed rule at the foot of the form. */
-.tally {
-  margin-top: 0.7rem;
-  padding-top: 0.55rem;
-  border-top: 1px dashed color-mix(in srgb, var(--va-color-ink) 45%, transparent);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  /* Two even lines when it wraps, never "1." alone on the second. */
-  text-wrap: balance;
-}
-
-/* ---------------------------------------------------------------- the caption */
-
-/*
- * His line to the officer, the section's last word: a row of its own under
- * the plates and their descriptions, with the room of a pause above it, so
- * it reads as his line and not as one more description. The row spans the
- * section (FitLine observes it); the card is centred in it.
- *
- * Under it the section simply ends: the career city follows, its card in
- * the middle of a screen of night, and nothing rises over this floor.
- */
-.caption {
-  grid-area: 3 / 1 / 4 / -1;
-  justify-self: stretch;
-  z-index: 2;
-  padding: clamp(2.5rem, 6 * var(--va-svh), 4rem) 1rem max(2.25rem, 5 * var(--va-svh));
-  font-family: var(--va-font-body);
-  /* The hero's card size (Hero.module.css .subtitle); the subtitle size she picks scales it (globals.css). */
-  --va-card-fs: clamp(0.95rem, 1.35vw, 1.2rem);
-  font-size: var(--va-card-fs);
-  font-weight: 500;
-  line-height: 1.4;
-  text-align: center;
+.key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  padding: 0 0.35rem;
+  border: 1px solid var(--va-color-line);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
   color: var(--va-color-cream);
 }
 
 /*
- * The hero's subtitle card (Hero.module.css .subtitleText): one solid block
- * around the whole line, never a pill per line, balanced (no word alone on
- * a line) and as wide as its widest line (--fit, FitLine.tsx). The hero's
- * card sits on a bright picture; on this night floor its dark glass would
- * vanish, so it keeps its edge with a hairline and lifts off the floor
- * with the plates' shadow.
+ * The way on while nothing is chosen: a locked stop for the keyboard, so
+ * Tab past Jesús says why the story waits instead of leaving the select.
+ * Unseen until it has the keyboard's focus; then it takes the legend's
+ * place in the foot's one cell, drawn as the way on, locked.
  */
-.captionText {
-  display: block;
-  box-sizing: content-box;
-  width: var(--fit, fit-content);
-  max-width: min(44rem, 100% - 1.7em - 2px);
-  margin-inline: auto;
-  padding: 0.4em 0.85em 0.45em;
-  border: 1px solid color-mix(in srgb, var(--va-color-cream) 16%, transparent);
-  border-radius: 0.55em;
+.locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 2.75rem;
+  padding: 0 1.15rem;
+  border: 1px dashed color-mix(in srgb, var(--va-color-pink) 45%, transparent);
+  border-radius: 0.4rem;
   background: var(--va-color-osd);
-  box-shadow: 0 0.6rem 1.4rem var(--va-color-glass);
-  text-wrap: balance;
-  text-shadow: 0 1px 2px color-mix(in srgb, var(--va-color-night) 80%, transparent);
+  font-family: var(--va-font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+  cursor: not-allowed;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.speaker {
-  font-weight: 700;
+.locked:focus-visible {
+  outline: 2px solid var(--va-color-cream);
+  outline-offset: 4px;
+  opacity: 1;
+}
+
+.foot:has(.locked:focus-visible) .legend {
+  opacity: 0;
+}
+
+.lockedIcon {
+  flex: none;
+  width: 0.7rem;
+  height: 0.85rem;
   color: var(--va-color-pink);
 }
 
-/* A narrower wall: the slip hangs over the chart's left edge, so its labels give way. */
-@media (max-width: 75rem) {
-  .mark > span:first-child {
-    visibility: hidden;
-  }
+/* The legend and the way on speak her input: keys and a pointer, or a finger. */
+.touchOnly {
+  display: none;
 }
 
-/* A short window: the slip slides down toward the floor before the wall has to grow. */
-@media (max-height: 42rem) {
-  .slip {
-    margin-bottom: calc(var(--cm) * 3);
+@media (hover: none) and (pointer: coarse) {
+  .legend > .keysOnly,
+  .wayOn small > .keysOnly {
+    display: none;
+  }
+
+  .legend > .touchOnly,
+  .wayOn small > .touchOnly {
+    display: inline;
   }
 }
 
 /*
- * A landscape phone or a very short window: one screen cannot hold the wall
- * without shrinking the cats to thumbnails, so the chart keeps a readable
- * scale, the four slots take the whole width and the slip moves under the
- * line-up, before the caption.
+ * His banner and the way on: on a wide screen on the wall over the cats,
+ * between the header and their numerals (the room the true scale leaves
+ * there), so the foot under the plates is one line and the board fits one
+ * screen; on a phone in the foot.
  */
-@media (min-aspect-ratio: 1/1) and (min-width: 40.0625rem) and (max-height: 32rem) {
-  .suspects {
-    --cm: min(0.62vw, 0.6875rem);
-  }
+.after {
+  position: absolute;
+  top: var(--head);
+  left: 4%;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem 2.6rem;
+  width: calc(92% * 4 / 5.5);
+  height: calc(var(--stage) - var(--head) - var(--cats-head) * var(--cm) - 4.4rem - 3.2rem);
+  visibility: hidden;
+}
 
-  .board {
-    grid-template-columns: 6% repeat(4, minmax(0, 1fr)) 6%;
-    grid-template-rows: calc(var(--cm) * 53 + 6rem) auto auto auto;
-  }
+.board[data-chosen] .after {
+  visibility: visible;
+}
 
-  .mark > span:first-child {
+/* His banner: the chapter cards' ribbon, slammed in from the left. */
+.banner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.ribbon {
+  position: relative;
+  isolation: isolate;
+  display: block;
+  padding: 0.5rem 2.6rem 0.42rem;
+  rotate: -2.5deg;
+  font-family: var(--va-font-chapter-caps);
+  font-size: clamp(1.9rem, 1.3rem + 2vw, 3rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-chapter-caps);
+}
+
+.ribbon::before,
+.ribbon::after {
+  content: "";
+  position: absolute;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 1rem) 50%, 100% 100%, 0 100%, 1rem 50%);
+}
+
+.ribbon::before {
+  inset: 0;
+  z-index: -1;
+  border: 3px solid var(--va-chapter-keyline);
+  border-radius: 2px;
+  background:
+    linear-gradient(var(--va-chapter-pin), var(--va-chapter-pin)) 0 5px / 100% 2px no-repeat,
+    linear-gradient(var(--va-chapter-pin), var(--va-chapter-pin)) 0 calc(100% - 5px) / 100% 2px no-repeat,
+    linear-gradient(90deg, var(--va-chapter-band-start), var(--va-chapter-band-mid), var(--va-chapter-band-end));
+}
+
+.ribbon::after {
+  inset: -3px;
+  z-index: -2;
+  background: var(--va-chapter-keyline);
+  translate: 5px 5px;
+  filter: drop-shadow(5px 5px 0 var(--va-chapter-split));
+}
+
+.kicker {
+  font-family: var(--va-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--va-color-pink);
+}
+
+.wayOn {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0;
+}
+
+.wayOn small {
+  font-family: var(--va-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+/* MAIN STORY: a 44 px target. */
+.wayLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 2.75rem;
+  padding: 0 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--va-color-pink) 55%, transparent);
+  border-radius: 0.4rem;
+  background: var(--va-color-osd);
+  font-family: var(--va-font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--va-color-cream);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.wayLink:hover,
+.wayLink:focus-visible {
+  border-color: var(--va-color-pink);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--va-color-magenta) 45%, transparent);
+  color: var(--va-color-cream);
+}
+
+.wayGlyph,
+.promptGlyph {
+  flex: none;
+  border-top: 8px solid var(--va-color-pink);
+  border-inline: 6px solid transparent;
+}
+
+/* Without script there is no select to play and no wall: the way on is a plain link, always there. */
+@media (scripting: none) {
+  .after {
     visibility: visible;
   }
 
-  /* A phone's 12 px floor for the small type. */
-  .slug,
-  .number,
-  .alias {
-    font-size: 0.75rem;
+  .locked {
+    display: none;
   }
 
-  .slip {
-    grid-area: 3 / 1 / 4 / -1;
-    justify-self: center;
-    align-self: start;
-    width: min(100% - 3rem, 24rem);
-    margin: 2.75rem 0 0;
-    rotate: -1.5deg;
+  .banner,
+  .legend {
+    visibility: hidden;
+  }
+}
+
+/* ---------------------------------------------------------------- the wall, the flash, the claw */
+
+/* Choose your character to continue: at the screen's foot while she pushes at the wall. */
+.prompt {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.4rem + env(safe-area-inset-bottom));
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  max-width: calc(100% - 2rem);
+  margin: 0;
+  padding: 0.7rem 1.05rem;
+  border: 1px solid color-mix(in srgb, var(--va-color-pink) 50%, transparent);
+  border-radius: 0.45rem;
+  /* Opaque: on a phone it stands over his plate's line, which showed through. */
+  background: var(--va-color-controls-backdrop);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--va-color-magenta) 25%, transparent);
+  font-family: var(--va-font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-wrap: balance;
+  text-transform: uppercase;
+  color: var(--va-color-cream);
+  translate: -50% 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 180ms,
+    visibility 0s linear 180ms;
+}
+
+/* A phone keeps it to one line where it fits: tracked tighter. */
+@media (max-width: 30rem) {
+  .prompt {
+    gap: 0.55rem;
+    padding-inline: 0.85rem;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+}
+
+.prompt[data-on] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 180ms,
+    visibility 0s;
+}
+
+/* Choosing him: a flash from his slot (none under reduced motion). */
+.flash {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  background: radial-gradient(
+    ellipse 70% 70% at var(--fx, 80%) var(--fy, 50%),
+    var(--va-color-cream) 0%,
+    color-mix(in srgb, var(--va-color-pink) 60%, var(--va-color-cream)) 40%,
+    color-mix(in srgb, var(--va-color-magenta) 60%, transparent) 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Dante's claw marks across the whole screen (CharacterSelect draws them, claw.ts lays them out). */
+.claw {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.clawGlow {
+  fill: var(--va-color-magenta);
+  opacity: 0.38;
+}
+
+.clawEdge {
+  fill: var(--va-lineup-claw-edge);
+}
+
+.clawFlesh {
+  fill: var(--va-lineup-claw-flesh);
+}
+
+.clawGash {
+  fill: var(--va-lineup-claw-gash);
+}
+
+.clawCore {
+  fill: var(--va-lineup-claw-core);
+  opacity: 0.6;
+}
+
+/* ---------------------------------------------------------------- his choice, as it happens */
+
+@media (prefers-reduced-motion: no-preference) {
+  .board[data-chosen="fresh"] .selflag {
+    animation: pop 380ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
   }
 
-  .caption {
-    grid-area: 4 / 1 / 5 / -1;
+  .board[data-chosen="fresh"] .ribbon {
+    animation: slam 520ms cubic-bezier(0.2, 1.4, 0.4, 1) 260ms both;
+  }
+
+  .board[data-chosen="fresh"] .kicker {
+    animation: rise 300ms ease-out 520ms both;
+  }
+
+  .board[data-chosen="fresh"] .wayOn {
+    animation: rise 360ms ease-out 900ms both;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@keyframes slam {
+  0% {
+    opacity: 0;
+    transform: translateX(-60vw) skewX(-12deg);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translateX(1.5vw) skewX(3deg);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
+/* ---------------------------------------------------------------- reduced motion */
+
+/*
+ * No turn, no nod, no duck, no lunge, no shake and no flash: each refusal
+ * is a still state for its time (her back, his closed eyes and the Zzz,
+ * the empty slot and the radar, the scratches already made).
+ */
+@media (prefers-reduced-motion: reduce) {
+  .pool,
+  .pool::after,
+  .numeral,
+  .plate,
+  .cat,
+  .swap,
+  .cursor,
+  .legend,
+  .wayLink,
+  .prompt,
+  .prompt[data-on] {
+    transition: none;
+  }
+
+  .slot[data-refusing] .chip {
+    animation: none;
+    opacity: 1;
+  }
+
+  .slot[data-slot="kira"][data-refusing] .cat {
+    animation: none;
+    opacity: 0;
+  }
+
+  .slot[data-slot="kira"][data-refusing] .swap,
+  .slot[data-slot="tom"][data-refusing] .swap {
+    animation: none;
+    opacity: 1;
+  }
+
+  .slot[data-slot="tom"][data-refusing] .figIn,
+  .slot[data-slot="dante"][data-refusing] .cat {
+    animation: none;
+  }
+
+  .slot[data-slot="dante"][data-swipe][data-refusing] .cat {
+    opacity: 0;
+  }
+
+  .slot[data-slot="dante"][data-swipe][data-refusing] .swap {
+    animation: none;
+    opacity: 1;
+  }
+
+  .slot[data-slot="tom"][data-refusing] .zzz span {
+    animation: none;
+    opacity: 1;
+  }
+
+  .slot[data-slot="tom"][data-refusing] .zzz span:nth-child(2) {
+    transform: translate(0.5rem, -0.7rem);
+  }
+
+  .slot[data-slot="tom"][data-refusing] .zzz span:nth-child(3) {
+    transform: translate(1.05rem, -1.45rem);
+  }
+
+  .slot[data-slot="odin"][data-refusing] .cat {
+    animation: none;
+    visibility: hidden;
+  }
+
+  .slot[data-slot="odin"][data-refusing] .radar {
+    animation: none;
+    opacity: 1;
+  }
+
+  .slot[data-slot="odin"][data-refusing] .radar::before {
+    animation: none;
+    rotate: 300deg;
+  }
+
+  .slot[data-slot="odin"][data-refusing] .ghost {
+    animation: none;
+  }
+
+  .flash {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------- forced colours */
+
+@media (forced-colors: active) {
+  .pick:focus-visible .plate {
+    outline-color: Highlight;
+  }
+
+  .p1,
+  .selflag {
+    border: 1px solid CanvasText;
+  }
+
+  .flash,
+  .claw,
+  .ribbon::before,
+  .ribbon::after {
+    display: none;
+  }
+
+  .ribbon {
+    border: 2px solid CanvasText;
   }
 }
 
 /* ---------------------------------------------------------------- phones and portrait screens */
 
 /*
- * Two strips of two at one scale (7.2 px per cm on a 390 px phone), each
- * showing 0-40 cm with its labels at the left edge and its own floor line.
- * Dante sits next to Odin, so the comparison stays honest.
+ * Two strips of two cats, each showing 0-40 cm with its own floor line,
+ * Dante next to Odin so the comparison stays honest; then Jesús on a
+ * strip of his own, 0-140 cm: all at one scale (lineup.ts phoneCm, 4.6 px
+ * a centimetre on a 390 x 844 phone), the most that keeps his reach in
+ * half the screen and his head with the cursor over it on one screen.
  */
 @media (max-aspect-ratio: 1/1), (max-width: 40rem) {
   .suspects {
-    --cm: min(1.84vw, 0.9 * var(--va-svh), 0.6875rem);
-    --strip-labels: 1.9rem;
     background: linear-gradient(180deg, var(--va-color-night) 0, var(--va-lineup-floor) 22rem);
   }
 
   .board {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: none;
-    justify-items: center;
+    --cm: max(
+      4px,
+      min((50vw - 0.75rem) / var(--player-reach), (100 * var(--va-svh) - 14rem) / var(--player-head), 7px)
+    );
+    --stage: calc(var(--cm) * 40 + 3.6rem);
   }
 
   .chapter {
@@ -715,104 +1833,114 @@
     background: none;
   }
 
-  .wall {
+  .board::before,
+  .board::after,
+  .chart {
     display: none;
   }
 
-  /* Under the card, which clears the page controls. */
+  .head {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.6rem;
+    height: auto;
+    padding: 1.25rem 1.25rem 2rem;
+  }
+
+  /* Tighter tracking, so the Spanish lines hold on a 360 px phone. */
   .slug {
-    grid-area: auto;
-    justify-self: stretch;
-    padding: 1.25rem 1.25rem 1.75rem;
-    /* Tighter tracking, so the Spanish lines hold on a 360 px phone. */
     font-size: 0.75rem;
     letter-spacing: 0.12em;
   }
 
-  .lineup {
-    grid-area: auto;
+  .title {
+    align-items: flex-start;
+  }
+
+  .titleMain {
+    font-size: 1.45rem;
+    white-space: normal;
+  }
+
+  .titleSub {
+    font-size: 0.75rem;
+  }
+
+  .roster {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: none;
-    row-gap: 2.5rem;
+    row-gap: 2.2rem;
     width: 100%;
     max-width: 46rem;
-    padding-inline: var(--strip-labels) 0.5rem;
+    margin-inline: auto;
   }
 
-  .suspect {
-    grid-row: span 2;
+  .slot:first-child {
+    grid-column: auto;
   }
 
-  .spot {
-    height: calc(var(--cm) * 42);
+  .slot[data-slot="jesus"] {
+    grid-column: 1 / -1;
   }
 
-  .spot::before {
-    height: 100%;
-  }
-
-  /* The strip's wall and chart; the left slot's reaches out under the labels. */
-  .spot::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -2;
+  /* Each strip's own piece of wall and chart, its floor line under it. */
+  .stage {
     border-bottom: 1px solid var(--floor-line);
     background:
       repeating-linear-gradient(to top, var(--chart-major) 0 1px, transparent 1px calc(var(--cm) * 10)) bottom / 100%
         calc(var(--cm) * 40 + 1px) no-repeat,
       repeating-linear-gradient(to top, var(--chart-minor) 0 1px, transparent 1px calc(var(--cm) * 5)) bottom / 100%
         calc(var(--cm) * 40 + 1px) no-repeat,
-      linear-gradient(180deg, transparent 0%, var(--va-lineup-wall-high) 30%, var(--va-lineup-wall-low) 100%);
+      linear-gradient(180deg, var(--va-lineup-wall-high), var(--va-lineup-wall-low));
   }
 
-  .suspect:nth-child(odd) .spot::after {
-    left: calc(var(--strip-labels) * -1);
+  .slot[data-slot="jesus"] .stage {
+    height: max(calc(var(--cm) * 140), calc(var(--cm) * var(--player-head) + 3.6rem));
+    background:
+      repeating-linear-gradient(to top, var(--chart-major) 0 1px, transparent 1px calc(var(--cm) * 10)) bottom / 100%
+        calc(var(--cm) * 140 + 1px) no-repeat,
+      repeating-linear-gradient(to top, var(--chart-minor) 0 1px, transparent 1px calc(var(--cm) * 5)) bottom / 100%
+        calc(var(--cm) * 140 + 1px) no-repeat,
+      linear-gradient(180deg, var(--va-lineup-wall-high), var(--va-lineup-wall-low));
   }
 
-  .suspect:nth-child(even) .spot::after {
-    right: -0.5rem;
+  .numeral,
+  .slot[data-slot="jesus"] .numeral {
+    inset: 0.55rem auto auto 0.9rem;
+    translate: none;
+    font-size: clamp(1.75rem, var(--cm) * 6.5, 2.75rem);
   }
 
-  .suspect:nth-child(odd) .stripMarks {
-    position: absolute;
-    inset: 0 auto 0 calc(var(--strip-labels) * -1);
+  .slot:nth-child(even) .numeral {
+    inset: 0.55rem 0.9rem auto auto;
+  }
+
+  /* The strip's numbers on its outer edge (his on the right, his numeral on the left). */
+  .ruler {
     display: block;
-    width: var(--strip-labels);
   }
 
-  .stripMarks span {
-    position: absolute;
-    left: 0.4rem;
-    bottom: calc(var(--mark) * var(--cm) + 0.25rem);
-    font-family: var(--va-font-mono);
-    font-size: 0.75rem;
-    line-height: 1;
-    letter-spacing: 0.06em;
-    color: var(--label);
-  }
-
-  .numeral {
-    display: none;
+  .slot:nth-child(even) .ruler > span,
+  .slot[data-slot="jesus"] .ruler > span {
+    left: auto;
+    right: 0.5rem;
   }
 
   /* A cat too wide for its strip moves inward (lineup.ts, phoneNudge). */
-  .cat {
+  .cat,
+  .swap,
+  .ghost {
     left: calc(50% + (var(--cat-left) + var(--phone-nudge)) * var(--cm));
   }
 
-  .spot::before {
+  .pool {
     left: calc(50% + var(--phone-nudge) * var(--cm));
-  }
-
-  .tag {
-    padding-inline: 0.25rem;
   }
 
   .plate {
     padding: 0.5rem 0.8rem 0.55rem;
   }
 
+  /* A phone's 12 px floor for the small type. */
   .number,
   .alias {
     font-size: 0.75rem;
@@ -826,28 +1954,66 @@
     font-size: 1.05rem;
   }
 
-  .description {
+  .desc {
+    max-width: 11.5rem;
     font-size: 0.8125rem;
   }
 
-  .stamp {
-    font-size: 1.05rem;
+  .slot[data-slot="jesus"] .desc {
+    max-width: 16rem;
   }
 
-  .slip {
-    grid-area: auto;
-    justify-self: center;
-    align-self: start;
-    width: min(100% - 3rem, 24rem);
-    margin: 3rem 0 0;
-    rotate: -1.5deg;
-    font-size: 0.8125rem;
+  /*
+   * A chip keeps to its strip's side, so it never runs off the screen, and
+   * hangs over the strip's top edge, in the gap above it: inside, it stood
+   * on the strip's numeral and its 40.
+   */
+  .chip {
+    bottom: calc(100% + 0.35rem);
+    gap: 0.45rem;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    translate: none;
   }
 
-  /* After the slip, a pause's room above his line, as on wide screens. */
-  .caption {
-    grid-area: auto;
-    padding: 3rem 1rem max(3rem, 6 * var(--va-svh));
-    --va-card-fs: 1rem;
+  .chip b {
+    letter-spacing: 0.12em;
+  }
+
+  .slot:nth-child(odd) .chip {
+    left: 0.5rem;
+  }
+
+  .slot:nth-child(even) .chip {
+    left: auto;
+    right: 0.5rem;
+  }
+
+  .foot {
+    position: relative;
+  }
+
+  .after,
+  .wayOn {
+    flex-direction: column;
+  }
+
+  .after {
+    position: static;
+    width: auto;
+    height: auto;
+    gap: 1.6rem;
+    padding-top: 1rem;
+  }
+
+  .ribbon {
+    padding-inline: 2rem;
+  }
+
+  .prompt {
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
   }
 }

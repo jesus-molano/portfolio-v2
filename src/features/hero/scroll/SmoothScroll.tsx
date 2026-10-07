@@ -10,6 +10,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { registerScroller, type Scroller } from "@/lib/navigate";
 import { stableScreen } from "@/lib/screen";
 import { getSceneLoading } from "../sceneLoading";
+import { selectGate } from "@/features/suspects/selectWall";
 import { stageGate } from "@/features/work/stageGate";
 import {
   browserStroke,
@@ -125,6 +126,21 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
           return false;
         }
       }
+      // Under reduced motion the page scrolls natively (no Lenis), and only the character select's wall
+      // still holds it (selectWall.ts): a notch or a drag that would pass it is cancelled, the page
+      // stands at the wall and the select says why. (A drag the browser already took over cannot be
+      // cancelled any more: the select puts the page back.)
+      if (reducedMotion && !event.ctrlKey && getSceneLoading().entered && Number.isFinite(selectGate.maxScroll)) {
+        const wall = selectGate.maxScroll;
+        const forward = (event.type === "wheel" || event.type === "touchmove") && data.deltaY > 0;
+        if (forward && window.scrollY + data.deltaY > wall - 0.5) {
+          if (event.cancelable) event.preventDefault();
+          if (window.scrollY < wall) window.scrollTo({ top: wall, behavior: "instant" });
+          scrollGate.pressure += data.deltaY;
+          scrollGate.pushedAt = performance.now();
+          return false;
+        }
+      }
       // Pinch zoom on a trackpad (ctrlKey), sideways gestures and input before the visitor entered are not scrolling.
       if (reducedMotion || event.ctrlKey || !getSceneLoading().entered) return true;
       const lenis = lenisRef.current?.lenis;
@@ -163,7 +179,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         browserOwns.current = browserStroke(
           window.scrollY,
           scrollGate.heroEnd,
-          Math.min(scrollGate.maxScroll, stageGate.maxScroll),
+          Math.min(scrollGate.maxScroll, stageGate.maxScroll, selectGate.maxScroll),
           pinned.current,
           lenis?.isScrolling === "native",
         );
@@ -204,8 +220,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         }
         data.deltaY = move;
       }
-      // The first unread line on the page binds: the hero's wall or a later stage's.
-      const maxScroll = Math.min(scrollGate.maxScroll, stageGate.maxScroll);
+      // The first wall on the page binds: the hero's, the character select's, or the career city's.
+      const maxScroll = Math.min(scrollGate.maxScroll, stageGate.maxScroll, selectGate.maxScroll);
       const gated = Boolean(lenis) && Number.isFinite(maxScroll);
       const room = lenis && gated ? maxScroll - Math.max(lenis.targetScroll, lenis.actualScroll) : Infinity;
       const now = performance.now();

@@ -1,7 +1,16 @@
 THE USUAL SUSPECTS: licence of the line-up images in this folder
-(kira, tom, dante, odin; .avif and .webp)
+(kira, tom, dante, odin, their states kira-back, tom-asleep and
+dante-swipe, and jesus; .avif and .webp)
 
-The four cats are built on "Cat" from XR Blocks by Google:
+jesus is a render of this site's own driver model, not of the cat: the
+MakeHuman base mesh, skin, eyes, eyebrows, eyelashes and the
+male_casualsuit06 clothes, all released by MakeHuman under CC0 1.0
+(public/models/makehuman-driver/LICENSE.txt says what was made from them),
+his aviators (public/models/sunglasses, an original model made for this
+site) and trainers made for this render by tools/blender/lineup_man.py.
+Nothing in it comes from the cat below, and no community asset is used.
+
+The four cats, and their states, are built on "Cat" from XR Blocks by Google:
 
   Source:   https://github.com/xrblocks/assets/tree/5582bd1b2d1a4e19f7ee7093b63a5ee328e974ac/models/Cat
             (cat.gltf, cat.bin, ShortHairedCat_Color.jpg, ShortHairedCat_Normal.jpg,
@@ -12,7 +21,8 @@ The four cats are built on "Cat" from XR Blocks by Google:
             so there is no notice to carry over.
 
 What was changed (Apache-2.0, section 4(b)): the model was re-posed into a
-seated line-up pose, reshaped into four different cats (size, build, head,
+seated line-up pose (and, for the states, turned away, asleep or striking),
+reshaped into four different cats (size, build, head,
 legs, tail), given new eyes, procedural fur, coat colours and markings and
 whiskers, and rendered to still images with Blender Cycles by
 tools/blender/build_cats.py and tools/blender/render_interlude.py. The model

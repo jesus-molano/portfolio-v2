@@ -141,15 +141,32 @@ describe("STATS copy", () => {
         const text = `${record.value} ${record.spoken} ${record.caption}`;
         expect(text, record.id).not.toMatch(/\d\s*\+\s*\d|\bcats?\b|\bgat[oa]s?\b|odin/i);
       }
-      // Dante's record is his wanted level: five stars, said in words to a screen reader.
+      // Dante's record is his current wanted level: five star slots, one lit until she tries to
+      // choose him in the select (features/suspects/wanted.ts), said in words to a screen reader.
       const wanted = dict.stats.records.items.find((record) => record.id === "wanted");
       expect(wanted?.value).toBe("★★★★★");
       expect(wanted?.caption).toMatch(/Dante/);
+      expect(wanted?.spoken).toBe(dict.stats.records.wanted.levels[0]);
       for (const [path, text] of strings(dict.stats)) {
         expect(/halo|aureola|from above|desde arriba|keeping watch|vigilando/i.test(text), `${path}: ${text}`).toBe(false);
       }
       const html = renderToStaticMarkup(createElement(Stats, { dict: dict.stats as Dictionary["stats"], lang }));
       expect(html).not.toMatch(/halo|<svg[^>]*viewBox="0 0 40 12"/i);
+    }
+  });
+
+  it("makes Dante's wanted level live, in the owner's words, said in words at every level", () => {
+    expect(es.stats.records.items.find((record) => record.id === "wanted")?.caption).toBe("nivel de búsqueda actual de Dante");
+    expect(en.stats.records.items.find((record) => record.id === "wanted")?.caption).toBe("Dante's current wanted level");
+    expect(es.stats.records.wanted.hint).toBe("Prueba a seleccionarlo y vuelve aquí");
+    expect(en.stats.records.wanted.hint).toBe("Try choosing him, then come back");
+    for (const dict of [en, es]) {
+      const { levels, top } = dict.stats.records.wanted;
+      expect(levels).toHaveLength(5);
+      for (const level of levels) expect(level).toMatch(/^\p{Lu}\p{Ll}+ \p{Ll}+:$/u);
+      expect(top).toMatch(/\p{L}/u);
+      // The cables were the complaint's, and the complaint is gone.
+      expect(JSON.stringify(dict.stats.records)).not.toMatch(/cable/i);
     }
   });
 

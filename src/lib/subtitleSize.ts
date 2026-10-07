@@ -1,7 +1,7 @@
 /**
  * The subtitle size she picks in STATS's settings (SETTINGS · DISPLAY):
  * small, medium or large, for the film's cards in the hero and in the
- * career city, and his line to the officer under THE USUAL SUSPECTS.
+ * career city.
  * Medium is the cards' own size and sets nothing; small and large set
  * `data-subtitles` and `--va-subtitle-scale` on <html>, which globals.css
  * multiplies into every card ([data-captions] [data-card]). Remembered

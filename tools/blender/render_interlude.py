@@ -1,8 +1,21 @@
 """THE USUAL SUSPECTS: render the line-up layers the site ships in public/interlude.
 
-The four suspects (kira, tom, dante, odin) come from the shared generator
-(`build_cats.build`, data in `cats/suspects/<cat>.py`) in their line-up sit,
-and are shot here as ONE set, so they match on the page:
+The line-up is a character select. Its layers (`LAYERS`):
+
+- the four suspects (kira, tom, dante, odin) from the shared generator
+  (`build_cats.build`, data in `cats/suspects/<cat>.py`) in their line-up sit;
+- their states when she tries to choose one (`cats/suspects/states.py`):
+  kira-back (she turns her back), tom-asleep (he falls asleep where he
+  sits: only his lids differ from his layer), dante-swipe (he strikes);
+- jesus, player 1 in slot 5 (`lineup_man.py`): the hero's driver model on
+  one knee, at his true size beside the cats (one scale for all five). He is
+  built full size, scaled down whole into a 1:`lineup_man.MINIATURE`
+  miniature and shot by the same camera, lights and contact shadow at
+  MINIATURE times the pixel density: the cats' own photograph of him with
+  everything three times as far, so the same perspective and light, and
+  `PX_PER_CM` pixels to his real centimetre as to theirs;
+
+all shot here as ONE set, so they match on the page:
 
 - one stage: `stage.lineup_camera()` (135 mm, level at 26 cm, 3.2 m in
   front of the slot) and `stage.lineup_lights()` with ONE set of gains for
@@ -22,21 +35,25 @@ and are shot here as ONE set, so they match on the page:
 Stages (all by default; each reads what the one before wrote; `render` is
 `beauty` and `shadow`, which can also run on their own):
 
-1. render: per cat, `<cat>-beauty.png` (RGBA, straight alpha) and
+1. render: per layer, `<cat>-beauty.png` (RGBA, straight alpha) and
    `<cat>-shadow.png` (the floor band, shadow in the alpha, with
    `<cat>-shadow.json`), plus `<cat>-geometry.json` (the crop in full-frame
    pixels and the projected floor contact, slot centre and head width) and
    `<cat>-report.json` (the generator's report: sizes, paws, strands);
-2. compose: per cat, `<cat>.png`, the shipping layer: cat over its contact
+2. compose: per layer, `<cat>.png`, the shipping layer: cat over its contact
    shadow, cropped to what is visible, with the colour of the nearest
    visible pixels carried under the transparent ones (so lossy encoders and
    4:2:0 chroma never pull a dark or light fringe into the edges);
-   `manifest.json` (the site's contract, below) and `lineup-review.png`
-   (the four on the page's wall colours and height chart, floors on one
-   line, for a person to look at);
-3. encode (with `--encode <dir>`, the repo's public/interlude): `<cat>.avif`
-   and `<cat>.webp` (no metadata: no Exif, XMP or ICC; straight alpha), and
-   the manifest; it stops if an AVIF is over `AVIF_MAX` or the four over
+   `manifest.json` (the site's contract, below; layers not rendered in this
+   run keep their entries from the shipped manifest) and `lineup-review.png`
+   and `states-review.png` (the line-up, then each cat's state in its slot,
+   on the page's wall colours and height chart, floors on one line, for a
+   person to look at; a layer not rendered in this run is read from the
+   shipped WebP);
+3. encode (with `--encode <dir>`, the repo's public/interlude): `<layer>.avif`
+   and `<layer>.webp` (no metadata: no Exif, XMP or ICC; straight alpha), and
+   the manifest; it stops if an AVIF is over `AVIF_MAX` (his, over
+   `PLAYER_AVIF_MAX`) or the four cats over
    `AVIF_TOTAL`, and it refuses `--check` layers.
 
 The manifest, in image pixels: `w` x `h`; `floorY`, the row where the cat
@@ -46,12 +63,18 @@ row of the head, ear tips and their fur included (alpha >= 0.5);
 `centerX`, the column of the slot centre; `headWidth`, the head across the
 cheeks (the skin's width at cheek height plus the cheek fur on both sides).
 `pxPerCm` is `PX_PER_CM`. No cat carries a halo, so none sets `haloInImage`.
+`states` holds the states, each with `cat` (whose slot it stands in);
+`jesus` is him, at the same `pxPerCm` as the cats (real centimetres, one
+scale for all five), with `heightCm` (his kneeling height, from the
+model). His floor is the planted trainer's sole; `headWidth` his skin
+across the cheeks.
 
 Run with Blender 4.5 as a Python module (bpy), from the repo root:
 
   XDG_CONFIG_HOME=$(mktemp -d) nice /home/user/.venvs/bpy/bin/python \\
       tools/blender/render_interlude.py -- --out <folder outside the repo> \\
-      [--cats kira,tom,dante,odin] [--stages render,compose,encode] \\
+      [--cats kira,tom,dante,odin,kira-back,tom-asleep,dante-swipe,jesus] \\
+      [--stages render,compose,encode] \\
       [--encode public/interlude] [--threads 4] [--check]
 
 --check renders at the generator's `test` quality (half fur density, 48
@@ -80,10 +103,14 @@ from PIL import Image, ImageDraw  # noqa: E402
 import bpy  # noqa: E402
 
 import build_cats  # noqa: E402
+import lineup_man  # noqa: E402
 from cats import base, fur, rig, stage, suspects  # noqa: E402
 
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 CATS = suspects.CATS  # kira, tom, dante, odin: the slot order
+STATES = tuple(suspects.STATES)  # kira-back, tom-asleep, dante-swipe: a cat refusing (cats/suspects/states.py)
+PLAYER = "jesus"  # slot 5, the one she can choose (lineup_man.py), at his true size
+LAYERS = CATS + STATES + (PLAYER,)
 
 # ONE render setting for the four layers.
 PX_PER_CM = 24
@@ -113,6 +140,9 @@ SHADOW = dict(
 # The site's image budget (public/interlude/README.md, lineup.test.ts).
 AVIF_MAX = 90 * 1024
 AVIF_TOTAL = 360 * 1024
+# him: at the cats' pixel density he is nine times a cat's pixels (1.2 m by
+# 80 cm against 40 by 25), at the same encoder setting
+PLAYER_AVIF_MAX = 160 * 1024
 AVIF = dict(quality=70, speed=4, subsampling="4:4:4", range="full", alpha_premultiplied=False, max_threads=1)
 WEBP = dict(quality=82, alpha_quality=100, method=6, exact=True)
 
@@ -184,10 +214,21 @@ def geometry(cat, b, res, crop):
                 floor_v_paws=floor, head_width_px=float(head_px), ear_skin_v=float(v_ear.max()))
 
 
+def man_geometry(man, res, crop):
+    """His floor contact (the planted trainer's sole, its front edge in the
+    picture), the slot centre and his head's width across the cheeks."""
+    _, v = project(man.floor_contact, res)
+    u, _ = project(man.head_band, res)
+    top = np.concatenate(man.extra_points)
+    _, v_top = project(top[top[:, 2] > top[:, 2].max() - 0.002], res)
+    return dict(res=res, crop=list(crop), centre_u=res / 2.0, floor_v=float(v.min()),
+                floor_v_paws=[float(v.min())], head_width_px=float(u.max() - u.min()),
+                ear_skin_v=float(v_top.max()), height_cm=man.report["head_top_cm"])
+
+
 # ------------------------------------------------------------------ render
 
-def render_cat(b, key, out, threads, check, passes=("beauty", "shadow")):
-    spec = suspects.load(key)
+def render_layer(b, key, out, threads, check, passes=("beauty", "shadow")):
     quality = CHECK if check else QUALITY
     q = build_cats.QUALITY[quality]
     px_cm = q["px_cm"] if check else PX_PER_CM
@@ -195,19 +236,39 @@ def render_cat(b, key, out, threads, check, passes=("beauty", "shadow")):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     work = os.path.join(out, "work")
     os.makedirs(work, exist_ok=True)
-    cat = build_cats.build(b, spec, quality, work, log=log)
-    rep = build_cats.report(cat, b)
-    if cat.halo:
-        raise SystemExit(f"{key}: the line-up has no halo (owner); its HALO must stay off")
+    if key == PLAYER:
+        man = lineup_man.build(log=log)
+        points = np.concatenate(man.extra_points)
+        rep = dict(man.report, layer=key)
+
+        def geo_of(res, crop):
+            return man_geometry(man, res, crop)
+    else:
+        spec = suspects.load(key)
+        cat = build_cats.build(b, spec, quality, work, log=log)
+        rep = dict(build_cats.report(cat, b), layer=key)
+        if cat.halo:
+            raise SystemExit(f"{key}: the line-up has no halo (owner); its HALO must stay off")
+        points = np.concatenate(cat.extra_points)
+
+        def geo_of(res, crop):
+            return geometry(cat, b, res, crop)
     pal = stage.tokens()
     sc = bpy.context.scene
     stage.setup_render(quality, threads=threads, samples=samples)
+    if key == PLAYER:
+        # his crew cut, beard and moustache are twelve stacked alpha-tested
+        # shells: past 16 transparent bounces Cycles draws them as black
+        # bands. Nothing in the cats' layers is transparent (fur is curves,
+        # the corneas glass), so this changes nothing a cat would show.
+        sc.cycles.transparent_max_bounces = 64
     stage.clear()
     stage.lineup_camera()
-    stage.frame_lineup(px_cm, np.concatenate(cat.extra_points))
+    # him: a 1:MINIATURE miniature at MINIATURE times the density, px_cm to his real centimetre
+    stage.frame_lineup(px_cm * (lineup_man.MINIATURE if key == PLAYER else 1), points)
     res = sc.render.resolution_x
     crop = pixel_crop(res)
-    geo = geometry(cat, b, res, crop)
+    geo = geo_of(res, crop)
     geo.update(px_per_cm=px_cm, quality=quality, samples=samples, gains=GAINS)
 
     if "beauty" in passes:  # the cat under the shared rig
@@ -253,7 +314,10 @@ def render_cat(b, key, out, threads, check, passes=("beauty", "shadow")):
         with open(os.path.join(out, f"{key}-shadow.json"), "w") as f:
             json.dump(dict(crop=list(crop), rows=[crop[2], ys1], shadow=SHADOW, px_per_cm=px_cm,
                            quality=quality, samples=samples), f, indent=1)
-    log(f"{key}: ear tip {rep['ear_tip_cm']} cm, paws {rep['paw_floor_cm']}, strands {rep['strands']}")
+    if key == PLAYER:
+        log(f"{key}: kneeling at {rep['head_top_cm']} cm, at his true size")
+    else:
+        log(f"{key}: ear tip {rep['ear_tip_cm']} cm, paws {rep['paw_floor_cm']}, strands {rep['strands']}")
 
 
 # ------------------------------------------------------------------ compose
@@ -340,37 +404,68 @@ def compose_cat(key, out, pal):
     return entry, ppc
 
 
-def review(entries, ppc, out, pal):
-    """The four on the page's wall (lineup tokens), floors on one line, a 5 cm chart."""
+def layer_image(key, out, dest):
+    """A composed layer: this run's PNG, else the shipped WebP (a layer not rendered again)."""
+    path = os.path.join(out, f"{key}.png")
+    if os.path.exists(path):
+        return Image.open(path).convert("RGBA")
+    return Image.open(os.path.join(dest, f"{key}.webp")).convert("RGBA")
+
+
+def review(manifest, out, dest):
+    """The line-up on the page's wall (lineup tokens), floors on one line, a 5 cm chart.
+
+    One scale for all five, as the page draws them: `lineup-review.png`, the
+    four and him in slot 5; `states-review.png`, the same wall with each
+    cat's state in its slot. The chart runs to his height and a little more.
+    """
+    from PIL import ImageFont
+    ppc = manifest["pxPerCm"]
     toks = page_tokens()
     wall_hi, wall_lo, floor_c = (hexrgb(toks.get(k, d)) for k, d in
                                  (("wallHigh", "#1f1243"), ("wallLow", "#33255f"), ("floor", "#150b2e")))
-    slot = 16 / 0.62  # lineup.ts WIDE_SLOT_CM
-    W = int(round((4 * slot + 8) * ppc))
-    floor = int(round(52 * ppc))
-    H = floor + int(round(12 * ppc))
-    sheet = np.zeros((H, W, 3))
-    t = np.linspace(0, 1, floor)[:, None]
-    sheet[:floor] = (np.array(wall_hi) * (1 - t) + np.array(wall_lo) * t)[:, None, :]
-    sheet[floor:] = floor_c
-    img = Image.fromarray(np.round(sheet).astype(np.uint8), "RGB").convert("RGBA")
-    d = ImageDraw.Draw(img)
-    for cm in range(5, 50, 5):
-        y = floor - int(round(cm * ppc))
-        d.line([(0, y), (W, y)], fill=(210, 190, 255, 90 if cm % 10 == 0 else 40), width=1)
-        if cm % 10 == 0:
-            d.text((6, y - 14), str(cm), fill=(240, 230, 255, 200))
-    d.line([(0, floor), (W, floor)], fill=(255, 240, 230, 110), width=1)
-    for i, key in enumerate(CATS):
-        e = entries[key]
-        cat = Image.open(os.path.join(out, f"{key}.png"))
-        cx = int(round((4 + (i + 0.5) * slot) * ppc))
-        img.alpha_composite(cat, (cx - e["centerX"], floor - e["floorY"]))
-        top = floor - (e["floorY"] - e["headTopY"])
-        d.line([(cx - 40, top), (cx + 40, top)], fill=(255, 120, 200, 200), width=1)
-        d.text((cx - 60, floor + 12), f"{i + 1} {key} {(e['floorY'] - e['headTopY']) / ppc:.1f} cm",
-               fill=(240, 230, 255, 255))
-    img.convert("RGB").save(os.path.join(out, "lineup-review.png"))
+    try:
+        font = ImageFont.truetype("DejaVuSans.ttf", int(round(1.6 * ppc)))
+    except OSError:
+        font = ImageFont.load_default()
+    slot_cm = 16 / 0.62  # lineup.ts WIDE_SLOT_CM
+    player = [(PLAYER, manifest[PLAYER])] if PLAYER in manifest else []
+    rows = {
+        "lineup-review.png": [(k, manifest["cats"][k]) for k in CATS] + player,
+        "states-review.png": [(next((s for s in STATES if suspects.STATES[s]["cat"] == k
+                                     and s in manifest.get("states", {})), k), None) for k in CATS] + player,
+    }
+    for name, row in rows.items():
+        row = [(k, e or manifest.get("states", {}).get(k) or manifest["cats"][k]) for k, e in row]
+        widths = [max(slot_cm, e["w"] / ppc + 6) for _, e in row]
+        top_cm = max((e["floorY"] - e["headTopY"]) / ppc for _, e in row)
+        chart = int(math.ceil((top_cm + 12) / 10) * 10)
+        W = int(round((sum(widths) + 8) * ppc))
+        floor = int(round((chart + 2) * ppc))
+        H = floor + int(round(12 * ppc))
+        sheet = np.zeros((H, W, 3))
+        t = np.linspace(0, 1, floor)[:, None]
+        sheet[:floor] = (np.array(wall_hi) * (1 - t) + np.array(wall_lo) * t)[:, None, :]
+        sheet[floor:] = floor_c
+        img = Image.fromarray(np.round(sheet).astype(np.uint8), "RGB").convert("RGBA")
+        d = ImageDraw.Draw(img)
+        for cm in range(5, chart + 1, 5):
+            y = floor - int(round(cm * ppc))
+            d.line([(0, y), (W, y)], fill=(210, 190, 255, 90 if cm % 10 == 0 else 40), width=2 if cm % 10 == 0 else 1)
+            if cm % 10 == 0:
+                d.text((int(0.5 * ppc), y - int(2 * ppc)), str(cm), fill=(240, 230, 255, 200), font=font)
+        d.line([(0, floor), (W, floor)], fill=(255, 240, 230, 110), width=2)
+        x = 4.0
+        for i, ((key, e), w) in enumerate(zip(row, widths)):
+            im = layer_image(key, out, dest)
+            cx = int(round((x + w / 2) * ppc))
+            x += w
+            img.alpha_composite(im, (cx - e["centerX"], floor - e["floorY"]))
+            top = floor - (e["floorY"] - e["headTopY"])
+            d.line([(cx - 2 * ppc, top), (cx + 2 * ppc, top)], fill=(255, 120, 200, 200), width=2)
+            real = e.get("heightCm", round((e["floorY"] - e["headTopY"]) / ppc, 1))
+            d.text((cx - 5 * ppc, floor + ppc), f"{i + 1} {key} {real:.1f} cm", fill=(240, 230, 255, 255), font=font)
+        img.convert("RGB").save(os.path.join(out, name))
 
 
 def page_tokens():
@@ -390,18 +485,49 @@ def hexrgb(h):
 
 # ------------------------------------------------------------------ encode
 
-def write_manifest(folder, entries, ppc):
-    """manifest.json, the site's contract: pxPerCm and each cat's box, in slot order."""
-    manifest = dict(pxPerCm=ppc, cats={k: entries[k] for k in CATS})
+def manifest_of(entries, ppc, base=None):
+    """manifest.json, the site's contract (public/interlude/README.md).
+
+    `cats`: the four in slot order; `states`: each cat's refusal, with the
+    cat it stands in for; `jesus`: him, at the same scale, with his kneeling
+    height. Entries not composed in this run are kept from
+    `base` (the manifest already shipped), so a run can redo one layer.
+    """
+    base = base or {}
+    if base and base.get("pxPerCm") != ppc:
+        raise SystemExit(f"the shipped manifest is at {base.get('pxPerCm')} px/cm, these layers at {ppc}")
+    cats = dict(base.get("cats", {}))
+    states = dict(base.get("states", {}))
+    player = base.get(PLAYER)
+    for k, e in entries.items():
+        if k in CATS:
+            cats[k] = e
+        elif k in STATES:
+            states[k] = dict(e, cat=suspects.STATES[k]["cat"])
+        elif k == PLAYER:
+            player = dict(e)
+    missing = [k for k in CATS if k not in cats]
+    if missing:
+        raise SystemExit(f"no layer for {missing}: render the four cats (or keep their shipped manifest)")
+    m = dict(pxPerCm=ppc, cats={k: cats[k] for k in CATS})
+    if states:
+        m["states"] = {k: states[k] for k in STATES if k in states}
+    if player:
+        m[PLAYER] = player
+    return m
+
+
+def write_manifest(folder, manifest):
     with open(os.path.join(folder, "manifest.json"), "w") as f:
         json.dump(manifest, f, indent=2)
         f.write("\n")
 
 
-def encode(out, dest, entries, ppc):
+def encode(out, dest, keys, manifest):
+    """The composed layers as AVIF and WebP in dest, then the manifest; checks the budget."""
     os.makedirs(dest, exist_ok=True)
     sizes = {}
-    for key in CATS:
+    for key in keys:
         im = Image.open(os.path.join(out, f"{key}.png")).convert("RGBA")
         im.info.clear()
         avif = os.path.join(dest, f"{key}.avif")
@@ -410,12 +536,12 @@ def encode(out, dest, entries, ppc):
         im.save(webp, "WEBP", **WEBP)
         sizes[key] = (os.path.getsize(avif), os.path.getsize(webp))
         log(f"{key}: avif {sizes[key][0] / 1024:.1f} KB, webp {sizes[key][1] / 1024:.1f} KB")
-    total = sum(s[0] for s in sizes.values())
-    over = [k for k, s in sizes.items() if s[0] > AVIF_MAX]
-    if over or total > AVIF_TOTAL:
-        raise SystemExit(f"over the image budget: {over or ''} total {total / 1024:.1f} KB")
-    write_manifest(dest, entries, ppc)
-    log(f"avif total {total / 1024:.1f} KB of {AVIF_TOTAL / 1024:.0f}")
+    over = [k for k, s in sizes.items() if s[0] > (PLAYER_AVIF_MAX if k == PLAYER else AVIF_MAX)]
+    four = sum(os.path.getsize(os.path.join(dest, f"{k}.avif")) for k in CATS)
+    if over or four > AVIF_TOTAL:
+        raise SystemExit(f"over the image budget: {over or ''} the four {four / 1024:.1f} KB")
+    write_manifest(dest, manifest)
+    log(f"the four cats' avif {four / 1024:.1f} KB of {AVIF_TOTAL / 1024:.0f}")
     return sizes
 
 
@@ -423,7 +549,7 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", required=True, help="work folder outside the repo")
-    ap.add_argument("--cats", default=",".join(CATS))
+    ap.add_argument("--cats", default=",".join(LAYERS), help="layers: the cats, their states, jesus")
     ap.add_argument("--stages", default="render,compose,encode")
     ap.add_argument("--encode", default=None, help="folder for the shipped files (public/interlude)")
     ap.add_argument("--threads", type=int, default=4)
@@ -437,38 +563,52 @@ def main():
     os.makedirs(out, exist_ok=True)
     keys = [k for k in args.cats.split(",") if k]
     for k in keys:
-        if k not in CATS:
-            raise SystemExit(f"unknown cat {k!r}; one of {', '.join(CATS)}")
+        if k not in LAYERS:
+            raise SystemExit(f"unknown layer {k!r}; one of {', '.join(LAYERS)}")
     stages = set(args.stages.split(","))
     pal = stage.tokens()
     passes = [p for p in ("beauty", "shadow") if p in stages or "render" in stages]
     if passes:
         b = base.load(base.ensure(args.base, fetch=not args.no_fetch), log=log)
         for key in keys:
-            render_cat(b, key, out, args.threads, args.check, passes)
+            render_layer(b, key, out, args.threads, args.check, passes)
     if "compose" in stages or "encode" in stages:
-        missing = [f"{k}-{n}.json" for k in CATS for n in ("geometry", "shadow")
+        missing = [f"{k}-{n}.json" for k in keys for n in ("geometry", "shadow")
                    if not os.path.exists(os.path.join(out, f"{k}-{n}.json"))]
         if missing:
-            raise SystemExit(f"render first ({', '.join(missing)}): the line-up is composed from all four")
-        geos = {k: json.load(open(os.path.join(out, f"{k}-geometry.json"))) for k in CATS}
-        shads = {k: json.load(open(os.path.join(out, f"{k}-shadow.json"))) for k in CATS}
+            raise SystemExit(f"render first ({', '.join(missing)})")
+        geos = {k: json.load(open(os.path.join(out, f"{k}-geometry.json"))) for k in keys}
+        shads = {k: json.load(open(os.path.join(out, f"{k}-shadow.json"))) for k in keys}
         settings = {(g["quality"], g["samples"], g["px_per_cm"], json.dumps(g["gains"], sort_keys=True),
                      json.dumps(shads[k]["shadow"], sort_keys=True), shads[k]["crop"] == g["crop"])
                     for k, g in geos.items()}
         if len(settings) > 1 or not all(x[-1] for x in settings):
             raise SystemExit(f"the layers in {out} were rendered with different settings {settings}: "
-                             "render the four again together")
-        entries = {k: compose_cat(k, out, pal)[0] for k in CATS}
-        ppc = geos[CATS[0]]["px_per_cm"]
-        write_manifest(out, entries, ppc)
-        review(entries, ppc, out, pal)
+                             "render them again together")
+        entries = {k: compose_cat(k, out, pal)[0] for k in keys}
+        if PLAYER in entries:  # his real kneeling height, from the model (the floor line is in front of him)
+            entries[PLAYER]["heightCm"] = geos[PLAYER]["height_cm"]
+        ppc = geos[keys[0]]["px_per_cm"]
+        dest = os.path.abspath(args.encode) if args.encode else os.path.join(REPO, "public", "interlude")
+        shipped = os.path.join(dest, "manifest.json")
+        base_m = json.load(open(shipped)) if os.path.exists(shipped) and ppc == PX_PER_CM else None
+        if base_m is None and any(k not in entries for k in CATS):
+            # a check run of some layers: no manifest to complete at this scale
+            with open(os.path.join(out, "entries.json"), "w") as f:
+                json.dump(dict(pxPerCm=ppc, layers=entries), f, indent=2)
+            log("composed; no review (the four cats are not in this run at this scale)")
+            log("done")
+            return
+        manifest = manifest_of(entries, ppc, base_m)
+        write_manifest(out, manifest)
+        review(manifest, out, dest)
         if "encode" in stages and args.encode:
-            g = geos[CATS[0]]
-            if ((g["quality"], g["samples"], g["px_per_cm"], g["gains"]) != (QUALITY, SAMPLES, PX_PER_CM, GAINS)
-                    or shads[CATS[0]]["shadow"] != SHADOW or shads[CATS[0]]["samples"] != SAMPLES):
-                raise SystemExit("only layers rendered at the one shipping setting are encoded (not --check)")
-            encode(out, os.path.abspath(args.encode), entries, ppc)
+            for k in keys:
+                g = geos[k]
+                if ((g["quality"], g["samples"], g["px_per_cm"], g["gains"]) != (QUALITY, SAMPLES, PX_PER_CM, GAINS)
+                        or shads[k]["shadow"] != SHADOW or shads[k]["samples"] != SAMPLES):
+                    raise SystemExit("only layers rendered at the one shipping setting are encoded (not --check)")
+            encode(out, dest, keys, manifest)
     log("done")
 
 

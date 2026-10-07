@@ -82,7 +82,18 @@
  * swipes on a phone whose bars hide going down and come back going up,
  * the viewport and every viewport unit with them, under both motion modes:
  * no section moves in the page, no frame against her input or over a
- * screen, no scroll by script, no layout shift).
+ * screen, no scroll by script, no layout shift), select (THE USUAL
+ * SUSPECTS' character select, unchosen: Skip lands on it; the wheel, the
+ * keys, the scrollbar dragged and its track clicked on a desktop, swipes
+ * and a fling on a phone (and under reduced motion, the browser's own
+ * momentum) stop at its wall with the prompt up; Tab past the roster
+ * lands on the locked way on; at 1366 x 657, 960 x 600 and a phone on its
+ * side (844 x 390) the wall stands at the select's foot, every plate and
+ * description in reach; a cat refuses and the wall holds; a
+ * link, Back and Forward and a fragment pass it; Jesús chosen by the
+ * arrows and Enter, or a tap, she scrolls on and back freely, a reload in
+ * the visit remembers it, and nothing shifts). Every other check starts
+ * with Jesús already chosen, as earlier in the visit.
  *
  * WebGL is off by default: the checks read the DOM and its timing, and a
  * machine without a GPU renders the scene at a few frames a second
@@ -141,9 +152,21 @@ const launch = () =>
   });
 let browser = null;
 
-/** A fresh page, entered (without music), with the hero's probe on. */
-async function session(device, lang, { reducedMotion = "no-preference", enter = true, hash = "", init = null } = {}) {
-  const context = await browser.newContext({ ...DEVICES[device], reducedMotion });
+/**
+ * A fresh page, entered (without music), with the hero's probe on. Jesús is
+ * already chosen in THE USUAL SUSPECTS' character select (`chosen`), as for
+ * a visitor who picked him earlier in the visit, so the checks that drive
+ * on past it are not held at its wall; the `select` check starts unchosen.
+ */
+async function session(device, lang, { reducedMotion = "no-preference", enter = true, hash = "", init = null, chosen = true, viewport = null } = {}) {
+  const context = await browser.newContext({ ...DEVICES[device], ...(viewport ? { viewport } : {}), reducedMotion });
+  if (chosen) {
+    await context.addInitScript(() => {
+      try {
+        sessionStorage.setItem("va-player-one", "jesus");
+      } catch {}
+    });
+  }
   if (init) await context.addInitScript(init);
   const page = await context.newPage();
   const errors = [];
@@ -3155,6 +3178,345 @@ const CHECKS = {
     console.log(`INFO ${tag} smoothness, city first pass:`, JSON.stringify(smooth(p1, motion)), "city back and forth:", JSON.stringify(smooth(p2, motion)), "hero back and forth:", JSON.stringify(smooth(hphases, hmotion)));
     report(`${tag} no page errors`, cityErrors.length === 0 && heroErrors.length === 0, { cityErrors, heroErrors });
     console.log(`INFO ${tag} traces: ${file("cityloop.json")}, ${file("heroloop.json")}; frames: ${file("*.jpg")}`);
+  },
+
+  async select(device, lang) {
+    // THE USUAL SUSPECTS' character select holds her own scrolling at its
+    // wall until Jesús is chosen (selectWall.ts): the wheel, the keys, the
+    // scrollbar and swipes, each with the prompt up and the career city
+    // never in sight; a cat refuses and the wall stays. Navigation passes
+    // (Skip lands on the select, a link and a fragment go on past it, Back
+    // and Forward too). Once he is chosen, by the keys on a desktop or a tap
+    // on a phone, she scrolls freely both ways, and a reload in the visit
+    // keeps it. Nothing shifts.
+    const W = DEVICES[device].viewport.width;
+    const H = DEVICES[device].viewport.height;
+    const desktop = device === "desktop";
+    const notch = (s, dy = 200) => (desktop ? s.page.mouse.wheel(0, dy) : stroke(s.cdp, { dy: Math.sign(dy) * Math.min(Math.abs(dy) * 1.6, 420), ms: 140, y0: dy > 0 ? H * 0.75 : H * 0.25, x: W / 2 }));
+    const record = () => {
+      window.__sel = { on: false, maxY: 0, shift: 0, prompt: false };
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) if (window.__sel.on) window.__sel.shift += entry.value;
+      }).observe({ type: "layout-shift", buffered: false });
+      const tick = () => {
+        const sel = window.__sel;
+        if (sel.on) {
+          sel.maxY = Math.max(sel.maxY, scrollY);
+          if (document.querySelector("[data-prompt][data-on]")) sel.prompt = true;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    };
+    /**
+     * Where the wall stands (selectWall.ts selectFrontier), read from the page at rest: the
+     * select's foot at the screen's foot, or on a phone, his strip under the cats', no lower than
+     * keeps his crown 7rem under the top.
+     */
+    const wallOf = (s) =>
+      s.page.evaluate(() => {
+        const section = document.getElementById("suspects");
+        const box = section.getBoundingClientRect();
+        const crown = section.querySelector("[data-crown]")?.getBoundingClientRect();
+        const player = section.querySelector('[data-slot="jesus"]').getBoundingClientRect();
+        const stacked = [...section.querySelectorAll("[data-slot]:not([data-slot='jesus'])")].every((cat) => player.top >= cat.getBoundingClientRect().bottom - 1);
+        const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const foot = box.bottom + scrollY - innerHeight;
+        const head = crown && stacked ? crown.top + scrollY - 7 * rem : foot;
+        return Math.round(Math.max(box.top + scrollY, Math.min(foot, head)));
+      });
+    const at = (s) =>
+      s.page.evaluate(() => ({
+        y: Math.round(scrollY),
+        work: Math.round(document.getElementById("work").getBoundingClientRect().top + scrollY),
+        chosen: sessionStorage.getItem("va-player-one"),
+        live: document.querySelector("#suspects [data-live]")?.textContent ?? "",
+      }));
+    const mark = (s, on) =>
+      s.page.evaluate((on) => {
+        window.__sel.on = on;
+        if (on) Object.assign(window.__sel, { maxY: scrollY, prompt: false });
+      }, on);
+    const sel = (s) => s.page.evaluate(() => ({ ...window.__sel, shift: Math.round(window.__sel.shift * 10000) / 10000 }));
+    /** The hero's Skip: the page lands with THE USUAL SUSPECTS at the top. */
+    const skip = async (s) => {
+      await sleep(1500);
+      if (desktop) {
+        await s.page.mouse.move(W / 2, H / 2);
+        await s.page.keyboard.press("End");
+      } else {
+        const button = s.page.locator("[data-skip] button, button[data-skip]").first();
+        await button.tap({ timeout: 8000 }).catch(() => s.page.keyboard.press("End"));
+      }
+      await sleep(1600);
+    };
+
+    // 1. Skip lands on the select; her own input stops at its wall.
+    const s = await session(device, lang, { chosen: false, init: record });
+    await skip(s);
+    const landed = await s.page.evaluate(() => ({ top: Math.round(document.getElementById("suspects").getBoundingClientRect().top), focus: document.activeElement?.id }));
+    report(`${device} ${lang} select: Skip lands on the character select`, Math.abs(landed.top) <= 2 && landed.focus === "suspects", landed);
+    const wall = await wallOf(s);
+    await mark(s, true);
+    for (let i = 0; i < (desktop ? 30 : 14); i += 1) {
+      await notch(s, desktop ? 240 : 300);
+      await sleep(desktop ? 60 : 220);
+    }
+    await sleep(500);
+    const pushed = { ...(await sel(s)), ...(await at(s)), wall };
+    report(
+      `${device} ${lang} select: ${desktop ? "the wheel stops" : "swipes stop"} at the wall, with the prompt up, the career city out of sight`,
+      pushed.maxY <= wall + 3 && Math.abs(pushed.y - wall) <= 3 && pushed.prompt && pushed.maxY < pushed.work - H * 0.5 && pushed.chosen === null,
+      pushed,
+    );
+    if (!desktop) {
+      // A fling: one fast long stroke.
+      await mark(s, true);
+      await stroke(s.cdp, { dy: 520, ms: 70, y0: H * 0.85, x: W / 2 });
+      await sleep(1500);
+      const flung = { ...(await sel(s)), ...(await at(s)), wall };
+      report(`${device} ${lang} select: a fling flies up to the wall and no further`, flung.maxY <= wall + 3 && Math.abs(flung.y - wall) <= 3, flung);
+    } else {
+      // The keys that scroll the page forward, the focus on the page (Skip put it on the section).
+      await mark(s, true);
+      for (const key of ["PageDown", "PageDown", "Space", "ArrowDown", "ArrowDown", "End", "Control+End"]) {
+        await s.page.keyboard.press(key);
+        await sleep(250);
+      }
+      await sleep(700);
+      const keyed = { ...(await sel(s)), ...(await at(s)), wall };
+      report(`${device} ${lang} select: PageDown, Space, the arrows and End stop at the wall`, keyed.maxY <= wall + 3 && Math.abs(keyed.y - wall) <= 3 && keyed.prompt, keyed);
+      // The scrollbar: the page moved natively while a mouse button is held goes back to the wall.
+      await mark(s, true);
+      await s.page.mouse.move(W - 6, H / 2);
+      await s.page.mouse.down();
+      await s.page.evaluate(() => window.scrollBy(0, 1600));
+      await sleep(400);
+      await s.page.mouse.up();
+      await sleep(500);
+      const dragged = await at(s);
+      report(`${device} ${lang} select: the scrollbar dragged past the wall goes back to it`, Math.abs(dragged.y - wall) <= 3, { ...dragged, wall });
+      // A click on the scrollbar's track: the press lands on the page's root, the button is up
+      // before the browser's animated step, and that step is still hers; the wall stays closed.
+      await mark(s, true);
+      await s.page.evaluate(() => {
+        const at = { bubbles: true, pointerType: "mouse", pointerId: 1, isPrimary: true, clientX: innerWidth - 6, clientY: innerHeight - 20 };
+        document.documentElement.dispatchEvent(new PointerEvent("pointerdown", { ...at, buttons: 1 }));
+        document.documentElement.dispatchEvent(new PointerEvent("pointerup", { ...at, buttons: 0 }));
+        window.scrollBy({ top: innerHeight * 0.875, behavior: "smooth" });
+      });
+      await sleep(900);
+      const stepped = await at(s);
+      for (let i = 0; i < 8; i += 1) {
+        await notch(s, 240);
+        await sleep(80);
+      }
+      await sleep(700);
+      const after = { ...(await sel(s)), ...(await at(s)), wall };
+      report(
+        `${device} ${lang} select: a click on the scrollbar's track steps back to the wall, and the wall stays closed`,
+        Math.abs(stepped.y - wall) <= 3 && after.maxY < after.work - H * 0.5 && Math.abs(after.y - wall) <= 3,
+        { stepped: stepped.y, after },
+      );
+      // Tab past the roster lands on the locked way on, which says why: the wall stays closed.
+      await s.page.locator('[data-slot="kira"] [data-pick]').focus();
+      await s.page.keyboard.press("Tab");
+      await sleep(300);
+      const tabbed = await s.page.evaluate(() => ({ locked: document.activeElement?.hasAttribute("data-locked") ?? false, name: document.activeElement?.textContent ?? "" }));
+      await s.page.mouse.move(W / 2, H / 2);
+      for (let i = 0; i < 6; i += 1) {
+        await notch(s, 240);
+        await sleep(80);
+      }
+      await sleep(700);
+      const held = await at(s);
+      report(`${device} ${lang} select: Tab past the roster lands on the locked way on, and the wall holds`, tabbed.locked && tabbed.name.length > 0 && held.y <= wall + 3, { tabbed, held: held.y, wall });
+      await s.page.locator('[data-slot="kira"] [data-pick]').focus();
+    }
+
+    // 2. A cat refuses (and says so), and the wall stays.
+    // A cat's button is aria-disabled (it cannot be chosen), so it is pressed where it stands, as she would,
+    // once her own swipes back up (always free) have brought him into view on a phone.
+    const pick = s.page.locator('[data-slot="dante"] [data-pick]');
+    for (let i = 0; i < 12; i += 1) {
+      const box = await pick.boundingBox();
+      if (box && box.y + box.height * 0.88 > 90 && box.y + box.height * 0.88 < H - 60) break;
+      await notch(s, -200);
+      await sleep(400);
+    }
+    await sleep(500);
+    const dante = await pick.boundingBox();
+    if (desktop) await s.page.mouse.click(dante.x + dante.width / 2, dante.y + dante.height * 0.88);
+    else await s.page.touchscreen.tap(dante.x + dante.width / 2, dante.y + dante.height * 0.88);
+    await sleep(900);
+    const refused = await at(s);
+    await mark(s, true);
+    for (let i = 0; i < 6; i += 1) {
+      await notch(s, desktop ? 240 : 300);
+      await sleep(desktop ? 60 : 220);
+    }
+    await sleep(500);
+    const still = { ...(await sel(s)), ...(await at(s)), wall };
+    report(
+      `${device} ${lang} select: Dante refuses out loud and the wall holds`,
+      refused.live.length > 0 && refused.chosen === null && still.maxY <= wall + 3 && (await s.page.evaluate(() => Number(localStorage.getItem("va-dante-tries")))) >= 1,
+      { live: refused.live, still },
+    );
+
+    // 3. Choosing him: the keys on a desktop (the arrows to slot 5, Enter), a tap on a phone. Then free both ways.
+    await mark(s, true);
+    if (desktop) {
+      await s.page.locator('[data-slot="kira"] [data-pick]').focus();
+      for (let i = 0; i < 4; i += 1) await s.page.keyboard.press("ArrowRight");
+      const focused = await s.page.evaluate(() => document.activeElement?.closest("[data-slot]")?.getAttribute("data-slot"));
+      await s.page.keyboard.press("Enter");
+      report(`${device} ${lang} select: the arrows step to his slot`, focused === "jesus", { focused });
+    } else {
+      await s.page.locator('[data-slot="jesus"] [data-pick]').tap();
+    }
+    await sleep(1600);
+    const chosenShift = (await sel(s)).shift;
+    const chosen = await at(s);
+    await s.page.mouse.move(W / 2, H / 2).catch(() => {});
+    for (let i = 0; i < (desktop ? 12 : 6); i += 1) {
+      await notch(s, desktop ? 240 : 300);
+      await sleep(desktop ? 80 : 250);
+    }
+    await sleep(900);
+    const past = await at(s);
+    const top = Math.round(await s.page.evaluate(() => document.getElementById("suspects").getBoundingClientRect().top + scrollY));
+    for (let i = 0; i < (desktop ? 30 : 12); i += 1) {
+      await notch(s, desktop ? -240 : -300);
+      await sleep(desktop ? 60 : 250);
+    }
+    await sleep(900);
+    const back = await at(s);
+    report(
+      `${device} ${lang} select: chosen, she scrolls on past the wall and back up past the select`,
+      chosen.chosen === "jesus" && chosen.live.length > 0 && past.y > wall + H * 0.5 && back.y < top,
+      { wall, chosen, past: past.y, back: back.y, top },
+    );
+    report(`${device} ${lang} select: no layout shift from the first push to the choice`, chosenShift < 0.001, { shift: chosenShift });
+    // A reload in the visit keeps him chosen: no wall.
+    await s.page.reload({ waitUntil: "load" });
+    await s.page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+    await s.page.waitForSelector('[data-loader][data-phase="ready"], [data-loader][data-slow]', { timeout: 240_000 });
+    await s.page.locator('[data-loader] [data-enter="silent"]').click();
+    await s.page.waitForSelector("[data-loader]", { state: "detached", timeout: 20_000 });
+    await skip(s);
+    const kept = await wallOf(s);
+    for (let i = 0; i < (desktop ? 14 : 7); i += 1) {
+      await notch(s, desktop ? 240 : 300);
+      await sleep(desktop ? 80 : 250);
+    }
+    await sleep(900);
+    const again = await at(s);
+    report(`${device} ${lang} select: a reload in the visit remembers him: no wall`, again.chosen === "jesus" && again.y > kept + H * 0.5, { kept, again });
+    report(`${device} ${lang} select: no page errors`, s.errors.length === 0, s.errors.slice(0, 3));
+    await s.close();
+
+    // 4. Navigation passes the closed wall: a link, then Back and Forward, and a fragment set on the open page.
+    const n = await session(device, lang, { chosen: false, init: record });
+    await skip(n);
+    const nwall = await wallOf(n);
+    await n.page.evaluate(() => {
+      const a = document.createElement("a");
+      a.href = "#credits";
+      a.textContent = "credits";
+      a.id = "va-test-link";
+      a.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:99999;padding:12px;background:#fff;color:#000";
+      document.body.append(a);
+    });
+    if (desktop) await n.page.locator("#va-test-link").click();
+    else await n.page.locator("#va-test-link").tap();
+    await sleep(1800);
+    const linked = await n.page.evaluate(() => ({ y: Math.round(scrollY), credits: Math.round(document.getElementById("credits").getBoundingClientRect().top), hash: location.hash }));
+    await n.page.goBack();
+    await sleep(1800);
+    const backed = await at(n);
+    await n.page.goForward();
+    await sleep(1800);
+    const forward = await n.page.evaluate(() => ({ y: Math.round(scrollY), credits: Math.round(document.getElementById("credits").getBoundingClientRect().top) }));
+    report(
+      `${device} ${lang} select: a link goes on past the closed wall, and Back and Forward follow it`,
+      linked.hash === "#credits" && linked.y > nwall + H && Math.abs(linked.credits) < H && backed.y < linked.y && forward.y > nwall + H && Math.abs(forward.credits) < H,
+      { nwall, linked, backed: backed.y, forward },
+    );
+    await n.close();
+    const f = await session(device, lang, { chosen: false, init: record });
+    await skip(f);
+    const fwall = await wallOf(f);
+    await f.page.evaluate(() => {
+      location.hash = "stats";
+    });
+    await sleep(1800);
+    const fragment = await f.page.evaluate(() => ({ y: Math.round(scrollY), stats: Math.round(document.getElementById("stats").getBoundingClientRect().top) }));
+    for (let i = 0; i < 3; i += 1) {
+      await notch(f, desktop ? 200 : 260);
+      await sleep(desktop ? 120 : 300);
+    }
+    await sleep(900);
+    const onward = await at(f);
+    report(
+      `${device} ${lang} select: a fragment set on the open page passes the wall, and her next ${desktop ? "notch" : "swipe"} goes on from there`,
+      fragment.y > fwall + H && Math.abs(fragment.stats) < H && onward.y >= fragment.y - 2,
+      { fwall, fragment, onward: onward.y },
+    );
+    await f.close();
+
+    // 5. Reduced motion on a phone: no Lenis, the browser's own fling. Its momentum outlives the
+    // fling's window while the wall pulls it back, and stays hers: the wall never opens.
+    if (!desktop) {
+      const r = await session(device, lang, { chosen: false, init: record, reducedMotion: "reduce" });
+      await skip(r);
+      const rwall = await wallOf(r);
+      await mark(r, true);
+      for (let i = 0; i < 12; i += 1) {
+        await stroke(r.cdp, { dy: 520, ms: 60, y0: H * 0.85, x: W / 2 });
+        await sleep(90);
+      }
+      await sleep(2600);
+      await stroke(r.cdp, { dy: 520, ms: 60, y0: H * 0.85, x: W / 2 });
+      await sleep(2600);
+      const reduced = { ...(await sel(r)), ...(await at(r)), wall: rwall };
+      report(
+        `${device} ${lang} select: under reduced motion, hard swipes and a fling after them stop at the wall, which stays closed`,
+        reduced.maxY < reduced.work - H * 0.5 && Math.abs(reduced.y - rwall) <= 3 && reduced.chosen === null,
+        reduced,
+      );
+      await r.close();
+    }
+
+    // 6. A short window and a phone on its side: the five stand in one row taller than the screen,
+    // and the wall stands at the select's foot, so every plate and description can be read.
+    for (const viewport of desktop ? [{ width: 1366, height: 657 }, { width: 960, height: 600 }] : [{ width: 844, height: 390 }]) {
+      const v = await session(device, lang, { chosen: false, init: record, viewport });
+      const tag = `${viewport.width}x${viewport.height}`;
+      await skip(v);
+      const vwall = await wallOf(v);
+      for (let i = 0; i < (desktop ? 24 : 10); i += 1) {
+        if (desktop) await v.page.mouse.wheel(0, 240);
+        else await stroke(v.cdp, { dy: 240, ms: 140, y0: viewport.height * 0.8, x: viewport.width / 2 });
+        await sleep(desktop ? 60 : 220);
+      }
+      await sleep(900);
+      const fit = await v.page.evaluate(() => {
+        const section = document.getElementById("suspects");
+        const foot = Math.round(section.getBoundingClientRect().bottom + scrollY - innerHeight);
+        const slots = [...section.querySelectorAll("[data-slot]")].map((slot) => {
+          const plate = slot.querySelector("[data-pick] > span:last-child").getBoundingClientRect();
+          const desc = slot.querySelector("p").getBoundingClientRect();
+          return { id: slot.dataset.slot, plate: Math.round(plate.bottom), desc: Math.round(desc.bottom) };
+        });
+        return { y: Math.round(scrollY), foot, slots, work: Math.round(document.getElementById("work").getBoundingClientRect().top + scrollY) };
+      });
+      report(
+        `${device} ${lang} select ${tag}: the wall stands at the select's foot, every plate and description in reach, the career city out of sight`,
+        Math.abs(fit.y - vwall) <= 3 && Math.abs(vwall - fit.foot) <= 3 && fit.slots.every((slot) => slot.plate <= viewport.height && slot.desc <= viewport.height + 1) && fit.y < fit.work - viewport.height * 0.5,
+        { vwall, ...fit },
+      );
+      await v.close();
+    }
   },
 
   async loader(device, lang) {

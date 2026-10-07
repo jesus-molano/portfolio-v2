@@ -15,8 +15,10 @@ Run with Blender 4.5 as a Python module (bpy), from the repo root:
       [--quality clay|test|final] [--views lineup,face,face34,profile,q34] \\
       [--field coat|length|<cat-space field>] [--density F] [--blend]
 
---cat        kira, tom, dante, odin, neutral (the shared defaults), or all
-             (the four suspects in turn, then a line-up composite);
+--cat        kira, tom, dante, odin, neutral (the shared defaults), a
+             select-screen state (kira-back, tom-asleep, dante-swipe:
+             cats/suspects/states.py), or all (the four suspects in turn,
+             then a line-up composite);
 --quality    clay: bare skin in grey clay under neutral studio lights, no fur
              (anatomy and pose; seconds). test: fur at half density, 48
              samples, 12 px/cm (minutes). final: full fur, adaptive 64-256
@@ -313,10 +315,10 @@ def render_views(cat, views, quality, out_dir, threads, samples=None, field=None
                 for li in lights:
                     li.location = tuple(R @ np.array(li.location))
                     stage.look_at(li, target + np.array([0, 0, 0.02]))
-        path = os.path.join(out_dir, f"{spec.key}-{view}.png")
+        path = os.path.join(out_dir, f"{spec.layer}-{view}.png")
         t = time.time()
         stage.render(path)
-        log(f"{spec.key}: {view} rendered in {time.time() - t:.1f}s -> {path}")
+        log(f"{spec.layer}: {view} rendered in {time.time() - t:.1f}s -> {path}")
         done.setdefault(view, {})["path"] = path
     return done
 
@@ -324,7 +326,7 @@ def render_views(cat, views, quality, out_dir, threads, samples=None, field=None
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--cat", default="neutral", help="kira, tom, dante, odin, neutral or all")
+    ap.add_argument("--cat", default="neutral", help="kira, tom, dante, odin, neutral, a state or all")
     ap.add_argument("--render", required=True, help="output folder (outside the repo)")
     ap.add_argument("--quality", default="test", choices=sorted(QUALITY))
     ap.add_argument("--views", default="lineup,face,face34,profile")

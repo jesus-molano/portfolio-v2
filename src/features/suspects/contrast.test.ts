@@ -34,19 +34,19 @@ describe("line-up colours", () => {
     expect(contrast(over(cream, 0.86, rgb(lineup.floor)), rgb(lineup.floor))).toBeGreaterThanOrEqual(12);
   });
 
-  it("ink on the complaint is at least 11:1 across the paper, the ticks at least 7:1", () => {
-    for (const paper of [lineup.paper, lineup.paperShade]) {
-      expect(contrast(rgb(palette.ink), rgb(paper)), paper).toBeGreaterThanOrEqual(11);
-      expect(contrast(rgb(lineup.stamp), rgb(paper)), paper).toBeGreaterThanOrEqual(7);
-    }
-  });
-
   it("the plates' pink aliases read at least 7:1", () => {
     expect(contrast(rgb(palette.pink), rgb(lineup.plate))).toBeGreaterThanOrEqual(7);
   });
 
-  it("the GUILTY stamp reads at least 4.5:1 on the plate, and is not the on-air red", () => {
-    expect(contrast(rgb(lineup.verdict), rgb(lineup.plate))).toBeGreaterThanOrEqual(4.5);
-    expect(lineup.verdict.toLowerCase()).not.toBe(palette.onAir.toLowerCase());
+  it("the P1 tags' night on magenta reads at least 4.5:1", () => {
+    expect(contrast(rgb(palette.night), rgb(palette.magenta))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the claw marks tear the wall: a pale edge round a dark gash, and none of it the on-air red", () => {
+    expect(contrast(rgb(lineup.clawEdge), rgb(lineup.wallLow))).toBeGreaterThanOrEqual(7);
+    expect(contrast(rgb(lineup.clawEdge), rgb(lineup.clawGash))).toBeGreaterThanOrEqual(12);
+    for (const colour of [lineup.clawEdge, lineup.clawFlesh, lineup.clawGash, lineup.clawCore]) {
+      expect(colour.toLowerCase()).not.toBe(palette.onAir.toLowerCase());
+    }
   });
 });

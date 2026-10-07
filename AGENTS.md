@@ -52,7 +52,13 @@ also exists as real DOM for keyboard and screen-reader users.
   caption cards, calm readers, the title (a tap while the name forms, no
   ghost after a short swipe), a resting thumb after a swipe back, a
   pinch, Esc and End twice, Back after a link and back to top's address,
-  the loader on a phone, the pedal (a thumb, the mouse, W and Space
+  the loader on a phone, THE USUAL SUSPECTS' character select (`select`:
+  its wall against the wheel, keys, the scrollbar dragged and its track
+  clicked, swipes and a fling, and under reduced motion the browser's own
+  momentum, until Jesús is chosen; Tab onto the locked way on; at 1366 x
+  657, 960 x 600 and 844 x 390 the wall at the select's foot; links, Back and a fragment passing it, then free
+  both ways, remembered for the visit; every other check starts with him
+  chosen), the pedal (a thumb, the mouse, W and Space
   held, two fingers, blur, a lost keyup, Q, the end, reduced motion) and
   its layout from 360 x 640 to 1440 x 900, a phone's swipes and flings
   in the career city at a closed wall (every move gated, nothing past
@@ -355,8 +361,8 @@ also exists as real DOM for keyboard and screen-reader users.
     the way it points. Each card is one solid block around the whole line
     (never a pill per line), balanced (`text-wrap: balance`, no word alone
     on a line) and as wide as its widest line (`cardFit.ts`, applied by
-    `fitCards.ts`, the one fitting of every card: the hero's, the career
-    city's and the line to the officer; measured with the viewport, once
+    `fitCards.ts`, the one fitting of every card: the hero's and the
+    career city's; measured with the viewport, once
     the fonts have arrived and when the subtitle size changes, never in
     the frame); the reading bar and then the marker sit under the block,
     never in the text. Her first
@@ -662,7 +668,7 @@ also exists as real DOM for keyboard and screen-reader users.
     both languages, 120 characters at most (the card reserves the lines),
     `tips[0]` a tip with no device condition, all six stations named, and
     no tip retells a hero line (the film's beats are the film's) or gives
-    away a later section (the cats and their complaint, STATS' bars, map
+    away a later section (the cats and the character select, STATS' bars, map
     and achievement tree, the cinema, the credits; tested). Nothing promises what
     is not on the page yet: the career city's tip ("a sign for every
     employer") comes back with the city. Every trivia is true of the site
@@ -897,67 +903,123 @@ also exists as real DOM for keyboard and screen-reader users.
   pace: replay that trace through `stepCarMotion` to measure the car).
   Delete them after use: they grow forever.
 - `src/features/suspects` — THE USUAL SUSPECTS (`#suspects`), right after
-  the hero: a police line-up of his four cats against a centimetre height
-  chart, a server component with no canvas and no looping animation; its
-  script is the culprit's plate (`CulpritPlate.tsx`) and the fit of his
-  line's card (`FitLine.tsx`). One CSS
-  length, `--cm`, is a centimetre of the chart; `lineup.ts` (pure, tested)
-  turns the renders' manifest (`public/interlude/manifest.json`, contract
-  in `public/interlude/README.md`) into centimetres, so every cat keeps
-  its real size, in the owner's order (tested): Tom the biggest and a bit
-  chubby, only just over Kira, a normal adult; Odin smaller than both, a
-  little short in the leg, with a shorter tail; Dante, a kitten of six
-  months, the smallest, his head the lowest. Odin sits in slot 4 as one
-  more suspect, described like the others: no halo, no glow, nothing over
-  his head and no pass from upstairs on his plate (the owner's call;
-  `lineup.test.ts` refuses a render whose manifest sets `haloInImage`,
-  `copy.test.ts` a halo anywhere in the dictionaries).
-  - The slip taped to the wall is his complaint against the cats
-    (DENUNCIA / COMPLAINT · J. MOLANO), not a list of his things: his gear
-    and hobbies live in STATS. It ticks off the damage like a police form
-    (scratched wardrobes, chewed cables, every bowl licked clean) and ends
-    on the owner's tally, "Sospechosos: 4. Culpable: 1."
-  - The culprit is Dante (`CULPRIT`, tested to be the smallest: the Usual
-    Suspects twist is the one who looks least capable of it), and the
-    reveal stays quiet: his plate is a real button that looks like the
-    others, and the GUILTY / CULPABLE stamp (`suspects.stamp`, real text,
-    `lineup.verdict` ink, never the on-air red) shows nowhere at first
-    sight; it sits out of the flow, so even hidden it never widens his
-    plate. Pointer hover (only under `hover: hover`) and keyboard focus
-    bring it up in CSS, so they work before hydration; a click or a tap
-    pins it (`aria-expanded`; `aria-controls` names the stamp). It slams down
-    under `prefers-reduced-motion: no-preference` and simply appears
-    otherwise. `verdict.test.ts` checks the button, its name in both
-    languages, the stamp's place and that the stylesheet hides it.
-  - Wide screens: one wall, slots at 36/52/68/84% of the width, the
-    complaint on the left, never over the slug (a short window grows the
-    wall instead). Landscape phones and windows under 32rem tall keep the
-    chart at a readable scale over the full width, with the complaint
-    under the line-up. Phones and portrait screens: two strips of two at
-    one scale (Kira and Tom, Dante and Odin), then the complaint; a cat too
+  the hero: the police line-up of his four cats against a centimetre
+  height chart, made a game's character select (the owner's idea):
+  «ELIGE PERSONAJE · JUGADOR 1» / "CHOOSE YOUR CHARACTER · PLAYER 1"
+  (`suspects.title`, `suspects.player`), five numbered plates, the four
+  cats and, in slot 5, Jesús on one knee. No canvas and no looping
+  animation; the client part is `CharacterSelect.tsx`, every word in the
+  server HTML. One CSS length, `--cm`, is a centimetre of the chart;
+  `lineup.ts` (pure, tested) turns the renders' manifest
+  (`public/interlude/manifest.json`, contract in
+  `public/interlude/README.md`: the cats under `cats`, their refusal
+  renders under `states`, each naming its cat, Jesús at the top level with
+  his model's kneeling `heightCm`, 118.5 cm; every image at the same 24 px
+  a real centimetre, his rendered as a 1:3 miniature with the cats'
+  camera; `figures`, or one `cats` map, are read too) into centimetres. One true scale for all five
+  (the owner: «para que no haya tanto contraste… y sea más realista»): the
+  chart runs to 140 cm with a line and a number every 10 cm (`CHART`), the
+  cats stand at their real 27 to 39 cm at its foot and he kneels at his
+  1.26 m beside them (read off the chart from his planted trainer, half a
+  metre nearer the lens than his head), no scale of his own and no scale
+  mark. The cats
+  keep the owner's order (tested): Tom the biggest and a bit chubby, only
+  just over Kira, a normal adult; Odin smaller than both, a little short
+  in the leg, with a shorter tail; Dante, a kitten of six months, the
+  smallest, his head the lowest. Odin is one more suspect: no halo, no
+  glow, nothing over his head (`lineup.test.ts` refuses a render whose
+  manifest sets `haloInImage`, `copy.test.ts` a halo anywhere in the
+  dictionaries).
+  - Wide screens (`WIDE`, mirrored by the stylesheet and tested at 1100 x
+    800 to 1920 x 1080): the header painted on the wall over the cats,
+    five slots across 92% of the width, his column half as wide again;
+    `--cm` (`wideCm`) is the most that keeps his head and the cursor over
+    it under the page controls with the plates and the foot under the
+    floor on one screen (4.3 px at 1440 x 900), within his reach, never
+    under 4 px (a cat's face 44 px across, tested; a shorter window
+    scrolls). The numerals stand over the cats' heads, his in their row,
+    on the wall clear of his left side; his height is read off the chart
+    at his crown (`data-crown`). Phones and
+    portrait screens: two strips of two cats (Kira and Tom, Dante and
+    Odin), each to 40 cm, then his own strip to 140 cm, all at one scale
+    (`phoneCm`, 4.6 px on a 390 x 844 phone: his reach in half the screen,
+    his head on one screen), each strip with its own numbers; a cat too
     wide for its strip is nudged inward (`phoneNudge`). Colours are
-    `lineup` tokens.
-  - Copy in `suspects` (tested in `copy.test.ts`: the header says Tenerife
-    or no city, never Madrid; the slug says "Flatmates" / "Compañeros de
-    piso", the owner's words without his name, which the section shows
-    once, on the complaint; the complaint keeps the owner's words; the
-    eating joke belongs to STATS). It ends on his line to the officer,
-    pointing at the culprit's slot without naming him (the owner's words,
-    tested against `CULPRIT`'s place): «Señor agente, yo me fijaría en el
-    número 3.» / "Officer, I'd take a good look at number three." It has a
-    row of its own under the plates and their descriptions, a pause's room
-    above it, in the hero's subtitle card (one block, balanced, as wide as
-    its widest line, `FitLine.tsx` with the hero's `fitCards.ts`, and
-    sized by the subtitle size like every card: `data-captions` on its
-    row, `data-card` on the block, scaled from its own `--va-card-fs`; on
-    the night floor a hairline and the plates' shadow keep its edge). The
-    complaint's boxes are drawn (SVG, never a ✓ glyph from a fallback
-    face) and stand in their item's first line on its x-height centre
-    (`vertical-align: middle`, the columns sharing a baseline). The
-    cats are the Blender renders of `tools/blender/render_interlude.py`
-    (credited in the end credits with the XR Blocks "Cat" base, Apache-2.0);
-    `tools/art/suspects/placeholder.mjs` still writes flat silhouettes for
-    layout work only.
+    `lineup` tokens; nothing reflows between states (only opacity,
+    visibility, transforms and filters change).
+  - The select (`select.ts`, pure, tested): every slot a real button (one
+    tab stop; ← → Home End step between them, Enter or Space or a click or
+    a tap picks; the mouse moving onto a slot while the keyboard is in the
+    roster takes the focus, so only one 1P cursor ever shows), each named
+    in one `aria-label`, "<name>, <alias>. <why>" (a cat's why it is
+    unavailable, `suspects.refusals.<cat>.why`), and a live region says
+    each refusal, the choice and, once a push, the wall's prompt. Until he
+    is chosen the way on is a locked stop for the keyboard (`data-locked`,
+    `aria-disabled`, unseen until focused, then in the legend's place):
+    Tab past the roster says why the story waits. Choosing him stops any
+    refusal still playing. No cat can be chosen; each refuses in its own way, for
+    a moment (`REFUSALS`), with a chip over its head and a lock on its
+    plate for the rest of the visit: Kira turns her back (the `kira-back`
+    render folds in about her axis) «No disponible · No se deja»; Tom
+    falls asleep (`tom-asleep`, a nod, Zzz) «Bloqueado · Requiere: una
+    lata»; Odin ducks under the floor line, the radar sweeps his empty slot
+    and finds nothing «Sin señal · Nunca sale en el radar»; Dante, the
+    culprit (`CULPRIT`, tested the smallest: the Usual Suspects twist is
+    the one who looks least capable of it), lunges and strikes in his
+    `dante-swipe` render (paw up, pads to the lens; each pose dissolves
+    in over the other held at full, and every refusal render is decoded
+    once it has loaded, so the first strike never paints an empty slot) and his claw swipe tears the screen:
+    three marks across it (`claw.ts`, pure, tested; the pink and gash
+    colours are `lineup.claw*` tokens) and a shake, «Hostil · Te acaba de
+    arañar la pantalla» / "Hostile · He just clawed your screen". The
+    claw is his only verdict: no GUILTY stamp, no complaint, no line to
+    the officer (`copy.test.ts`). Choosing Jesús: «JUGADOR 1 ·
+    SELECCIONADO» over his head, a flash from his slot, the others step
+    back into the dark, and his banner «JESÚS» with «Jugador 1» (never his
+    surname or role: the hero owns them) and the way on, «Historia
+    principal» / "Main story" (the career city's chapter card), on the
+    wall over the cats on a wide screen, in the foot on a phone. Reduced
+    motion: no turn, nod, duck, lunge, shake or flash; each refusal is a
+    still state (the scratches already made). Forced colours drop the
+    flash and the claw.
+  - The wall (`selectWall.ts`, pure, tested): until he is chosen her
+    scrolling stops where the select's foot meets the bottom of the screen
+    (on a phone, whose strip for him stands under the cats', no lower than
+    keeps his head in view; with the five in one row, a short desktop
+    window or a phone on its side, always the foot, so every plate and
+    description is in reach), built into the
+    engine like the career city's: the select writes `selectGate`, and
+    SmoothScroll trims wheel and touch to the smallest of it, the hero's
+    and the city's walls (and under reduced motion, with no Lenis, cancels
+    what would pass it); held input bounces the board (the hero's
+    `elastic.ts`) and brings up «Elige personaje para continuar» / "Choose
+    your character to continue"; keys that scroll forward glide to it and
+    hold there; whatever else of hers takes the page past it (a fling, the
+    scrollbar dragged, a click on its track, whose step animates on after
+    the button is up, a move within 250 ms of the wall pulling the page
+    back, which is native momentum outliving every window) goes back; only
+    a page at rest is navigated. Navigation passes: it registers itself
+    as a passage (`registerPassage`, key `select`), so `goTo` (links, Skip
+    on to it, deep links, Back and Forward, a fragment) and the focus
+    moving on past it open it, and a jump with no input of hers
+    (`isNavigation`) does too. Chosen, the wall is gone for the visit
+    (`va-player-one` in sessionStorage) and she scrolls freely both ways.
+    Without JS there is no wall: every word shows and the way on is a
+    plain link. `scrollux.mjs --only select` checks it in the browser.
+  - Copy in `suspects` (tested in `copy.test.ts`): the slug says
+    «Rueda de reconocimiento · Tenerife» (Tenerife or no city, never
+    Madrid) and "Flatmates" / «Compañeros de piso», the owner's words
+    without his name; no cat gets game stat bars (STATS owns the bars);
+    the eating joke belongs to STATS. The cats are the Blender renders of
+    `tools/blender/render_interlude.py` (credited in the end credits with
+    the XR Blocks "Cat" base, Apache-2.0), and so are Kira's back, Tom
+    asleep and Jesús on one knee; until they land,
+    `tools/art/suspects/select-placeholders.mjs` writes placeholders under
+    the same names (`tools/art/suspects/placeholder.mjs` still writes flat
+    silhouettes of the cats for layout work only).
+  - Dante's wanted level (`wanted.ts`, pure part tested) is STATS's
+    record, live: each try to choose him raises it (`tryDante`), see
+    STATS.
 - `src/features/career` — the career, written down once (`career.ts`,
   pure, tested): per job, oldest first, the employer as it writes itself
   (for the army, his unit, the Batallón de Zapadores XVI), the years, its
@@ -1041,14 +1103,27 @@ also exists as real DOM for keyboard and screen-reader users.
     (appetite breaks out of its panel into the gap beside it; under 1280 px, where
     the panel meets the page's edge, the tracks are shorter and it breaks
     out of its track only; the section has `overflow-x: clip`) and the
-    records: Dante's wanted level (five stars since the cables), the
-    countless "just one more episode" and the kilometres of Formula 1
-    watched a season, not one behind the wheel (it must never read as
-    if he raced; "from the sofa" is said once, under RACECRAFT, which is
-    F1 watched from the sofa every weekend). No
-    record counts the cats and no halo shows anywhere
+    records: Dante's current wanted level, the countless "just one more
+    episode" and the kilometres of Formula 1 watched a season, not one
+    behind the wheel (it must never read as if he raced; "from the sofa"
+    is said once, under RACECRAFT, which is F1 watched from the sofa every
+    weekend). No record counts the cats and no halo shows anywhere
     (`statsCopy.test.ts`); each value's glyphs are hidden from screen
-    readers, which hear `spoken` instead.
+    readers, which hear `spoken` instead. The wanted
+    level is live (`WantedLevel.tsx`, `features/suspects/wanted.ts`, the
+    owner's idea): «nivel de búsqueda actual de Dante» / "Dante's current
+    wanted level", one star until she has tried to choose him in THE
+    USUAL SUSPECTS' select, one more a try up to five (localStorage
+    `va-dante-tries`, in try/catch), five fixed star slots with the unlit
+    ones dimmed and the server's HTML at one star (no layout shift), said
+    in words («Una estrella» … «Cinco estrellas»). The record is a button:
+    hover (where a pointer hovers), keyboard focus or a tap brings up its
+    popup, «Prueba a seleccionarlo y vuelve aquí» / "Try choosing him,
+    then come back" (at five, «Busca y captura»), its description for
+    screen readers, hung under the stars (above them it covered the
+    panel's heading); a level raised since STATS last showed it (one
+    star, before STATS ever showed one: the select comes first) flashes
+    the stars once (not under reduced motion).
   - MAP (`#stats-map`) is career geography only: where he has worked and
     where he is, on Tenerife at night under parody names (GTA-style: real
     places, renamed; Spanish in both locales, `stats.map.places`; each one
@@ -1165,7 +1240,7 @@ also exists as real DOM for keyboard and screen-reader users.
     none` and `pointer: coarse`) shows the touch column only. DISPLAY sets the subtitle size, small, medium
     or large (`lib/subtitleSize.ts`: `data-subtitles` and
     `--va-subtitle-scale` on `<html>`, multiplied into both stages' cards
-    and the line to the officer by `globals.css`, tested against their
+    by `globals.css`, tested against their
     stylesheets; remembered as `va-subtitles`; every card is fitted
     again), with a sample card.
     LANGUAGE links to the other locale on this very tab
@@ -1652,8 +1727,10 @@ What each section is for, and what it owns:
   reference and the radio's controls, as a game's pause menu does.
 - Hero — who he is, in six lines: his name, his role, Tenerife, and the
   army story with the Gran Canaria joke.
-- THE USUAL SUSPECTS — him at home: the four cats, the complaint and Dante
-  as the culprit.
+- THE USUAL SUSPECTS — him at home, as a game's character select: the
+  four cats refusing to be chosen, Dante the culprit through his claw
+  swipe, and him, player 1, the only one she can choose. No complaint,
+  no verdict stamp, no line to the officer.
 - The career city (`#work`) — the career, once and whole: the five
   jobs (employer, role, years, clients, stack, a link) and the army's
   facts (the unit, Las Palmas).
@@ -1678,9 +1755,11 @@ Each subject, who tells it in full, and what the rest may do:
   STATS map: the first badge, in the Gran Canaria inset, with no joke.
 - Tenerife against Gran Canaria: the hero. Nowhere else.
 - The side projects: the cinema. STATS and the credits: nothing.
-- The cats: THE USUAL SUSPECTS. Winks only elsewhere: Dante as player 2
-  on the STATS sheet and in its wanted-level record, the STEALTH bar's tin
-  on the STATS sheet, the four cats by their aliases in the credits' cast.
+- The cats: THE USUAL SUSPECTS (Dante's culprit wink is his claw swipe,
+  the only cat who attacks). Winks only elsewhere: Dante as player 2 on
+  the STATS sheet and in its live wanted-level record, the STEALTH bar's
+  tin on the STATS sheet, the four cats by their aliases in the credits'
+  cast.
 - F1: STATS (the 4 a.m. race and Alonso's 33rd stars, RACECRAFT and the Grand Prix record). The
   loader: the pit-lane limiter tip only. The hero: its dashboard.
 - The favourites (games, films, series) and his sporting goals: STATS's

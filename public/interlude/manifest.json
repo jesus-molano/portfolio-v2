@@ -33,5 +33,43 @@
       "centerX": 246,
       "headWidth": 275
     }
+  },
+  "states": {
+    "kira-back": {
+      "w": 540,
+      "h": 881,
+      "floorY": 847,
+      "headTopY": 7,
+      "centerX": 230,
+      "headWidth": 350,
+      "cat": "kira"
+    },
+    "tom-asleep": {
+      "w": 601,
+      "h": 964,
+      "floorY": 928,
+      "headTopY": 5,
+      "centerX": 298,
+      "headWidth": 321,
+      "cat": "tom"
+    },
+    "dante-swipe": {
+      "w": 497,
+      "h": 705,
+      "floorY": 678,
+      "headTopY": 25,
+      "centerX": 249,
+      "headWidth": 285,
+      "cat": "dante"
+    }
+  },
+  "jesus": {
+    "w": 1888,
+    "h": 3030,
+    "floorY": 3020,
+    "headTopY": 5,
+    "centerX": 932,
+    "headWidth": 414,
+    "heightCm": 118.5
   }
 }

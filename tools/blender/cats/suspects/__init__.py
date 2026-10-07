@@ -20,9 +20,17 @@ the shared code is tested on) defines:
 
 Anything left out takes the shared default. Unknown keys stop the build.
 Nothing here is personal data; the reference photos never enter the repo.
+
+`states.py` holds the select screen's states of three of them (Kira's back,
+Tom asleep, Dante's swipe): `load("tom-asleep")` is Tom's spec with the
+state's pose deep-merged in, under his own key (so his own fur), and with
+`layer` set to the state's name.
 """
 
+import copy
 import importlib
+
+from .states import STATES
 
 CATS = ("kira", "tom", "dante", "odin")
 ALL = CATS + ("neutral",)
@@ -45,9 +53,27 @@ class Spec:
         self.whiskers = getattr(mod, "WHISKERS", {})
         self.halo = getattr(mod, "HALO", {})
         self.lights = getattr(mod, "LIGHTS", {})
+        self.layer = key   # the files' name: the cat's key, or a state's (states.py)
 
 
 def load(key):
+    if key in STATES:
+        state = STATES[key]
+        spec = load(state["cat"])
+        # the cat's own values with the state's on top; the generator merges
+        # the result with its defaults, which still refuses an unknown key
+        spec.pose = _over(spec.pose, state.get("pose", {}))
+        spec.eyes = _over(spec.eyes, state.get("eyes", {}))
+        spec.layer = key
+        return spec
     if key not in ALL:
-        raise SystemExit(f"unknown cat {key!r}; one of {', '.join(ALL)}")
+        raise SystemExit(f"unknown cat {key!r}; one of {', '.join(ALL + tuple(STATES))}")
     return Spec(key, importlib.import_module(f"{__name__}.{key}"))
+
+
+def _over(base, new):
+    """base deep-updated by new (a copy; dicts merge, anything else replaces)."""
+    out = copy.deepcopy(base)
+    for k, v in new.items():
+        out[k] = _over(out[k], v) if isinstance(out.get(k), dict) and isinstance(v, dict) else copy.deepcopy(v)
+    return out

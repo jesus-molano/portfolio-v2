@@ -7,6 +7,7 @@ import { StatsIcon } from "./icons";
 import styles from "./Stats.module.css";
 import { Settings } from "@/features/settings/Settings";
 import { StatsPanel, StatsPortrait, StatsSection, StatsTabList } from "./StatsTabs";
+import { WantedLevel } from "./WantedLevel";
 import {
   CAREER_CITY_ON_PAGE,
   DOCK,
@@ -202,11 +203,24 @@ function Sheet({ dict }: { dict: StatsDict }) {
           {/* The value's glyphs (stars, ∞, ≈) are for the eye; screen readers get it in words. */}
           {dict.records.items.map((record) => (
             <li key={record.id} className={styles[`record_${record.id}`]}>
-              <span className={styles.recordValue} aria-hidden="true">
-                {record.value}
-              </span>
-              <span className="sr-only">{record.spoken} </span>
-              <span className={styles.recordCaption}>{record.caption}</span>
+              {record.id === "wanted" ? (
+                // Dante's wanted level is live: the character select raises it (WantedLevel).
+                <WantedLevel
+                  value={record.value}
+                  caption={record.caption}
+                  levels={dict.records.wanted.levels}
+                  hint={dict.records.wanted.hint}
+                  top={dict.records.wanted.top}
+                />
+              ) : (
+                <>
+                  <span className={styles.recordValue} aria-hidden="true">
+                    {record.value}
+                  </span>
+                  <span className="sr-only">{record.spoken} </span>
+                  <span className={styles.recordCaption}>{record.caption}</span>
+                </>
+              )}
             </li>
           ))}
         </ul>

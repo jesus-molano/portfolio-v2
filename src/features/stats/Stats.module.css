@@ -1342,6 +1342,118 @@ a.missionRow:focus-visible {
   color: var(--va-color-text-muted);
 }
 
+/*
+ * Dante's wanted level, live (WantedLevel.tsx): the record is a button for
+ * its popup, laid out as the other records; five fixed star slots, the
+ * unlit ones dimmed, so no level changes its size.
+ */
+.record_wanted {
+  position: relative;
+}
+
+.wanted {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: help;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.star {
+  opacity: 0.22;
+  text-shadow: none;
+}
+
+.star[data-lit] {
+  opacity: 1;
+  text-shadow: 0 0 16px color-mix(in srgb, var(--va-color-magenta) 40%, transparent);
+}
+
+/*
+ * "Try choosing him, then come back": hung just under the stars, pointing
+ * up at them, over the record's own caption (it says the same thing about
+ * Dante); above them it covered the panel's heading.
+ */
+.wantedHint {
+  position: absolute;
+  left: 0;
+  top: calc(var(--value) * 0.85 + 18px);
+  z-index: 3;
+  width: max-content;
+  max-width: min(18rem, 100%);
+  padding: 8px 11px;
+  border: 1px solid color-mix(in srgb, var(--va-color-pink) 45%, transparent);
+  border-radius: 6px;
+  background: var(--va-color-controls-backdrop);
+  box-shadow: 0 8px 22px var(--va-color-glass);
+  font: 700 12px/1.35 var(--va-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--va-color-cream);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.wantedHint::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 12px;
+  border-bottom: 7px solid color-mix(in srgb, var(--va-color-pink) 45%, var(--va-color-controls-backdrop));
+  border-inline: 6px solid transparent;
+}
+
+.wanted:focus-visible + .wantedHint,
+.wanted[data-open] + .wantedHint {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (hover: hover) {
+  .wanted:hover + .wantedHint {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* A level raised since STATS last showed it: the stars flash once. */
+@media (prefers-reduced-motion: no-preference) {
+  .wanted[data-flash] .star[data-lit] {
+    animation: starFlash 0.9s ease-out 2;
+  }
+}
+
+@keyframes starFlash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  35% {
+    opacity: 0.25;
+    color: var(--va-color-magenta);
+  }
+}
+
+@media (forced-colors: active) {
+  .star {
+    opacity: 1;
+  }
+
+  .star:not([data-lit]) {
+    color: GrayText;
+  }
+}
+
 /* ── The pause ────────────────────────────────────────────────────── */
 
 /*

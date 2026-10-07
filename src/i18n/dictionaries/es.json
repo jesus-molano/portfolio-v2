@@ -109,9 +109,17 @@
     },
     "place": "Rueda de reconocimiento · Tenerife",
     "associates": "Compañeros de piso",
-    "description": "Una rueda de reconocimiento con los cuatro gatos de Jesús ante una regla de alturas, cada uno tras su placa numerada. Tom y Kira son los más altos, Odin se queda un poco por debajo y a Dante, el cachorro, todos le sacan una cabeza.",
+    "description": "Una rueda de reconocimiento convertida en selector de personaje: los cuatro gatos de Jesús y él, rodilla en tierra, ante una regla de alturas, todos a su tamaño real, cada uno tras su placa numerada. De los gatos, Tom y Kira son los más altos, Odin se queda un poco por debajo y a Dante, el cachorro, todos le sacan una cabeza. Ningún gato se deja elegir: solo Jesús.",
+    "title": "Elige personaje",
+    "player": "Jugador 1",
+    "waiting": "Esperando…",
     "numberPrefix": "Nº",
-    "stamp": "Culpable",
+    "legend": {
+      "move": "Elegir",
+      "enter": "Intro",
+      "pick": "Confirmar",
+      "touch": "Toca un personaje"
+    },
     "cats": [
       {
         "id": "kira",
@@ -138,18 +146,45 @@
         "description": "Un atigrado naranja, paticorto y rabicorto, que vuela tan bajo que nunca sale en el radar."
       }
     ],
-    "complaint": {
-      "title": "Denuncia",
-      "owner": "J. Molano",
-      "items": [
-        "Armarios arañados",
-        "Cables mordidos",
-        "Todos los cuencos relamidos"
-      ],
-      "tally": "Sospechosos: 4. Culpable: 1."
+    "refusals": {
+      "kira": {
+        "status": "No disponible",
+        "reason": "No se deja.",
+        "why": "No disponible: no se deja.",
+        "live": "Kira no está disponible: no se deja."
+      },
+      "tom": {
+        "status": "Bloqueado",
+        "reason": "Requiere: una lata",
+        "why": "Bloqueado: requiere una lata.",
+        "live": "Tom está bloqueado: requiere una lata."
+      },
+      "dante": {
+        "status": "Hostil",
+        "reason": "Te acaba de arañar la pantalla",
+        "why": "Hostil: mejor no acercarse.",
+        "live": "Dante es hostil: te acaba de arañar la pantalla."
+      },
+      "odin": {
+        "status": "Sin señal",
+        "reason": "Nunca sale en el radar",
+        "why": "Sin señal: nunca sale en el radar.",
+        "live": "Odin no aparece: nunca sale en el radar."
+      }
     },
-    "speaker": "Jesús",
-    "line": "Señor agente, yo me fijaría en el número 3."
+    "player1": {
+      "name": "Jesús",
+      "alias": "«El de las latas»",
+      "description": "El único de la casa que se deja elegir.",
+      "why": "Disponible.",
+      "chosen": "Seleccionado.",
+      "selected": "Jugador 1 · Seleccionado",
+      "live": "Jugador 1: Jesús, seleccionado. Ya puedes seguir a la historia principal."
+    },
+    "wayOn": "Historia principal",
+    "orScroll": "o sigue con scroll",
+    "orSwipe": "o desliza hacia arriba",
+    "wall": "Elige personaje para continuar"
   },
   "loader": {
     "title": "Menú principal",
@@ -600,12 +635,17 @@
     },
     "records": {
       "title": "RÉCORDS",
+      "wanted": {
+        "levels": ["Una estrella:", "Dos estrellas:", "Tres estrellas:", "Cuatro estrellas:", "Cinco estrellas:"],
+        "hint": "Prueba a seleccionarlo y vuelve aquí",
+        "top": "Busca y captura"
+      },
       "items": [
         {
           "id": "wanted",
           "value": "★★★★★",
-          "spoken": "Cinco estrellas:",
-          "caption": "el nivel de busca y captura de Dante desde lo de los cables"
+          "spoken": "Una estrella:",
+          "caption": "nivel de búsqueda actual de Dante"
         },
         {
           "id": "episode",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
-import { CAT_IDS, CULPRIT } from "./lineup";
+import { CAT_IDS } from "./lineup";
 
 /** Every string in a dictionary subtree, with its key path. */
 function strings(value: unknown, prefix = ""): [string, string][] {
@@ -28,17 +28,23 @@ const dicts = [
 ] as const;
 
 describe("THE USUAL SUSPECTS copy", () => {
-  it("has the same keys and the same number of cats and complaints in both languages", () => {
+  it("has the same keys and the same number of cats in both languages", () => {
     expect(shape(es.suspects)).toEqual(shape(en.suspects));
   });
 
   for (const [locale, copy] of dicts) {
-    it(`${locale}: lists the four cats in line-up order`, () => {
+    it(`${locale}: lists the four cats in line-up order, each with its refusal`, () => {
       expect(copy.cats.map((cat) => cat.id)).toEqual([...CAT_IDS]);
-    });
-
-    it(`${locale}: keeps Jesús's line to one subtitle card (64 characters)`, () => {
-      expect(Array.from(`${copy.speaker}: ${copy.line}`).length).toBeLessThanOrEqual(64);
+      expect(Object.keys(copy.refusals)).toEqual([...CAT_IDS]);
+      for (const id of CAT_IDS) {
+        const refusal = copy.refusals[id];
+        // The chip is one line over the head: on a phone it runs from its strip's edge across the other.
+        expect(Array.from(`${refusal.status} ${refusal.reason}`).length, id).toBeLessThanOrEqual(40);
+        // The button says why the cat cannot be picked, and the live region says it again with its name.
+        expect(refusal.why, id).toMatch(/\p{L}/u);
+        const name = copy.cats.find((cat) => cat.id === id)!.name;
+        expect(refusal.live.startsWith(name), id).toBe(true);
+      }
     });
 
     it(`${locale}: never says Madrid, never shows an email, and leaves "live" to Heuristik`, () => {
@@ -54,16 +60,45 @@ describe("THE USUAL SUSPECTS copy", () => {
       if (cities) expect(cities).toBe("Tenerife");
     });
 
-    it(`${locale}: files his complaint about the cats, not a list of his things (those live in STATS)`, () => {
-      expect(copy).not.toHaveProperty("effects");
-      const complaint = [copy.complaint.title, ...copy.complaint.items, copy.complaint.tally].join(" ");
-      expect(complaint).not.toMatch(/aviator|gafas|earring|pendiente|tee\b|camiseta|galax|record|disco|Sweet Child/i);
+    it(`${locale}: files no complaint, stamps no verdict and leaves no line to an officer (the select replaced them)`, () => {
+      for (const key of ["complaint", "stamp", "speaker", "line"]) expect(copy).not.toHaveProperty(key);
+      for (const [key, text] of strings(copy)) {
+        expect(text, key).not.toMatch(/denuncia|complaint|culpable|guilty|agente|officer|armario|wardrobe/i);
+      }
     });
 
-    it(`${locale}: keeps his eating joke for STATS`, () => {
-      expect(copy.complaint.items.join(" ")).not.toMatch(/\b(takeaway|food|eat|eating|comida|comer|táper|tupper)\b/i);
+    it(`${locale}: gives Jesús no surname and no role: the hero owns those`, () => {
+      for (const [key, text] of strings(copy)) {
+        expect(text, key).not.toMatch(/Molano|Frontend|Engineer|Developer|Ingenier/i);
+      }
+    });
+
+    it(`${locale}: states no scale for him: the chart has one true scale for all five`, () => {
+      expect(copy.player1).not.toHaveProperty("scale");
+      for (const [key, text] of strings(copy)) expect(text, key).not.toMatch(/\b1:\d|escala|\bscale\b/i);
     });
   }
+
+  it("calls it a character select, player one, in the owner's words", () => {
+    expect(es.suspects.title).toBe("Elige personaje");
+    expect(es.suspects.player).toBe("Jugador 1");
+    expect(es.suspects.player1.selected).toBe("Jugador 1 · Seleccionado");
+    expect(es.suspects.wayOn).toBe("Historia principal");
+    expect(es.suspects.wall).toBe("Elige personaje para continuar");
+    expect(en.suspects.title).toBe("Choose your character");
+    expect(en.suspects.player).toBe("Player 1");
+    expect(en.suspects.player1.selected).toBe("Player 1 · Selected");
+    expect(en.suspects.wayOn).toBe("Main story");
+    expect(en.suspects.wall).toBe("Choose your character to continue");
+    // The way on names the career city's own chapter card.
+    expect(es.suspects.wayOn).toBe(es.work.chapter.word);
+    expect(en.suspects.wayOn).toBe(en.work.chapter.word);
+  });
+
+  it("has Dante say what he just did: he clawed her screen, the culprit's wink", () => {
+    expect(es.suspects.refusals.dante).toMatchObject({ status: "Hostil", reason: "Te acaba de arañar la pantalla" });
+    expect(en.suspects.refusals.dante).toMatchObject({ status: "Hostile", reason: "He just clawed your screen" });
+  });
 
   it("gives the cats their aliases, as Jesús calls them", () => {
     expect(es.suspects.cats.map((cat) => cat.alias)).toEqual(["«La Reina»", "«El Gordo»", "alias «Satanás»", "«El Enano»"]);
@@ -84,35 +119,8 @@ describe("THE USUAL SUSPECTS copy", () => {
     }
   });
 
-  it("files the complaint in the owner's words: three ticked damages, four suspects, one culprit", () => {
-    expect(es.suspects.complaint.title).toBe("Denuncia");
-    expect(es.suspects.complaint.items).toEqual(["Armarios arañados", "Cables mordidos", "Todos los cuencos relamidos"]);
-    expect(es.suspects.complaint.tally).toBe("Sospechosos: 4. Culpable: 1.");
-    expect(en.suspects.complaint.title).toBe("Complaint");
-    expect(en.suspects.complaint.items).toEqual(["Scratched wardrobes", "Chewed cables", "Every bowl licked clean"]);
-    expect(en.suspects.complaint.tally).toBe("Suspects: 4. Culprit: 1.");
-    for (const copy of [en.suspects, es.suspects]) expect(copy.complaint.owner).toBe("J. Molano");
-  });
-
-  it("names him once in the section, on the complaint: the slug says flatmates, in the owner's words", () => {
+  it("keeps the slug in the owner's words: flatmates", () => {
     expect(es.suspects.associates).toBe("Compañeros de piso");
     expect(en.suspects.associates).toBe("Flatmates");
-    for (const copy of [en.suspects, es.suspects]) {
-      const visible = [copy.chapter.word, copy.chapter.ribbon, copy.place, copy.associates, ...copy.cats.map((cat) => cat.description)];
-      expect(visible.join(" ")).not.toMatch(/Molano/);
-    }
-  });
-
-  it("ends on his tip to the officer, in the owner's words: number 3, the culprit's slot", () => {
-    expect(es.suspects.line).toBe("Señor agente, yo me fijaría en el número 3.");
-    expect(en.suspects.line).toBe("Officer, I'd take a good look at number three.");
-    // The number he gives is the culprit's place in the line-up (plates and numerals count from 1).
-    const slot = CAT_IDS.indexOf(CULPRIT) + 1;
-    expect(es.suspects.line).toContain(`número ${slot}`);
-    expect(en.suspects.line).toContain(`number ${["one", "two", "three", "four"][slot - 1]}`);
-    // A nudge, not the reveal: he names no cat (the GUILTY stamp on the plate is the reveal).
-    for (const copy of [en.suspects, es.suspects]) {
-      for (const cat of copy.cats) expect(copy.line).not.toContain(cat.name);
-    }
   });
 });

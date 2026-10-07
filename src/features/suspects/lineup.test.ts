@@ -3,9 +3,14 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import manifestJson from "../../../public/interlude/manifest.json";
 import {
+  boardStyle,
   CAT_IDS,
+  CHART,
+  chartMarks,
   extents,
+  FIGURE_IDS,
   isCatId,
+  OPTIONAL_FIGURE_IDS,
   lowestHead,
   parseManifest,
   PHONE_CHART,
@@ -14,9 +19,14 @@ import {
   placeCat,
   placeLineup,
   placementStyle,
+  placePlayer,
+  placeSwap,
   plateNumber,
-  WIDE_CHART,
-  WIDE_SLOT_CM,
+  PLAYER_ONE,
+  phoneCm,
+  WIDE,
+  wideCentres,
+  wideCm,
   type CatImage,
   type LineupManifest,
 } from "./lineup";
@@ -25,15 +35,20 @@ const PUBLIC = path.resolve(__dirname, "../../../public/interlude");
 const manifest = parseManifest(manifestJson);
 const lineup = placeLineup(manifest);
 const byId = Object.fromEntries(lineup.map((p) => [p.id, p]));
+const player = placePlayer(manifest);
 
 /** A 20 x 30 cm image at 24 px/cm: floor 1 cm above its bottom, head top 1 cm under its top. */
 const SAMPLE: CatImage = { w: 480, h: 720, floorY: 696, headTopY: 24, centerX: 240, headWidth: 240 };
 
+/** A manifest as the renders write it: the states under `states`, naming their cat, and Jesús at the top level. */
 function withCat(id: string, patch: Partial<CatImage> | null): unknown {
   const cats: Record<string, unknown> = Object.fromEntries(CAT_IDS.map((c) => [c, { ...SAMPLE }]));
-  if (patch === null) delete cats[id];
-  else cats[id] = { ...SAMPLE, ...patch };
-  return { pxPerCm: 24, cats };
+  const states: Record<string, unknown> = { "kira-back": { ...SAMPLE, cat: "kira" }, "tom-asleep": { ...SAMPLE, cat: "tom" } };
+  const root: Record<string, unknown> = { pxPerCm: 24, cats, states, jesus: { ...SAMPLE } };
+  const map = id === "jesus" ? root : id in states ? states : cats;
+  if (patch === null) delete map[id];
+  else map[id] = { ...(map[id] as object), ...patch };
+  return root;
 }
 
 /** Width and height from a WebP header (VP8X, VP8L or VP8). */
@@ -53,6 +68,42 @@ describe("parseManifest", () => {
   it("accepts the manifest in public/interlude", () => {
     expect(manifest.pxPerCm).toBeGreaterThan(0);
     expect(Object.keys(manifest.cats).sort()).toEqual([...CAT_IDS].sort());
+    // The three the select needs, and Dante's swipe, which the renders made too.
+    expect(Object.keys(manifest.figures).sort()).toEqual([...FIGURE_IDS, ...OPTIONAL_FIGURE_IDS].sort());
+  });
+
+  it("finds the renders where the renders put them: `states`, top-level `jesus`, `figures` or one `cats` map", () => {
+    expect(parseManifest(withCat("kira", {})).figures["kira-back"]).toEqual(SAMPLE);
+    expect(parseManifest(withCat("kira", {})).figures.jesus).toEqual(SAMPLE);
+    const flat = { pxPerCm: 24, cats: { ...Object.fromEntries([...CAT_IDS, ...FIGURE_IDS].map((id) => [id, SAMPLE])) } };
+    expect(parseManifest(flat).figures.jesus).toEqual(SAMPLE);
+    const figures = { pxPerCm: 24, cats: flat.cats, figures: { "tom-asleep": { ...SAMPLE, w: 500 } } };
+    expect(parseManifest(figures).figures["tom-asleep"].w).toBe(500);
+  });
+
+  it("reads Dante's swipe when it was rendered, and does without it", () => {
+    expect(parseManifest(withCat("kira", {})).figures["dante-swipe"]).toBeUndefined();
+    const value = withCat("kira", {}) as { states: Record<string, unknown> };
+    value.states["dante-swipe"] = { ...SAMPLE, cat: "dante" };
+    expect(parseManifest(value).figures["dante-swipe"]).toEqual(SAMPLE);
+    expect(placeSwap(parseManifest(value), "dante-swipe")?.headTopCm).toBe(28);
+    expect(placeSwap(parseManifest(withCat("kira", {})), "dante-swipe")).toBeNull();
+  });
+
+  it("lets only Jesús carry a scale of his own, stated either way, with his real height", () => {
+    expect(parseManifest(withCat("jesus", { pxPerCm: 8 } as Partial<CatImage>)).figures.jesus.pxPerCm).toBe(8);
+    // Rendered at 1:3 with the cats' camera: an image pixel is 3 / 24 cm.
+    expect(parseManifest(withCat("jesus", { scale: 3, heightCm: 125 } as Partial<CatImage>)).figures.jesus).toEqual({
+      ...SAMPLE,
+      pxPerCm: 8,
+      heightCm: 125,
+    });
+    // At 1:1 it is the cats' own scale.
+    expect(parseManifest(withCat("jesus", { scale: 1 } as Partial<CatImage>)).figures.jesus).toEqual(SAMPLE);
+    expect(() => parseManifest(withCat("kira-back", { pxPerCm: 8 } as Partial<CatImage>))).toThrow(/kira-back must share/);
+    expect(() => parseManifest(withCat("tom-asleep", { scale: 2 } as Partial<CatImage>))).toThrow(/tom-asleep must share/);
+    expect(() => parseManifest(withCat("jesus", { pxPerCm: 0 } as Partial<CatImage>))).toThrow(/jesus\.pxPerCm/);
+    expect(() => parseManifest(withCat("jesus", { scale: -3 } as Partial<CatImage>))).toThrow(/jesus\.scale/);
   });
 
   it("keeps the contract's fields and the old halo flag, nothing else", () => {
@@ -65,6 +116,7 @@ describe("parseManifest", () => {
     ["not an object", null, /not an object/],
     ["a bad scale", { pxPerCm: 0, cats: {} }, /pxPerCm/],
     ["a missing cat", withCat("dante", null), /dante is missing/],
+    ["a missing figure", withCat("tom-asleep", null), /tom-asleep is missing/],
     ["a missing field", withCat("tom", { w: undefined }), /tom\.w/],
     ["a negative value", withCat("kira", { centerX: -1 }), /kira\.centerX/],
     ["a floor below the image", withCat("kira", { floorY: 721 }), /floorY is below/],
@@ -120,15 +172,135 @@ describe("the line-up", () => {
     expect(byId.tom.headTopCm - byId.kira.headTopCm).toBeLessThan(3);
   });
 
-  it("keeps every head under the wide chart's numerals", () => {
-    const numeralBottom = WIDE_CHART.numeralCm - WIDE_CHART.numeralHeightCm / 2;
-    for (const p of lineup) expect(p.headTopCm, p.id).toBeLessThan(numeralBottom);
+});
+
+/** The screens the line-up is checked on: wide ones (the wall) and phones (the strips). */
+const WIDE_SCREENS = [
+  { width: 1920, height: 1080 },
+  { width: 1440, height: 900 },
+  { width: 1366, height: 768 },
+  { width: 1280, height: 720 },
+  { width: 1100, height: 800 },
+] as const;
+const PHONES = [
+  { width: 360, height: 640 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 768, height: 1024 },
+] as const;
+
+describe("one true scale on a wide screen", () => {
+  const him = { headCm: player.headTopCm, reachCm: player.reachCm };
+
+  it.each(WIDE_SCREENS)("keeps neighbours apart at $width x $height, Jesús in the fifth slot included", (screen) => {
+    const cm = wideCm(screen, him);
+    const centres = wideCentres().map((share) => share * screen.width);
+    const row = [...lineup, player];
+    for (let i = 1; i < row.length; i++) {
+      const reach = (extents(row[i - 1]).rightCm + extents(row[i]).leftCm) * cm;
+      expect(reach, `${row[i - 1].id} and ${row[i].id}`).toBeLessThanOrEqual(centres[i] - centres[i - 1]);
+    }
+    // His reach stays on the screen.
+    expect(centres[4] + extents(player).rightCm * cm).toBeLessThanOrEqual(screen.width);
   });
 
-  it("keeps neighbours apart on a wide screen", () => {
-    for (let i = 1; i < lineup.length; i++) {
-      const reach = extents(lineup[i - 1]).rightCm + extents(lineup[i]).leftCm;
-      expect(reach, `${lineup[i - 1].id} and ${lineup[i].id}`).toBeLessThanOrEqual(WIDE_SLOT_CM);
+  it.each(WIDE_SCREENS)("keeps every cat's face readable at $width x $height: 44 px across the cheeks at least", (screen) => {
+    const cm = wideCm(screen, him);
+    for (const p of lineup) expect(p.headWidthCm * cm, p.id).toBeGreaterThanOrEqual(44);
+  });
+
+  it("puts him and the cursor over him on one screen with the plates under the floor, at 1440 x 900", () => {
+    const cm = wideCm({ width: 1440, height: 900 }, him);
+    const stage = cm * player.headTopCm + WIDE.aboveRem * 16;
+    expect(stage + (WIDE.belowRem - WIDE.aboveRem) * 16).toBeLessThanOrEqual(900 + 0.5);
+    // The chart reaches its 140 cm on the wall, under the top of the screen.
+    expect(cm * CHART.topCm).toBeLessThanOrEqual(stage);
+  });
+
+  it("centres the five slots across 92% of the width, his column half as wide again", () => {
+    const centres = wideCentres();
+    expect(centres[0]).toBeCloseTo(0.04 + 0.92 / 5.5 / 2, 9);
+    expect(centres[4]).toBeCloseTo(0.96 - (0.92 * 1.5) / 5.5 / 2, 9);
+    // His reach is kept inside half his column and the margin beyond it.
+    expect(((0.92 * 1.5) / 5.5 / 2 + 0.04) * 100).toBeGreaterThanOrEqual(WIDE.halfColumnVw);
+  });
+});
+
+describe("one true scale on a phone", () => {
+  const him = { headCm: player.headTopCm, reachCm: player.reachCm };
+
+  it.each(PHONES)("keeps every cat's face readable at $width x $height: 44 px across the cheeks at least", (screen) => {
+    const cm = phoneCm(screen, him);
+    for (const p of lineup) expect(p.headWidthCm * cm, p.id).toBeGreaterThanOrEqual(44);
+  });
+
+  it.each(PHONES)("keeps his reach on the screen and the cats inside their strips at $width x $height", (screen) => {
+    const cm = phoneCm(screen, him);
+    expect(player.reachCm * cm).toBeLessThanOrEqual(screen.width / 2);
+    for (const p of lineup) {
+      const { leftCm, rightCm } = extents(p);
+      expect(Math.max(leftCm, rightCm) * cm, p.id).toBeLessThanOrEqual(screen.width / 4);
+    }
+  });
+
+  it("stands him on one screen with his plate on a 390 x 844 phone", () => {
+    const cm = phoneCm({ width: 390, height: 844 }, him);
+    expect(cm * player.headTopCm + PHONE_CHART.belowRem * 16).toBeLessThanOrEqual(844 + 0.5);
+  });
+});
+
+describe("Jesús on one knee", () => {
+  it("is about 1.25 m to the crown, as the brief has him", () => {
+    expect(player.realHeadCm).toBeGreaterThan(110);
+    expect(player.realHeadCm).toBeLessThan(145);
+  });
+
+  it("stands at his real height on the chart, the cats' one scale: no scale of his own", () => {
+    expect(manifest.figures.jesus.pxPerCm).toBeUndefined();
+    // Read off the chart from his planted trainer, as the page stands him, his
+    // crown is a little higher than the model's kneeling height: the sole is
+    // half a metre nearer the lens than his head (the README's 125.6 cm).
+    expect(player.headTopCm).toBeGreaterThanOrEqual(player.realHeadCm);
+    expect(player.headTopCm - player.realHeadCm).toBeLessThan(9);
+    // Three times a cat's height and more, as in life.
+    for (const p of lineup) expect(player.headTopCm / p.headTopCm, p.id).toBeGreaterThan(2.8);
+  });
+
+  it("keeps his head under the chart's top, with room for the cursor over him", () => {
+    expect(player.headTopCm + 8).toBeLessThanOrEqual(CHART.topCm);
+  });
+
+  it("reaches as far as his image does either side of his slot", () => {
+    const { leftCm, rightCm } = extents(player);
+    expect(player.reachCm).toBe(Math.max(leftCm, rightCm));
+  });
+});
+
+describe("the chart", () => {
+  it("runs to 140 cm with a number every 10 cm", () => {
+    expect(chartMarks()).toEqual([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140]);
+    expect(chartMarks(PHONE_CHART.catTopCm)).toEqual([10, 20, 30, 40]);
+  });
+
+  it("hands the board his head and reach and the tallest cat's head", () => {
+    expect(boardStyle(lineup, player)).toEqual({
+      "--player-head": String(Math.round(player.headTopCm * 1000) / 1000),
+      "--player-reach": String(Math.round(player.reachCm * 1000) / 1000),
+      "--cats-head": String(Math.round(Math.max(...lineup.map((p) => p.headTopCm)) * 1000) / 1000),
+    });
+  });
+});
+
+describe("the swap-in renders", () => {
+  it("stand Kira's back and Tom asleep on their cat's floor and centre", () => {
+    for (const [id, cat] of [
+      ["kira-back", "kira"],
+      ["tom-asleep", "tom"],
+    ] as const) {
+      const swap = placeSwap(manifest, id)!;
+      // Placed by its own floor and centre at the cats' one scale, it is the same cat: about its size.
+      expect(Math.abs(swap.headTopCm - byId[cat].headTopCm), id).toBeLessThan(4);
+      expect(Math.abs(swap.headWidthCm - byId[cat].headWidthCm), id).toBeLessThan(6);
     }
   });
 });
@@ -148,10 +320,10 @@ describe("phone strips", () => {
   });
 
   it("nudges a cat inward only as far as it reaches past its strip", () => {
-    const wide = placeCat("tom", { ...SAMPLE, w: 800, centerX: 200 }, 24); // reaches 25 cm right
+    const wide = placeCat("tom", { ...SAMPLE, w: 800, centerX: 100 }, 24); // reaches 29 cm right
     expect(phoneNudge(wide, 1)).toBe(-PHONE_CHART.maxNudgeCm);
     expect(phoneNudge(wide, 0)).toBe(0);
-    const slight = placeCat("kira", { ...SAMPLE, w: 700, centerX: 330 }, 24); // reaches 13.75 cm left
+    const slight = placeCat("kira", { ...SAMPLE, w: 1000, centerX: 450 }, 24); // reaches 18.75 cm left
     expect(phoneNudge(slight, 0)).toBeCloseTo(0.75);
     expect(phoneNudge(placeCat("dante", SAMPLE, 24), 1)).toBe(-0);
   });
@@ -202,13 +374,22 @@ describe("the renders in public/interlude", () => {
 
   it("carries no halo in any render: Odin wears none any more", () => {
     for (const id of CAT_IDS) expect(m.cats[id].haloInImage, id).toBeUndefined();
+    for (const id of FIGURE_IDS) expect(m.figures[id].haloInImage, id).toBeUndefined();
+    expect(m.figures["dante-swipe"]?.haloInImage).toBeUndefined();
   });
 
-  it("has a WebP and an AVIF per cat, the WebP at the manifest's size", () => {
-    for (const id of CAT_IDS) {
+  it("has a WebP and an AVIF per cat and per figure, the WebP at the manifest's size", () => {
+    const images = [...CAT_IDS.map((id) => [id, m.cats[id]] as const), ...FIGURE_IDS.map((id) => [id, m.figures[id]] as const)];
+    for (const [id, image] of images) {
       const { w, h } = webpSize(readFileSync(path.join(PUBLIC, `${id}.webp`)));
-      expect({ w, h }, id).toEqual({ w: m.cats[id].w, h: m.cats[id].h });
+      expect({ w, h }, id).toEqual({ w: image.w, h: image.h });
       expect(statSync(path.join(PUBLIC, `${id}.avif`)).size, id).toBeGreaterThan(0);
+    }
+  });
+
+  it("keeps the select's renders within budget too: 90 KB an AVIF, 160 KB for him (nine times a cat's pixels)", () => {
+    for (const id of [...FIGURE_IDS, ...OPTIONAL_FIGURE_IDS]) {
+      expect(statSync(path.join(PUBLIC, `${id}.avif`)).size, id).toBeLessThanOrEqual((id === PLAYER_ONE ? 160 : 90) * 1024);
     }
   });
 

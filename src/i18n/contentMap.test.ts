@@ -83,6 +83,14 @@ const RULES: Rule[] = [
     max: 1,
   },
   {
+    // THE USUAL SUSPECTS became a character select: the complaint against the cats, its GUILTY stamp and
+    // his tip to the officer are gone. Dante's culprit wink is his claw swipe (`suspects.refusals.dante`),
+    // and the credits' cast still bills him; nothing files a complaint any more.
+    subject: "the complaint",
+    pattern: /\bdenuncia|\bcomplaint|wardrobes|armarios ara|se[ñn]or agente|\bofficer\b/i,
+    owners: [],
+  },
+  {
     // He has never lived or worked there.
     subject: "Madrid",
     pattern: /Madrid/i,
