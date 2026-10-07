@@ -97,8 +97,13 @@ export function Driver({ animate, tier }: Props) {
           material.depthWrite = true;
           material.side = FrontSide;
         }
-        // Brows and lashes blend over the skin without hiding each other.
-        if (material.name === "Brows" || material.name === "Lashes") material.depthWrite = false;
+        // Brows and lashes blend over the skin without hiding each other. One pass: drawn
+        // double-sided and transparent, three split each into a back and a front pass, and flipped
+        // the material's side, and with it its program, twice a frame (the night's copies too).
+        if (material.name === "Brows" || material.name === "Lashes") {
+          material.depthWrite = false;
+          material.forceSinglePass = true;
+        }
         if (material.name === "Earring") styleEarring(material);
       }
     });
