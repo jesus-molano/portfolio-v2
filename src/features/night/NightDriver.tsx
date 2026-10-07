@@ -1,13 +1,13 @@
 "use client";
 
 import { useGLTF } from "@react-three/drei";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { type Bone, FrontSide, Group, Mesh, type MeshStandardMaterial, type Object3D } from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { DRIVER_URL } from "@/features/hero/scene/Driver";
 import { captureBindPose, DRIVER_SCALE, DRIVER_SEAT, poseDriver, type RestBone } from "@/features/hero/scene/driverPose";
 import { SUNGLASSES_URL } from "@/features/hero/scene/Sunglasses";
-import { cloneBare } from "./cloneBare";
+import { adopt, cloneOwned } from "./cloneBare";
 
 /** The bind pose stored on the cached scene, shared with the hero's Driver. */
 const REST_POSE_KEY = "vaBindPose";
@@ -35,7 +35,9 @@ export function NightDriver() {
     // parent), and the shared scene's parent is the hero's car only while
     // the hero is mounted; posed in whatever frame it happened to have, his
     // hands missed the wheel and the door. Posed here he sits as in the hero.
-    const copy = cloneBare<Object3D>(scene, (source) => cloneSkinned(source));
+    // Its own geometries, materials and textures (cloneOwned), released with the night.
+    const owned = cloneOwned<Object3D>(scene, (source) => cloneSkinned(source));
+    const copy = owned.object;
     const copyBones = new Map<string, Bone>();
     copy.traverse((object) => {
       if ((object as Bone).isBone) copyBones.set(object.name, object as Bone);
@@ -60,13 +62,16 @@ export function NightDriver() {
       }
     });
     const head = copy.getObjectByName("head");
-    if (head) head.add(cloneBare(glasses));
-    return copy;
+    if (!head) return owned;
+    const shades = cloneOwned(glasses);
+    head.add(shades.object);
+    return adopt(owned, shades);
   }, [scene, glasses]);
+  useEffect(() => () => driver.dispose(), [driver]);
 
   return (
     <primitive
-      object={driver}
+      object={driver.object}
       position={[DRIVER_SEAT.x, DRIVER_SEAT.y, DRIVER_SEAT.z]}
       rotation-y={Math.PI}
       scale={DRIVER_SCALE}

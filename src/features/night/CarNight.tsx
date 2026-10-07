@@ -2,7 +2,7 @@
 
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, Color, type Group, type Object3D, Quaternion, UniformsLib, UniformsUtils, Vector3 } from "three";
 import { CAR_URL, prepareCar } from "@/features/hero/scene/Car";
 import { CAR_MODEL, WHEEL_RADIUS } from "@/features/hero/scene/carModel";
@@ -10,7 +10,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { StageTimeline } from "@/features/work/workTimeline";
 import { stepCarMotion } from "./carMotion";
 import { HEADLIGHT } from "./carPath";
-import { cloneBare } from "./cloneBare";
+import { cloneOwned } from "./cloneBare";
 import { night } from "./nightState";
 import { NightDriver } from "./NightDriver";
 import { type Glow, type GlowHandle, Glows } from "./parts/Glows";
@@ -76,17 +76,20 @@ export function CarNight() {
   const group = useRef<Group>(null);
   const body = useRef<Group>(null);
   const glows = useRef<GlowHandle | null>(null);
-  const model = useMemo(() => {
+  const owned = useMemo(() => {
     prepareCar(scene);
-    const copy = cloneBare(scene);
+    // Its own geometries, materials and textures (cloneOwned), released with the night.
+    const copy = cloneOwned(scene);
     // The hero's turn and scale, set on the copy itself: given as primitive
     // props on this clone they never reached its matrix, so the car was
     // drawn unturned while Jesús, turned with the frame, sat backwards in
     // the passenger seat, his head against the windscreen.
-    copy.rotation.set(0, Math.PI, 0);
-    copy.scale.setScalar(CAR_MODEL.scale);
+    copy.object.rotation.set(0, Math.PI, 0);
+    copy.object.scale.setScalar(CAR_MODEL.scale);
     return copy;
   }, [scene]);
+  useEffect(() => () => owned.dispose(), [owned]);
+  const model = owned.object;
   const wheels = useMemo(
     () => WHEEL_NAMES.map((name) => model.getObjectByName(name)).filter((o): o is Object3D => Boolean(o)),
     [model],

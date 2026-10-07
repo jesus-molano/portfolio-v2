@@ -2,7 +2,7 @@
 
 import { Environment, Lightformer, PerformanceMonitor, useProgress } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Group, Material, Mesh, Texture, WebGLRenderer } from "three";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "@/features/hero/SceneErrorBoundary";
@@ -16,6 +16,7 @@ import { NightEffects } from "./NightEffects";
 import { NightRig } from "./NightRig";
 import { NightSky } from "./NightSky";
 import { night, setNightReadiness } from "./nightState";
+import { boundTextures } from "./releaseTextures";
 import { SETS } from "./sets/registry";
 import { StopLights } from "./StopLights";
 import { Street } from "./Street";
@@ -145,6 +146,35 @@ function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
   return null;
 }
 
+/**
+ * Releases, as the night's renderer goes, the textures its programs bound
+ * that outlive it (releaseTextures.ts): the window atlas, three's shared
+ * DFG lookup table, the hero car's rim blur. Each keeps its image; the
+ * next renderer to draw one (the hero's on its next frame, the next night)
+ * uploads it again. The first child of the canvas, so its cleanup runs
+ * while the scene still holds every object.
+ */
+function DisposeOnUnmount() {
+  const gl = useThree((state) => state.gl);
+  const scene = useThree((state) => state.scene);
+  useLayoutEffect(
+    () => () => {
+      const uniforms: Record<string, { value: unknown } | undefined>[] = [];
+      scene.traverse((object) => {
+        const material = (object as Mesh).material as Material | Material[] | undefined;
+        if (!material) return;
+        for (const m of Array.isArray(material) ? material : [material]) {
+          const compiled = (gl.properties.get(m) as { uniforms?: Record<string, { value: unknown } | undefined> }).uniforms;
+          if (compiled) uniforms.push(compiled);
+        }
+      });
+      boundTextures(uniforms).forEach((texture) => texture.dispose());
+    },
+    [gl, scene],
+  );
+  return null;
+}
+
 type DevWindow = Window & { __vaNight?: { info: () => Record<string, number> } };
 
 /** Dev only: renderer counts of the last frame, for the budget audit (tools/capture). */
@@ -214,6 +244,7 @@ export function NightScene({ tier, active, timeline, work, locale }: Props) {
       camera={{ fov: 35, near: 0.25, far: 1200, position: [-6, 1.5, 9] }}
       aria-hidden
     >
+      <DisposeOnUnmount />
       <color attach="background" args={[palette.night]} />
       <fog attach="fog" args={[palette.nightFog, FOG.near, FOG.far]} />
       {WATCH_FRAME_RATE && active && !slow ? <PerformanceMonitor onDecline={() => setSlow(true)} /> : null}

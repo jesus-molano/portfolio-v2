@@ -23,7 +23,7 @@ import { palette } from "@/design/tokens";
 import { createRandom } from "@/features/hero/scene/world";
 import { glowFragmentShader, glowVertexShader } from "@/features/hero/shaders/neon";
 import { fonts, forTier, loadFaces, toTexture } from "../artCanvas";
-import { cloneBare } from "../cloneBare";
+import { cloneOwned } from "../cloneBare";
 import { createFloods } from "../floods";
 import type { Vec3 } from "../frame";
 import { night } from "../nightState";
@@ -151,7 +151,10 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
   const board = work.stops["cloud-district"].board;
   const [art, setArt] = useState<{ faces: CanvasTexture; piece: CanvasTexture; signs: CanvasTexture; cafe: CanvasTexture; room: CanvasTexture } | null>(null);
   const { scene: carScene } = useGLTF(TELPARK_CAR);
-  const telpark = useMemo(() => cloneBare(carScene), [carScene]);
+  // Its own geometries, materials and textures (cloneOwned), released with the night.
+  const telparkCopy = useMemo(() => cloneOwned(carScene), [carScene]);
+  useEffect(() => () => telparkCopy.dispose(), [telparkCopy]);
+  const telpark = telparkCopy.object;
 
   useEffect(() => {
     let cancelled = false;
