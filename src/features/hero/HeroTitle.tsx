@@ -46,10 +46,17 @@ export function HeroTitle({ name, role, tagline, ref }: Props) {
       }
       if (!entered) return;
 
+      // Once formed, the letters drop their filter: a blur(0) left inline kept every letter on the
+      // filter path of the compositor for the rest of the drive, at no visible difference.
+      const letters = ref.current?.querySelectorAll("[data-letter]") ?? [];
+      const formed = () => {
+        gsap.set(letters, { clearProps: "filter" });
+        markTitleIntroDone();
+      };
       const intro = gsap.timeline({
         defaults: { ease: motion.ease },
         delay: 0.2,
-        onComplete: markTitleIntroDone,
+        onComplete: formed,
       });
       intro
         .fromTo(
@@ -76,7 +83,7 @@ export function HeroTitle({ name, role, tagline, ref }: Props) {
         },
         complete: () => {
           intro.progress(1);
-          markTitleIntroDone();
+          formed();
         },
       });
     },

@@ -220,7 +220,8 @@
 
 .letter {
   display: inline-block;
-  will-change: transform, opacity, filter;
+  /* No filter here: the reveal's blur is cleared once the name has formed (HeroTitle). */
+  will-change: transform, opacity;
 }
 
 .role {
