@@ -411,7 +411,13 @@ if (run("leak")) {
   const last = rows[rows.length - 1];
   // From the third pass on: the first ones still compile and cache code (the heap's own warm-up).
   const from = rows[Math.min(2, rows.length - 1)];
-  const growth = (last.heapMB - from.heapMB) / Math.max(1, rows.length - 1 - rows.indexOf(from));
+  // The median of every pairwise slope (Theil-Sen): one pass read while the night was still up (its
+  // context and its heap not yet released) neither hides a leak nor fakes one.
+  const tail = rows.slice(rows.indexOf(from));
+  const slopes = [];
+  for (let i = 0; i < tail.length; i += 1) for (let j = i + 1; j < tail.length; j += 1) slopes.push((tail[j].heapMB - tail[i].heapMB) / (j - i));
+  slopes.sort((a, b) => a - b);
+  const growth = slopes.length ? slopes[Math.floor((slopes.length - 1) / 2)] : 0;
   results.push({ name: "leak", rows, growthMBPerCycle: +growth.toFixed(3) });
   report("leak: the JS heap stays flat over the city's rebuilds", growth < 0.35, { growthMBPerCycle: +growth.toFixed(3), from: from.heapMB, last: last.heapMB, first: first.heapMB });
   report("leak: no WebGL context outlives its canvas", last.contextsAlive <= last.contextsConnected + 1, last);
