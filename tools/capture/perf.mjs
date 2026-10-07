@@ -27,8 +27,9 @@
  * - rest: at the cinema and the credits, at rest, the page runs one frame
  *   loop at most (the scroll's), and little script.
  * - radio: with the radio on at the credits, the music button's bars cost
- *   no layout; the radio off, its AudioContext sleeps within a second, and
- *   so it does while the tab is hidden.
+ *   no layout; the radio off, its AudioContext sleeps within a second and
+ *   stays asleep through her taps and keys, and it sleeps while the tab is
+ *   hidden.
  * - leak: down into the career city and back up past the hero, `--cycles`
  *   times: the JS heap stays flat and no WebGL context outlives its canvas.
  *
@@ -350,6 +351,13 @@ if (run("radio")) {
   await sleep(1500);
   const after = await s.page.evaluate(() => window.__perfSnap().audio);
   report("radio: off, its AudioContext sleeps", after.every((state) => state !== "running"), { states: after });
+  // Her next taps and keys (every swipe ends in a touchend) leave it asleep while the radio is off.
+  await s.page.evaluate(() => {
+    for (const type of ["pointerdown", "pointerup", "touchend", "keydown"]) document.body.dispatchEvent(new Event(type, { bubbles: true }));
+  });
+  await sleep(1000);
+  const tapped = await s.page.evaluate(() => window.__perfSnap().audio);
+  report("radio: off, her taps and keys leave it asleep", tapped.every((state) => state !== "running"), { states: tapped });
   await s.close();
   // Hidden while playing.
   const h = await session({ music: true });

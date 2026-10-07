@@ -208,7 +208,8 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
    * Puts the AudioContext to sleep once nothing can sound (no station on
    * air, nothing fading out): a running context kept the audio thread
    * mixing silence for the rest of the visit after the radio went off. Her
-   * next tune, or her next gesture, wakes it (`wake`, `audio`).
+   * next tune wakes it (`wake`, `audio`); her gestures do not while it is
+   * off (`wakeOnGesture`).
    */
   const sleepIfSilent = () => {
     if (live || fading.size > 0 || !context || context.state !== "running") return;
@@ -385,6 +386,15 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
     if (context && context.state !== "running" && !hidden) void context.resume().catch(() => {});
   };
 
+  /**
+   * Her gesture wakes the context only while the radio is on: off, it
+   * sleeps (sleepIfSilent), and every swipe's touchend woke it again to
+   * mix silence for the rest of the visit. Tuning in wakes it itself.
+   */
+  const wakeOnGesture = () => {
+    if (live) wake();
+  };
+
   /** The pause's bus, built in the gesture that first tunes the radio. */
   const ensureBus = () => {
     if (bus) return;
@@ -410,7 +420,7 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
       };
       ctx.addEventListener("statechange", routeAll);
       routeAll();
-      for (const type of WAKE_EVENTS) window.addEventListener(type, wake, true);
+      for (const type of WAKE_EVENTS) window.addEventListener(type, wakeOnGesture, true);
     } catch {
       bus = null;
     }
@@ -495,7 +505,7 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
       hidden = next;
       if (next) {
         live?.deck.pause();
-        // Nothing to hear while hidden: the audio thread sleeps too (wake() below, or her next gesture).
+        // Nothing to hear while hidden: the audio thread sleeps too (wake() below, or her next gesture while on).
         if (context?.state === "running") void context.suspend().catch(() => {});
         return;
       }
@@ -561,7 +571,7 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
       }
     },
     dispose() {
-      for (const type of WAKE_EVENTS) window.removeEventListener(type, wake, true);
+      for (const type of WAKE_EVENTS) window.removeEventListener(type, wakeOnGesture, true);
       decks.forEach(unload);
       decks.length = 0;
       live = null;

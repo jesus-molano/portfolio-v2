@@ -593,6 +593,40 @@ describe("the radio behind the pause menu", () => {
       expect(ctx.resumes).toBeGreaterThan(before);
     });
 
+    it("lets her gestures wake the context only while the radio is on", async () => {
+      const listeners = new Map<string, () => void>();
+      vi.stubGlobal("window", {
+        AudioContext: FakeContext,
+        addEventListener(type: string, listener: () => void) {
+          listeners.set(type, listener);
+        },
+        removeEventListener() {},
+      });
+      const gesture = () => ["touchend", "pointerup", "keydown"].forEach((type) => listeners.get(type)?.());
+      const player = createPlayer()!;
+      await player.tune(STATION, { crackle: false });
+      finishFades();
+      const { ctx } = bus();
+      // On, a context the browser stopped wakes on her next tap.
+      ctx.state = "suspended";
+      let before = ctx.resumes;
+      gesture();
+      expect(ctx.resumes).toBeGreaterThan(before);
+      ctx.state = "running";
+      // Off, it sleeps, and every swipe's touchend leaves it asleep.
+      await player.tune(null, { crackle: false });
+      finishFades();
+      expect(ctx.state).toBe("suspended");
+      before = ctx.resumes;
+      gesture();
+      expect(ctx.resumes).toBe(before);
+      // Hidden and back with the radio off: still asleep.
+      player.setHidden(true);
+      player.setHidden(false);
+      gesture();
+      expect(ctx.resumes).toBe(before);
+    });
+
     it("keeps the context awake when another station follows within the fade", async () => {
       const player = createPlayer()!;
       await player.tune(STATION, { crackle: false });
