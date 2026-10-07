@@ -40,7 +40,7 @@ import { SUBTITLES_EVENT } from "@/lib/subtitleSize";
 import { tallestCards } from "./chipPlace";
 import { newDipView, stepDipView } from "./dip";
 import { openingAt } from "./opening";
-import { DISARMED, insideQuad, quadClipPath, quadIsTargetable, stepArm, type ArmEvent } from "./hotspot";
+import { DISARMED, insideQuad, quadClipPath, quadIsTargetable, quadUv, stepArm, type ArmEvent } from "./hotspot";
 import { selectGate } from "@/features/suspects/selectWall";
 import { stageGate } from "./stageGate";
 import { STOPS } from "./stops";
@@ -313,6 +313,10 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         const result = stepArm(arm, event);
         arm = result.state;
         night.armTarget = arm.armed ? 1 : 0;
+        if (!arm.armed) {
+          night.tapU = Number.NaN;
+          night.tapV = Number.NaN;
+        }
         if (result.action === "open") el.chips[night.stop]?.click();
       };
 
@@ -823,6 +827,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         if (onBoard) {
           if (Math.hypot(event.clientX - down.x, event.clientY - down.y) > 10) return;
           fire({ type: "tap", pointerType: down.type, overQuad: true, heldMs: now - down.at, at: now });
+          // Where it landed, for a light that settles there (Logixs' searchlight).
+          if (arm.armed) [night.tapU, night.tapV] = boardUv(event.clientX, event.clientY);
           return;
         }
         if (!getSceneLoading().entered || night.p >= 1) return;
@@ -841,6 +847,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         const y = 1 - (clientY / window.innerHeight) * 2;
         return insideQuad(night.quad, x, y);
       };
+      const boardUv = (clientX: number, clientY: number) =>
+        quadUv(night.quad, (clientX / window.innerWidth) * 2 - 1, 1 - (clientY / window.innerHeight) * 2);
 
       let pointer = { x: Number.NaN, y: Number.NaN };
       const onPointerMove = (event: PointerEvent) => {
@@ -849,14 +857,15 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         pointer = { x: event.clientX, y: event.clientY };
         const over = Boolean(quadPath) && overBoard(event.clientX, event.clientY);
         fire({ type: "pointermove", overQuad: over, resting });
-        if (over) {
-          const [a, b] = [night.quad[0], night.quad[1]];
-          const x = (event.clientX / window.innerWidth) * 2 - 1;
-          night.pointerU = clamp01((x - a[0]) / Math.max(1e-6, b[0] - a[0]));
-        } else night.pointerU = Number.NaN;
+        if (over) [night.pointerU, night.pointerV] = boardUv(event.clientX, event.clientY);
+        else {
+          night.pointerU = Number.NaN;
+          night.pointerV = Number.NaN;
+        }
       };
       const onPointerLeave = () => {
         night.pointerU = Number.NaN;
+        night.pointerV = Number.NaN;
         if (arm.via === "pointer") fire({ type: "pointermove", overQuad: false, resting: false });
       };
 

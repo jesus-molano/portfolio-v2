@@ -27,8 +27,13 @@ export const night = {
   /** The board's armed level: `armTarget` is 0 or 1, `armed` eases toward it. */
   armTarget: 0,
   armed: 0,
-  /** Pointer across the active board, 0..1 from its left edge (NaN when away). */
+  /** Pointer across the active board, 0..1 from its left edge (NaN when away): hotspot.ts `quadUv`. */
   pointerU: Number.NaN,
+  /** Pointer down the active board, 0..1 from its top edge (NaN when away). */
+  pointerV: Number.NaN,
+  /** Where the tap that armed the active board landed on it (u, v as above; NaN when none or disarmed). */
+  tapU: Number.NaN,
+  tapV: Number.NaN,
   /** The active board's corners in NDC (y up), its facing (cosine) and whether it is on screen. */
   quad: [
     [0, 0],

@@ -105,3 +105,70 @@ export function insideQuad(ndc: readonly Ndc[], x: number, y: number): boolean {
   }
   return true;
 }
+
+/**
+ * Where a point (NDC) falls on the board, as shares of it: `u` from its left
+ * edge, `v` from its top, through the quad's own perspective (the inverse of
+ * the homography that takes the unit square onto the quad, corners in the
+ * board's order: top left, top right, bottom right, bottom left). Exact for
+ * a flat board under any camera, so the light a set aims at (u, v) lands
+ * under the pointer. Clamped to 0..1; NaN for a degenerate quad.
+ */
+export function quadUv(ndc: readonly Ndc[], x: number, y: number): [number, number] {
+  const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = ndc;
+  const sx = x0 - x1 + x2 - x3;
+  const sy = y0 - y1 + y2 - y3;
+  let g = 0;
+  let h = 0;
+  if (Math.abs(sx) > 1e-12 || Math.abs(sy) > 1e-12) {
+    const dx1 = x1 - x2;
+    const dx2 = x3 - x2;
+    const dy1 = y1 - y2;
+    const dy2 = y3 - y2;
+    const den = dx1 * dy2 - dx2 * dy1;
+    if (Math.abs(den) < 1e-12) return [Number.NaN, Number.NaN];
+    g = (sx * dy2 - dx2 * sy) / den;
+    h = (dx1 * sy - sx * dy1) / den;
+  }
+  const a = x1 - x0 + g * x1;
+  const b = x3 - x0 + h * x3;
+  const c = x0;
+  const d = y1 - y0 + g * y1;
+  const e = y3 - y0 + h * y3;
+  const f = y0;
+  // The adjugate of [[a b c] [d e f] [g h 1]] takes (x, y, 1) back to (u, v) in homogeneous form.
+  const uh = (e - f * h) * x + (c * h - b) * y + (b * f - c * e);
+  const vh = (f * g - d) * x + (a - c * g) * y + (c * d - a * f);
+  const w = (d * h - e * g) * x + (b * g - a * h) * y + (a * e - b * d);
+  if (Math.abs(w) < 1e-12) return [Number.NaN, Number.NaN];
+  const clamp = (n: number) => Math.min(1, Math.max(0, n));
+  return [clamp(uh / w), clamp(vh / w)];
+}
+
+/**
+ * Whether a quad (NDC, every corner in front of the camera) covers any of
+ * the screen: a corner on it, a corner of the screen inside it, or an edge
+ * across one of the screen's. A board wider than a phone's frame shows no
+ * corner at all and still fills the picture (Logixs' wall of bills).
+ */
+export function quadOverlapsScreen(ndc: readonly Ndc[]): boolean {
+  if (ndc.some(([x, y]) => Math.abs(x) <= 1 && Math.abs(y) <= 1)) return true;
+  const screen: Ndc[] = [
+    [-1, 1],
+    [1, 1],
+    [1, -1],
+    [-1, -1],
+  ];
+  if (screen.some(([x, y]) => insideQuad(ndc, x, y))) return true;
+  const cross = (a: Ndc, b: Ndc, c: Ndc) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  for (let i = 0; i < ndc.length; i += 1) {
+    const a = ndc[i];
+    const b = ndc[(i + 1) % ndc.length];
+    for (let j = 0; j < screen.length; j += 1) {
+      const c = screen[j];
+      const d = screen[(j + 1) % screen.length];
+      if (cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0) return true;
+    }
+  }
+  return false;
+}

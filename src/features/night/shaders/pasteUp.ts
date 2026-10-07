@@ -1,8 +1,11 @@
 /**
  * The Logixs wall and its paper. One light function for both: a violet
  * ambient, the wall lantern's warm pool, the crossing light's red spill
- * and, when the board is armed, a passing car's headlights raking across
- * the run as a slanted band. The brick is procedural; plaster above it.
+ * and, when the board is armed, a police helicopter's searchlight hunting
+ * along the wall (searchlight.ts): a cone from the lamp over the street,
+ * its spot on the wall a hot core, an even body and a crisp rim, stretched
+ * upright where the slanted beam meets the brick. The brick is procedural;
+ * plaster above it.
  */
 const wallLight = /* glsl */ `
   uniform vec3 uAmbient;
@@ -10,8 +13,10 @@ const wallLight = /* glsl */ `
   uniform vec3 uLanternColor;
   uniform vec3 uSignalPos;
   uniform vec3 uSignalColor;
-  uniform float uSweep;
-  uniform float uSweepLevel;
+  uniform vec3 uSpotFrom;
+  uniform vec3 uSpotAxis;
+  uniform float uSpotTan;
+  uniform vec3 uSpotColor;
 
   vec3 wallLight(vec3 world) {
     vec3 L = uLanternPos - world;
@@ -19,10 +24,24 @@ const wallLight = /* glsl */ `
     vec3 light = uAmbient + uLanternColor * (5.0 / (1.0 + 0.6 * d2));
     vec3 S = uSignalPos - world;
     light += uSignalColor * (2.2 / (1.0 + dot(S, S)));
-    // The raking headlight sweep: a slanted band moving along x.
-    float band = world.x - uSweep + world.y * 0.45;
-    light += vec3(1.0, 0.92, 0.8) * uSweepLevel * exp(-band * band * 1.6);
     return light;
+  }
+
+  // The searchlight: how far off the beam's axis a point is, as a share of
+  // the cone's radius there (1 at the rim). uSpotAxis is unit (set on the
+  // CPU); behind the lamp the share is huge and the light nothing. Black
+  // uSpotColor when off: the same program either way.
+  vec3 spotLight(vec3 world) {
+    vec3 d = world - uSpotFrom;
+    float along = dot(d, uSpotAxis);
+    vec3 across = d - uSpotAxis * along;
+    float s = length(across) / max(along * uSpotTan, 1e-3);
+    // An even pool that dims a little toward its edge, cut crisp at the rim
+    // (the lamp's lens), a hot core and a faint scatter around it.
+    float body = (1.0 - smoothstep(0.9, 1.0, s)) * (1.0 - 0.35 * s * s);
+    float core = exp(-s * s * 6.0);
+    float spill = exp(-s * s * 0.5) * 0.06;
+    return uSpotColor * (0.6 * body + 0.9 * core + spill);
   }
 `;
 
@@ -80,7 +99,7 @@ export const wallFragmentShader = /* glsl */ `
       float stain = (valueNoise(vWorld.xy * 1.3) * 0.65 + valueNoise(vWorld.xy * 4.1 + 7.0) * 0.35) * 0.08;
       albedo = vec3(0.62, 0.55, 0.62) - stain;
     }
-    vec3 color = albedo * wallLight(vWorld);
+    vec3 color = albedo * (wallLight(vWorld) + spotLight(vWorld));
     float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);
     gl_FragColor = vec4(mix(color, fogColor, fogFactor), 1.0);
   }
@@ -151,7 +170,11 @@ export const pasteUpFragmentShader = /* glsl */ `
     vec4 art = texture2D(uMap, vUv);
     if (art.a < 0.5) discard;
     // Day-glo stays under the bloom threshold: the bills read, only bulbs bloom.
+    // In the searchlight's core the paper goes a little over it, hot white
+    // as a xenon lamp makes it, the print still readable.
+    vec3 spot = spotLight(vWorld);
     vec3 color = min(art.rgb * wallLight(vWorld), vec3(0.8));
+    color = min(color + art.rgb * spot, vec3(0.8 + 0.25 * min(spot.b, 1.0)));
     // Wet paste: the brush's diagonal strokes catch the lantern until the sheet dries.
     float strokes = 0.5 + 0.5 * sin((vLocal.x * 3.0 + vLocal.y * 1.4) * 7.0 + sin(vLocal.y * 11.0) * 1.2);
     color += vFresh * uWet * (0.03 + 0.04 * strokes * strokes) * vec3(1.0, 0.86, 0.7);

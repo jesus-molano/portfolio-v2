@@ -76,6 +76,8 @@ export const palette = {
   moon: "#f3eeff",
   /** Sodium street light at night, deeper than the daytime trim. */
   sodiumNight: "#ffb347",
+  /** A police helicopter's searchlight: xenon, cooler than the LEDs, hunting the bill sticker at Logixs. */
+  searchlight: "#dce9ff",
 } as const;
 
 export type PaletteKey = keyof typeof palette;

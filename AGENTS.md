@@ -794,7 +794,9 @@ also exists as real DOM for keyboard and screen-reader users.
   on its side, the bottom row between Skip and the pedal. Under reduced motion
   and without JS the stage is plates. Boards arm before they open
   (`hotspot.ts`): a real pointer move, a first tap, or focus on the chip;
-  the hotspot is a DOM element clipped to the board's projected quad,
+  the hotspot is a DOM element clipped to the board's projected quad (on
+  screen when it covers any of the screen, `quadOverlapsScreen`: Logixs'
+  wall is wider than a phone's frame and shows no corner there),
   and the aim's corners follow that quad by transform only (container
   units of the frame, never `left`/`top`: a layout shift per move;
   `layoutShift.test.ts`).
@@ -989,7 +991,18 @@ also exists as real DOM for keyboard and screen-reader users.
   stop's materials are compiled and its textures uploaded ahead of its
   cut (`Warmup` in `NightScene.tsx`), the next stop first. Board art is painted once per stop into canvases in
   the site's fonts (`sets/art/`). `palette.onAir` is the LIVE tally's red
-  and nothing else's. Night shaders never call `pow()` (tested). Dev
+  and nothing else's. Armed, Logixs' wall is hunted by a police
+  helicopter's searchlight (`searchlight.ts`, pure and tested;
+  `palette.searchlight`, lit in `shaders/pasteUp.ts` on the brick, the
+  plaster and the bills alike, with a faint shaft in the haze on the high
+  tier): it follows the pointer's place on the board (`night.pointerU`,
+  `pointerV`, from hotspot.ts `quadUv`, exact through the board's
+  perspective) through a critically damped spring, settles where the tap
+  that armed it landed (`tapU`, `tapV`), and with neither (the chip's
+  focus) searches the run in a slow lazy eight; it hovers a few
+  centimetres and the rotor chops it a few percent at 11 Hz, fades in
+  where it is aimed and out where it is in 0.3 s, and its uniforms are
+  always there (black when off), so it never recompiles. Night shaders never call `pow()` (tested). Dev
   hooks: `window.__vaStage(at)` (a film position or a beat id, `id@t`)
   and `window.__vaArm(on)`; `tools/capture/capture-work.mjs` shoots them.
   `window.__vaCarProbe = []` logs the car every frame (picture, x, pace,

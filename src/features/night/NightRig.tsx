@@ -3,6 +3,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { type PerspectiveCamera, Vector3 } from "three";
+import { quadOverlapsScreen } from "@/features/work/hotspot";
 import type { StageTimeline } from "@/features/work/workTimeline";
 import { framedAt } from "./carMotion";
 import { carAt, type CarState } from "./carPath";
@@ -89,13 +90,16 @@ export function NightRig({ timeline, sets, parallax }: { timeline: StageTimeline
 
     // The board on screen, for the hotspot and the reticle.
     let onScreen = false;
+    let inFront = true;
     set.board.forEach((corner, i) => {
       v.set(...corner).project(camera);
       night.quad[i][0] = v.x;
       night.quad[i][1] = v.y;
+      if (v.z >= 1) inFront = false;
       if (v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05) onScreen = true;
     });
-    night.quadOnScreen = onScreen;
+    // A board wider than the frame (Logixs' wall on a phone) shows no corner and still fills the picture.
+    night.quadOnScreen = onScreen || (inFront && quadOverlapsScreen(night.quad));
     v.set(0, 0, 0);
     for (const corner of set.board) v.add(toCamera.set(...corner));
     v.multiplyScalar(0.25);

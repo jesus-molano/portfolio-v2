@@ -3,6 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  AdditiveBlending,
   BufferAttribute,
   BufferGeometry,
   type CanvasTexture,
@@ -28,7 +29,9 @@ import { type BoxItem, Boxes } from "../parts/Boxes";
 import { NightPalms, type NightPalm } from "../parts/NightPalms";
 import { type Pane, Windows } from "../parts/Windows";
 import { type Glow, type GlowHandle, Glows } from "../parts/Glows";
+import { beamVertexShader, searchBeamFragmentShader } from "../shaders/beam";
 import { pasteUpFragmentShader, pasteUpVertexShader, wallFragmentShader, wallVertexShader } from "../shaders/pasteUp";
+import { type BoardUv, newSearchlight, SEARCHLIGHT, type SpotArea, spotBeam, stepSearchlight } from "../searchlight";
 import { beatP } from "../timelineKeys";
 import { COLLAGE, LOGIXS_ATLAS, paintLogixs, RECTS } from "./art/logixs";
 import { PANE } from "./art/windows";
@@ -44,7 +47,9 @@ import type { NightSet, SetProps } from "./types";
  * During the first card the corner of the lounge bill folds off as a paper
  * plane; during the second the newest bill, the FULL STACK gig, is pasted
  * up from the top, wet, by a roll of paper coming down the wall; the
- * crossing light at the corner turns green as the car leaves.
+ * crossing light at the corner turns green as the car leaves. Armed, a
+ * police helicopter's searchlight hunts the bill sticker along the wall
+ * under the ban, following the pointer (searchlight.ts).
  */
 
 const WALL_Z = -6.4;
@@ -57,6 +62,11 @@ const LENS_Y = [0.47, 0.12, -0.23] as const;
 const LENS_FRONT = SIGNAL[2] + 0.11;
 const LENS_OFF = ["#3a1820", "#3a2a14", "#14301f"] as const;
 const LENS_ON = [new Color("#ff3a5c").multiplyScalar(2.2), new Color("#4dffb0").multiplyScalar(2.2)] as const;
+/** The board (the hotspot's quad) on the wall, metres: the searchlight's pointer and tap land on it. */
+const BOARD: SpotArea = { x0: -9.5, x1: 7.0, y0: 0.6, y1: 4.4 };
+/** The searchlight on the wall at its full level (linear light), and its shaft in the haze. */
+const SPOT_LIGHT = new Color(palette.searchlight).multiplyScalar(1.3);
+const SPOT_HAZE = new Color(palette.searchlight).multiplyScalar(0.1);
 
 type Poster = { x: number; y: number; w: number; h: number; rect: readonly number[]; layer: number; lift: number; turn?: number; fresh?: boolean };
 
@@ -210,8 +220,11 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
       uLanternColor: { value: new Color(palette.sodiumNight).multiplyScalar(0.55) },
       uSignalPos: { value: new Vector3(SIGNAL[0], SIGNAL[1], WALL_Z + 1.5) },
       uSignalColor: { value: new Color("#ff3a5c").multiplyScalar(0.6) },
-      uSweep: { value: -100 },
-      uSweepLevel: { value: 0 },
+      // The searchlight: black until armed, the same program either way (no recompile when it comes on).
+      uSpotFrom: { value: new Vector3(0, 20, 10) },
+      uSpotAxis: { value: new Vector3(0, 0, -1) },
+      uSpotTan: { value: 0.05 },
+      uSpotColor: { value: new Color(0, 0, 0) },
     }),
     [],
   );
@@ -220,6 +233,7 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     return {
       wall: { ...fog(), ...light, uBrickTop: { value: BRICK_TOP } },
       posters: { ...fog(), ...light, uMap: { value: atlas }, uTime: { value: 0 }, uLiftExtra: { value: 0 }, uReveal: { value: 0 }, uWet: { value: 0 } },
+      haze: { ...fog(), uColor: { value: SPOT_HAZE.clone() }, uLevel: { value: 0 } },
     };
   }, [light, atlas]);
   // R3F copies a uniform object into the material, so the frame writes through the materials themselves.
@@ -314,26 +328,51 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     }),
     [timeline],
   );
-  const armedAt = useRef(-1);
+  const searchlightRef = useRef(newSearchlight());
+  const haze = useRef<Mesh>(null);
+  const hazeMaterial = useRef<ShaderMaterial>(null);
+  const spot = useMemo(() => ({ from: new Vector3(), to: new Vector3(), axis: new Vector3(), q: new Quaternion(), down: new Vector3(0, -1, 0) }), []);
   const flapShown = useRef(true);
   const tangent = useMemo(() => new Vector3(), []);
   const scratch = useMemo(() => new Matrix4(), []);
 
-  useFrame((state) => {
-    if (night.stop !== index) return;
+  useFrame((state, delta) => {
+    const searchlight = searchlightRef.current;
+    if (night.stop !== index) {
+      // Another stop: the light is out, and comes up where it is aimed when this board is armed again.
+      searchlight.on = false;
+      searchlight.fade = 0;
+      return;
+    }
     const t = state.clock.elapsedTime;
     const p = night.p;
     setUniform(posterMaterial.current, "uTime", t);
     setUniform(posterMaterial.current, "uLiftExtra", 0.35 * night.armed);
-    if (night.armTarget > 0 && armedAt.current < 0) armedAt.current = t;
-    if (night.armTarget === 0) armedAt.current = -1;
-    // Armed: a passing car's headlights rake the run under the pointer.
-    const since = armedAt.current >= 0 ? t - armedAt.current : -1;
-    const sweepFrom = Number.isFinite(night.pointerU) ? -9.5 + night.pointerU * 13 - 3 : -12;
-    const sweep = since >= 0 ? sweepFrom + ((since * 9) % 14) : -100;
+    // Armed: a police helicopter's searchlight hunts along the wall, after the pointer, at a tap, or on its own.
+    const pointer: BoardUv | null = Number.isFinite(night.pointerU) && Number.isFinite(night.pointerV) ? [night.pointerU, night.pointerV] : null;
+    const tap: BoardUv | null = Number.isFinite(night.tapU) && Number.isFinite(night.tapV) ? [night.tapU, night.tapV] : null;
+    stepSearchlight(searchlight, BOARD, { armed: night.armTarget > 0, pointer, tap, dt: delta });
+    const beam = spotBeam(searchlight, WALL_Z);
+    spot.from.set(...beam.from);
+    spot.to.set(...beam.to);
+    spot.axis.subVectors(spot.to, spot.from);
+    const length = spot.axis.length();
+    spot.axis.divideScalar(Math.max(length, 1e-3));
     for (const material of [wallMaterial.current, posterMaterial.current]) {
-      setUniform(material, "uSweep", sweep);
-      setUniform(material, "uSweepLevel", 0.9 * night.armed);
+      const u = material?.uniforms;
+      if (!u?.uSpotFrom) continue;
+      (u.uSpotFrom.value as Vector3).copy(spot.from);
+      (u.uSpotAxis.value as Vector3).copy(spot.axis);
+      u.uSpotTan.value = beam.tan;
+      (u.uSpotColor.value as Color).copy(SPOT_LIGHT).multiplyScalar(beam.level);
+    }
+    if (haze.current) {
+      haze.current.visible = beam.level > 0.001;
+      spot.q.setFromUnitVectors(spot.down, spot.axis);
+      haze.current.quaternion.copy(spot.q);
+      haze.current.position.copy(spot.from).lerp(spot.to, 0.5);
+      haze.current.scale.set(SEARCHLIGHT.radius, length, SEARCHLIGHT.radius);
+      setUniform(hazeMaterial.current, "uLevel", beam.level);
     }
     // The plane folds off the lounge bill with card 0, 1:1 with the scroll, and leaves frame right.
     const k = Math.min(1, Math.max(0, (p - beats.card0[0]) / Math.max(1e-6, beats.card0[1] - beats.card0[0])));
@@ -432,6 +471,22 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
       ))}
       <NightPalms palms={high ? LOGIXS_PALMS : LOGIXS_PALMS.slice(0, 2)} />
       <Glows glows={glowList} handle={glows} />
+      {/* The searchlight's shaft in the haze, down from the helicopter over the frame to its spot on the wall. */}
+      {high ? (
+        <mesh ref={haze} visible={false} renderOrder={4} frustumCulled={false}>
+          <coneGeometry args={[1, 1, 24, 1, true]} />
+          <shaderMaterial
+            ref={hazeMaterial}
+            uniforms={uniforms.haze}
+            vertexShader={beamVertexShader}
+            fragmentShader={searchBeamFragmentShader}
+            transparent
+            depthWrite={false}
+            blending={AdditiveBlending}
+            fog
+          />
+        </mesh>
+      ) : null}
       <mesh ref={plane} geometry={planeGeo} visible={false}>
         <meshStandardMaterial color="#f2c46a" emissive="#4a2a24" side={DoubleSide} roughness={0.7} />
       </mesh>
@@ -447,10 +502,10 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
 export const logixs: NightSet = {
   Set: LogixsSet,
   board: [
-    [-9.5, 4.4, WALL_Z + 0.05],
-    [7.0, 4.4, WALL_Z + 0.05],
-    [7.0, 0.6, WALL_Z + 0.05],
-    [-9.5, 0.6, WALL_Z + 0.05],
+    [BOARD.x0, BOARD.y1, WALL_Z + 0.05],
+    [BOARD.x1, BOARD.y1, WALL_Z + 0.05],
+    [BOARD.x1, BOARD.y0, WALL_Z + 0.05],
+    [BOARD.x0, BOARD.y0, WALL_Z + 0.05],
   ],
   boardNormal: [0, 0, 1],
   // On a phone: the run the lines are about, the ban over it to the bills' feet (RUN), and the car at its line.

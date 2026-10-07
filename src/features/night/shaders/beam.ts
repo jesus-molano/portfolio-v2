@@ -45,3 +45,33 @@ export const beamFragmentShader = /* glsl */ `
     gl_FragColor = vec4(uColor * a, 1.0);
   }
 `;
+
+/**
+ * The searchlight's shaft in the haze (Logixs, searchlight.ts): the same
+ * open cone, seen only over its last stretch before the wall (its lamp is
+ * far over the frame), fading out just before the spot so the shaft never
+ * doubles it. uLevel 0 when the light is off.
+ */
+export const searchBeamFragmentShader = /* glsl */ `
+  uniform vec3 uColor;
+  uniform float uLevel;
+  uniform vec3 fogColor;
+  uniform float fogNear;
+  uniform float fogFar;
+  varying vec3 vNormal;
+  varying vec3 vView;
+  varying float vAlong;
+  varying float vFogDepth;
+
+  void main() {
+    float viewLen = max(length(vView), 1e-3);
+    vec3 v = vView / viewLen;
+    vec3 n = normalize(vNormal);
+    float facing = abs(dot(n, v));
+    float soft = facing * facing;
+    float fall = smoothstep(0.4, 0.85, vAlong) * (1.0 - smoothstep(0.93, 1.0, vAlong));
+    float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);
+    float a = max(soft * fall * uLevel * (1.0 - fogFactor), 0.0);
+    gl_FragColor = vec4(uColor * a, 1.0);
+  }
+`;
