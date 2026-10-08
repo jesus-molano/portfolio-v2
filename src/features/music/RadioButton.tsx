@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/Button";
 import { getSceneLoading, subscribeSceneLoading } from "@/features/hero/sceneLoading";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { Dictionary } from "@/i18n/dictionaries";
-import { getRadio, getServerRadio, openWheel, resumeRemembered, subscribeRadio } from "./radio";
+import { getRadio, getServerRadio, openWheel, subscribeRadio } from "./radio";
 import styles from "./RadioButton.module.css";
 import { findEntry, formatFrequency, isStation } from "./stations";
 
 type Props = { dict: Dictionary["radio"] };
 
-const GESTURES = ["pointerdown", "keydown", "touchend"] as const;
 /** "seen" once the visitor was shown how to open the wheel. */
 const HINT_KEY = "va-radio-hint";
 /**
@@ -48,9 +47,11 @@ function markHintSeen() {
 /**
  * The music button in the page controls: shows the station on air
  * ("88.3 BOBSLED", the frequency alone on phones) and opens the radio
- * wheel. Browsers only allow sound after a gesture, so on pages without the
- * loading screen the remembered station starts on the first click, tap or
- * key press, unless the visitor turned the radio off. Once per visitor, a
+ * wheel. Nothing but her own choice turns it on: the start menu's NEW GAME,
+ * the wheel or STATS's settings. The one page without the start menu, the
+ * 404, stays silent until she tunes in (it used to start the remembered
+ * station on her first click or key, music nobody asked for on a broken
+ * link, and the button grew under her). Once per visitor, a
  * small callout says how to open the wheel, while the button glows: after
  * the hero's first line, in a quiet moment (a line playing, no prompt up,
  * so never two instructions at once), while the hero is on screen behind
@@ -89,19 +90,6 @@ export function RadioButton({ dict }: Props) {
 
   /** In the same render as the hero asking her again: the callout never shares a frame with a prompt. */
   const showCallout = callout && calm && !open;
-
-  useEffect(() => {
-    const remove = () => GESTURES.forEach((name) => window.removeEventListener(name, onGesture, true));
-    function onGesture(event: Event) {
-      if (button.current?.contains(event.target as Node)) return;
-      // The loading screen's own buttons decide there.
-      if (event.target instanceof Element && event.target.closest("[data-loader]")) return;
-      remove();
-      resumeRemembered();
-    }
-    GESTURES.forEach((name) => window.addEventListener(name, onGesture, { capture: true, passive: true }));
-    return remove;
-  }, []);
 
   useEffect(() => {
     if (!calm || hintSeen()) return;

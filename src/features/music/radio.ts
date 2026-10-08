@@ -258,14 +258,6 @@ export function requestMusic(on: boolean) {
   tune(next.station, { fromTop: memory.station === null && state.cue === null });
 }
 
-/** First gesture on a page without the loading screen: the remembered station, unless turned off. */
-export function resumeRemembered() {
-  const memory = readMemory();
-  if (!memory.on || state.tuned !== "off") return;
-  if (memory.station) tune(memory.station, { save: false, crackle: false });
-  else tune(DEFAULT_STATION_ID, { save: false, crackle: false, fromTop: true });
-}
-
 /** Her volume as she left it, read back on the client: by the settings tab and before the first note. */
 export function restoreVolume() {
   let stored: string | null = null;
