@@ -172,15 +172,21 @@ also exists as real DOM for keyboard and screen-reader users.
 - Metadata: the layout's `generateMetadata` gives each locale its title,
   description, canonical and hreflang links and a link preview card (Open
   Graph and Twitter): `public/og/<locale>.jpg`, 1200 × 630 and under 300 KB
-  (`lib/shareCard.ts`, tested), the cinema's night plate with his name and
-  role on the marquee and the posters in their cases, built by
-  `python3 tools/art/og/build.py` (Pillow; Bebas Neue fetched once into
-  `.art-cache/fonts/`, or `--font` names a copy). Rebuild the cards when the
-  plate, a poster, his name or his role changes: the script writes what it
-  used to `tools/art/og/sources.json` (the words, the SHA-256 of the plate,
-  each poster and the card), and `shareCard.test.ts` fails on a card left
-  behind. `src/app/robots.ts` and `src/app/sitemap.ts` list
-  both locales. Every absolute URL comes from `siteUrl()` (`lib/siteUrl.ts`,
+  (`lib/shareCard.ts`, tested), a game cover's grid of the site's own
+  frames (the owner's pick): the drive into the city, him at the wheel,
+  Dante mid-strike with his claw marks (`claw.ts`), the Afterglow with its
+  marquee lettered per locale and the army's board at night, beside a
+  title block on the start menu's slab colours (his name in Unbounded,
+  his role in Big Shoulders, a W keycap and "Pulsa W para conducir" /
+  "Press W to drive", the domain). Built by `node --experimental-strip-types
+  tools/art/og/keyart/build.mjs` (Playwright's Chromium) from
+  `tools/art/og/keyart/card.html` and the frames in `keyart/frames/` (the
+  site shot without its interface: retake them when a scene changes);
+  Unbounded and JetBrains Mono come from `.art-cache/fonts/`, taken from a
+  production build's `.next/static` the first time. It writes what it used
+  to `tools/art/og/sources.json` (the words, the SHA-256 of every input and
+  of each card), and `shareCard.test.ts` fails on a card left behind.
+  `src/app/robots.ts` and `src/app/sitemap.ts` list both locales. Every absolute URL comes from `siteUrl()` (`lib/siteUrl.ts`,
   tested): `NEXT_PUBLIC_SITE_URL` if set (a custom domain), else
   `https://$VERCEL_PROJECT_PRODUCTION_URL` (Vercel sets it on every
   deployment, previews too: the production domain,
@@ -1498,8 +1504,7 @@ also exists as real DOM for keyboard and screen-reader users.
     Each poster is encoded 432 and 216 px wide, a srcset (`links.ts`,
     `POSTER_SIZES`): a case on a 1x facade takes the small one. The dawn
     plates hang the same posters, dimmed, so a poster change rebuilds
-    them too (`--only dawn-wide,dawn-tall,posters`), and then the link
-    preview cards (`tools/art/og/build.py`), which hang them as well.
+    them too (`--only dawn-wide,dawn-tall,posters`).
   - Every part of a poster has one job, and none repeats another: the
     tagline and the line under the title (`tagline`, `sub`) make the
     joke; the billing block (baked in `posters.mjs`) gives names and

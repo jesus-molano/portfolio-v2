@@ -1,9 +1,9 @@
 import type { Locale } from "@/i18n/config";
 
 /**
- * The link preview card (Open Graph and Twitter) of each locale: the
- * cinema's night plate with his name and role on the marquee, built by
- * `tools/art/og/build.py` into `public/og/<locale>.jpg`.
+ * The link preview card (Open Graph and Twitter) of each locale: a game
+ * cover's grid of the site's own frames and his name and role, built by
+ * `tools/art/og/keyart/build.mjs` into `public/og/<locale>.jpg`.
  */
 export const SHARE_CARD = { width: 1200, height: 630, type: "image/jpeg" } as const;
 

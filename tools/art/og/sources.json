@@ -5,13 +5,15 @@
       "Frontend Engineer"
     ],
     "files": {
-      "public/finale/night-wide-en.webp": "f29d6c1af217bd33b4c42d74a5a646758e6634981dae9be80a6ee177c9eff404",
-      "public/finale/poster-dotfiles-en.webp": "b4eeb7cca29521498291f0bd7f093e5921876f5629424c6d6671023f6450a679",
-      "public/finale/poster-tessera-studio-en.webp": "a3373a0f23012a069703848abf4973622e39d16911e3020a5002ba6094581741",
-      "public/finale/poster-project-atlas-en.webp": "7730e3efebd87f702a0a5a9a4dc30bf87210a493dfe07e242330f7f47dee80ab",
-      "public/finale/poster-expenses-log-app-en.webp": "355e8fb026323794f729d2eb2bf9bc5931f64aea9d94e342fee3e1fc8044f2d2"
+      "tools/art/og/keyart/card.html": "562de710410254381f1e1a5ae7630ff8ac0f09d681095617cb75394aaf09a29b",
+      "tools/art/og/keyart/frames/hero-chase.webp": "93f1d41df158f54e46578ca70a0c37679d90d9e2d333c21aad422625330bb1d9",
+      "tools/art/og/keyart/frames/hero-driver.webp": "75992af97d67e89e799a01c8a280ba2750de69cbab78e245e7d0dc109f39c4b6",
+      "tools/art/og/keyart/frames/army.webp": "6b28d0c33f9ce317775f027b9c4bab0a3da70faaafc38cd27c1dd7c10b4b69c5",
+      "tools/art/og/keyart/frames/cinema-en.webp": "8af4a8d1b4622d6358a2efe148b07ee2919a0da929b94e182fe7edfd21ff6412",
+      "public/interlude/dante-swipe.webp": "8b69c1af00af6a293fc33adf925f45e683b90fdf9a0adeba9cde217eaa102541",
+      "src/features/suspects/claw.ts": "4d1dbb1919ebac158ff40c6b62f38466bb60cea3c6bddecdb2ed0b97331ca454"
     },
-    "card": "6c002c7108b7b69dc407c38e392ad49904c1e8db0d712b37d8d1a7d58e0d5c64"
+    "card": "919f2ebbe9d942c4c9e65cb31725db1e36e22f41b258553c7bf03699964cd14e"
   },
   "es": {
     "words": [
@@ -19,12 +21,14 @@
       "Frontend Engineer"
     ],
     "files": {
-      "public/finale/night-wide-es.webp": "f96bda6d21470225a1afca20462916d1acde46eb646f87c71e6dd648837ebb91",
-      "public/finale/poster-dotfiles-es.webp": "5a6d664db33e5fa2d1914800314b4c7bc3372007d1eb1602d3e3b5719b182e99",
-      "public/finale/poster-tessera-studio-es.webp": "f18d767bc485e1878e9f64c5e61b29846169b089180808f572cc98e5a299caa2",
-      "public/finale/poster-project-atlas-es.webp": "ccd06375d270bf3a8b2cf8741680e43b7fd0cc8dfb356defafcdee81a4e62543",
-      "public/finale/poster-expenses-log-app-es.webp": "2824d7cd2152c9b46692a0b519554bf75927170519821f146251d0e9ea3361d7"
+      "tools/art/og/keyart/card.html": "562de710410254381f1e1a5ae7630ff8ac0f09d681095617cb75394aaf09a29b",
+      "tools/art/og/keyart/frames/hero-chase.webp": "93f1d41df158f54e46578ca70a0c37679d90d9e2d333c21aad422625330bb1d9",
+      "tools/art/og/keyart/frames/hero-driver.webp": "75992af97d67e89e799a01c8a280ba2750de69cbab78e245e7d0dc109f39c4b6",
+      "tools/art/og/keyart/frames/army.webp": "6b28d0c33f9ce317775f027b9c4bab0a3da70faaafc38cd27c1dd7c10b4b69c5",
+      "tools/art/og/keyart/frames/cinema-es.webp": "734892553bb7fbcfc793a1cc6885d56aeffbcdf858879de60725138adb8c7a70",
+      "public/interlude/dante-swipe.webp": "8b69c1af00af6a293fc33adf925f45e683b90fdf9a0adeba9cde217eaa102541",
+      "src/features/suspects/claw.ts": "4d1dbb1919ebac158ff40c6b62f38466bb60cea3c6bddecdb2ed0b97331ca454"
     },
-    "card": "47644092544069b552183d28dd375eb6f22563f011b993c233fc2fae65f07b23"
+    "card": "a09488f4618ef876dbe48a055f76364abfa151185ac988abfc8646587de32f53"
   }
 }
