@@ -9,6 +9,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import type { StageTimeline } from "@/features/work/workTimeline";
 import styles from "./Night.module.css";
 import { getSelectHeld, subscribeSelectHeld } from "@/features/suspects/selectWall";
+import { useContextLoss } from "@/hooks/useContextLoss";
 import { getNightCovered, setNightReadiness, subscribeNightCovered } from "./nightState";
 
 const NightScene = dynamic(() => import("./NightScene").then((m) => m.NightScene), { ssr: false });
@@ -26,6 +27,8 @@ type Props = { timeline: StageTimeline; work: Dictionary["work"]; locale: Locale
  * mount, painting every board, landed on a phone pushing at that wall. A failed scene (no
  * WebGL) marks the night as failed and the stage shows its text.
  */
+const markFailed = () => setNightReadiness("failed");
+
 export function NightCanvas({ timeline, work, locale }: Props) {
   const tier = useQualityTier();
   const host = useRef<HTMLDivElement>(null);
@@ -33,6 +36,9 @@ export function NightCanvas({ timeline, work, locale }: Props) {
   const [onScreen, setOnScreen] = useState(false);
   const covered = useSyncExternalStore(subscribeNightCovered, getNightCovered, () => false);
   const held = useSyncExternalStore(subscribeSelectHeld, getSelectHeld, () => false);
+  // A lost context (a phone short of GPU memory: a white canvas, Chrome's frowning face) mounts a
+  // fresh canvas; after a few the night stays dark and the stage plays its text (lib/contextLoss.ts).
+  const loss = useContextLoss(markFailed);
 
   useEffect(() => {
     const element = host.current?.closest("section");
@@ -64,7 +70,17 @@ export function NightCanvas({ timeline, work, locale }: Props) {
     <div ref={host} className={styles.canvas} aria-hidden="true">
       {near && !held ? (
         <SceneErrorBoundary name="Night scene" onError={() => setNightReadiness("failed")}>
-          <NightScene tier={tier} active={onScreen && !covered} timeline={timeline} work={work} locale={locale} />
+          {loss.mounted ? (
+            <NightScene
+              key={loss.generation}
+              tier={tier}
+              active={onScreen && !covered}
+              timeline={timeline}
+              work={work}
+              locale={locale}
+              onCreated={loss.onCreated}
+            />
+          ) : null}
         </SceneErrorBoundary>
       ) : null}
     </div>

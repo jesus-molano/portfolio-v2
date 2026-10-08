@@ -28,6 +28,8 @@ type Props = {
   timeline: StageTimeline;
   work: Dictionary["work"];
   locale: Locale;
+  /** Hands the renderer over once created (NightCanvas watches it for a lost context). */
+  onCreated?: (state: { gl: WebGLRenderer }) => void;
 };
 
 /** Production only, as in the hero: a dev build's frame rate says nothing about the device. */
@@ -225,7 +227,7 @@ function ReadyReporter() {
  * screen is visible; the street, the car, the sky and the lights are
  * shared and take the stop's look at each cut.
  */
-export function NightScene({ tier, active, timeline, work, locale }: Props) {
+export function NightScene({ tier, active, timeline, work, locale, onCreated }: Props) {
   const groups = useRef<(Group | null)[]>([]);
   // The hero's pixels (degrade.ts), and its one step down on a slow device: dpr 1, never back up.
   const [slow, setSlow] = useState(false);
@@ -245,6 +247,7 @@ export function NightScene({ tier, active, timeline, work, locale }: Props) {
       frameloop={active ? "always" : "never"}
       gl={{ antialias: false, powerPreference: "high-performance", alpha: false, stencil: false }}
       camera={{ fov: 35, near: 0.25, far: 1200, position: [-6, 1.5, 9] }}
+      onCreated={onCreated}
       aria-hidden
     >
       <DisposeOnUnmount />

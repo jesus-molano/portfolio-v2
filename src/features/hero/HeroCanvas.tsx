@@ -6,6 +6,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { isOnScreen, ON_SCREEN_THRESHOLDS } from "@/lib/onScreen";
 import styles from "./Hero.module.css";
 import { getHeroCovered, getServerHeroCovered, subscribeHeroCovered } from "./heroCover";
+import { useContextLoss } from "@/hooks/useContextLoss";
 import { SceneErrorBoundary } from "./SceneErrorBoundary";
 import { markSceneReady } from "./sceneLoading";
 import { useQualityTier } from "./useQualityTier";
@@ -37,6 +38,7 @@ export function HeroCanvas({ label, billboards }: Props) {
   const wrapper = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(true);
   const covered = useSyncExternalStore(subscribeHeroCovered, getHeroCovered, getServerHeroCovered);
+  const loss = useContextLoss(markSceneReady);
 
   useEffect(() => {
     const element = wrapper.current;
@@ -51,9 +53,18 @@ export function HeroCanvas({ label, billboards }: Props) {
 
   return (
     <div ref={wrapper} className={styles.canvas} role="img" aria-label={label} data-radio-surface data-scene>
-      {/* A failed scene (no WebGL) must not keep the loading screen up. */}
+      {/* A failed scene (no WebGL) must not keep the loading screen up. A lost context mounts a fresh canvas, then gives up to the CSS sky. */}
       <SceneErrorBoundary onError={markSceneReady}>
-        <HeroScene tier={tier} reducedMotion={reducedMotion} active={inView && !covered} billboards={billboards} />
+        {loss.mounted ? (
+          <HeroScene
+            key={loss.generation}
+            tier={tier}
+            reducedMotion={reducedMotion}
+            active={inView && !covered}
+            billboards={billboards}
+            onCreated={loss.onCreated}
+          />
+        ) : null}
       </SceneErrorBoundary>
     </div>
   );

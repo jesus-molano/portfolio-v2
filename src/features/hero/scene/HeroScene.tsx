@@ -1,5 +1,7 @@
 "use client";
 
+import type { WebGLRenderer } from "three";
+
 import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
@@ -63,6 +65,8 @@ type Props = {
   active: boolean;
   /** Copy of the rooftop billboards, one line per board. */
   billboards: string[];
+  /** Hands the renderer over once created (HeroCanvas watches it for a lost context). */
+  onCreated?: (state: { gl: WebGLRenderer }) => void;
 };
 
 /**
@@ -70,7 +74,7 @@ type Props = {
  * Under reduced motion the loop renders on demand: one still frame.
  * The Canvas is keyed by tier so a tier change rebuilds the renderer.
  */
-export function HeroScene({ tier, reducedMotion, active, billboards }: Props) {
+export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }: Props) {
   const animate = !reducedMotion;
   const high = tier === "high";
   const opening = SHOTS[0].from;
@@ -119,10 +123,11 @@ export function HeroScene({ tier, reducedMotion, active, billboards }: Props) {
         far: 1400,
         position: [opening.position.x + CAR_POSITION.x, opening.position.y, opening.position.z],
       }}
-      onCreated={({ gl }) => {
+      onCreated={(state) => {
         // Read by the ToneMapping effect; the materials themselves stay
         // linear (flat) so bloom sees real HDR values.
-        gl.toneMappingExposure = LIGHT.exposure;
+        state.gl.toneMappingExposure = LIGHT.exposure;
+        onCreated?.(state);
       }}
       aria-hidden
     >
