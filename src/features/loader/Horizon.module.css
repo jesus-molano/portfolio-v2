@@ -5,7 +5,8 @@
  * motion, where the picture rests as it ends: sun down, lamps and windows
  * lit.
  *
- * `--p` (0 to 1, the load) comes from the loading screen's root.
+ * `--p` (0 to 1, the load) comes from the loading screen's root. The 404
+ * (not-found.tsx) shows the picture as the load ends, its windows lit.
  */
 
 .scene {
@@ -44,7 +45,8 @@
   transition: opacity 1.2s ease;
 }
 
-:global([data-loader][data-ready]) .windows {
+:global([data-loader][data-ready]) .windows,
+:global([data-wrong-exit]) .windows {
   opacity: 1;
 }
 

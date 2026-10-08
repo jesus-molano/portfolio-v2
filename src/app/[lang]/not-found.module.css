@@ -1,33 +1,418 @@
+/*
+ * The 404 (not-found.tsx): a screen of the game, the start menu's sibling.
+ * The start menu's picture fills the screen (Horizon.tsx, both layouts in
+ * the DOM, the same media queries pick one), a motorway exit sign says
+ * where she is, and a menu in the start menu's look offers the way back.
+ *
+ * Wide screens: the sign and the menu on the left over the sky, the road
+ * running to the city on the right. Phones and portrait screens: the sign
+ * in the sky, the causeway under it, the menu on the night below.
+ */
 .page {
-  min-height: 100vh;
-  display: grid;
-  place-content: center;
-  gap: 1rem;
-  padding: 2rem 1rem;
-  text-align: center;
+  --gutter: clamp(20px, 3.4vw, 56px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  position: relative;
+  min-height: calc(var(--va-svh) * 100);
+  overflow: hidden;
+  container-type: inline-size;
+  background: var(--va-color-night);
 }
 
-.code {
-  font-family: var(--va-font-display);
-  font-size: clamp(5rem, 20vw, 14rem);
-  line-height: 0.9;
-  background: linear-gradient(180deg, var(--va-color-cream) 0%, var(--va-color-pink) 60%, var(--va-color-magenta) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--va-color-magenta) 50%, transparent));
+/* ---------- The picture ---------- */
+
+.art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.art > svg[data-layout="wide"] {
+  top: 0;
+  height: 100%;
+}
+
+.art > svg[data-layout="tall"] {
+  display: none;
+}
+
+/* The words sit on the left of the sky: night under them, the road and the city clear on the right. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--va-color-night) 72%, transparent) 0%,
+      color-mix(in srgb, var(--va-color-night) 48%, transparent) 34%,
+      transparent 62%
+    ),
+    linear-gradient(to top, color-mix(in srgb, var(--va-color-night) 70%, transparent) 0%, transparent 24%);
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 62% 55%, transparent 55%, color-mix(in srgb, var(--va-color-night) 60%, transparent) 100%);
+}
+
+/* ---------- The words ---------- */
+
+.content {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: clamp(28px, 4cqw, 56px);
+  width: min(40rem, 100% - 2 * var(--gutter));
+  min-height: calc(var(--va-svh) * 100);
+  margin-left: calc(var(--gutter) + var(--safe-left));
+  /* Clear of the page controls at the top right and of the screen's edges. */
+  padding: calc(5rem + var(--safe-top)) 0 calc(2.5rem + var(--safe-bottom));
 }
 
 /*
- * The 404 never has a scene: it sits on the body's CSS sky, whose peach
- * and pink horizon runs behind this line. Night ink reads above 10:1 on
- * every part of it (cyan read about 1:1).
+ * A motorway exit sign: a night-ink panel with a cream keyline inset from
+ * its edge, an amber exit tab standing on its top edge, the exit arrow on
+ * the right. The heading is the sign's legend.
  */
-.heading {
-  font-family: var(--va-font-body);
-  font-size: 1rem;
-  font-weight: 500;
-  letter-spacing: 0.3em;
+.sign {
+  position: relative;
+  justify-self: start;
+  min-width: min(30rem, 100%);
+  max-width: 100%;
+  margin-top: 1.4rem;
+  padding: 1.5rem clamp(4.6rem, 12cqw, 6.4rem) 1.35rem 1.6rem;
+  border-radius: 14px;
+  color: var(--va-color-cream);
+  background:
+    radial-gradient(circle at 12px 12px, color-mix(in srgb, var(--va-color-cream) 55%, transparent) 2.5px, transparent 3.5px),
+    radial-gradient(circle at calc(100% - 12px) 12px, color-mix(in srgb, var(--va-color-cream) 55%, transparent) 2.5px, transparent 3.5px),
+    radial-gradient(circle at 12px calc(100% - 12px), color-mix(in srgb, var(--va-color-cream) 55%, transparent) 2.5px, transparent 3.5px),
+    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), color-mix(in srgb, var(--va-color-cream) 55%, transparent) 2.5px, transparent 3.5px),
+    linear-gradient(160deg, color-mix(in srgb, var(--va-color-cream) 9%, transparent) 0%, transparent 38%),
+    linear-gradient(180deg, color-mix(in srgb, var(--va-color-ink) 82%, var(--va-color-dusk)) 0%, var(--va-color-ink) 100%);
+  box-shadow:
+    inset 0 0 0 6px var(--va-color-ink),
+    inset 0 0 0 9px var(--va-color-cream),
+    0 22px 44px color-mix(in srgb, var(--va-color-night) 70%, transparent),
+    0 0 60px color-mix(in srgb, var(--va-color-magenta) 22%, transparent);
+  animation: hang 700ms var(--va-motion-ease) both;
+}
+
+.exit {
+  position: absolute;
+  top: -1.55rem;
+  left: 1.3rem;
+  margin: 0;
+  padding: 0.42rem 0.8rem 0.3rem;
+  border-radius: 8px 8px 0 0;
+  font: 400 1.35rem/1 var(--va-font-marquee);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--va-color-ink);
+  background: var(--va-color-sodium);
+  box-shadow: inset 0 0 0 3px var(--va-color-ink);
+}
+
+.heading {
+  margin: 0;
+  font: 400 clamp(3rem, 8.4cqw, 5.4rem) / 0.9 var(--va-font-marquee);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--va-color-cream);
+}
+
+.line {
+  margin: 0.7rem 0 0;
+  font: 500 clamp(0.95rem, 2.2cqw, 1.1rem) / 1.35 var(--va-font-body);
+  text-wrap: balance;
+  color: color-mix(in srgb, var(--va-color-cream) 82%, transparent);
+}
+
+.arrow {
+  position: absolute;
+  top: 50%;
+  right: clamp(1.2rem, 3cqw, 1.8rem);
+  width: clamp(2.4rem, 7cqw, 3.4rem);
+  color: var(--va-color-cream);
+  transform: translateY(-50%);
+}
+
+/* ---------- The menu, in the start menu's look ---------- */
+
+.menu {
+  display: grid;
+  justify-items: start;
+}
+
+.kicker,
+.routes {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  font: 500 11px/1 var(--va-font-mono);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-text-muted);
+}
+
+.kicker::before {
+  content: "";
+  flex: none;
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--va-color-magenta), var(--va-color-orange));
+  box-shadow: 0 0 10px var(--va-color-magenta);
+}
+
+.routes {
+  margin: 22px 0 6px;
+}
+
+.places {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Each way is a word on the start menu's painted slab: outlined in cream
+ * until it is chosen, filled with night on the slab once it is (hover or
+ * keyboard focus). With nothing chosen, the way back to the city is.
+ */
+.item {
+  position: relative;
+  display: inline-block;
+  padding: 0 14px;
+  margin-left: -14px;
+  color: inherit;
+  text-decoration: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.item::before {
+  content: "";
+  position: absolute;
+  inset: 0 -6px 0 0;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--va-color-magenta) 0%,
+    color-mix(in srgb, var(--va-color-magenta) 50%, var(--va-color-orange)) 42%,
+    var(--va-color-orange) 78%,
+    var(--va-color-amber) 100%
+  );
+  filter: drop-shadow(7px 7px 0 color-mix(in srgb, var(--va-color-ink) 88%, transparent))
+    drop-shadow(0 0 22px color-mix(in srgb, var(--va-color-magenta) 40%, transparent));
+  opacity: 0;
+  transform: skewX(-11deg) scaleX(0.92);
+  transform-origin: 0 50%;
+  transition:
+    opacity 200ms ease,
+    transform 300ms var(--va-motion-ease);
+}
+
+.word {
+  position: relative;
+  display: block;
+  font: 400 var(--word, 2rem) / 1.08 var(--va-font-marquee);
+  letter-spacing: 0.012em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--va-color-cream) 80%, transparent);
+  transition:
+    color 220ms ease,
+    -webkit-text-stroke-color 220ms ease,
+    transform 320ms var(--va-motion-ease);
+}
+
+.primary {
+  --word: clamp(2.6rem, 9cqw, 4.8rem);
+}
+
+.places .item {
+  --word: clamp(1.5rem, 4.4cqw, 2.1rem);
+}
+
+/* Small words read better filled than outlined. */
+.places .word {
+  color: color-mix(in srgb, var(--va-color-cream) 86%, transparent);
+  -webkit-text-stroke-color: transparent;
+}
+
+.item:is(:hover, :focus-visible)::before,
+.menu:not(:has(.item:is(:hover, :focus-visible))) .primary::before {
+  opacity: 1;
+  transform: skewX(-11deg) scaleX(1);
+}
+
+.item:is(:hover, :focus-visible) .word,
+.menu:not(:has(.item:is(:hover, :focus-visible))) .primary .word {
   color: var(--va-color-night);
+  -webkit-text-stroke-color: transparent;
+  transform: translateX(6px);
+}
+
+@keyframes hang {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) rotate(-1.2deg);
+  }
+}
+
+/* ---------- Phones and portrait screens ---------- */
+
+@media (orientation: portrait), (max-width: 699.98px) and (min-height: 521px) {
+  .page {
+    /* The horizon below the sign, the menu on the night under it. */
+    --horizon-y: 47%;
+  }
+
+  .art > svg[data-layout="wide"] {
+    display: none;
+  }
+
+  /* The tall layout's horizon (700 units down its 900-unit width) lands at --horizon-y. */
+  .art > svg[data-layout="tall"] {
+    display: block;
+    top: calc(var(--horizon-y) - 77.7778cqw);
+    height: 144.4444cqw;
+  }
+
+  .scrim {
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--va-color-night) 30%, transparent) 0%,
+      transparent 30%,
+      transparent calc(var(--horizon-y) + 6%),
+      color-mix(in srgb, var(--va-color-night) 70%, transparent) calc(var(--horizon-y) + 20%),
+      color-mix(in srgb, var(--va-color-night) 90%, transparent) 100%
+    );
+  }
+
+  .vignette {
+    background: radial-gradient(130% 80% at 50% 30%, transparent 60%, color-mix(in srgb, var(--va-color-night) 55%, transparent) 100%);
+  }
+
+  .content {
+    align-content: space-between;
+    width: auto;
+    margin: 0 calc(var(--gutter) + var(--safe-left));
+    padding-top: calc(5.5rem + var(--safe-top));
+  }
+
+  .sign {
+    justify-self: stretch;
+  }
+
+  .heading {
+    font-size: clamp(2.6rem, 13cqw, 4.6rem);
+  }
+
+  .primary {
+    --word: clamp(2.3rem, 11.5cqw, 3.6rem);
+  }
+
+  .places .item {
+    --word: clamp(1.45rem, 7cqw, 2rem);
+  }
+}
+
+/* Phones on their side: the wide picture, the sign and the menu side by side, night under both. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .scrim {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--va-color-night) 72%, transparent) 0%,
+      color-mix(in srgb, var(--va-color-night) 58%, transparent) 55%,
+      color-mix(in srgb, var(--va-color-night) 30%, transparent) 100%
+    );
+  }
+
+  .content {
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 40px;
+    width: auto;
+    padding-top: calc(3.5rem + var(--safe-top));
+    padding-bottom: calc(1.5rem + var(--safe-bottom));
+  }
+
+  .heading {
+    font-size: clamp(2.2rem, 7cqw, 3.4rem);
+  }
+
+  .primary {
+    --word: clamp(2rem, 5.6cqw, 2.8rem);
+  }
+
+  .places .item {
+    --word: 1.4rem;
+  }
+}
+
+/* ---------- Reduced motion and forced colours ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sign {
+    animation: none;
+  }
+
+  .item::before,
+  .word {
+    transition: none;
+  }
+}
+
+/* The picture keeps its own colours in forced colours: the system's background instead, the sign and the menu in its colours. */
+@media (forced-colors: active) {
+  .art {
+    display: none;
+  }
+
+  .sign {
+    border: 3px solid CanvasText;
+    background: Canvas;
+    box-shadow: none;
+  }
+
+  .exit {
+    border: 2px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+    box-shadow: none;
+  }
+
+  .heading,
+  .line,
+  .arrow {
+    color: CanvasText;
+  }
+
+  .word,
+  .item:is(:hover, :focus-visible) .word,
+  .menu:not(:has(.item:is(:hover, :focus-visible))) .primary .word {
+    color: LinkText;
+    -webkit-text-stroke: 0;
+  }
+
+  .item::before {
+    display: none;
+  }
+
+  .item:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
 }

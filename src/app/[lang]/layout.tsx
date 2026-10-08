@@ -201,7 +201,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { lang } = await params;
   if (!hasLocale(lang)) return { icons: SITE_ICONS };
   const dict = await getDictionary(lang);
-  // The link preview card: the cinema at night with his name on the marquee (tools/art/og).
+  // The link preview card: a game cover of the site's own frames (tools/art/og/keyart).
   const card = { url: shareCardPath(lang), alt: dict.meta.imageAlt };
   return {
     metadataBase: new URL(siteUrl()),

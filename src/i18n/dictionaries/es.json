@@ -995,6 +995,17 @@
   "notFound": {
     "title": "Salida equivocada — Jesús Molano",
     "heading": "Salida equivocada",
-    "back": "Volver a la ciudad"
+    "exit": "Salida 404",
+    "line": "Esta carretera no sale en el mapa.",
+    "rerouting": "Recalculando ruta…",
+    "back": "Volver a la ciudad",
+    "routesLabel": "Rutas",
+    "routes": "O ve directo a",
+    "places": {
+      "work": "Trayectoria",
+      "stats": "Ficha del jugador",
+      "projects": "Proyectos",
+      "contact": "Contacto"
+    }
   }
 }

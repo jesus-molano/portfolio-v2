@@ -168,7 +168,14 @@ also exists as real DOM for keyboard and screen-reader users.
   `href="#..."` must reach an element id that exists (no dead links). Any
   other path under a locale (`[...rest]`) renders the localized 404
   (`not-found.tsx`), with its own title (`notFound.title`, "Wrong exit —
-  Jesús Molano").
+  Jesús Molano"): a screen of the game, the start menu's sibling (the
+  owner found the old one horrible). The start menu's picture fills it
+  (`Horizon`, its lamps and windows lit), a motorway exit sign (an amber
+  SALIDA 404 / EXIT 404 tab, the heading as its legend, the exit arrow)
+  says where she is, and a menu in the start menu's look («Recalculando
+  ruta…» / "Rerouting…") goes back to the city or straight to a section
+  (`wrongExit.ts`, a full load each, so the start menu comes first;
+  `anchors.test.ts` checks the ids).
 - Metadata: the layout's `generateMetadata` gives each locale its title,
   description, canonical and hreflang links and a link preview card (Open
   Graph and Twitter): `public/og/<locale>.jpg`, 1200 × 630 and under 300 KB
