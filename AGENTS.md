@@ -963,8 +963,11 @@ also exists as real DOM for keyboard and screen-reader users.
     the page, and faded slowly it slid over the route. As drawn, its fade
     never runs faster than 0.35 s whole (a fling never erases it in a
     frame), resting 0.3 s mid-fade finishes it (no ghost of it over the
-    army's board, as the hero's title settles), and its bounce under a
-    push at the title wall eases in and out, never while it slides in.
+    army's board, as the hero's title settles). It never bounces under a
+    push at its wall (it rose under her finger and sank back while the
+    wall held, then rose again: forward, back, forward); a push runs the
+    title's clock three times as fast instead (`TITLE_PUSH_RATE`), so the
+    wall gives within a moment and the push carries on from there.
     The letterbox bars slide away as the first stop fades in,
     as in the hero, and soft night scrims at the frame's top and bottom
     carry the chrome; the cover's night starts and ends on the line-up's

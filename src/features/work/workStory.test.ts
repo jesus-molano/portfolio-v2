@@ -14,6 +14,7 @@ import {
   stageReadFill,
   stageWalls,
   stepStageStory,
+  TITLE_PUSH_RATE,
 } from "./workStory";
 
 const timeline = workTimeline(en.work);
@@ -118,6 +119,14 @@ describe("work story", () => {
     const waiting = newStageStory(walls, timeline.cards.length);
     for (let i = 0; i < 300; i += 1) stepStageStory(walls, waiting, timeline, 0, dt, { ...running, titleUp: false });
     expect(waiting.done[0]).toBe(false);
+    // A push at it runs its clock TITLE_PUSH_RATE times as fast: the wall gives within a moment.
+    const pushed = newStageStory(walls, timeline.cards.length);
+    let tp = 0;
+    while (!pushed.done[0] && tp < 5) {
+      stepStageStory(walls, pushed, timeline, title.from, dt, { ...running, reach: title.to, titleUp: true, pushing: true });
+      tp += dt;
+    }
+    expect(tp).toBeLessThan(title.hold / TITLE_PUSH_RATE + 0.05);
     // Past it, the frontier is the arrival's held wall, which starts where its beat starts: no gap.
     const arrive = walls[1];
     expect(arrive.kind).toBe("hold");

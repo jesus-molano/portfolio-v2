@@ -332,9 +332,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       const titleBeat = timeline.beats[0];
       /** The first line: a push into the opening carries the page on to it (see the push below). */
       const firstLine = stageLineStep(1, 0, timeline, Number.POSITIVE_INFINITY) ?? titleBeat.end;
-      /** The card's fade and its bounce as drawn (they ease; the film position only sets their goals). */
+      /** The card's fade as drawn (it eases; the film position only sets its goal). */
       let shownTitleOut = 0;
-      let titleNudge = 0;
       const openState = { titleOut: 0, sceneIn: 0, chrome: false };
       const view = newDipView();
       const endBeat = timeline.beats[timeline.beats.length - 1];
@@ -460,6 +459,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           running: visible && ready && inStage,
           reach,
           titleUp: visible && ready && scroll >= geom.top - TITLE_UP_VH * geom.vh && target < 0.5,
+          pushing: now - scrollGate.pushedAt < HOLDING_MS,
         });
         const k = stageFrontierIndex(story);
         const beatIndex = beatIndexAt(timeline, p);
@@ -510,12 +510,10 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         const fadeStep = realDt / TITLE_MIN_FADE;
         shownTitleOut += Math.max(-fadeStep, Math.min(fadeStep, fadeGoal - shownTitleOut));
         const showChrome = chromeAt && shownTitleOut >= 0.98;
-        // Its bounce under a push held at the title wall: only on the stage (never while it slides in)
-        // and easing back, never dropping in a frame.
-        const nudgeGoal = k === 0 && p > 0 && holding ? nudge : 0;
-        titleNudge += (nudgeGoal - titleNudge) * (1 - Math.exp(-realDt / ELASTIC.releaseTau));
+        // No bounce under a push at its wall: it rose under her finger and sank back while the wall held,
+        // then rose again as it opened. The push runs the title's clock faster instead (workStory.ts).
         set(el.title, "opacity", (1 - shownTitleOut).toFixed(3));
-        set(el.title, "transform", `translate3d(0, ${(-14 * shownTitleOut - titleNudge).toFixed(2)}px, 0)`);
+        set(el.title, "transform", `translate3d(0, ${(-14 * shownTitleOut).toFixed(2)}px, 0)`);
         // Night covers the scene until it is ready and through the title; the iris closes it at the end.
         const opening = ready ? sceneIn : 0;
         const endT = clamp01((p - endBeat.start) / Math.max(1e-6, endBeat.end - endBeat.start));

@@ -44,7 +44,18 @@ export type StageContext = {
    * title wall's clock runs, input or not. Defaults to `running`.
    */
   titleUp?: boolean;
+  /** She pushes at the title wall right now: its clock runs TITLE_PUSH_RATE times as fast. */
+  pushing?: boolean;
 };
+
+/**
+ * A push at the chapter card's title wall runs its clock this many times as
+ * fast: she has seen the card and wants on, so the wall gives within a
+ * moment, and the push carries on from there. The card used to bounce up
+ * under her finger and sink back while the wall held, then rise again as it
+ * opened: forward, back, forward (the owner).
+ */
+export const TITLE_PUSH_RATE = 3;
 
 /** A hold wall starts counting once the page heads this close to its start (film progress). */
 const HOLD_REACH = 0.0005;
@@ -165,7 +176,7 @@ export function stepStageStory(
   }
   if (wall?.kind === "title") {
     // The title runs on its own clock while the card is up, as the hero's title does: no input asked.
-    if (ctx.titleUp ?? ctx.running) story.clock[k] += step;
+    if (ctx.titleUp ?? ctx.running) story.clock[k] += step * (ctx.pushing ? TITLE_PUSH_RATE : 1);
     story.creep[k] = Math.max(story.creep[k], Math.min(1, story.clock[k] / wall.hold));
   } else if (!wall || !ctx.running) return active;
   else if (wall.kind === "hold") {
