@@ -334,6 +334,10 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       const firstLine = stageLineStep(1, 0, timeline, Number.POSITIVE_INFINITY) ?? titleBeat.end;
       /** The card's fade as drawn (it eases; the film position only sets its goal). */
       let shownTitleOut = 0;
+      // The opening's cover as drawn, and the canvas frame it waits for after waking (-1: not waiting).
+      let shownOpening = 0;
+      let wasCovered = false;
+      let wakeFrom = -1;
       const openState = { titleOut: 0, sceneIn: 0, chrome: false };
       const view = newDipView();
       const endBeat = timeline.beats[timeline.beats.length - 1];
@@ -517,9 +521,26 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         // Night covers the scene until it is ready and through the title; the iris closes it at the end.
         const opening = ready ? sceneIn : 0;
         const endT = clamp01((p - endBeat.start) / Math.max(1e-6, endBeat.end - endBeat.start));
-        set(el.fade, "opacity", (1 - opening).toFixed(3));
+        // Under the closed iris or the opening's full cover the canvas stops drawing (nightCover.ts).
+        const dip = view.dip;
+        coverIn.ready = getNightReadiness() === "ready";
+        coverIn.sceneIn = opening;
+        coverIn.endT = endT;
+        coverIn.dip = dip;
+        coverIn.warm = night.warm;
+        const covered = nightCovered(coverIn);
+        setNightCovered(covered);
+        // Woken as the cover starts to lift, the canvas shows the picture it slept on (the car out of shot at the
+        // stage's top) until its loop draws again, and the car popped in through the lifting cover. The cover
+        // holds until the canvas has drawn, then fades to where the scroll has it, never faster than the title.
+        if (covered) wakeFrom = -1;
+        else if (wasCovered) wakeFrom = night.frames;
+        wasCovered = covered;
+        if (wakeFrom >= 0 && night.frames <= wakeFrom) shownOpening = 0;
+        else shownOpening = Math.min(opening, shownOpening + realDt / TITLE_MIN_FADE);
+        set(el.fade, "opacity", (1 - shownOpening).toFixed(3));
         // The letterbox slides away as the drive starts, as in the hero.
-        const bars = Math.round(easeOutCubic(opening) * 500) / 500;
+        const bars = Math.round(easeOutCubic(shownOpening) * 500) / 500;
         set(el.barTop, "transform", `translate3d(0, ${(-100 * bars).toFixed(1)}%, 0)`);
         set(el.barBottom, "transform", `translate3d(0, ${(100 * bars).toFixed(1)}%, 0)`);
         // The iris follows the tally only while it closes: before that the camera's life would restyle the cover every frame.
@@ -533,15 +554,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         attr(el.fade, "data-iris", endT > 0 && opening >= 1);
         attr(el.waking, "data-visible", !ready && inStage);
         // Between two stops the picture dips to night and back (dip.ts): the cut happens under it.
-        const dip = view.dip;
         set(el.dip, "opacity", dip.toFixed(3));
-        // Under the closed iris or the opening's full cover the canvas stops drawing (nightCover.ts).
-        coverIn.ready = getNightReadiness() === "ready";
-        coverIn.sceneIn = opening;
-        coverIn.endT = endT;
-        coverIn.dip = dip;
-        coverIn.warm = night.warm;
-        setNightCovered(nightCovered(coverIn));
 
         el.cards.forEach((card, i) => {
           const opacity = story.opacity[i];

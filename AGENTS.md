@@ -1001,7 +1001,11 @@ also exists as real DOM for keyboard and screen-reader users.
   under STATS's card; the opening cover still fully up once every stop is
   warm, `night.warm`; never during a dip; WorkStage writes `night`'s
   covered flag, NightCanvas reads it, and the loop waking lands the car
-  on the picture as `night.woke` does). What it clones from the hero's
+  on the picture as `night.woke` does; woken as the opening cover starts
+  to lift, the canvas still shows the picture it slept on until it draws
+  again, so the cover holds until it has, `night.frames`, then fades to
+  where the scroll has it no faster than the chapter card: through the
+  lifting cover the car had popped in mid-road). What it clones from the hero's
   glTF cache (the car, the driver, his glasses, Telpark's car) is
   `cloneOwned` (`cloneBare.ts`, tested): geometries over the same
   attributes, materials (the hero's shader hooks and live uniforms kept)

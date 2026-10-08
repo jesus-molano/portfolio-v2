@@ -216,6 +216,7 @@ function ReadyReporter() {
   const frames = useRef(0);
   useFrame(() => {
     frames.current += 1;
+    night.frames += 1;
     if (frames.current === 4) setNightReadiness("ready");
   });
   useEffect(() => () => setNightReadiness("waiting"), []);

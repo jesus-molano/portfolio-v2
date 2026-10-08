@@ -26,6 +26,11 @@ export const night = {
   woke: false,
   /** Every stop warmed up (compiled, uploaded) and nothing loading (Warmup): the opening cover may rest the canvas. */
   warm: false,
+  /**
+   * Frames the canvas has drawn (ReadyReporter counts them): woken under the opening cover, the canvas still
+   * shows the picture it slept on until it draws again, so the stage holds the cover up until then.
+   */
+  frames: 0,
   /** The board's armed level: `armTarget` is 0 or 1, `armed` eases toward it. */
   armTarget: 0,
   armed: 0,
