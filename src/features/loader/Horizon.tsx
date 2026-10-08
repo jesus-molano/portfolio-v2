@@ -53,11 +53,13 @@ function ripples(r: { x: number; y: number; width: number; height: number }) {
  * layouts; CSS shows the one for the screen (LoadingScreen.module.css), so
  * the first paint is already right. Decoration only (`aria-hidden`).
  *
- * What moves, all CSS on the drawing and none of it under reduced motion:
- * the sun sinks as the city loads (`--p` on the loading screen), the
- * causeway's lamps light one after another toward the city, the windows
- * come on once it is in; stars twinkle, the clouds drift, the sun's road
- * glitters on the water, the palms sway and a few birds cross the sky.
+ * Nothing in it follows the load: the sun rests low on the sea and the
+ * lamps and the city's windows are lit from the first paint (it moved in
+ * jerks with the load's steps on a first visit; the progress line alone
+ * shows the load). What moves is CSS on the drawing, on its own clock and
+ * none of it under reduced motion: stars twinkle, the clouds drift, the
+ * sun's road glitters on the water, the palms sway and a few birds cross
+ * the sky.
  */
 export function Horizon() {
   return (
@@ -83,7 +85,6 @@ function Scene({ layout }: { layout: HorizonLayout }) {
       preserveAspectRatio={name === "wide" ? "xMaxYMid slice" : "xMidYMin slice"}
       aria-hidden="true"
       focusable="false"
-      style={style({ "--rise": `${layout.sunRise}px`, "--lamps": scene.lamps.length })}
     >
       <defs>
         <linearGradient id={id("sky")} x1="0" y1="0" x2="0" y2="1">
@@ -179,9 +180,9 @@ function Scene({ layout }: { layout: HorizonLayout }) {
         ))}
       </g>
 
-      {/* The sun, clipped by the sea: it sinks as the city loads. */}
+      {/* The sun, clipped by the sea, low on it. */}
       <g clipPath={url("above")}>
-        <g className={styles.sun}>
+        <g>
           <circle cx={sun.x} cy={hy} r={sun.r * 1.6} fill={url("halo")} opacity="0.9" />
           <circle cx={sun.x} cy={hy} r={sun.r} fill={url("sun")} />
           <ellipse cx={sun.x - sun.r * 0.3} cy={hy - sun.r * 0.55} rx={sun.r * 1.5} ry={Math.max(2, sun.r * 0.045)} fill={mix(C.pink, C.haze, 0.5)} opacity="0.7" />
@@ -198,7 +199,7 @@ function Scene({ layout }: { layout: HorizonLayout }) {
         <path d={scene.islet.palms.join("")} fill="none" stroke={mix(C.lilac, C.dusk, 0.5)} strokeWidth="0.85" strokeLinecap="round" />
       </g>
       <path d={scene.city.skyline} fill={mix(C.lilac, C.haze, 0.3)} opacity="0.88" />
-      <path className={styles.windows} d={scene.city.windows} fill={C.sodium} />
+      <path d={scene.city.windows} fill={C.sodium} />
 
       <rect x="0" y={hy} width={W} height={H - hy} fill={url("sea")} />
       <rect x="0" y={hy - 0.5} width={W} height="1.2" fill={C.cream} opacity="0.7" />
@@ -236,7 +237,7 @@ function Scene({ layout }: { layout: HorizonLayout }) {
       <g>
         {scene.lamps.map((lamp) =>
           lamp.reflection ? (
-            <g key={lamp.index} className={styles.light} style={style({ "--i": lamp.index })}>
+            <g key={lamp.index}>
               {ripples(lamp.reflection).map((ripple, i) => (
                 <rect
                   key={i}
@@ -265,8 +266,6 @@ function Scene({ layout }: { layout: HorizonLayout }) {
         {scene.lamps.map((lamp) => (
           <ellipse
             key={lamp.index}
-            className={styles.light}
-            style={style({ "--i": lamp.index })}
             cx={lamp.pool.x}
             cy={lamp.pool.y}
             rx={lamp.pool.rx}
@@ -285,8 +284,8 @@ function Scene({ layout }: { layout: HorizonLayout }) {
         {scene.lamps.map((lamp) => (
           <g key={lamp.index}>
             <path d={lamp.pole} fill="none" stroke={C.deep} strokeWidth={lamp.poleWidth} strokeLinecap="round" />
-            <circle className={styles.light} style={style({ "--i": lamp.index })} cx={lamp.head.x} cy={lamp.head.y} r={lamp.glow} fill={url("lamp")} />
-            <ellipse className={styles.head} style={style({ "--i": lamp.index })} cx={lamp.head.x} cy={lamp.head.y} rx={lamp.head.rx} ry={lamp.head.ry} fill={C.cream} />
+            <circle cx={lamp.head.x} cy={lamp.head.y} r={lamp.glow} fill={url("lamp")} />
+            <ellipse cx={lamp.head.x} cy={lamp.head.y} rx={lamp.head.rx} ry={lamp.head.ry} fill={C.cream} />
           </g>
         ))}
       </g>

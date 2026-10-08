@@ -141,7 +141,7 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
   /** The load as drawn: it chases the reported one every frame (smoothProgress), so nothing jumps from step to step. */
   const shownP = useRef(0);
   /** What the per-frame drawing needs from the latest render. */
-  const frame = useRef({ target: 0, done: false, reduced: false, selected: 0, waiting: false, slabWidth: 0, wordWidth: 0 });
+  const frame = useRef({ target: 0, done: false, reduced: false });
   /** Starts the drawing loop again when it has come to rest (see the drawing loop). */
   const wake = useRef<(() => void) | null>(null);
   /** The first value of --p, written once by React (the server's paint); every frame writes it after. */
@@ -376,23 +376,19 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
 
   // What each frame draws from: kept in a ref, so the drawing loop reads the latest render.
   useEffect(() => {
-    const wordWidth = widths?.[selected] ?? 0;
     frame.current = {
       target: (loaded ? 100 : progress) / 100,
       done: loaded || progress >= 100,
       reduced: reducedMotion,
-      selected,
-      waiting: itemState(MENU_ITEMS[selected], loading) === "wait",
-      slabWidth: widths ? wordWidth + SLAB_BEFORE + SLAB_AFTER : 0,
-      wordWidth,
     };
     // The drawing loop rests once the load as drawn has caught up; anything new wakes it.
     wake.current?.();
   });
 
-  // Draw the load every frame from the smoothed value: the progress line, the percentage, the
-  // horizon (--p on the screen) and, while the selected item waits, the slab and its letters'
-  // fill (--fill on the word). Writes only custom properties: no layout, no shift.
+  // Draw the load every frame from the smoothed value (--p on the screen): the progress line and
+  // its percentage, and nothing else. The picture, the slab and the words never follow the load:
+  // drawn with its steps, they moved in jerks on a first visit. Writes only a custom property: no
+  // layout, no shift.
   // Writes a value only when it changed, and stops once the load as drawn has reached its target
   // (the menu ready, nothing left to ease): a loop writing the same values every frame kept the
   // phone busy for as long as she read the tips. A render with new inputs wakes it.
@@ -401,7 +397,6 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
     let raf = 0;
     let last = performance.now();
     let writtenP = "";
-    const writtenFill: string[] = [];
     const tick = (now: number) => {
       raf = 0;
       const f = frame.current;
@@ -414,14 +409,6 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
         writtenP = p;
         root.current?.style.setProperty("--p", p);
       }
-      words.current.forEach((word, i) => {
-        if (!word) return;
-        const fill = i === f.selected && f.waiting ? Math.max(0, Math.min(f.wordWidth, shown * f.slabWidth - SLAB_BEFORE)) : 0;
-        const value = `${fill}px`;
-        if (writtenFill[i] === value) return;
-        writtenFill[i] = value;
-        word.style.setProperty("--fill", value);
-      });
       if (shown < Math.min(1, Math.max(0, f.target)) || phaseRef.current === "loading") raf = requestAnimationFrame(tick);
     };
     wake.current = () => {
@@ -447,10 +434,8 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
     event.currentTarget.focus();
   };
 
-  // The slab: on the selected item, as long as its word plus its margins; filled by the load while that item waits.
-  const selectedItem = MENU_ITEMS[selected];
+  // The slab: on the selected item, as long as its word plus its margins.
   const slabWidth = widths ? widths[selected] + SLAB_BEFORE + SLAB_AFTER : 0;
-  const waitingHere = itemState(selectedItem, loading) === "wait";
 
   const describe = (item: MenuItem): string => {
     const state = itemState(item, loading);
@@ -514,7 +499,6 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
             key={nudge}
             className={styles.slab}
             aria-hidden="true"
-            data-wait={waitingHere ? "" : undefined}
             data-nudge={nudge > 0 ? "" : undefined}
             style={{ "--sel": selected, "--slab-w": `${slabWidth}px` } as CSSProperties}
           >

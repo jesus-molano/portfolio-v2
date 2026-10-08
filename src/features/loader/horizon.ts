@@ -54,8 +54,6 @@ export type HorizonLayout = {
   shore: readonly { x: number; z: number }[];
   birds: { x: number; y: number; scale: number };
   stars: number;
-  /** How far up the sun starts while the city loads (it sinks to its rest as the load completes). */
-  sunRise: number;
   seed: number;
 };
 
@@ -110,7 +108,6 @@ export const LAYOUTS: Record<HorizonLayoutName, HorizonLayout> = {
     ],
     birds: { x: 520, y: 210, scale: 1.1 },
     stars: 70,
-    sunRise: 120,
     seed: 7,
   },
   tall: {
@@ -146,7 +143,6 @@ export const LAYOUTS: Record<HorizonLayoutName, HorizonLayout> = {
     ],
     birds: { x: 250, y: 420, scale: 1 },
     stars: 60,
-    sunRise: 150,
     seed: 11,
   },
 };

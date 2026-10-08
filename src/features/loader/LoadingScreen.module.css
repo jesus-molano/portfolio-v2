@@ -486,15 +486,6 @@ a.lang:focus-visible {
   transform: translateX(14px);
 }
 
-/* A waiting item selected: its letters fill with night as the city loads, with the slab under them. */
-.loader[data-measured] .item[data-selected][data-state="wait"] .word {
-  color: transparent;
-  -webkit-text-stroke-color: var(--va-color-cream);
-  background: linear-gradient(90deg, var(--va-color-night) 0 var(--fill, 0px), transparent var(--fill, 0px));
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
 /* The slab: one painted sign that slides to the selection; shown once its words are measured. */
 .slab {
   position: absolute;
@@ -538,16 +529,6 @@ a.lang:focus-visible {
     var(--va-color-orange) 78%,
     var(--va-color-amber) 100%
   );
-  transform-origin: 0 50%;
-  /* Filling to the end once the city is in. */
-  transition: transform 300ms ease;
-}
-
-/* While the selected item waits for the city, the slab fills with the load, drawn every frame
-   from the smoothed value (smoothProgress.ts): no transition on top of it. */
-.slab[data-wait] .slabFill {
-  transform: scaleX(var(--p, 0));
-  transition: none;
 }
 
 .slab[data-nudge] {
@@ -1303,8 +1284,7 @@ a.lang:focus-visible {
   }
 
   .word,
-  .loader[data-measured] .item[data-selected] .word,
-  .loader[data-measured] .item[data-selected][data-state="wait"] .word {
+  .loader[data-measured] .item[data-selected] .word {
     background: none;
     color: CanvasText;
     -webkit-text-stroke: 0;

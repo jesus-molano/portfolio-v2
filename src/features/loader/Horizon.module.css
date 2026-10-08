@@ -1,12 +1,9 @@
 /*
- * The start menu's picture (Horizon.tsx). Both layouts are in the DOM;
- * LoadingScreen.module.css shows the one for the screen. Every motion here
- * is CSS on the drawing (transform and opacity) and stops under reduced
- * motion, where the picture rests as it ends: sun down, lamps and windows
- * lit.
- *
- * `--p` (0 to 1, the load) comes from the loading screen's root. The 404
- * (not-found.tsx) shows the picture as the load ends, its windows lit.
+ * The start menu's picture (Horizon.tsx), also the 404's. Both layouts are
+ * in the DOM; LoadingScreen.module.css (or not-found.module.css) shows the
+ * one for the screen. Nothing here follows the load: every motion is CSS on
+ * the drawing (transform and opacity) on its own clock, and stops under
+ * reduced motion.
  */
 
 .scene {
@@ -20,34 +17,6 @@
 
 .scene * {
   transform-box: view-box;
-}
-
-/* The sun sinks as the city loads: a disc's rise above its rest at 0 %, at rest at 100 %. */
-.sun {
-  transform: translateY(calc((var(--p, 1) - 1) * var(--rise)));
-  transition: transform 900ms cubic-bezier(0.215, 0.61, 0.355, 1);
-}
-
-/* The causeway's lights come on one after another, toward the city, as the load passes them. */
-.light {
-  opacity: clamp(0, calc(var(--p, 1) * var(--lamps) - var(--i)), 1);
-  transition: opacity 500ms ease;
-}
-
-.head {
-  opacity: clamp(0.18, calc(var(--p, 1) * var(--lamps) - var(--i)), 1);
-  transition: opacity 500ms ease;
-}
-
-/* The city's windows once it is in. */
-.windows {
-  opacity: 0;
-  transition: opacity 1.2s ease;
-}
-
-:global([data-loader][data-ready]) .windows,
-:global([data-wrong-exit]) .windows {
-  opacity: 1;
 }
 
 .twinkle {
@@ -142,22 +111,6 @@
   .flock,
   .bird {
     animation: none;
-  }
-
-  .sun,
-  .light,
-  .head,
-  .windows {
-    transition: none;
-  }
-
-  .sun {
-    transform: none;
-  }
-
-  .light,
-  .head {
-    opacity: 1;
   }
 
   /* The flock rests in the sky, not off the picture's edge. */

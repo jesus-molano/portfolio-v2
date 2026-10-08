@@ -720,9 +720,11 @@ also exists as real DOM for keyboard and screen-reader users.
   GAME / NUEVA PARTIDA (in with the radio: the station chip under it, or
   "Radio off"), CONTINUE / CONTINUAR (in without music) and SETTINGS /
   CONFIGURACIÓN; a game tip card (bottom right; under the menu on a
-  phone), the languages top right, and the load as a status line, a
-  percentage riding the progress line on the bottom edge, the sun
-  sinking and the causeway's lamps lighting toward the city.
+  phone), the languages top right, and the load as a status line and a
+  percentage riding the progress line on the bottom edge: nothing else
+  shows the load (the owner's call: the sun sinking, the lamps lighting
+  and the slab filling with it moved in jerks with its steps on a first
+  visit).
   - The menu (`menu.ts`, pure and tested; `LoadingScreen.tsx`) is a list
     of real buttons, each named by its word and described by its line.
     The selection is a painted slab (magenta to amber, skewed, an ink
@@ -732,7 +734,7 @@ also exists as real DOM for keyboard and screen-reader users.
     Enter or Space (the button's own) or a tap chooses. No other key
     starts anything (no "press any key": `menuMove`). NEW GAME has the
     focus from the start. The two ways in wait for the scene ("waiting
-    for the city", the slab filling with the load under a selected one);
+    for the city" in their lines, the slab whole under a selected one);
     chosen too soon the slab shakes and the live region says "not yet". A
     slow wait (`isSlow`) offers them early ("go now", in the items' lines,
     the status line and the tip card's slow note). The slab is measured
@@ -768,11 +770,12 @@ also exists as real DOM for keyboard and screen-reader users.
     and `tall` (as wide as the screen, its horizon placed above the menu,
     fading into the night under it). Under forced colours the picture is
     not drawn (SVG keeps its own colours there): the menu and its focus
-    ring sit on the system's background. Motion is CSS on the drawing: the sun sinks and the lamps
-    light with the load (`--p`), the windows come on when the city is in,
+    ring sit on the system's background. The picture is whole from the
+    first paint (the sun low on the sea, the lamps and the city's windows
+    lit) and never follows the load; its motion is CSS on its own clock:
     stars twinkle, clouds drift, the water glitters, palms sway, birds
     cross, the grain steps 24 times a second; under reduced motion all of
-    it rests (sun down, lamps lit).
+    it rests.
   - No layout shift, ever: the loader is a size container and every box
     is placed against it with a fixed size (`cqw`, `cqh`: the menu's
     height is its rows', the card's its reserved lines'), every state of
