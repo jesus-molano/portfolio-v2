@@ -11,6 +11,19 @@
   color: var(--va-color-text);
 }
 
+/*
+ * The film: a link to #work (the character select's way on) lands the stage
+ * pinned at its top, on the chapter card with the pedal and the keys live.
+ * Under the page's scroll-padding it stopped 64 px short, where the pedal
+ * showed but did nothing and her next keys scrolled natively past the
+ * opening's walls. The plates (reduced motion, no JS) keep the padding.
+ */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .work {
+    scroll-margin-top: calc(-1 * (1rem + var(--va-control-height-sm) + 1rem));
+  }
+}
+
 .stage {
   position: relative;
   height: var(--stage-h, 600vh);

@@ -1,20 +1,21 @@
 /**
  * The stage's opening, from the film position: the night fades up to the
- * first stop under the chapter card, over the card's own beat; the card
- * lifts away early in the drive's first beat (the car rolling up to the
- * army's board), and the chrome (the route, the HUD, the stop's super, the
- * chip) comes up only once the card has gone. A line used to open the
- * drive with the night fading up over the whole of it, at its reading
- * pace, a wall with the limiter on: a first pass scrolled and pushed
- * through seconds of a dark screen and read it as the end of the page (the
- * owner took the line out). The card is not pinned: it scrolls up with the
- * page as the drive starts, so faded slowly it slid through the top band
- * over the route and the super, three layers of type in one place.
+ * first stop under the chapter card, over the card's own beat, and the card
+ * leaves with her scroll inside that same beat, once its title wall has
+ * held it (workStory.ts: on its own clock, as the hero's title). The
+ * chrome (the route, the HUD, the stop's super, the chip) comes up only
+ * once the card has gone and the drive has started. The card is not
+ * pinned: it scrolls up with the page. Faded over the drive's first beat,
+ * behind the arrival's held wall, it crawled up the screen at the beat's
+ * pace while most of her scroll was thrown away, and read as lag; a line
+ * that once opened the drive at its reading pace, with the night fading up
+ * over it, read as a dark screen at the end of the page (the owner took it
+ * out).
  */
 import type { StageTimeline } from "./workTimeline";
 
-/** Share of the drive's first beat over which the chapter card fades out. */
-export const TITLE_FADE = 0.28;
+/** Where in the title beat the chapter card starts and ends fading out (shares of the beat). */
+export const TITLE_FADE = { from: 0.15, to: 0.75 } as const;
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -34,9 +35,9 @@ export function openingAt(timeline: StageTimeline, p: number, out: Opening = { t
   const title = timeline.beats[0];
   const first = timeline.beats[1];
   const end = timeline.beats[timeline.beats.length - 1];
-  out.sceneIn = clamp01((p - title.start) / Math.max(1e-6, title.end - title.start));
-  const t = clamp01((p - title.end) / Math.max(1e-6, first.end - first.start));
-  out.titleOut = clamp01(t / TITLE_FADE);
-  out.chrome = out.titleOut >= 1 && p < end.start + 0.002;
+  const u = (p - title.start) / Math.max(1e-6, title.end - title.start);
+  out.sceneIn = clamp01(u);
+  out.titleOut = clamp01((u - TITLE_FADE.from) / (TITLE_FADE.to - TITLE_FADE.from));
+  out.chrome = out.titleOut >= 1 && p >= first.start && p < end.start + 0.002;
   return out;
 }

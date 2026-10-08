@@ -768,7 +768,7 @@ function phasesOf(rec) {
  * for 2 s, stalls (a frame standing still between two moving ones while
  * the page glides), and the frame timing and long tasks for smoothness.
  */
-function motionVerdict(phase, inputsAll, heroToo = false) {
+function motionVerdict(phase, inputsAll, heroToo = false, rideTo = Number.NaN) {
   const { frames } = phase;
   const against = [];
   const leaps = [];
@@ -816,9 +816,12 @@ function motionVerdict(phase, inputsAll, heroToo = false) {
     if (a.ped || b.ped) dirs.add(1);
     if (dirs.size === 0 || !dirs.has(Math.sign(dy))) against.push({ t: Math.round(b.t), dy: Math.round(dy), y: Math.round(b.y), dirs: [...dirs] });
     const lastInput = inputsAll.filter((e) => e.t <= b.t && e.kind !== "resize").at(-1);
-    // A press rides a drive to its next line (a key), up to a crane's seconds; a swipe's fling glides on.
+    // A press rides a drive to its next line (a key), up to a crane's seconds; a swipe's fling glides on;
+    // in the city's opening a notch or a swipe rides on to the first line too (WorkStage's carry).
     // A frame that comes over a second late shows a move made long before (a stalled machine), not one of its own.
-    if (!a.ped && !b.ped && b.t - a.t < 1000 && (!lastInput || b.t - lastInput.t > (lastInput.kind === "key" ? 6000 : 2000))) unasked.push({ t: Math.round(b.t), dy: Math.round(dy), y: Math.round(b.y) });
+    const film = b.range > 0 ? (b.y - b.top) / b.range : Number.NaN;
+    const riding = film >= -0.05 && film <= rideTo;
+    if (!a.ped && !b.ped && b.t - a.t < 1000 && (!lastInput || b.t - lastInput.t > (lastInput.kind === "key" || riding ? 6000 : 2000))) unasked.push({ t: Math.round(b.t), dy: Math.round(dy), y: Math.round(b.y) });
   }
   // A phone's bars coming and going (the viewport resized, statics' technique) move what is pinned to
   // the visible area out of the flow (dvh, by design: AGENTS.md); every other shift counts. Chrome lays
@@ -3262,7 +3265,8 @@ const CHECKS = {
 
     // ---- verdicts ----
     const phases = phasesOf(rec);
-    const motion = Object.fromEntries(phases.map((phase) => [phase.name, motionVerdict(phase, rec.inputs)]));
+    const firstLine = model.m.stageLineStep(1, 0, model.timeline, Number.POSITIVE_INFINITY) ?? Number.NaN;
+    const motion = Object.fromEntries(phases.map((phase) => [phase.name, motionVerdict(phase, rec.inputs, false, firstLine)]));
     const city = cityVerdict(phases, rec.inputs, model);
     const hphases = phasesOf(hrec);
     const hmotion = Object.fromEntries(hphases.map((phase) => [phase.name, motionVerdict(phase, hrec.inputs, true)]));

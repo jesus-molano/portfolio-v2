@@ -18,6 +18,7 @@ import { decay, ELASTIC, rubberBand, touchStretchMax } from "@/features/hero/scr
 import { type FarRestInput, restsFarAway } from "@/features/hero/scroll/farRest";
 import { lenisMissed, type PageReading, pageScroll } from "@/features/hero/scroll/gate";
 import { type InputSource, recordInput, scrollGate, scrollInput } from "@/features/hero/scroll/heroProgress";
+import { PEDAL } from "@/features/hero/scroll/pedal";
 import { createPedalDriver } from "@/features/hero/scroll/pedalDriver";
 import { STORY } from "@/features/hero/scroll/story";
 import { isPictureTap, keyAction, speedKmh, type TargetKind } from "@/features/hero/scroll/transport";
@@ -95,6 +96,22 @@ const KNOCK_MS = 300;
 const RIDE_MS = 600;
 /** Seconds the held pedal glides on into the next section at the end. */
 const PEDAL_GOON_GLIDE = 0.9;
+/**
+ * The chapter card's title wall runs while the card is this share of a
+ * screen or less below the stage's top (it is centred in a screen-tall
+ * band there), so it has usually run by the time she has scrolled it up.
+ */
+const TITLE_UP_VH = 0.65;
+/** The chapter card's fade, drawn: never faster than this for the whole of it (s), so a fling never erases it in a frame. */
+const TITLE_MIN_FADE = 0.35;
+/** Resting this long (s) mid-fade, the card finishes leaving instead of hanging there half gone. */
+const TITLE_SETTLE_IDLE = 0.3;
+/**
+ * How far above the stage's top (share of a screen) the page still counts as on the stage for the
+ * keys and the pedal: a link landing there can stop a few px short (the select's banner settling
+ * under it), and the keys then fell to the approach, without the press that rides the opening.
+ */
+const PIN_SLACK_VH = 0.05;
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -303,12 +320,21 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       let quadPathAt = 0;
       /** The mouse's last place (client px; NaN before it moves): its place on the board is read again as the board moves under it. */
       let pointer = { x: Number.NaN, y: Number.NaN };
-      /** A press that rides a held drive on to its next line; any input of hers since lets it go. */
+      /**
+       * A press (or, at the opening, a push) that rides a held drive on to its next line; any input
+       * event of hers since lets it go. Events, not the held pedal's frames: those record her foot
+       * every frame it is down, and the press's own let a Space or a tap on the pedal go at once.
+       */
       let carry: { to: number; at: number } | null = null;
       let lastPushedAt = scrollGate.pushedAt;
       let pushFlash = 0;
       const drawnOpacity = el.cards.map(() => -1);
       const titleBeat = timeline.beats[0];
+      /** The first line: a push into the opening carries the page on to it (see the push below). */
+      const firstLine = stageLineStep(1, 0, timeline, Number.POSITIVE_INFINITY) ?? titleBeat.end;
+      /** The card's fade and its bounce as drawn (they ease; the film position only sets their goals). */
+      let shownTitleOut = 0;
+      let titleNudge = 0;
       const openState = { titleOut: 0, sceneIn: 0, chrome: false };
       const view = newDipView();
       const endBeat = timeline.beats[timeline.beats.length - 1];
@@ -433,6 +459,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           rewinding,
           running: visible && ready && inStage,
           reach,
+          titleUp: visible && ready && scroll >= geom.top - TITLE_UP_VH * geom.vh && target < 0.5,
         });
         const k = stageFrontierIndex(story);
         const beatIndex = beatIndexAt(timeline, p);
@@ -454,6 +481,13 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         if (scrollGate.pushedAt !== lastPushedAt) {
           lastPushedAt = scrollGate.pushedAt;
           pushFlash = 1;
+          // A notch, flick or swipe held at the opening (the title or the arrival, before the first line)
+          // carries the page on to that line at the beats' own pace, as a press does: nothing told her to
+          // keep scrolling, and the arrival played a notch at a time while most of her input was thrown away.
+          const front = k >= 0 ? walls[k] : undefined;
+          if (front && front.kind !== "card" && front.to <= firstLine && inStage && !rewinding && (scrollInput.source === "wheel" || scrollInput.source === "touch")) {
+            carry = { to: firstLine, at: scrollInput.eventAt };
+          }
         } else pushFlash = decay(pushFlash, dt, ELASTIC.pushTau);
         const holding = inStage && k >= 0 && now - scrollGate.pushedAt < HOLDING_MS;
         const touch = scrollGate.touching || scrollInput.source === "touch";
@@ -466,11 +500,22 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         const idle = (now - scrollInput.at) / 1000;
 
         // ---- draw ----
-        // The title card on night, lifting away early in the drive (opening.ts): it scrolls up
-        // with the page, and gone before it reaches the top band, it never sits on the route.
-        const { titleOut, sceneIn, chrome: showChrome } = openingAt(timeline, p, openState);
-        set(el.title, "opacity", (1 - titleOut).toFixed(3));
-        set(el.title, "transform", `translate3d(0, ${(-14 * titleOut - (k === 0 ? nudge : 0)).toFixed(2)}px, 0)`);
+        // The title card on night, leaving with her scroll once its title wall has held it (opening.ts):
+        // it scrolls up with the page, and gone before it reaches the top band, it never sits on the route.
+        const { titleOut, sceneIn, chrome: chromeAt } = openingAt(timeline, p, openState);
+        // Drawn, its fade never runs faster than TITLE_MIN_FADE, and resting mid-fade it finishes leaving,
+        // as the hero's title settles: a card left half dissolved over the army's board read as a ghost.
+        const resting = idle >= TITLE_SETTLE_IDLE && !lenis?.isScrolling;
+        const fadeGoal = resting && titleOut > 0 ? 1 : titleOut;
+        const fadeStep = realDt / TITLE_MIN_FADE;
+        shownTitleOut += Math.max(-fadeStep, Math.min(fadeStep, fadeGoal - shownTitleOut));
+        const showChrome = chromeAt && shownTitleOut >= 0.98;
+        // Its bounce under a push held at the title wall: only on the stage (never while it slides in)
+        // and easing back, never dropping in a frame.
+        const nudgeGoal = k === 0 && p > 0 && holding ? nudge : 0;
+        titleNudge += (nudgeGoal - titleNudge) * (1 - Math.exp(-realDt / ELASTIC.releaseTau));
+        set(el.title, "opacity", (1 - shownTitleOut).toFixed(3));
+        set(el.title, "transform", `translate3d(0, ${(-14 * shownTitleOut - titleNudge).toFixed(2)}px, 0)`);
         // Night covers the scene until it is ready and through the title; the iris closes it at the end.
         const opening = ready ? sceneIn : 0;
         const endT = clamp01((p - endBeat.start) / Math.max(1e-6, endBeat.end - endBeat.start));
@@ -523,8 +568,11 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           attr(card, "data-ready", fill >= 1 && idle >= READY_IDLE);
         }
         attr(el.captions, "data-rewinding", rewinding);
-        // Between cards, once she has stopped, one cue says how to go on.
-        const between = inStage && p > titleBeat.end && p < endBeat.start && active < 0 && idle >= CUE_IDLE;
+        // Between cards, once she has stopped, one cue says how to go on; on the chapter card too, once
+        // its title wall has run: it was the one place nothing said the city drives on with her scroll.
+        const atCard = target >= -0.002 && p <= titleBeat.end && k > 0 && carry === null;
+        const between =
+          ((inStage && p > titleBeat.end && p < endBeat.start && active < 0) || atCard) && idle >= CUE_IDLE;
         attr(el.cue, "data-visible", between && k >= 0);
 
         // The stop on screen: its super, its chip, its HUD line and its reel segment.
@@ -656,8 +704,11 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         // A press riding a drive: the page follows the frontier as the drive plays, up to the next line.
         if (carry) {
           const frontierNow = stageFrontier(walls, story);
-          if (scrollInput.at !== carry.at || rewinding || !lenis || lenis.isStopped || p >= carry.to - 0.0005) carry = null;
-          else {
+          // A pedal held past a tap drives for itself, and letting go of it stops the picture: no carry on.
+          const held = driver?.pedal.down === true && now - driver.pedal.downAt >= PEDAL.tapMs;
+          if (scrollInput.eventAt !== carry.at || held || rewinding || !lenis || lenis.isStopped || p >= carry.to - 0.0005) carry = null;
+          // A finger on the glass holds the page where it is: the carry waits for the lift.
+          else if (!scrollGate.touching) {
             const want = scrollFor(Math.min(carry.to, frontierNow));
             if (want > lenis.targetScroll + 0.5) lenis.scrollTo(want, { programmatic: false, lerp: motion.scrollLerp });
           }
@@ -722,7 +773,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         const k = stageFrontierIndex(story);
         // A drive between two stops (a held beat, not a line) is no unread line: the press rides it
         // to the next line at the drive's own pace (update), instead of knocking at its wall.
-        carry = short && k >= 0 && walls[k].kind === "hold" ? { to: line, at: scrollInput.at } : null;
+        carry = short && k >= 0 && walls[k].kind !== "card" ? { to: line, at: scrollInput.eventAt } : null;
         const knocked = short && carry === null;
         if (knocked) {
           scrollGate.pressure += ELASTIC.knock * geom.vh;
@@ -736,7 +787,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
 
       const pinnedNow = () => {
         const scroll = scrollNow();
-        return scroll >= geom.top - 1 && scroll < geom.top + geom.range + 1;
+        return scroll >= geom.top - PIN_SLACK_VH * geom.vh && scroll < geom.top + geom.range + 1;
       };
       driver = createPedalDriver({
         button: () => el.pedal,
@@ -768,15 +819,49 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         readScroll,
       });
 
+      /**
+       * A key that scrolls the page forward in the last screens before the stage (Space, PageDown,
+       * the down arrow): hers, gliding up to the stage's wall. Left to the browser, its jump recorded no
+       * input of hers, read as navigation, and opened the opening's walls: one Space after the select's
+       * link skipped the arrival and most of the first line's reading time.
+       */
+      const approachKey = (event: KeyboardEvent, scroll: number, onPedal: boolean) => {
+        if (stageFrontierIndex(story) < 0 || !lenis) return;
+        if (scroll < geom.top - 1.5 * geom.vh || scroll >= geom.top - PIN_SLACK_VH * geom.vh) return;
+        // The hero's wall or the character select's binds first: its own keys decide there.
+        if (Math.min(scrollGate.maxScroll, selectGate.maxScroll) < stageGate.maxScroll) return;
+        const action = keyAction({
+          key: event.key,
+          code: event.code,
+          onPedal,
+          shiftKey: event.shiftKey,
+          ctrlKey: event.ctrlKey,
+          altKey: event.altKey,
+          metaKey: event.metaKey,
+          targetKind: onPedal ? "other" : targetKind(event.target),
+        });
+        const page = action === "next" && event.key !== "Enter";
+        if (!page && action !== "down") return;
+        event.preventDefault();
+        const vh = geom.vh;
+        const amount = page ? 0.875 * vh : 0.12 * vh;
+        recordInput(amount, "key", performance.now(), vh);
+        const dest = Math.min(Math.max(lenis.targetScroll, scroll) + amount, stageGate.maxScroll);
+        if (dest > lenis.targetScroll + 0.5) lenis.scrollTo(dest, { programmatic: false, lerp: motion.scrollLerp });
+      };
+
       const onKey = (event: KeyboardEvent) => {
         if (event.defaultPrevented || !lenis || lenis.isStopped || popoverOpen()) return;
         const loading = getSceneLoading();
         if (!loading.entered || event.timeStamp - loading.enteredAt < KEY_GUARD_MS) return;
         const scroll = scrollNow();
         // Pinned, or resting at the very end, where the pedal still goes on.
-        const pinned = scroll >= geom.top - 1 && scroll <= geom.top + geom.range + 1;
-        if (!pinned) return;
+        const pinned = scroll >= geom.top - PIN_SLACK_VH * geom.vh && scroll <= geom.top + geom.range + 1;
         const onPedal = event.target instanceof Element && el.pedal !== null && el.pedal.contains(event.target);
+        if (!pinned) {
+          approachKey(event, scroll, onPedal);
+          return;
+        }
         const action = keyAction({
           key: event.key,
           code: event.code,

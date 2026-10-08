@@ -99,6 +99,43 @@ describe("work story", () => {
     expect(t).toBeGreaterThan(wall.hold - HOLD_LEAD - 0.1);
   });
 
+  it("holds the chapter card on its own clock, then leaves the rest of its beat free", () => {
+    const title = walls[0];
+    expect(title.kind).toBe("title");
+    expect(title.to).toBeLessThan(timeline.beats[0].end / 4);
+    // No input at all (the page at rest at the top, nothing heading anywhere): the title still runs.
+    const story = newStageStory(walls, timeline.cards.length);
+    const dt = 1 / 60;
+    let t = 0;
+    while (!story.done[0] && t < 5) {
+      stepStageStory(walls, story, timeline, 0, dt, { ...running, reach: 0, titleUp: true });
+      t += dt;
+    }
+    expect(story.done[0]).toBe(true);
+    expect(t).toBeGreaterThan(title.hold - 0.05);
+    expect(t).toBeLessThan(title.hold + 0.05);
+    // Off screen (titleUp false) it waits; the night not ready keeps it waiting too.
+    const waiting = newStageStory(walls, timeline.cards.length);
+    for (let i = 0; i < 300; i += 1) stepStageStory(walls, waiting, timeline, 0, dt, { ...running, titleUp: false });
+    expect(waiting.done[0]).toBe(false);
+    // Past it, the frontier is the arrival's held wall, which starts where its beat starts: no gap.
+    const arrive = walls[1];
+    expect(arrive.kind).toBe("hold");
+    expect(arrive.from).toBe(timeline.beats[1].start);
+    expect(arrive.to).toBe(timeline.beats[1].end);
+  });
+
+  it("starts a held beat's clock as the page heads for its wall, not once the picture has crept there", () => {
+    const k = 1;
+    const wall = walls[k];
+    const story = newStageStory(walls, timeline.cards.length);
+    openWallsUpTo(walls, story, wall.from - 1e-4);
+    // The picture still a few pixels short (Lenis easing in), the page heading for the wall.
+    const p = wall.from - 0.003;
+    stepStageStory(walls, story, timeline, p, 1 / 60, { ...running, reach: wall.from + 0.001 });
+    expect(story.clock[k]).toBeGreaterThan(0);
+  });
+
   it("opens the walls for navigation and for Skip", () => {
     const story = newStageStory(walls, timeline.cards.length);
     const mid = timeline.stops[2].from;

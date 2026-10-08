@@ -3,8 +3,14 @@
  * the stage's own beats. The picture is `min(scroll, frontier)`; the wall
  * of the first unfinished beat creeps through that beat at its own pace.
  * A card holds until it has been on screen, fully opaque, for its reading
- * time; a hold (the title, the arrival, the flips, the crane) plays for its
- * seconds while she drives into it: its wall creeps at the beat's own pace
+ * time. The chapter card's title wall is the hero's: a sliver at the very
+ * top that holds 1.2 s on its own clock from the moment the card comes on
+ * screen (not her input: by the time she has scrolled it to the middle it
+ * has usually run), and the rest of the title beat is free, so the card
+ * leaves with her scroll like any heading. Held behind her input, it
+ * crawled up the screen at the beat's pace with nine tenths of her wheel
+ * thrown away, and read as lag. A hold (the arrival, the flips, the
+ * crane) plays for its seconds while she drives into it: its wall creeps at the beat's own pace
  * only while the page is heading for it (her input, the pedal, a press's
  * ride), and runs no more than HOLD_LEAD seconds of the beat ahead of a
  * picture she has stopped. A wall that ran on while she rested (under the
@@ -17,7 +23,7 @@
 import { activeWindow, STORY } from "@/features/hero/scroll/story";
 import type { StageTimeline } from "./workTimeline";
 
-export type Wall = { kind: "hold" | "card"; card: number; beat: number; from: number; to: number; hold: number };
+export type Wall = { kind: "title" | "hold" | "card"; card: number; beat: number; from: number; to: number; hold: number };
 
 export type StageStory = { clock: number[]; seen: number[]; creep: number[]; done: boolean[]; opacity: number[] };
 
@@ -33,9 +39,14 @@ export type StageContext = {
    * Defaults to the picture.
    */
   reach?: number;
+  /**
+   * The chapter card is on screen, the night ready and the tab visible: the
+   * title wall's clock runs, input or not. Defaults to `running`.
+   */
+  titleUp?: boolean;
 };
 
-/** A hold wall starts counting once the picture is this close to its start (film progress). */
+/** A hold wall starts counting once the page heads this close to its start (film progress). */
 const HOLD_REACH = 0.0005;
 
 /**
@@ -85,16 +96,16 @@ export function stageWalls(timeline: StageTimeline): Wall[] {
       });
       return;
     }
-    // The title wall starts at the very top, so the stage's first frame is held.
     const span = beat.end - beat.start;
-    walls.push({
-      kind: "hold",
-      card: -1,
-      beat: i,
-      from: beat.kind === "title" ? Math.min(0.002, span / 4) : beat.start + Math.min(STORY.wallInset, span / 4),
-      to: beat.end - Math.min(STORY.wallMargin, span / 4),
-      hold: beat.seconds,
-    });
+    if (beat.kind === "title") {
+      // A sliver at the very top: the stage's first frame holds while the title's clock runs, then
+      // the rest of its beat is free (the card leaves with her scroll, opening.ts).
+      walls.push({ kind: "title", card: -1, beat: i, from: Math.min(0.0005, span / 8), to: Math.min(0.002, span / 4), hold: beat.seconds });
+      return;
+    }
+    // A held drive's wall spans its whole beat: the margins a card's window keeps left a gap between
+    // two walls, which the page crossed in a spurt and then stalled at the next.
+    walls.push({ kind: "hold", card: -1, beat: i, from: beat.start, to: beat.end, hold: beat.seconds });
   });
   return walls;
 }
@@ -152,20 +163,27 @@ export function stepStageStory(
     const rate = step / (want > now ? STORY.cardFadeIn : STORY.cardFadeOut);
     story.opacity[i] = want > now ? Math.min(want, now + rate) : Math.max(want, now - rate);
   }
-  if (!wall || !ctx.running) return active;
-  if (wall.kind === "hold") {
+  if (wall?.kind === "title") {
+    // The title runs on its own clock while the card is up, as the hero's title does: no input asked.
+    if (ctx.titleUp ?? ctx.running) story.clock[k] += step;
+    story.creep[k] = Math.max(story.creep[k], Math.min(1, story.clock[k] / wall.hold));
+  } else if (!wall || !ctx.running) return active;
+  else if (wall.kind === "hold") {
     const span = Math.max(1e-9, wall.to - wall.from);
     const front = wall.from + span * story.creep[k];
     const reach = Math.max(p, ctx.reach ?? p);
     // Seconds of the beat the wall may still run before it is HOLD_LEAD ahead of where the page heads.
     const room = HOLD_LEAD - ((front - reach) / span) * wall.hold;
-    if (p >= wall.from - HOLD_REACH && room > 0) story.clock[k] += Math.min(step, room);
+    // It starts as the page heads there, not once the smoothed picture has crept the last pixels to it:
+    // waiting on the picture stalled the page at every held beat's start (a quarter to half a second).
+    if (reach >= wall.from - HOLD_REACH && room > 0) story.clock[k] += Math.min(step, room);
     story.creep[k] = Math.max(story.creep[k], Math.min(1, story.clock[k] / wall.hold));
   } else if (active === wall.card) {
     story.clock[k] += step;
     if (shown >= STORY.fullyVisible) story.seen[k] += step;
     story.creep[k] = Math.max(story.creep[k], Math.min(1, story.clock[k] / wall.hold));
   }
+  if (!wall) return active;
   const finished =
     wall.kind === "card"
       ? story.seen[k] >= readHold(wall) && story.opacity[wall.card] >= STORY.fullyVisible

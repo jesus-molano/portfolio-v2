@@ -862,10 +862,32 @@ also exists as real DOM for keyboard and screen-reader users.
   The film opens on the chapter card «Historia principal» / "Main story"
   (the game's main storyline, as STATS's main missions are; ribbon
   «Trayectoria · 2018 — LIVE» / "Career · 2018 — LIVE"), held 1.2 s
-  while the night fades up under it, then straight into the drive: no
-  line opens it (the owner took the bridge line out: the night faded up
-  over the whole of it, at its reading pace with the limiter on, and a
-  first pass read seconds of dark screen as the end of the page).
+  at the stage's top by its title wall, on its own clock like the hero's
+  title (from the moment the card is 0.65 of a screen below the top, the
+  night ready: no input asked, so it has usually run by the time she has
+  scrolled it up), then it leaves with her scroll, 1:1, as the night
+  fades up under it, and straight into the drive: no line opens it (the
+  owner took the bridge line out: the night faded up over the whole of
+  it, at its reading pace with the limiter on, and a first pass read
+  seconds of dark screen as the end of the page). Held behind her input
+  as the arrival's first beat, the card crawled up the screen at the
+  beat's pace with nine tenths of her wheel thrown away (the owner: «se
+  ve muy laggeado»). A notch, flick or swipe held at the opening's walls
+  (the title or the arrival) carries the page on to the first line at
+  the beats' own pace (the press's carry, WorkStage; a finger on the
+  glass holds it, any input event of hers lets it go, and so does a
+  pedal held past a tap, whose letting go stops the picture; the held
+  pedal's own frames do not), so one push brings the
+  car to the army's board: she had to keep scrolling through it without
+  being told. Once the title wall has run, resting at the card shows the
+  between-card cue and the pedal's turn. A link to #work (the select's way
+  on) lands the stage pinned at its top (a negative scroll margin in the
+  film, Work.module.css), where the pedal and the keys work (from
+  `PIN_SLACK_VH`, 5 % of a screen, above it: a landing a few px short
+  left Space to the approach, without the press's carry); Space,
+  PageDown and the down arrow in the last screen and a half before the
+  stage are hers, gliding up to its wall (`approachKey`), never the
+  browser's jump, which read as navigation and opened the opening.
   The route at the top is one link per stop («PARADA 1…5»), never a video
   scrubber. While the car is stopped, the super shows «PARADA 0X/05 ·
   company» and, under it, the stop's one `line` (clients and stack); the
@@ -910,7 +932,11 @@ also exists as real DOM for keyboard and screen-reader users.
     than a wheel's notch and a stop changed in one frame). A held beat
     plays only while she drives into it (`workStory.ts`, tested): its
     wall creeps at the beat's pace while the page heads for it (her input
-    trimmed there, the pedal, a press's carry), and stops `HOLD_LEAD`
+    trimmed there, the pedal, a press's carry), counting from the moment
+    the page heads there (not once the smoothed picture has crept the
+    last pixels to it: that stalled the page at every arrival), spans its
+    whole beat (the card windows' margins left a gap between two held
+    walls, crossed in a spurt and then a stall), and stops `HOLD_LEAD`
     (0.25 s of the beat) ahead of a picture she has stopped; a wall that
     ran on while she rested at a cut, under the night, left the whole
     arrival open, and her next flick played it in a frame, the car
@@ -930,10 +956,15 @@ also exists as real DOM for keyboard and screen-reader users.
     0.35 s back, and the set changes only once the screen is night
     (`stepDipView`: the old stop held at its edge till then), so a fast
     pass with the walls open still dissolves. The night fades up under
-    the chapter card over its own beat, and the card fades out over the
-    first 28 % of the drive's first beat; the chrome (route, HUD, super,
-    chip) comes up only once it has gone (`opening.ts`, tested): the card
-    scrolls up with the page, and faded slowly it slid over the route.
+    the chapter card over its own beat, and the card fades out inside
+    that beat too, from 15 % to 75 % of it (`TITLE_FADE`); the chrome
+    (route, HUD, super, chip) comes up only once it has gone and the
+    drive has started (`opening.ts`, tested): the card scrolls up with
+    the page, and faded slowly it slid over the route. As drawn, its fade
+    never runs faster than 0.35 s whole (a fling never erases it in a
+    frame), resting 0.3 s mid-fade finishes it (no ghost of it over the
+    army's board, as the hero's title settles), and its bounce under a
+    push at the title wall eases in and out, never while it slides in.
     The letterbox bars slide away as the first stop fades in,
     as in the hero, and soft night scrims at the frame's top and bottom
     carry the chrome; the cover's night starts and ends on the line-up's
