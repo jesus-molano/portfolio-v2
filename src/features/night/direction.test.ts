@@ -61,6 +61,24 @@ function beat(timeline: StageTimeline, id: string) {
   return found;
 }
 
+/** How far a point is from a convex polygon on screen, 0 inside it (either winding). */
+function toPolygon(point: [number, number], polygon: [number, number][]): number {
+  let left = true;
+  let right = true;
+  let nearest = Infinity;
+  polygon.forEach((a, i) => {
+    const b = polygon[(i + 1) % polygon.length];
+    const ab = [b[0] - a[0], b[1] - a[1]];
+    const ap = [point[0] - a[0], point[1] - a[1]];
+    const cross = ab[0] * ap[1] - ab[1] * ap[0];
+    if (cross < 0) left = false;
+    if (cross > 0) right = false;
+    const t = Math.min(1, Math.max(0, (ap[0] * ab[0] + ap[1] * ab[1]) / (ab[0] ** 2 + ab[1] ** 2)));
+    nearest = Math.min(nearest, Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t));
+  });
+  return left || right ? 0 : nearest;
+}
+
 function carPoint(timeline: StageTimeline, p: number): Vec3 {
   return [carAt(timeline, p).x, 0.7, 0];
 }
@@ -141,6 +159,48 @@ describe("the camera's direction", () => {
           }
           expect(seen / total, `stop ${stop}`).toBeGreaterThanOrEqual(0.6);
         });
+      });
+
+      // The owner saw the car nearly at the army's board under the chapter card, then back at the start, then
+      // driving on: down the road from behind, the car stood on the board's foot in the frame while it was still
+      // 20 m short, and as the camera came round the two parted on screen. What the eye reads as where the car
+      // is: how near the board it stands in the frame, and how big it is. So while it rolls in, the car only
+      // closes on the board on screen, never turns back across the frame, and never comes back at the camera.
+      it(`brings the car to the army's board in one move: never there before it arrives (${name}, ${screen})`, () => {
+        const title = beat(timeline, "title");
+        const arrive = beat(timeline, "army.arrive");
+        const board = SETS[ARMY].board;
+        // The board and its legs down to the ground, as the eye takes them.
+        const quad: Vec3[] = [board[0], board[1], [board[2][0], 0, board[2][2]], [board[3][0], 0, board[3][2]]];
+        const from = (title.start + title.end) / 2;
+        let nearest = Infinity;
+        let lastX = Number.NaN;
+        let heading = 0;
+        let backtrack = 0;
+        let furthest = 0;
+        for (let i = 0; i <= 400; i += 1) {
+          const p = from + ((arrive.end - from) * i) / 400;
+          const pose = poseAt(ARMY, p, aspect);
+          const car = carPoint(timeline, p);
+          if (!inFrame(pose, [car], aspect, -0.05)) {
+            lastX = Number.NaN;
+            continue;
+          }
+          const [c, ...corners] = projectPose(pose, [car, ...quad], aspect).map(([x, y]): [number, number] => [x * aspect, y]);
+          const gap = toPolygon(c, corners);
+          nearest = Math.min(nearest, gap);
+          expect(gap - nearest, `closer to the board before, at ${p.toFixed(4)}`).toBeLessThan(0.01);
+          if (!Number.isNaN(lastX)) {
+            const dx = c[0] - lastX;
+            if (heading === 0 && Math.abs(dx) > 1e-3) heading = Math.sign(dx);
+            if (heading !== 0 && Math.sign(dx) === -heading) backtrack += Math.abs(dx);
+          }
+          lastX = c[0];
+          expect(backtrack, `turned back across the frame at ${p.toFixed(4)}`).toBeLessThan(0.01);
+          const distance = moved(pose, { ...pose, position: car });
+          furthest = Math.max(furthest, distance);
+          if (car[0] < -3) expect(distance / furthest, `came back at the camera at ${p.toFixed(4)}`).toBeGreaterThan(0.9);
+        }
       });
 
       it(`stops the car clear of the subtitles while he speaks (${name}, ${screen})`, () => {

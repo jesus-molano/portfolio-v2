@@ -51,27 +51,32 @@ const TRACK = { track: 1 } as const;
 const OWN = { fit: 0 } as const;
 
 /**
- * The army: the roadside billboard. Under the chapter card the camera rides
- * behind the car down the coast road, the board ahead, and stays behind it
- * as it rolls in: the car always ahead of the camera, the board growing. As
- * the car brakes at its foot the camera comes round low behind its rear
- * quarter, his head and shoulder a dark shape under the board, and holds
- * there for the lines. The ride used to draw level with the car as the
- * drive began: down the long road the car had looked nearly at the board,
- * then the board left the frame beside it and came back far ahead, the car
- * seemingly thrown back to the start (the owner).
+ * The army: the roadside billboard. The night fades up under the chapter
+ * card on a wide shot from high over the near side of the coast road, the
+ * lit board at the head of the road: the destination, framed before the
+ * car is there. The car comes in under the camera and drives away up the
+ * road to it, across the frame and below the board, never on it before it
+ * arrives. As it brakes the camera comes down and in behind it in one
+ * move, closing on it only a little, and settles low behind its rear
+ * quarter, his head and shoulder a dark shape under the board, for the
+ * lines. A ride behind the car down the long road had stood it on the
+ * board's foot in the frame 20 m short, then parted the two as the camera
+ * came round: the owner saw the car go forward, back to the start and on
+ * again (direction.test.ts holds the arrival to one move).
  */
 const army: Direction = {
   shots: (timeline) => {
-    const chaseFar = pose([-62, 2.0, 7.5], [-44, 1.2, 0], LENS.mm35, TRACK);
-    const chaseNear = pose([-39, 2.1, 7.5], [-24, 1.2, 0], LENS.mm35, TRACK);
+    // About 12 m from the car all the way in: the reading shot is 9 m from it, so a camera further out would have
+    // to rush in as the car stops (direction.test.ts). The move curves through `descent` at its middle.
+    const wide = pose([-43.8, 8.4, 9.5], [-12.9, -0.8, -6.3], 53);
+    const descent = { ...pose([-24.3, 4.9, 3.85], [3.8, 0.1, -8.9], 50.5), pass: true };
     const read = pose([-8.6, 1.6, 3.0], [10.5, 3.85, -13], LENS.mm28);
     const readOn = pose([-7.8, 1.62, 2.75], [10.5, 3.9, -13], LENS.mm28);
     const readOn2 = pose([-7.2, 1.64, 2.6], [10.5, 3.95, -13], LENS.mm28);
     const letGo = pose([-6.9, 1.66, 2.5], [13.5, 3.75, -12], LENS.mm28);
     return [
-      keyAt(timeline, "title", 0, chaseFar),
-      keyAt(timeline, "army.arrive", 0, chaseNear),
+      keyAt(timeline, "title", 0, wide),
+      keyAt(timeline, "army.arrive", 0.25, descent),
       keyAt(timeline, "army.arrive", 1, read),
       keyAt(timeline, "army.card0", 1, readOn),
       keyAt(timeline, "army.card1", 1, readOn2),
@@ -79,13 +84,18 @@ const army: Direction = {
       keyAt(timeline, "army.leave", 1, letGo),
     ];
   },
-  // On a phone the same ride in, then from down the road, so the car stops in front of the board's foot.
+  // On a phone the same move from further out, the car small all the way in (24 to 33 m off): from high behind its
+  // start, looking up the road to the board, down and in across the road to the reading shot, where the car stops in
+  // front of the board's foot. The board is framed from the first frame and the car drives up into it: each key is
+  // fitted (frame.ts fitPose) and turned partly to the car (`track`). The long lens is on purpose: the fit pulls each
+  // key back its whole 18 m (the set's maxBack) and opens the lens until the board and the stop fit, so the camera
+  // rides 18 m behind these keys at the board's fitting distance, as the reading shot's fit does, and never jumps.
   portrait: (timeline) => {
-    const chaseFar = pose([-60, 2.2, 8], [-44, 1.2, 0], 50, { ...TRACK, ...OWN });
-    const chaseNear = pose([-39, 2.2, 8.5], [-24, 1.2, 0], 50, { ...TRACK, ...OWN });
+    const wide = pose([-50.3, 7.5, 7.3], [10, 5.65, -3.5], 26, { track: 0.71 });
+    const descent = { ...pose([-21.9, 5.2, 9.05], [5.65, 3.3, -6.65], 26, { track: 0.42 }), pass: true };
     return [
-      keyAt(timeline, "title", 0, chaseFar),
-      keyAt(timeline, "army.arrive", 0, chaseNear),
+      keyAt(timeline, "title", 0, wide),
+      keyAt(timeline, "army.arrive", 0.25, descent),
       keyAt(timeline, "army.arrive", 1, pose([-8.6, 2.25, 12.6], [9, 5.2, -13], LENS.mm35)),
       keyAt(timeline, "army.card1", 1, pose([-8, 2.3, 12], [9, 5.2, -13], LENS.mm35)),
       keyAt(timeline, "army.leave", 0.15, pose([-8, 2.3, 12], [9, 5.2, -13], LENS.mm35)),

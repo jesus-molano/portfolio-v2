@@ -1096,7 +1096,12 @@ also exists as real DOM for keyboard and screen-reader users.
   desktop, a phone and a small phone: no step of the film whips (0.5 m,
   2 degrees), a line moves the camera 3 m and 5 degrees at most (the
   framing lands before it), the car is on screen for most of every
-  arrival and stops above the subtitles, every board, PwC's readerboard
+  arrival and stops above the subtitles, at the army's board it rolls in
+  in one move (on screen it only closes on the board, never falls back
+  across the frame and never comes back at the camera: a ride behind it
+  down the long road stood it on the board's foot 20 m short, then parted
+  the two, and the owner saw it go forward and back; the opening is now a
+  high wide shot that comes down behind it as it brakes), every board, PwC's readerboard
   (a quarter of the frame wide), Logixs' snipe, ban and bills and
   Heuristik's name over its canopy are whole, the crane climbs at a
   crane's pace, the lit mast stays under the route, and PwC's blade never
