@@ -5,6 +5,7 @@ import { SMAAPreset, ToneMappingMode } from "postprocessing";
 import { FilmGrain } from "@/features/hero/scene/FilmGrain";
 import { gradeUniforms } from "@/features/hero/scene/grade";
 import type { QualityTier } from "@/features/hero/useQualityTier";
+import { NanGuard } from "./NanGuard";
 
 /**
  * The hero's post on night: bloom on the HDR frame (only neon, lamps and
@@ -21,6 +22,7 @@ export function NightEffects({ tier }: { tier: QualityTier }) {
   if (tier === "low") {
     return (
       <EffectComposer multisampling={0}>
+        <NanGuard />
         <SMAA preset={SMAAPreset.MEDIUM} />
         <Bloom mipmapBlur luminanceThreshold={BLOOM.threshold} luminanceSmoothing={BLOOM.smoothing} intensity={BLOOM.intensity} />
         <ToneMapping mode={ToneMappingMode.NEUTRAL} />
@@ -31,6 +33,7 @@ export function NightEffects({ tier }: { tier: QualityTier }) {
   }
   return (
     <EffectComposer multisampling={0}>
+      <NanGuard />
       <SMAA preset={SMAAPreset.HIGH} />
       <Bloom
         mipmapBlur
