@@ -8,7 +8,6 @@ import { LoadingScreen } from "@/features/loader/LoadingScreen";
 import { locales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { HomeMain } from "./HomeMain";
-import { WRONG_EXIT_PLACES } from "./wrongExit";
 
 /** The home page as the server renders it: the loading screen, then every section in <main>. */
 async function renderHome(lang: (typeof locales)[number]): Promise<string> {
@@ -33,13 +32,6 @@ describe("in-page links", () => {
       expect(targets.filter((target) => !present.has(target))).toEqual([]);
     });
   }
-
-  it("sends the 404's ways on to sections that exist on the home page", async () => {
-    for (const lang of locales) {
-      const present = ids(await renderHome(lang));
-      expect(WRONG_EXIT_PLACES.filter((place) => !present.has(place)), lang).toEqual([]);
-    }
-  });
 
   it("renders the sections in the film's order", async () => {
     const html = await renderHome("en");

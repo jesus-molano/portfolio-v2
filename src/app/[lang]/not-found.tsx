@@ -4,7 +4,6 @@ import { Horizon } from "@/features/loader/Horizon";
 import { defaultLocale, hasLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import styles from "./not-found.module.css";
-import { placeHref, WRONG_EXIT_PLACES } from "./wrongExit";
 
 /** The locale from the root `[lang]` segment, or the default for an unknown one. */
 async function currentLocale(): Promise<Locale> {
@@ -21,8 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
 /**
  * The localized 404, a screen of the game like the start menu: the same
  * causeway at sunset (the start menu's picture, its lamps and windows lit),
- * a motorway exit sign that says where she is, and a menu in the start
- * menu's look back to the city or straight to a section.
+ * a motorway exit sign that says where she is, and the way back to the
+ * city in the start menu's look (the home page, so its start menu first).
  */
 export default async function NotFound() {
   const locale = await currentLocale();
@@ -48,22 +47,12 @@ export default async function NotFound() {
           </svg>
         </div>
 
-        <nav className={styles.menu} aria-label={copy.routesLabel}>
+        <div className={styles.menu}>
           <p className={styles.kicker}>{copy.rerouting}</p>
-          <a className={`${styles.item} ${styles.primary}`} href={`/${locale}`}>
+          <a className={styles.item} href={`/${locale}`}>
             <span className={styles.word}>{copy.back}</span>
           </a>
-          <p className={styles.routes}>{copy.routes}</p>
-          <ul className={styles.places}>
-            {WRONG_EXIT_PLACES.map((place) => (
-              <li key={place}>
-                <a className={styles.item} href={placeHref(locale, place)}>
-                  <span className={styles.word}>{copy.places[place]}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        </div>
       </div>
     </main>
   );

@@ -2,7 +2,7 @@
  * The 404 (not-found.tsx): a screen of the game, the start menu's sibling.
  * The start menu's picture fills the screen (Horizon.tsx, both layouts in
  * the DOM, the same media queries pick one), a motorway exit sign says
- * where she is, and a menu in the start menu's look offers the way back.
+ * where she is, and the way back to the city is the start menu's slab.
  *
  * Wide screens: the sign and the menu on the left over the sky, the road
  * running to the city on the right. Phones and portrait screens: the sign
@@ -148,8 +148,7 @@
   justify-items: start;
 }
 
-.kicker,
-.routes {
+.kicker {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -171,24 +170,7 @@
   box-shadow: 0 0 10px var(--va-color-magenta);
 }
 
-.routes {
-  margin: 22px 0 6px;
-}
-
-.places {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 22px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/*
- * Each way is a word on the start menu's painted slab: outlined in cream
- * until it is chosen, filled with night on the slab once it is (hover or
- * keyboard focus). With nothing chosen, the way back to the city is.
- */
+/* The way back: the start menu's selected item, its word in night on the painted slab. */
 .item {
   position: relative;
   display: inline-block;
@@ -214,54 +196,36 @@
   );
   filter: drop-shadow(7px 7px 0 color-mix(in srgb, var(--va-color-ink) 88%, transparent))
     drop-shadow(0 0 22px color-mix(in srgb, var(--va-color-magenta) 40%, transparent));
-  opacity: 0;
-  transform: skewX(-11deg) scaleX(0.92);
+  transform: skewX(-11deg);
   transform-origin: 0 50%;
-  transition:
-    opacity 200ms ease,
-    transform 300ms var(--va-motion-ease);
+  transition: transform 300ms var(--va-motion-ease);
 }
 
 .word {
   position: relative;
   display: block;
-  font: 400 var(--word, 2rem) / 1.08 var(--va-font-marquee);
+  font: 400 clamp(2.6rem, 9cqw, 4.8rem) / 1.08 var(--va-font-marquee);
   letter-spacing: 0.012em;
   text-transform: uppercase;
   white-space: nowrap;
-  color: transparent;
-  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--va-color-cream) 80%, transparent);
-  transition:
-    color 220ms ease,
-    -webkit-text-stroke-color 220ms ease,
-    transform 320ms var(--va-motion-ease);
-}
-
-.primary {
-  --word: clamp(2.6rem, 9cqw, 4.8rem);
-}
-
-.places .item {
-  --word: clamp(1.5rem, 4.4cqw, 2.1rem);
-}
-
-/* Small words read better filled than outlined. */
-.places .word {
-  color: color-mix(in srgb, var(--va-color-cream) 86%, transparent);
-  -webkit-text-stroke-color: transparent;
-}
-
-.item:is(:hover, :focus-visible)::before,
-.menu:not(:has(.item:is(:hover, :focus-visible))) .primary::before {
-  opacity: 1;
-  transform: skewX(-11deg) scaleX(1);
-}
-
-.item:is(:hover, :focus-visible) .word,
-.menu:not(:has(.item:is(:hover, :focus-visible))) .primary .word {
   color: var(--va-color-night);
-  -webkit-text-stroke-color: transparent;
   transform: translateX(6px);
+  transition: transform 320ms var(--va-motion-ease);
+}
+
+/* Hover or keyboard focus: the slab leans a little further in, the word with it. */
+.item:is(:hover, :focus-visible)::before {
+  transform: skewX(-11deg) translateX(4px);
+}
+
+.item:is(:hover, :focus-visible) .word {
+  transform: translateX(12px);
+}
+
+/* The slab is the item; the focus gets a ring of its own too. */
+.item:focus-visible {
+  outline: 2px solid var(--va-color-cream);
+  outline-offset: 6px;
 }
 
 @keyframes hang {
@@ -320,45 +284,49 @@
     font-size: clamp(2.6rem, 13cqw, 4.6rem);
   }
 
-  .primary {
-    --word: clamp(2.3rem, 11.5cqw, 3.6rem);
-  }
-
-  .places .item {
-    --word: clamp(1.45rem, 7cqw, 2rem);
+  .word {
+    font-size: clamp(2.3rem, 11.5cqw, 3.6rem);
   }
 }
 
-/* Phones on their side: the wide picture, the sign and the menu side by side, night under both. */
+/* Phones on their side: the wide picture, the sign and the way back stacked small on the left, night under them. */
 @media (orientation: landscape) and (max-height: 520px) {
   .scrim {
     background: linear-gradient(
       90deg,
       color-mix(in srgb, var(--va-color-night) 72%, transparent) 0%,
-      color-mix(in srgb, var(--va-color-night) 58%, transparent) 55%,
-      color-mix(in srgb, var(--va-color-night) 30%, transparent) 100%
+      color-mix(in srgb, var(--va-color-night) 50%, transparent) 50%,
+      transparent 80%
     );
   }
 
   .content {
-    grid-template-columns: auto auto;
-    align-items: center;
-    column-gap: 40px;
-    width: auto;
-    padding-top: calc(3.5rem + var(--safe-top));
-    padding-bottom: calc(1.5rem + var(--safe-bottom));
+    gap: 18px;
+    width: min(30rem, 100% - 2 * var(--gutter));
+    padding-top: calc(3.25rem + var(--safe-top));
+    padding-bottom: calc(1.25rem + var(--safe-bottom));
+  }
+
+  .sign {
+    min-width: 0;
+    padding: 1.1rem 4rem 1rem 1.3rem;
   }
 
   .heading {
-    font-size: clamp(2.2rem, 7cqw, 3.4rem);
+    font-size: clamp(1.9rem, 5.2cqw, 2.6rem);
   }
 
-  .primary {
-    --word: clamp(2rem, 5.6cqw, 2.8rem);
+  .line {
+    margin-top: 0.4rem;
+    font-size: 0.9rem;
   }
 
-  .places .item {
-    --word: 1.4rem;
+  .arrow {
+    width: 2.2rem;
+  }
+
+  .word {
+    font-size: clamp(1.9rem, 5cqw, 2.5rem);
   }
 }
 
@@ -400,11 +368,8 @@
     color: CanvasText;
   }
 
-  .word,
-  .item:is(:hover, :focus-visible) .word,
-  .menu:not(:has(.item:is(:hover, :focus-visible))) .primary .word {
+  .word {
     color: LinkText;
-    -webkit-text-stroke: 0;
   }
 
   .item::before {

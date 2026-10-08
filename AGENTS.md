@@ -172,10 +172,11 @@ also exists as real DOM for keyboard and screen-reader users.
   owner found the old one horrible). The start menu's picture fills it
   (`Horizon`, its lamps and windows lit), a motorway exit sign (an amber
   SALIDA 404 / EXIT 404 tab, the heading as its legend, the exit arrow)
-  says where she is, and a menu in the start menu's look («Recalculando
-  ruta…» / "Rerouting…") goes back to the city or straight to a section
-  (`wrongExit.ts`, a full load each, so the start menu comes first;
-  `anchors.test.ts` checks the ids).
+  says where she is, and under «Recalculando ruta…» / "Rerouting…" one
+  way on, the start menu's slab: back to the city (the home page, its
+  start menu first). No links to sections: each went through the start
+  menu anyway (the owner's call). There the radio stays off until she
+  turns it on (no click or key starts it).
 - Metadata: the layout's `generateMetadata` gives each locale its title,
   description, canonical and hreflang links and a link preview card (Open
   Graph and Twitter): `public/og/<locale>.jpg`, 1200 × 630 and under 300 KB

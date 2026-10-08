@@ -998,14 +998,6 @@
     "exit": "Exit 404",
     "line": "This road isn’t on the map.",
     "rerouting": "Rerouting…",
-    "back": "Back to the city",
-    "routesLabel": "Routes",
-    "routes": "Or go straight to",
-    "places": {
-      "work": "Career",
-      "stats": "Player profile",
-      "projects": "Side projects",
-      "contact": "Contact"
-    }
+    "back": "Back to the city"
   }
 }
