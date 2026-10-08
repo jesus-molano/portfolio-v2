@@ -52,14 +52,19 @@ const OWN = { fit: 0 } as const;
 
 /**
  * The army: the roadside billboard. Under the chapter card the camera rides
- * behind the car down the coast road, the board ahead; as the car brakes at
- * its foot the camera comes round low behind its rear quarter, his head
- * and shoulder a dark shape under the board, and holds there for the lines.
+ * behind the car down the coast road, the board ahead, and stays behind it
+ * as it rolls in: the car always ahead of the camera, the board growing. As
+ * the car brakes at its foot the camera comes round low behind its rear
+ * quarter, his head and shoulder a dark shape under the board, and holds
+ * there for the lines. The ride used to draw level with the car as the
+ * drive began: down the long road the car had looked nearly at the board,
+ * then the board left the frame beside it and came back far ahead, the car
+ * seemingly thrown back to the start (the owner).
  */
 const army: Direction = {
   shots: (timeline) => {
     const chaseFar = pose([-62, 2.0, 7.5], [-44, 1.2, 0], LENS.mm35, TRACK);
-    const chaseNear = pose([-24, 2.1, 7.5], [-8, 1.2, 0], LENS.mm35, TRACK);
+    const chaseNear = pose([-39, 2.1, 7.5], [-24, 1.2, 0], LENS.mm35, TRACK);
     const read = pose([-8.6, 1.6, 3.0], [10.5, 3.85, -13], LENS.mm28);
     const readOn = pose([-7.8, 1.62, 2.75], [10.5, 3.9, -13], LENS.mm28);
     const readOn2 = pose([-7.2, 1.64, 2.6], [10.5, 3.95, -13], LENS.mm28);
@@ -77,7 +82,7 @@ const army: Direction = {
   // On a phone the same ride in, then from down the road, so the car stops in front of the board's foot.
   portrait: (timeline) => {
     const chaseFar = pose([-60, 2.2, 8], [-44, 1.2, 0], 50, { ...TRACK, ...OWN });
-    const chaseNear = pose([-22, 2.2, 8.5], [-8, 1.2, 0], 50, { ...TRACK, ...OWN });
+    const chaseNear = pose([-39, 2.2, 8.5], [-24, 1.2, 0], 50, { ...TRACK, ...OWN });
     return [
       keyAt(timeline, "title", 0, chaseFar),
       keyAt(timeline, "army.arrive", 0, chaseNear),
