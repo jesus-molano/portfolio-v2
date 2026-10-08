@@ -74,12 +74,13 @@ describe("the lineup", () => {
     expect(new Set(STATIONS.map((entry) => entry.accent)).size).toBe(STATIONS.length);
   });
 
-  it("defaults to MANERO 97.7, whose playlist opens with Honeyed Sunbeams", () => {
+  it("defaults to MANERO 97.7, whose playlist opens with Afrobeat Disco (the owner's pick) and ends on Honeyed Sunbeams", () => {
     expect(DEFAULT_STATION_ID).toBe("manero");
     const manero = findStation(DEFAULT_STATION_ID)!;
     expect(formatFrequency(manero.frequency)).toBe("97.7");
-    expect(manero.tracks[0].credit.title).toBe("Honeyed Sunbeams");
-    expect(manero.tracks[0].url).toBe("/music/honeyed-sunbeams.mp3");
+    expect(manero.tracks[0].credit.title).toBe("Afrobeat Disco");
+    expect(manero.tracks[0].url).toBe("/music/afrobeat-disco.mp3");
+    expect(manero.tracks.at(-1)?.credit.title).toBe("Honeyed Sunbeams");
   });
 
   it("gives every track its own file, a measured duration and a full credit", () => {
@@ -102,7 +103,7 @@ describe("the lineup", () => {
     expect(playlists).toEqual({
       bobsled: ["Reggae Island Vibes", "Rasta Vibes", "Don't Worry About a Thing"],
       raheem: ["West Coast Beat", "Miraculous", "Vlog Vlogs Music Background"],
-      manero: ["Honeyed Sunbeams", "Funky Disco", "Afrobeat Disco", "Funk Music", "Celebrity"],
+      manero: ["Afrobeat Disco", "Funky Disco", "Funk Music", "Celebrity", "Honeyed Sunbeams"],
       "one-louder": ["The Sound of Metal 3", "The Sound of Metal 4", "Thrash Metal"],
       "witness-me": ["Rock", "Heatwave", "Punk Rock Rebellion Fast Energy", "Punk Rock"],
       tofu: ["Walk of Dr. Livesey", "Phonk"],

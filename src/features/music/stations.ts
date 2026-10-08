@@ -165,19 +165,14 @@ export const STATIONS: readonly Station[] = [
     logo: "manero",
     tracks: [
       {
-        url: "/music/honeyed-sunbeams.mp3",
-        duration: 124.98,
-        credit: pixabay("Honeyed Sunbeams", "9jackjack8", "https://pixabay.com/music/dance-honeyed-sunbeams-disco-funk-music-455872/"),
+        url: "/music/afrobeat-disco.mp3",
+        duration: 173.92,
+        credit: pixabay("Afrobeat Disco", "arnaud136", "https://pixabay.com/music/afrobeat-afrobeat-disco-352032/"),
       },
       {
         url: "/music/funky-disco.mp3",
         duration: 102.66,
         credit: pixabay("Funky Disco", "nesterouk", "https://pixabay.com/music/funk-funky-disco-155292/"),
-      },
-      {
-        url: "/music/afrobeat-disco.mp3",
-        duration: 173.92,
-        credit: pixabay("Afrobeat Disco", "arnaud136", "https://pixabay.com/music/afrobeat-afrobeat-disco-352032/"),
       },
       {
         url: "/music/funk-music.mp3",
@@ -188,6 +183,11 @@ export const STATIONS: readonly Station[] = [
         url: "/music/celebrity.mp3",
         duration: 125.88,
         credit: pixabay("Celebrity", "mickeyscat", "https://pixabay.com/music/funk-celebrity-614075/"),
+      },
+      {
+        url: "/music/honeyed-sunbeams.mp3",
+        duration: 124.98,
+        credit: pixabay("Honeyed Sunbeams", "9jackjack8", "https://pixabay.com/music/dance-honeyed-sunbeams-disco-funk-music-455872/"),
       },
     ],
   },

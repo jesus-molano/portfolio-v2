@@ -75,23 +75,16 @@ License: Pixabay Content License, https://pixabay.com/service/terms/
 MANERO 97.7 (disco and funk)
 ============================
 
-honeyed-sunbeams.mp3
-"Honeyed Sunbeams (Disco Funk Music)" by 9jackjack8, credited on the site
-as "Honeyed Sunbeams".
-Source: https://pixabay.com/music/dance-honeyed-sunbeams-disco-funk-music-455872/
-Pixabay ID: 455872
+afrobeat-disco.mp3
+"Afrobeat Disco" by arnaud136.
+Source: https://pixabay.com/music/afrobeat-afrobeat-disco-352032/ (inferred)
+Pixabay ID: 352032
 License: Pixabay Content License, https://pixabay.com/service/terms/
 
 funky-disco.mp3
 "Funky Disco" by nesterouk.
 Source: https://pixabay.com/music/funk-funky-disco-155292/
 Pixabay ID: 155292
-License: Pixabay Content License, https://pixabay.com/service/terms/
-
-afrobeat-disco.mp3
-"Afrobeat Disco" by arnaud136.
-Source: https://pixabay.com/music/afrobeat-afrobeat-disco-352032/ (inferred)
-Pixabay ID: 352032
 License: Pixabay Content License, https://pixabay.com/service/terms/
 
 funk-music.mp3
@@ -105,6 +98,13 @@ celebrity.mp3
 "Celebrity" by mickeyscat.
 Source: https://pixabay.com/music/funk-celebrity-614075/
 Pixabay ID: 614075
+License: Pixabay Content License, https://pixabay.com/service/terms/
+
+honeyed-sunbeams.mp3
+"Honeyed Sunbeams (Disco Funk Music)" by 9jackjack8, credited on the site
+as "Honeyed Sunbeams".
+Source: https://pixabay.com/music/dance-honeyed-sunbeams-disco-funk-music-455872/
+Pixabay ID: 455872
 License: Pixabay Content License, https://pixabay.com/service/terms/
 
 Left out: "Disco Funk Loop" by vibehorn (Pixabay ID 507215), a 33-second

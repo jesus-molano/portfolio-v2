@@ -664,7 +664,8 @@ also exists as real DOM for keyboard and screen-reader users.
   (`cueEntry`, nothing sounds before she enters; kept for the visit in
   sessionStorage, so the other language keeps it), else `entryStation`
   (the remembered station live, or the first time MANERO from the top
-  of Honeyed Sunbeams), on even if CONTINUE saved "off" last time; with the
+  of Afrobeat Disco, the owner's opener; Honeyed Sunbeams closes the
+  playlist), on even if CONTINUE saved "off" last time; with the
   radio cued off it enters in silence. Its line names the same station,
   or "Radio off". `RadioWheel.tsx` opens by holding the right mouse button over
   the scene, holding or pressing Q, a long-press on touch, or the music
