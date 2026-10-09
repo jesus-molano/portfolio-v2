@@ -5,7 +5,7 @@ Writes the card image public/stats/portrait.{avif,webp} is encoded from.
 
 Inputs (read only):
   public/models/makehuman-driver/driver.glb   him: body, striped tee, earring,
-                                              crew cut, beard and moustache
+                                              short crop, beard and moustache
                                               (alpha-tested HairShell layers)
   public/models/sunglasses/aviator.glb        his gold aviators, in the frame
                                               of the rig's "head" bone

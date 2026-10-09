@@ -257,7 +257,7 @@ def render_layer(b, key, out, threads, check, passes=("beauty", "shadow")):
     sc = bpy.context.scene
     stage.setup_render(quality, threads=threads, samples=samples)
     if key == PLAYER:
-        # his crew cut, beard and moustache are twelve stacked alpha-tested
+        # his crop, beard and moustache are twelve stacked alpha-tested
         # shells: past 16 transparent bounces Cycles draws them as black
         # bands. Nothing in the cats' layers is transparent (fur is curves,
         # the corneas glass), so this changes nothing a cat would show.

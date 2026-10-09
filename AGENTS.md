@@ -180,7 +180,9 @@ also exists as real DOM for keyboard and screen-reader users.
 - Metadata: the layout's `generateMetadata` gives each locale its title,
   description, canonical and hreflang links and a link preview card (Open
   Graph and Twitter): `public/og/<locale>.jpg`, 1200 × 630 and under 300 KB
-  (`lib/shareCard.ts`, tested), a game cover's grid of the site's own
+  (`lib/shareCard.ts`, tested), announced with the start of its own hash
+  as a version (`shareCardUrl`, `?v=`), since LinkedIn, X and the
+  messengers keep a preview by its image's address for days, a game cover's grid of the site's own
   frames (the owner's pick): the drive into the city, him at the wheel,
   Dante mid-strike with his claw marks (`claw.ts`), the Afterglow with its
   marquee lettered per locale and the army's board at night, beside a
@@ -560,8 +562,10 @@ also exists as real DOM for keyboard and screen-reader users.
     earring, first hair and beard; `Driver.tsx` gives the earring its look:
     dark gunmetal, blue toward grazing angles, like his anodised hoop),
     then re-groomed on that GLB by `tools/blender/refine_driver_hair.py`:
-    a crew cut with a high skin
-    fade, a beard fade at the sideburns, a full beard and a moustache over
+    a short crop lying close to the head (about 4 mm, the scalp showing
+    through: a centimetre standing up read as an afro, the owner wears it
+    between shaved and this) with a long, soft skin fade (a narrow one read
+    as a step), a beard fade at the sideburns, a full beard and a moustache over
     the whole upper lip. It finds the head frame from the mesh (ear
     centres, nose, lips, chin; it prints the landmarks), describes the
     grooming as fields on the skin (density, length, grey share, comb),
@@ -1164,13 +1168,13 @@ also exists as real DOM for keyboard and screen-reader users.
   (`public/interlude/manifest.json`, contract in
   `public/interlude/README.md`: the cats under `cats`, their refusal
   renders under `states`, each naming its cat, Jesús at the top level with
-  his model's kneeling `heightCm`, 118.5 cm; every image at the same 24 px
+  his model's kneeling `heightCm`, 117.9 cm; every image at the same 24 px
   a real centimetre, his rendered as a 1:3 miniature with the cats'
   camera; `figures`, or one `cats` map, are read too) into centimetres. One true scale for all five
   (the owner: «para que no haya tanto contraste… y sea más realista»): the
   chart runs to 140 cm with a line and a number every 10 cm (`CHART`), the
   cats stand at their real 27 to 39 cm at its foot and he kneels at his
-  1.26 m beside them (read off the chart from his planted trainer, half a
+  1.25 m beside them (read off the chart from his planted trainer, half a
   metre nearer the lens than his head), no scale of his own and no scale
   mark. The cats
   keep the owner's order (tested): Tom the biggest and a bit chubby, only

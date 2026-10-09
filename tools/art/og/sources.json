@@ -7,13 +7,13 @@
     "files": {
       "tools/art/og/keyart/card.html": "562de710410254381f1e1a5ae7630ff8ac0f09d681095617cb75394aaf09a29b",
       "tools/art/og/keyart/frames/hero-chase.webp": "93f1d41df158f54e46578ca70a0c37679d90d9e2d333c21aad422625330bb1d9",
-      "tools/art/og/keyart/frames/hero-driver.webp": "75992af97d67e89e799a01c8a280ba2750de69cbab78e245e7d0dc109f39c4b6",
+      "tools/art/og/keyart/frames/hero-driver.webp": "3fd72f02c0e237a933c99c99af2437d2c49d928ed12ef41cc4c2eceb2687f3a0",
       "tools/art/og/keyart/frames/army.webp": "6b28d0c33f9ce317775f027b9c4bab0a3da70faaafc38cd27c1dd7c10b4b69c5",
       "tools/art/og/keyart/frames/cinema-en.webp": "8af4a8d1b4622d6358a2efe148b07ee2919a0da929b94e182fe7edfd21ff6412",
       "public/interlude/dante-swipe.webp": "8b69c1af00af6a293fc33adf925f45e683b90fdf9a0adeba9cde217eaa102541",
       "src/features/suspects/claw.ts": "4d1dbb1919ebac158ff40c6b62f38466bb60cea3c6bddecdb2ed0b97331ca454"
     },
-    "card": "919f2ebbe9d942c4c9e65cb31725db1e36e22f41b258553c7bf03699964cd14e"
+    "card": "c1e26b3e186720a93c4d336c25f14f2e7ff71d1d7b425aa05397c9df66a19c0e"
   },
   "es": {
     "words": [
@@ -23,12 +23,12 @@
     "files": {
       "tools/art/og/keyart/card.html": "562de710410254381f1e1a5ae7630ff8ac0f09d681095617cb75394aaf09a29b",
       "tools/art/og/keyart/frames/hero-chase.webp": "93f1d41df158f54e46578ca70a0c37679d90d9e2d333c21aad422625330bb1d9",
-      "tools/art/og/keyart/frames/hero-driver.webp": "75992af97d67e89e799a01c8a280ba2750de69cbab78e245e7d0dc109f39c4b6",
+      "tools/art/og/keyart/frames/hero-driver.webp": "3fd72f02c0e237a933c99c99af2437d2c49d928ed12ef41cc4c2eceb2687f3a0",
       "tools/art/og/keyart/frames/army.webp": "6b28d0c33f9ce317775f027b9c4bab0a3da70faaafc38cd27c1dd7c10b4b69c5",
       "tools/art/og/keyart/frames/cinema-es.webp": "734892553bb7fbcfc793a1cc6885d56aeffbcdf858879de60725138adb8c7a70",
       "public/interlude/dante-swipe.webp": "8b69c1af00af6a293fc33adf925f45e683b90fdf9a0adeba9cde217eaa102541",
       "src/features/suspects/claw.ts": "4d1dbb1919ebac158ff40c6b62f38466bb60cea3c6bddecdb2ed0b97331ca454"
     },
-    "card": "a09488f4618ef876dbe48a055f76364abfa151185ac988abfc8646587de32f53"
+    "card": "5c829284fc6af49c0712155a987d81ae56cb92d88b203d9fba1222a5a69db3f8"
   }
 }

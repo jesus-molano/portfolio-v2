@@ -15,7 +15,7 @@ const REST_POSE_KEY = "vaBindPose";
 /**
  * Jesús at the wheel at night: the hero's driver, posed once and cloned,
  * so the hero keeps its own (a scene graph node has one parent). At night
- * he is a shape under the street light: crew cut, beard and aviators.
+ * he is a shape under the street light: short crop, beard and aviators.
  */
 export function NightDriver() {
   const { scene } = useGLTF(DRIVER_URL);

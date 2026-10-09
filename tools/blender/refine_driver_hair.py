@@ -1,13 +1,16 @@
-"""Re-grooms the hero driver on the GLB: high skin fade, crew cut, full beard.
+"""Re-grooms the hero driver on the GLB: soft skin fade, short crop, full beard.
 
 build_driver_mpfb.py makes the driver with hair and beard shells, but it
 needs MPFB, the MakeHuman assets and the private params file. This script is
 a deterministic post-process on its GLB that redoes the grooming only:
 
-- a crew cut about 1 cm long, a little longer at the front, salt and pepper
-  with more grey at the front and the temples;
-- a high skin fade: bare skin above, around and behind the ears and at the
-  nape, fading up to the top length well above the ears;
+- a short crop, about 4 mm on top and 5 mm at the front, lying close to the
+  head with the scalp showing through, a little salt and pepper at the
+  front and the temples (the owner wears it between shaved and this; a
+  centimetre standing up, dense and speckled with grey, read as an afro);
+- a long, soft skin fade: bare skin round the ears and at the nape, then
+  the shadow of the roots and the hair coming in little by little over some
+  4 cm up to the top length (over a narrower band it read as a step);
 - a beard fade at the sideburns: the beard runs up in front of the ears and
   thins out by their top, where the skin fade starts;
 - a dense, near-black beard, full along the whole jawline to the angle of
@@ -39,7 +42,7 @@ the zigzag of the 1 cm head mesh. Then:
   sharing UVs, normals, weights and indices. A layer at the fraction f of
   the strand length stands at f times the local length along the strand
   direction: the normal leaning toward the comb (the beard hangs, the
-  moustache falls down and out over the lip, the crew cut grows out from
+  moustache falls down and out over the lip, the crop grows out from
   the crown). Its COLOR_0 alpha is the material's cut-off over f, which
   three.js (and Blender's importer) multiplies into the texture's alpha
   before the alpha test, so each layer shows only the strands that reach
@@ -585,18 +588,20 @@ def frame(p):
 # the eye line), straight, with squared temple corners.
 H_FRONT = h_eye + 0.071
 HAIRLINE = [(0, H_FRONT), (22, H_FRONT), (32, H_FRONT - 0.005), (40, H_FRONT - 0.012), (46, H_FRONT - 0.02), (54, H_FRONT - 0.06), (62, -1.0), (180, -1.0)]
-# High skin fade. Below FADE_BOTTOM the skin is bare (a faint shadow fades
-# out over the last 1.2 cm); from there the hair grows to full length at
-# FADE_TOP. On the sides the bare skin reaches 1.2 cm above the ears and the
-# hair is full 4.8 cm above them; at the back the line follows the crown
-# down a little and the nape is bare. In front of the temples the curves
-# sit under the hairline, so the hairline rules there.
-FADE_BOTTOM = [(0, H_FRONT - 0.04), (35, H_FRONT - 0.035), (45, H_FRONT - 0.026), (52, h_ear_top + 0.022),
-               (60, h_ear_top + 0.012), (110, h_ear_top + 0.010), (135, h_ear_top + 0.005), (180, h_ear_top + 0.002)]
+# Soft skin fade. Below FADE_BOTTOM the skin is bare (a faint shadow fades
+# out over the last 6 mm); from there the shadow, the strands and their
+# length come in gradually to the full crop at FADE_TOP. On the sides the
+# bare skin reaches a few millimetres above the ears and the hair is full
+# 4.8 cm above them; at the back the line follows the crown down and the
+# fade runs down the nape. In front of the temples the curves sit under the
+# hairline, so the hairline rules there.
+FADE_BOTTOM = [(0, H_FRONT - 0.04), (35, H_FRONT - 0.035), (45, H_FRONT - 0.026), (52, h_ear_top + 0.016),
+               (60, h_ear_top + 0.004), (110, h_ear_top + 0.002), (135, h_ear_top - 0.004), (180, h_ear_top - 0.008)]
 FADE_TOP = [(0, H_FRONT - 0.01), (35, H_FRONT - 0.008), (45, H_FRONT - 0.002), (55, h_ear_top + 0.048),
             (110, h_ear_top + 0.046), (135, h_ear_top + 0.042), (180, h_ear_top + 0.04)]
-HAIR_TOP_LEN = 0.0095   # crew cut on the crown
-HAIR_FRONT_LEN = 0.0025  # extra at the front
+HAIR_TOP_LEN = 0.004   # a short crop on the crown
+HAIR_FRONT_LEN = 0.001  # extra at the front
+HAIR_COVER = 0.72  # share of the head's texels that grow a strand: the scalp shows through a crop
 
 # Beard. Cheek line: right up to the base of the nose (the moustache fills
 # the whole upper lip, the philtrum included), out along the nostril wings,
@@ -616,7 +621,7 @@ _along = NECK_SIDE - NECK_FRONT
 NECK_N = np.array([0.0, -_along[2], _along[1]]) / np.hypot(_along[1], _along[2])
 if NECK_N[1] < 0:
     NECK_N = -NECK_N
-# The crown, where the crew cut grows out from: the top of the head, a
+# The crown, where the crop grows out from: the top of the head, a
 # little behind the ears.
 CROWN = np.array([O[0], P[on_head, 1].max(), O[2] - 0.035])
 
@@ -638,16 +643,17 @@ def groom(p, clear, rim):
     ft = curve(FADE_TOP, theta) + 0.6 * wob
     t = np.clip((h - fb) / (ft - fb), 0, 1)
     front_in = smooth(hairline - 0.002, hairline + 0.006, h)
-    hair_dens = front_in * t ** 1.2
+    ramp = t * t * (3 - 2 * t)
+    hair_dens = front_in * ramp
     front = smooth(O[2] - 0.01, O[2] + 0.09, z)
-    hair_len = (HAIR_TOP_LEN + HAIR_FRONT_LEN * front) * (0.3 + 0.7 * front_in) * (0.04 + 0.96 * t ** 1.7)
+    hair_len = (HAIR_TOP_LEN + HAIR_FRONT_LEN * front) * (0.3 + 0.7 * front_in) * (0.04 + 0.96 * t ** 1.4)
     # Skin shadow under the hair: dark roots, and at the bottom of the fade a
     # grey cast that fades out to bare skin.
-    hair_stub = 0.85 * np.minimum(smooth(hairline - 0.004, hairline + 0.004, h), smooth(fb - 0.012, fb + 0.3 * (ft - fb), h))
+    hair_stub = 0.85 * np.minimum(smooth(hairline - 0.004, hairline + 0.004, h), smooth(fb - 0.006, fb + 0.85 * (ft - fb), h) ** 0.8)
     # Salt and pepper: some grey all over, more at the front and the temples.
     front_zone = smooth(hairline + 0.045, hairline + 0.008, h) * (1 - smooth(40, 55, theta))
     temple = smooth(32, 45, theta) * (1 - smooth(75, 95, theta))
-    hair_grey = 0.035 + 0.38 * front_zone + 0.18 * temple
+    hair_grey = 0.02 + 0.2 * front_zone + 0.1 * temple
 
     # -- beard
     # The moustache: the upper lip between the mouth corners, from the lip
@@ -710,13 +716,13 @@ def groom(p, clear, rim):
     kind = beard_dens / np.maximum(beard_dens + hair_dens, 1e-6)
 
     # Comb: the direction the strands lean toward along the skin, and how far
-    # they lean from the normal (radians). The crew cut grows out from the
-    # crown and nearly stands up; on the sides it lies down a little more.
+    # they lean from the normal (radians). The crop grows out from the
+    # crown and lies close to the head, a little more so on the sides.
     # The beard hangs down, a little forward on the chin; the moustache falls
     # down and out over the upper lip.
     side = 1 - smooth(h_ear_top + 0.045, h_ear_top + 0.075, h)
     hair_comb = p - CROWN
-    hair_tilt = mix(0.35, 0.75, side)
+    hair_tilt = mix(1.0, 1.15, side)
     beard_comb = np.stack([np.sign(p[:, 0] - O[0]) * 0.4 * moustache, -np.ones(len(p)), 0.25 * chin], axis=1)
     beard_tilt = mix(0.95, 0.8, chin)
     beard_tilt = mix(beard_tilt, 1.0, moustache)
@@ -921,8 +927,8 @@ zero = np.zeros_like(rows)
 r_grow, r_len, r_grey, r_tone, r_warm = (hash01(rows, cols, zero, seed) for seed in (41, 42, 43, 44, 45))
 # The beard thins out over its edges with fewer strands than the density
 # (single strands at the cheek line); the fade keeps its own ramp.
-grows = r_grow < T["dens"] ** mix(1.0, 1.5, T["kind"])
-# Strand height as a fraction of the local length. The crew cut is even
+grows = r_grow < T["dens"] ** mix(1.0, 1.5, T["kind"]) * mix(HAIR_COVER, 1.0, T["kind"])
+# Strand height as a fraction of the local length. The crop is even
 # (clipper cut): most strands reach 60-100%. The beard is uneven: about
 # 95% of its strands reach half way, 55% reach 70% and 10% the full
 # length, so the inner layers hide the skin and the tips break up into

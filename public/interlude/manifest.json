@@ -65,11 +65,11 @@
   },
   "jesus": {
     "w": 1888,
-    "h": 3031,
-    "floorY": 3021,
-    "headTopY": 5,
+    "h": 3014,
+    "floorY": 3004,
+    "headTopY": 4,
     "centerX": 932,
     "headWidth": 414,
-    "heightCm": 118.5
+    "heightCm": 117.9
   }
 }

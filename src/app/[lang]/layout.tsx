@@ -25,7 +25,7 @@ import { RadioWheel } from "@/features/music/RadioWheel";
 import { SegmentedNav } from "@/components/ui/SegmentedNav";
 import { defaultLocale, hasLocale, localeNames, locales, openGraphLocales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
-import { SHARE_CARD, shareCardPath } from "@/lib/shareCard";
+import { SHARE_CARD, shareCardUrl } from "@/lib/shareCard";
 import { SITE_ICONS } from "@/lib/siteIcons";
 import { siteUrl } from "@/lib/siteUrl";
 
@@ -202,7 +202,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   if (!hasLocale(lang)) return { icons: SITE_ICONS };
   const dict = await getDictionary(lang);
   // The link preview card: a game cover of the site's own frames (tools/art/og/keyart).
-  const card = { url: shareCardPath(lang), alt: dict.meta.imageAlt };
+  const card = { url: shareCardUrl(lang), alt: dict.meta.imageAlt };
   return {
     metadataBase: new URL(siteUrl()),
     title: dict.meta.title,

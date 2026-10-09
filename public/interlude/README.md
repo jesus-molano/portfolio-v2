@@ -45,10 +45,10 @@ them.
   included), `centerX` the column of the slot centre, `headWidth` the width
   of the head across the cheeks. A state names its cat (`cat`). For him,
   `floorY` is the front edge of his planted trainer's sole, `headTopY` the
-  top of his crew cut, `headWidth` his face across the cheeks (the beard's
-  skin) and `heightCm` his kneeling height, from the model (118.5 cm; read
+  top of his hair, `headWidth` his face across the cheeks (the beard's
+  skin) and `heightCm` his kneeling height, from the model (117.9 cm; read
   on the chart from the front trainer's sole, as the page places him, his
-  head stands at about 125.6 cm: the sole is half a metre nearer the lens
+  head stands at about 125.0 cm: the sole is half a metre nearer the lens
   than his head). Nobody wears a halo, Odin included: the
   page draws none and a render must not carry one (the optional
   `"haloInImage"` flag survives from when he wore one, and the tests refuse

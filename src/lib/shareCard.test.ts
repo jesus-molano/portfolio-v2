@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { locales } from "@/i18n/config";
 import en from "@/i18n/dictionaries/en.json";
 import es from "@/i18n/dictionaries/es.json";
-import { SHARE_CARD, SHARE_CARD_MAX_BYTES, shareCardPath } from "./shareCard";
+import { SHARE_CARD, SHARE_CARD_MAX_BYTES, shareCardPath, shareCardUrl } from "./shareCard";
 
 const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), "..", "..");
 const PUBLIC = path.join(ROOT, "public");
@@ -51,6 +51,11 @@ describe("share cards", () => {
       expect(Object.keys(made.files), rebuild).toContain("tools/art/og/keyart/card.html");
       for (const [file, hash] of Object.entries(made.files)) expect(sha256(file), `${rebuild} (${file} changed)`).toBe(hash);
       expect(sha256(`public${shareCardPath(locale)}`), `${rebuild} (the card was changed by hand)`).toBe(made.card);
+    });
+
+    it(`${locale}: is announced under an address that changes with the card, so previews fetch a new one`, () => {
+      const card = sha256(`public${shareCardPath(locale)}`);
+      expect(shareCardUrl(locale)).toBe(`${shareCardPath(locale)}?v=${card.slice(0, 10)}`);
     });
   }
 });

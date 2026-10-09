@@ -2,7 +2,7 @@
 
 The fifth slot of the character select is him: the hero's driver model
 (public/models/makehuman-driver/driver.glb: body, striped tee, jeans,
-earring, crew cut, beard and moustache) with his gold aviators
+earring, short crop, beard and moustache) with his gold aviators
 (public/models/sunglasses/aviator.glb), looked and dressed as in the STATS
 portrait (`build_stats_portrait.py`: skin, tee, hair shells, earring and
 lenses), here on one knee so he takes less height on the chart:
