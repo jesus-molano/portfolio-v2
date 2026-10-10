@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { getSceneLoading, subscribeSceneLoading } from "@/features/hero/sceneLoading";
+import { loadOwnsEntry } from "@/features/load/loadHold";
 import { idFromHash } from "@/lib/hash";
 import { focusInPlace, fragmentTarget, goTo, placeOf, pushFragment } from "@/lib/navigate";
 import { reveal } from "@/lib/reveal";
@@ -28,7 +29,7 @@ import { reveal } from "@/lib/reveal";
  * - Otherwise the keyboard starts from the top of the page. The loading
  *   screen took the focus with it, and the browser would carry on from
  *   where it was, after the page controls: the first Tab went to the
- *   hero's Skip, past "Skip to content", the radio and the languages.
+ *   hero's Skip, past "Skip to content", LOAD GAME, the radio and the languages.
  */
 /** A hashchange this soon after a popstate (ms) with the same fragment is that Back's own. */
 const POP_MS = 5000;
@@ -55,6 +56,8 @@ export function PageEntry() {
     let entered = false;
     let frame = 0;
     const arrive = () => {
+      // A save loaded from the start menu: its load screen has landed the page, and gives the focus.
+      if (loadOwnsEntry()) return;
       if (main?.inert) {
         frame = requestAnimationFrame(arrive);
         return;

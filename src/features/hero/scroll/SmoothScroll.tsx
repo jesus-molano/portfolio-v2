@@ -136,7 +136,14 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       // still holds it (selectWall.ts): a notch or a drag that would pass it is cancelled, the page
       // stands at the wall and the select says why. (A drag the browser already took over cannot be
       // cancelled any more: the select puts the page back.)
-      if (reducedMotion && !event.ctrlKey && getSceneLoading().entered && Number.isFinite(selectGate.maxScroll)) {
+      // A scroller that keeps its own scrolling (LOAD GAME's slots, a dialog: `data-lenis-prevent`) is no page scroll.
+      if (
+        reducedMotion &&
+        !event.ctrlKey &&
+        getSceneLoading().entered &&
+        Number.isFinite(selectGate.maxScroll) &&
+        !keepsOwnScroll(event)
+      ) {
         const wall = selectGate.maxScroll;
         const forward = (event.type === "wheel" || event.type === "touchmove") && data.deltaY > 0;
         if (forward && window.scrollY + data.deltaY > wall - 0.5) {
@@ -442,6 +449,11 @@ function fingersOnPicture(touches: TouchList): number {
     if (!(target instanceof Element && target.closest("[data-pedal]"))) count += 1;
   }
   return count;
+}
+
+/** The event comes from inside an element that keeps its own scrolling (`data-lenis-prevent`). */
+function keepsOwnScroll(event: Event): boolean {
+  return event.composedPath().some((node) => node instanceof HTMLElement && node.hasAttribute("data-lenis-prevent"));
 }
 
 /** Lenis' touch handling that the gate mirrors (lenisContract.test.ts). */

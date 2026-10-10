@@ -1409,7 +1409,7 @@ const CHECKS = {
       await s.page.keyboard.press("Escape");
       await sleep(400);
     } else {
-      await s.page.locator("[data-page-controls] button[aria-haspopup='dialog']").tap();
+      await s.page.locator("[data-page-controls] [data-radio-button]").tap();
       await sleep(600);
       const before = await info();
       await stroke(s.cdp, { x: 195, y0: 500, dy: 200 });
@@ -1453,7 +1453,8 @@ const CHECKS = {
     await sleep(2500);
     await s.page.mouse.click(720, 450);
     let focus = null;
-    for (let i = 0; i < 4 && !/skip|saltar/i.test(focus ?? ""); i += 1) {
+    // The page controls come first (the skip link, LOAD GAME, the radio, the languages), then Skip.
+    for (let i = 0; i < 6 && !/skip|saltar/i.test(focus ?? ""); i += 1) {
       await s.page.keyboard.press("Tab");
       focus = await s.page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
     }
@@ -1476,7 +1477,7 @@ const CHECKS = {
     const r = await session(device, lang);
     await sleep(1500);
     await reachCard(r, device, 1);
-    await r.page.locator("[data-page-controls] button[aria-haspopup='dialog']").click();
+    await r.page.locator("[data-page-controls] [data-radio-button]").click();
     await sleep(600);
     const opened = await wheelOpen(r.page);
     await r.page.keyboard.press("Escape");

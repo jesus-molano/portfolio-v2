@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { getServerWanted, getWanted, markSeen, raised, readSeen, subscribeWanted, WANTED_MAX } from "@/features/suspects/wanted";
+import { whenUncovered } from "@/lib/uncovered";
 import styles from "./Stats.module.css";
 
 type Props = {
@@ -41,19 +42,27 @@ export function WantedLevel({ value, caption, levels, hint, top }: Props) {
   useEffect(() => {
     const el = button.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
+    // Never under a screen (LOAD GAME's load landing on STATS): the flash plays once it has gone.
+    let cancel = () => {};
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
-        if (raised(level, readSeen()) && !reducedMotion) {
-          setFlash(false);
-          requestAnimationFrame(() => setFlash(true));
-        }
-        markSeen(level);
+        cancel();
+        cancel = whenUncovered(() => {
+          if (raised(level, readSeen()) && !reducedMotion) {
+            setFlash(false);
+            requestAnimationFrame(() => setFlash(true));
+          }
+          markSeen(level);
+        });
       },
       { threshold: 0.6 },
     );
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      cancel();
+      observer.disconnect();
+    };
   }, [level, reducedMotion]);
 
   // A tapped popup closes on a tap elsewhere or Esc.

@@ -9,7 +9,7 @@
  * check.
  *
  *   node tools/capture/perf.mjs [--url http://localhost:3000/en]
- *     [--device phone|desktop] [--only menu,hero,cover,rest,radio,layers,leak]
+ *     [--device phone|desktop] [--only menu,hero,cover,rest,radio,layers,leak,load]
  *     [--cycles 8] [--win 5000] [--out perf.json]
  *
  * Every WebGL context is counted from the inside (an init script wraps
@@ -32,6 +32,10 @@
  *   hidden.
  * - leak: down into the career city and back up past the hero, `--cycles`
  *   times: the JS heap stays flat and no WebGL context outlives its canvas.
+ * - load: LOAD GAME save after save (the city, STATS, the credits, the
+ *   prologue), `--cycles` times: the heap and the listeners stay flat, no
+ *   WebGL context outlives its canvas, and once idle the load screen runs no
+ *   animation and the page rests with one frame loop at most.
  *
  * WebGL runs on SwiftShader, so absolute frame rates are a CPU's; the
  * counts (frames drawn, loops alive, contexts kept) are the device's.
@@ -434,6 +438,70 @@ if (run("leak")) {
   results.push({ name: "leak", rows, growthMBPerCycle: +growth.toFixed(3) });
   report("leak: the JS heap stays flat over the city's rebuilds", growth < 0.35, { growthMBPerCycle: +growth.toFixed(3), from: from.heapMB, last: last.heapMB, first: first.heapMB });
   report("leak: no WebGL context outlives its canvas", last.contextsAlive <= last.contextsConnected + 1, last);
+  await s.close();
+}
+
+if (run("load")) {
+  // LOAD GAME, as a visitor in a hurry uses it: save after save from the page controls, round the
+  // page and back (the city mounted and released, the hero woken at the top), `--cycles` times.
+  const s = await session();
+  await sleep(1500);
+  const press = (selector) => (values.device === "phone" ? s.page.locator(selector).tap() : s.page.locator(selector).click());
+  const loadSave = async (slot) => {
+    await press("[data-load-button]");
+    await s.page.waitForSelector('dialog[data-load-menu="page"][open]');
+    await sleep(300);
+    await press(`dialog[open] [data-slot="${slot}"]`);
+    await s.page.waitForFunction(() => document.querySelector("[data-load-curtain]")?.dataset.state === "idle", null, { timeout: 90_000 });
+    await sleep(1500);
+  };
+  const cycle = async () => {
+    for (const slot of ["work", "stats", "credits", "hero"]) await loadSave(slot);
+  };
+  await cycle();
+  const first = await heap(s);
+  const rows = [first];
+  console.log(JSON.stringify({ cycle: 1, ...first }));
+  const cycles = Number(values.cycles);
+  for (let i = 2; i <= cycles; i += 1) {
+    await cycle();
+    const h = await heap(s);
+    rows.push(h);
+    console.log(JSON.stringify({ cycle: i, ...h }));
+  }
+  const last = rows[rows.length - 1];
+  const from = rows[Math.min(2, rows.length - 1)];
+  const tail = rows.slice(rows.indexOf(from));
+  const slope = (key) => {
+    const slopes = [];
+    for (let i = 0; i < tail.length; i += 1) for (let j = i + 1; j < tail.length; j += 1) slopes.push((tail[j][key] - tail[i][key]) / (j - i));
+    slopes.sort((a, b) => a - b);
+    return slopes.length ? slopes[Math.floor((slopes.length - 1) / 2)] : 0;
+  };
+  const growth = slope("heapMB");
+  const listeners = slope("listeners");
+  results.push({ name: "load", rows, growthMBPerCycle: +growth.toFixed(3), listenersPerCycle: +listeners.toFixed(1) });
+  report("load: the JS heap stays flat over save after save", growth < 0.35, { growthMBPerCycle: +growth.toFixed(3), from: from.heapMB, last: last.heapMB });
+  report("load: no listener piles up over save after save", listeners < 1, { listenersPerCycle: +listeners.toFixed(1), from: from.listeners, last: last.listeners });
+  report("load: no WebGL context outlives its canvas", last.contextsAlive <= last.contextsConnected + 1, last);
+  // At rest after the last load (the prologue, the hero drawing): the idle load screen runs nothing.
+  await loadSave("credits");
+  const idle = await s.page.evaluate(() => {
+    const curtain = document.querySelector("[data-load-curtain]");
+    return {
+      animations: document.getAnimations().filter((a) => a.effect?.target && curtain.contains(a.effect.target) && a.playState === "running").length,
+      state: curtain.dataset.state,
+      busy: curtain.hasAttribute("aria-busy"),
+      locked: document.documentElement.hasAttribute("data-loading"),
+    };
+  });
+  const rest = await measure(s, "credits at rest after LOAD GAME");
+  report("load: the idle load screen animates nothing and the page is free", idle.animations === 0 && idle.state === "idle" && !idle.busy && !idle.locked, idle);
+  report("load: at rest after a load, one frame loop at most", rest.ticksPerSec <= 61 && Object.values(rest.canvases).every((c) => c.framesPerTick < 0.05), {
+    rafCallsPerSec: rest.rafCallsPerSec,
+    canvases: rest.canvases,
+  });
+  if (s.errors.length) report("load: no page error", false, { errors: s.errors.slice(0, 3) });
   await s.close();
 }
 

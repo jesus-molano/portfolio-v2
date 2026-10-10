@@ -1,0 +1,708 @@
+/*
+ * LOAD GAME: a native modal dialog over the start menu or the page. The
+ * box is as wide as two slots (two columns from about 760 px; one on a
+ * phone, where the whole dialog scrolls under her finger). Every colour
+ * is a token.
+ */
+.dialog {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 16px max(12px, env(safe-area-inset-right, 0px)) 16px max(12px, env(safe-area-inset-left, 0px));
+  border: 0;
+  background: transparent;
+  color: var(--va-color-cream);
+  overflow: auto;
+  overscroll-behavior: contain;
+  font-family: var(--va-font-body);
+}
+
+.dialog[open] {
+  display: flex;
+}
+
+.dialog::backdrop {
+  background:
+    radial-gradient(
+      120% 90% at 50% 0%,
+      color-mix(in srgb, var(--va-color-night) 55%, transparent),
+      color-mix(in srgb, var(--va-color-night) 90%, var(--va-color-letterbox))
+    ),
+    color-mix(in srgb, var(--va-color-night) 30%, transparent);
+}
+
+/* Auto margins centre it; past the screen's height they come to nothing, and it scrolls from its top. */
+.box {
+  position: relative;
+  width: min(980px, 100%);
+  margin: auto;
+  padding: 26px 30px 22px;
+  border: 1px solid color-mix(in srgb, var(--va-color-cream) 14%, transparent);
+  border-radius: 18px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--va-color-ink) 92%, var(--va-color-magenta)), var(--va-color-night));
+  box-shadow: 0 30px 80px color-mix(in srgb, var(--va-color-letterbox) 70%, transparent);
+}
+
+.dialog[open] .box {
+  animation: load-in 300ms var(--va-motion-ease);
+}
+
+.dialog[open] .box[data-nudge="a"] {
+  animation: load-nudge-a 360ms ease;
+}
+
+.dialog[open] .box[data-nudge="b"] {
+  animation: load-nudge-b 360ms ease;
+}
+
+@keyframes load-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+
+@keyframes load-nudge-a {
+  20%,
+  60% {
+    transform: translateX(-7px);
+  }
+  40%,
+  80% {
+    transform: translateX(7px);
+  }
+}
+
+@keyframes load-nudge-b {
+  20%,
+  60% {
+    transform: translateX(-7px);
+  }
+  40%,
+  80% {
+    transform: translateX(7px);
+  }
+}
+
+/* ---------- Head: the title and the music switch ---------- */
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font: 500 11px/1.2 var(--va-font-mono);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.title::before {
+  content: "";
+  flex: none;
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--va-color-magenta), var(--va-color-orange));
+  box-shadow: 0 0 10px var(--va-color-magenta);
+}
+
+.kicker {
+  white-space: pre;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px 0 14px;
+  border: 1px solid color-mix(in srgb, var(--va-color-cream) 16%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--va-color-cream) 7%, transparent);
+  color: var(--va-color-cream);
+  font: 600 10px/1 var(--va-font-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.switch:hover {
+  border-color: var(--va-color-pink);
+}
+
+.switch:focus-visible,
+.back:focus-visible {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 2px;
+}
+
+.track {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--va-color-cream) 18%, transparent);
+  transition: background 200ms ease;
+}
+
+.knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--va-color-cream);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--va-color-letterbox) 60%, transparent);
+  transition: transform 200ms var(--va-motion-ease);
+}
+
+.switch[aria-checked="true"] .track {
+  background: linear-gradient(90deg, var(--va-color-magenta), var(--va-color-amber));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--va-color-magenta) 50%, transparent);
+}
+
+.switch[aria-checked="true"] .knob {
+  transform: translateX(18px);
+}
+
+/* One width for every station (16 characters at most) and for "off", so the switch never moves under her finger. */
+.station {
+  min-width: 12.5em;
+  color: var(--va-color-text-muted);
+  white-space: nowrap;
+}
+
+.switch[aria-checked="true"] .station {
+  color: var(--va-color-sodium);
+}
+
+/* ---------- The slots ---------- */
+
+.slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+}
+
+.slot {
+  position: relative;
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 96px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--va-color-cream) 9%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--va-color-cream) 5%, transparent);
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.slot:hover {
+  border-color: color-mix(in srgb, var(--va-color-pink) 60%, transparent);
+}
+
+/* The selected slot: the start menu's slab, a painted band with an ink block shade. */
+.slot[data-active] {
+  border-color: transparent;
+  background: linear-gradient(
+    90deg,
+    var(--va-color-magenta),
+    color-mix(in srgb, var(--va-color-magenta) 50%, var(--va-color-orange)) 55%,
+    var(--va-color-amber)
+  );
+  box-shadow:
+    6px 6px 0 color-mix(in srgb, var(--va-color-ink) 88%, transparent),
+    0 0 26px color-mix(in srgb, var(--va-color-magenta) 45%, transparent);
+}
+
+.slot:focus {
+  outline: none;
+}
+
+.slot:focus-visible {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 3px;
+}
+
+.slot[aria-disabled="true"] {
+  cursor: progress;
+}
+
+.thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--va-color-night) 60%, transparent);
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slot[aria-disabled="true"] .thumb img {
+  filter: saturate(0.5) brightness(0.8);
+}
+
+.here {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: var(--va-color-night);
+  color: var(--va-color-cyan);
+  font: 600 8.5px/1 var(--va-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.text {
+  display: grid;
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+}
+
+.number {
+  font: 600 10px/1 var(--va-font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.tag {
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: var(--va-color-night);
+  color: var(--va-color-sodium);
+  font: 600 9px/1 var(--va-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* The chapter card's word, in its script, as wide as the slot lets the longest one be. */
+.word {
+  margin: 4px 0 2px;
+  font: 400 clamp(20px, 7.6cqi, 36px) / 1.12 var(--va-font-chapter-script);
+  white-space: nowrap;
+  color: var(--va-color-cream);
+  text-shadow: 2px 2px 0 color-mix(in srgb, var(--va-color-magenta) 70%, transparent);
+}
+
+.ribbon {
+  font: 900 12px/1.2 var(--va-font-chapter-caps);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--va-color-cream) 72%, transparent);
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+  font: 600 9px/1 var(--va-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-text-muted);
+}
+
+/* The bar gives way before its words do: on the narrowest phone it is a stub, never a second line. */
+.progress i {
+  position: relative;
+  flex: 0 1 90px;
+  min-width: 20px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--va-color-cream) 18%, transparent);
+  overflow: hidden;
+}
+
+.progress i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: var(--complete);
+  background: linear-gradient(90deg, var(--va-color-magenta), var(--va-color-amber));
+}
+
+.slot[data-active] .number,
+.slot[data-active] .ribbon,
+.slot[data-active] .progress {
+  color: var(--va-color-night);
+}
+
+.slot[data-active] .word {
+  color: var(--va-color-night);
+  text-shadow: none;
+}
+
+.slot[data-active] .progress i {
+  background: color-mix(in srgb, var(--va-color-night) 25%, transparent);
+}
+
+.slot[data-active] .progress i::after {
+  background: var(--va-color-night);
+}
+
+/* ---------- Foot: how to choose, and back ---------- */
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+/* Its states share one cell, so the foot never changes height as the city comes in. */
+.legend {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  font: 500 11px/1.3 var(--va-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.legend > span {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend kbd,
+.esc {
+  padding: 3px 6px;
+  border: 1px solid color-mix(in srgb, var(--va-color-cream) 30%, transparent);
+  border-radius: 5px;
+  font: inherit;
+  letter-spacing: 0.08em;
+  color: var(--va-color-cream);
+}
+
+.dot {
+  margin: 0 4px;
+}
+
+.touch,
+.legend[data-waiting] [data-when="ready"] {
+  visibility: hidden;
+}
+
+.wait {
+  visibility: hidden;
+  color: var(--va-color-amber);
+}
+
+.legend[data-waiting] .wait {
+  visibility: visible;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.dots i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: load-dot 1.2s infinite ease-in-out both;
+}
+
+.dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes load-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+.back {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 18px 0 8px;
+  border: 1px solid var(--va-color-line);
+  border-radius: 999px;
+  background: var(--va-color-glass);
+  color: var(--va-color-cream);
+  font: 600 11px/1 var(--va-font-mono);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.back:hover {
+  border-color: var(--va-color-pink);
+}
+
+/* A touch screen: no keys to read, and Back is the word alone in its pill. */
+@media (pointer: coarse) {
+  .keys {
+    visibility: hidden;
+  }
+
+  .touch {
+    visibility: visible;
+  }
+
+  .esc {
+    display: none;
+  }
+
+  .back {
+    padding: 0 16px 0 calc(16px + 0.22em);
+  }
+}
+
+/* ---------- Phones: one column, a smaller box ---------- */
+
+@media (max-width: 759.98px) {
+  .box {
+    padding: 18px 14px 14px;
+  }
+
+  .head {
+    margin-bottom: 12px;
+  }
+
+  .kicker {
+    display: none;
+  }
+
+  .slots {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .slot {
+    grid-template-columns: 96px 1fr;
+    gap: 12px;
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .ribbon {
+    font-size: 11px;
+  }
+
+  .progress i {
+    flex-basis: 64px;
+  }
+
+  .foot {
+    margin-top: 12px;
+  }
+}
+
+/* Under 380 px the switch and the tags draw in tighter, so the head keeps to two rows. */
+@media (max-width: 379.98px) {
+  .switch {
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .station {
+    min-width: 12.5em;
+  }
+
+  .slot {
+    grid-template-columns: 80px 1fr;
+    gap: 10px;
+  }
+
+  /* "You are here" on an 80 px picture. */
+  .here {
+    left: 3px;
+    padding: 3px 4px;
+    letter-spacing: 0.04em;
+  }
+
+  .tag {
+    font-size: 8px;
+    padding: 4px 6px;
+  }
+}
+
+/* ---------- Short landscape: phones on their side, short windows ---------- */
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .dialog {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .box {
+    padding: 12px 14px 10px;
+  }
+
+  .head {
+    margin-bottom: 8px;
+  }
+
+  /* Two columns down to a small phone on its side (568 px): one would scroll a screen per slot. */
+  .slots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .slot {
+    grid-template-columns: 96px 1fr;
+    gap: 10px;
+    min-height: 0;
+    padding: 6px;
+  }
+
+  .word {
+    margin: 2px 0 1px;
+    font-size: clamp(18px, 7cqi, 26px);
+  }
+
+  .ribbon {
+    font-size: 10px;
+  }
+
+  .progress {
+    margin-top: 4px;
+  }
+
+  .progress i {
+    flex-basis: 56px;
+  }
+
+  .foot {
+    margin-top: 8px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 519.98px) {
+  .slots {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Reduced motion, forced colours ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog[open] .box,
+  .dialog[open] .box[data-nudge],
+  .dots i {
+    animation: none;
+  }
+
+  .track,
+  .knob {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .box,
+  .slot,
+  .switch,
+  .back {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    box-shadow: none;
+  }
+
+  .slot[data-active] {
+    border: 2px solid Highlight;
+    background: Canvas;
+  }
+
+  .slot[data-active] .word,
+  .slot[data-active] .number,
+  .slot[data-active] .ribbon,
+  .slot[data-active] .progress {
+    color: CanvasText;
+  }
+
+  .word {
+    text-shadow: none;
+  }
+
+  .track {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .knob {
+    background: CanvasText;
+  }
+
+  .switch[aria-checked="true"] .track {
+    background: Highlight;
+  }
+
+  .progress i,
+  .progress i::after {
+    background: CanvasText;
+  }
+
+  .progress i {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+}

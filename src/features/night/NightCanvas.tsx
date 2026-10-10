@@ -10,7 +10,7 @@ import type { StageTimeline } from "@/features/work/workTimeline";
 import styles from "./Night.module.css";
 import { getSelectHeld, subscribeSelectHeld } from "@/features/suspects/selectWall";
 import { useContextLoss } from "@/hooks/useContextLoss";
-import { getNightCovered, setNightReadiness, subscribeNightCovered } from "./nightState";
+import { getNightCovered, night, setNightReadiness, subscribeNightCovered } from "./nightState";
 
 const NightScene = dynamic(() => import("./NightScene").then((m) => m.NightScene), { ssr: false });
 
@@ -65,6 +65,14 @@ export function NightCanvas({ timeline, work, locale }: Props) {
       view.disconnect();
     };
   }, []);
+
+  // Wanted or not, for the load screen (nightState `wanted`).
+  useEffect(() => {
+    night.wanted = near && !held;
+    return () => {
+      night.wanted = false;
+    };
+  }, [near, held]);
 
   return (
     <div ref={host} className={styles.canvas} aria-hidden="true">

@@ -47,6 +47,13 @@ export type SceneLoading = {
 
 export type EnteredVia = "key" | "pointer";
 
+/**
+ * Frames the hero's canvas has drawn (LoadReporter counts every one): the
+ * load screen knows the hero is drawn again at the top once a few more
+ * have come since it jumped there. A plain counter, never React state.
+ */
+export const heroFrames = { count: 0 };
+
 const INITIAL: SceneLoading = {
   progress: 0,
   ready: false,

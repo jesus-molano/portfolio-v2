@@ -12,16 +12,18 @@ const key = (value: string, code = "", extra: Partial<MenuKeyEvent> = {}): MenuK
 });
 
 describe("the start menu's items", () => {
-  it("are NEW GAME, CONTINUE and SETTINGS, in that order", () => {
-    expect(MENU_ITEMS).toEqual(["newGame", "continue", "settings"]);
+  it("are NEW GAME, CONTINUE, LOAD GAME and SETTINGS, in that order", () => {
+    expect(MENU_ITEMS).toEqual(["newGame", "continue", "load", "settings"]);
   });
 
-  it("keep the two ways in waiting for the city, and SETTINGS working at once", () => {
+  it("keep the two ways in waiting for the city, and LOAD GAME and SETTINGS opening at once", () => {
     const loading = { loaded: false, slow: false };
     expect(itemState("newGame", loading)).toBe("wait");
     expect(itemState("continue", loading)).toBe("wait");
+    expect(itemState("load", loading)).toBe("ready");
     expect(itemState("settings", loading)).toBe("ready");
     expect(canChoose("newGame", loading)).toBe(false);
+    expect(canChoose("load", loading)).toBe(true);
     expect(canChoose("settings", loading)).toBe(true);
   });
 
@@ -73,10 +75,10 @@ describe("the menu's keys", () => {
   });
 
   it("wrap around at both ends", () => {
-    expect(moveSelection(0, "up")).toBe(2);
-    expect(moveSelection(2, "down")).toBe(0);
+    expect(moveSelection(0, "up")).toBe(3);
+    expect(moveSelection(3, "down")).toBe(0);
     expect(moveSelection(1, "down")).toBe(2);
     expect(moveSelection(1, "first")).toBe(0);
-    expect(moveSelection(0, "last")).toBe(2);
+    expect(moveSelection(0, "last")).toBe(3);
   });
 });

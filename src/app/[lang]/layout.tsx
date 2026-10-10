@@ -20,6 +20,7 @@ import "../globals.css";
 import { TokensStyle } from "@/design/TokensStyle";
 import { PageControls } from "@/components/PageControls";
 import { SmoothScroll } from "@/features/hero/scroll/SmoothScroll";
+import { LoadButton } from "@/features/load/LoadButton";
 import { RadioButton } from "@/features/music/RadioButton";
 import { RadioWheel } from "@/features/music/RadioWheel";
 import { SegmentedNav } from "@/components/ui/SegmentedNav";
@@ -260,6 +261,7 @@ export default async function RootLayout({
         {/* Inside SmoothScroll so the radio wheel can hold the scroll while it is open. */}
         <SmoothScroll>
           <PageControls>
+            <LoadButton dict={dict.load} lang={lang} />
             <RadioButton dict={dict.radio} />
             <SegmentedNav
               label={dict.nav.languageLabel}

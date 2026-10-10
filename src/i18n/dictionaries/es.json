@@ -275,13 +275,15 @@
     "menu": {
       "newGame": "Nueva partida",
       "continue": "Continuar",
+      "load": "Cargar partida",
       "settings": "Configuración",
       "withMusic": "con música",
       "noMusic": "Sin música",
       "radioOff": "Radio apagada",
       "waiting": "esperando a la ciudad",
       "early": "entra ya",
-      "settingsSub": "Audio · pantalla · idioma · controles"
+      "settingsSub": "Audio · pantalla · idioma · controles",
+      "loadSub": "Empieza donde quieras"
     },
     "keys": {
       "move": "Elegir",
@@ -294,6 +296,38 @@
       "saved": "Se guarda en este navegador",
       "escape": "Esc vuelve al menú"
     }
+  },
+  "load": {
+    "title": "Cargar partida",
+    "kicker": "Elige un guardado",
+    "open": "Cargar partida",
+    "radio": "Radio",
+    "radioOff": "Apagada",
+    "slot": "Guardado",
+    "complete": "{n} % completado",
+    "here": "Estás aquí",
+    "back": "Volver",
+    "keys": {
+      "move": "Elegir",
+      "enter": "Intro",
+      "load": "Cargar"
+    },
+    "touch": "Toca un guardado para cargarlo",
+    "waiting": "Esperando a la ciudad",
+    "notYet": "Aún no: la ciudad está llegando.",
+    "ready": "Todo listo: elige un guardado.",
+    "tags": {
+      "quickest": "Lo más rápido",
+      "contact": "Contacto"
+    },
+    "opening": {
+      "word": "Portada",
+      "ribbon": "Quién soy, en seis frases"
+    },
+    "statsRibbon": "Ficha del jugador · misiones y mapa",
+    "loading": "Cargando partida",
+    "slow": "Sigue cargando…",
+    "goNow": "Entra ya"
   },
   "work": {
     "chapter": {

@@ -10,6 +10,7 @@ import {
   landsPast,
   PLACE,
   placeOf,
+  pushTop,
   registerPassage,
   registerScroller,
   withPlace,
@@ -58,6 +59,40 @@ describe("a history entry's place", () => {
     expect(placeOf({ [PLACE]: -5 })).toBeNull();
     expect(placeOf({ [PLACE]: 0 })).toBe(0);
     expect(withPlace(null, -3)).toEqual({ [PLACE]: 0 });
+  });
+});
+
+describe("an entry for the top of the page (LOAD GAME's prologue)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("leaves Back her place and names no section", () => {
+    const calls: [string, unknown, string | undefined][] = [];
+    let state: unknown = { __NA: true };
+    vi.stubGlobal("window", {
+      scrollY: 31_250.4,
+      location: { pathname: "/es", search: "", hash: "#contact" },
+      history: {
+        get state() {
+          return state;
+        },
+        replaceState(next: unknown, _title: string, url?: string) {
+          calls.push(["replace", next, url]);
+          state = next;
+        },
+        pushState(next: unknown, _title: string, url?: string) {
+          calls.push(["push", next, url]);
+          state = next;
+        },
+      },
+    });
+    pushTop();
+    expect(calls).toHaveLength(2);
+    const [left, top] = calls;
+    expect(left[0]).toBe("replace");
+    expect(placeOf(left[1])).toBe(31_250);
+    expect(top[0]).toBe("push");
+    expect(top[2]).toBe("/es");
+    expect(placeOf(top[1])).toBeNull();
   });
 });
 

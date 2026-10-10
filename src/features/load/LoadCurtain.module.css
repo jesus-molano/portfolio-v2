@@ -1,0 +1,503 @@
+/*
+ * LOAD GAME's load screen: night over the whole screen while a save loads.
+ * Idle it is hidden and inert; a load switches attributes only (data-state,
+ * data-slot, data-tip, data-slow) and the bar's --load-p: every box has a
+ * fixed size against the screen (a size container), so nothing ever moves.
+ * It covers at once (no fade in: the jump under it must never show) and
+ * fades out as it lifts.
+ */
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: var(--va-z-load);
+  container-type: size;
+  display: grid;
+  place-items: center;
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(72px + env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+  background: var(--va-color-night);
+  color: var(--va-color-cream);
+  font-family: var(--va-font-body);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  overscroll-behavior: none;
+  touch-action: pinch-zoom;
+  outline: none;
+}
+
+.curtain[data-state="hold"] {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.curtain[data-state="lift"] {
+  visibility: visible;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease-out;
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(80% 60% at 30% 35%, color-mix(in srgb, var(--va-color-magenta) 12%, transparent), transparent 70%),
+    radial-gradient(70% 50% at 80% 90%, color-mix(in srgb, var(--va-color-orange) 8%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+.panel {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  width: min(620px, 100%);
+}
+
+.curtain[data-state="hold"] .panel {
+  animation: curtain-in 200ms var(--va-motion-ease);
+}
+
+@keyframes curtain-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font: 500 11px/1.2 var(--va-font-mono);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.kicker::before {
+  content: "";
+  flex: none;
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--va-color-magenta), var(--va-color-orange));
+  box-shadow: 0 0 10px var(--va-color-magenta);
+}
+
+/* The save, as its slot showed it: the picture and its words. */
+.save {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  align-items: center;
+  gap: 20px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--va-color-cream) 10%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--va-color-cream) 5%, transparent);
+}
+
+.thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 9px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--va-color-ink) 70%, var(--va-color-night));
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+}
+
+.thumb img[data-thumb-in] {
+  opacity: 1;
+}
+
+/* Every save's words in the page from the first paint, one cell; the save loading shows. */
+.texts {
+  display: grid;
+  min-width: 0;
+}
+
+.slotText {
+  grid-area: 1 / 1;
+  display: grid;
+  min-width: 0;
+  visibility: hidden;
+}
+
+.curtain[data-slot="hero"] [data-for="hero"],
+.curtain[data-slot="suspects"] [data-for="suspects"],
+.curtain[data-slot="work"] [data-for="work"],
+.curtain[data-slot="stats"] [data-for="stats"],
+.curtain[data-slot="projects"] [data-for="projects"],
+.curtain[data-slot="credits"] [data-for="credits"] {
+  visibility: visible;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+}
+
+.number {
+  font: 600 10px/1 var(--va-font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.tag {
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: var(--va-color-ink);
+  color: var(--va-color-sodium);
+  font: 600 9px/1 var(--va-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.word {
+  margin: 6px 0 2px;
+  font: 400 clamp(26px, 6.4cqi, 44px) / 1.12 var(--va-font-chapter-script);
+  white-space: nowrap;
+  color: var(--va-color-cream);
+  text-shadow: 2px 2px 0 color-mix(in srgb, var(--va-color-magenta) 70%, transparent);
+}
+
+.ribbon {
+  font: 900 13px/1.2 var(--va-font-chapter-caps);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--va-color-cream) 72%, transparent);
+}
+
+.complete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font: 600 9px/1 var(--va-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--va-color-text-muted);
+}
+
+.complete i {
+  position: relative;
+  flex: 0 1 90px;
+  min-width: 20px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--va-color-cream) 18%, transparent);
+  overflow: hidden;
+}
+
+.complete i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: var(--complete);
+  background: linear-gradient(90deg, var(--va-color-magenta), var(--va-color-amber));
+}
+
+/* The radio she loads with, as the start menu's station chip says it. */
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 600 10px/1 var(--va-font-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--va-color-text-muted);
+}
+
+.radio svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.radio[data-on] {
+  color: var(--va-color-sodium);
+}
+
+/* A tip, if the load takes a while: three lines reserved, shown at 0.9 s. */
+.tip {
+  display: grid;
+  gap: 6px;
+  min-height: calc(3 * 1.45em + 1.6em);
+  padding-left: 14px;
+  border-left: 2px solid color-mix(in srgb, var(--va-color-magenta) 70%, transparent);
+  font-size: 14px;
+  visibility: hidden;
+}
+
+.curtain[data-tip] .tip {
+  visibility: visible;
+}
+
+.tipLabel {
+  font: 600 10px/1 var(--va-font-mono);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--va-color-pink);
+}
+
+.tipText {
+  margin: 0;
+  font: 400 14px/1.45 var(--va-font-body);
+  color: color-mix(in srgb, var(--va-color-cream) 86%, transparent);
+}
+
+/* ---------- The status, the way in now, the bar ---------- */
+
+.foot {
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 44px;
+}
+
+.status {
+  display: grid;
+  margin: 0;
+  font: 500 11px/1.3 var(--va-font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.status > span {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status [data-when="hold"] {
+  color: var(--va-color-cream);
+}
+
+.status [data-when="hold"]::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--va-color-amber);
+  box-shadow: 0 0 8px var(--va-color-amber);
+}
+
+.status [data-when="slow"] {
+  visibility: hidden;
+  color: var(--va-color-sodium);
+}
+
+.curtain[data-slow] .status [data-when="hold"] {
+  visibility: hidden;
+}
+
+.curtain[data-slow] .status [data-when="slow"] {
+  visibility: visible;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.dots i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.curtain[data-state="hold"] .dots i {
+  animation: curtain-dot 1.2s infinite ease-in-out both;
+}
+
+.dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes curtain-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+.goNow {
+  flex: none;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--va-color-line);
+  border-radius: 999px;
+  background: var(--va-color-glass);
+  color: var(--va-color-cream);
+  font: 600 11px/1 var(--va-font-mono);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.curtain[data-slow] .goNow {
+  visibility: visible;
+}
+
+.goNow:hover {
+  border-color: var(--va-color-pink);
+}
+
+.goNow:focus-visible {
+  outline: 2px solid var(--va-color-cyan);
+  outline-offset: 2px;
+}
+
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: color-mix(in srgb, var(--va-color-cream) 12%, transparent);
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  transform: scaleX(var(--load-p, 0));
+  background: linear-gradient(90deg, var(--va-color-magenta), var(--va-color-orange) 70%, var(--va-color-amber));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--va-color-magenta) 70%, transparent);
+  transition: transform 300ms ease-out;
+}
+
+/* ---------- Phones, short screens ---------- */
+
+@container (max-width: 599.98px) {
+  .save {
+    grid-template-columns: 112px 1fr;
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .word {
+    font-size: min(clamp(22px, 8.2cqi, 32px), (100cqi - 178px) / 7);
+  }
+
+  .ribbon {
+    font-size: 11px;
+  }
+
+  .complete i {
+    flex-basis: 64px;
+  }
+
+  .tipText {
+    font-size: 13px;
+  }
+}
+
+@container (max-height: 520px) {
+  .panel {
+    gap: 10px;
+  }
+
+  .save {
+    grid-template-columns: 120px 1fr;
+    padding: 8px;
+  }
+
+  .word {
+    font-size: min(clamp(20px, 5cqi, 30px), (min(620px, 100cqi - 32px) - 178px) / 7);
+  }
+
+  .tip {
+    min-height: calc(2 * 1.45em + 1.4em);
+  }
+
+  .tipText {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ---------- Reduced motion, forced colours ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .curtain[data-state="lift"],
+  .fill {
+    transition: none;
+  }
+
+  .curtain[data-state="hold"] .panel,
+  .curtain[data-state="hold"] .dots i {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .curtain {
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .glow,
+  .kicker::before,
+  .status [data-when="hold"]::before {
+    display: none;
+  }
+
+  .save,
+  .goNow {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .word {
+    text-shadow: none;
+  }
+
+  .bar {
+    border-top: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .fill,
+  .complete i::after {
+    background: Highlight;
+    box-shadow: none;
+  }
+}

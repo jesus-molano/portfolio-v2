@@ -1,0 +1,31 @@
+/* LOAD GAME in the page controls: the disk, and its words where the bar has room. */
+.button {
+  gap: 0.5rem;
+}
+
+.disk {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+/* Under 1100 px the disk alone (its name stays for screen readers, and as the tooltip). */
+@media (max-width: 1099.98px) {
+  .button {
+    padding-inline: 0;
+    aspect-ratio: 1;
+  }
+
+  .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}

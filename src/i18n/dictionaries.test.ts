@@ -205,12 +205,13 @@ describe("loading screen copy", () => {
 
     it(`${locale}: keeps the menu's words, its lines and the slow note short`, () => {
       // The three items are one huge word each in the marquee face, on one line.
-      for (const item of [loader.menu.newGame, loader.menu.continue, loader.menu.settings]) {
+      for (const item of [loader.menu.newGame, loader.menu.continue, loader.menu.load, loader.menu.settings]) {
         expect(Array.from(item).length, item).toBeLessThanOrEqual(14);
       }
       // A line under an item holds its lead (or the longest station chip) and its state on a 360 px phone.
       expect(Array.from(`${loader.menu.noMusic} · ${loader.menu.waiting}`).length).toBeLessThanOrEqual(36);
       expect(Array.from(loader.menu.settingsSub).length).toBeLessThanOrEqual(40);
+      expect(Array.from(loader.menu.loadSub).length).toBeLessThanOrEqual(36);
       expect(Array.from(loader.menu.radioOff).length).toBeLessThanOrEqual(16);
       for (const short of [loader.menu.early, loader.menu.withMusic, loader.keys.move, loader.keys.choose, loader.panel.back]) {
         expect(Array.from(short).length, short).toBeLessThanOrEqual(14);
@@ -231,6 +232,49 @@ describe("loading screen copy", () => {
       const words = /\b(play|pause|rewind|fast.?forward|reproduc\w*|pausa|rebobin\w*)\b/i;
       const copy = [...Object.values(flatten(loader)), ...tips.map((tip) => tip.text)];
       for (const text of copy) expect(text).not.toMatch(words);
+    });
+  }
+});
+
+describe("load game copy (the save slots)", () => {
+  it("has the same keys in both languages", () => {
+    expect(Object.keys(flatten(es.load)).sort()).toEqual(Object.keys(flatten(en.load)).sort());
+  });
+
+  for (const [locale, dict] of [
+    ["en", en],
+    ["es", es],
+  ] as const) {
+    const load = dict.load;
+    const length = (text: string) => Array.from(text).length;
+
+    it(`${locale}: keeps every piece to its room on a 320 px phone`, () => {
+      // The title in the dialog's kicker, the switch's two words, a 96 px picture's "you are here".
+      expect(length(load.title)).toBeLessThanOrEqual(16);
+      expect(length(load.open)).toBeLessThanOrEqual(16);
+      expect(length(`${load.title} · ${load.kicker}`)).toBeLessThanOrEqual(40);
+      expect(length(load.radio)).toBeLessThanOrEqual(8);
+      // The switch is the radio's, never "music" (the owner's word): its cell holds the longest
+      // station ("ONE LOUDER 101.1") and the radio off.
+      expect(load.radio).toBe("Radio");
+      expect(length(load.radioOff)).toBeLessThanOrEqual(16);
+      expect(length(load.here)).toBeLessThanOrEqual(12);
+      for (const tag of Object.values(load.tags)) expect(length(tag), tag).toBeLessThanOrEqual(14);
+      expect(length(load.opening.word)).toBeLessThanOrEqual(14);
+      for (const ribbon of [load.opening.ribbon, load.statsRibbon]) expect(length(ribbon), ribbon).toBeLessThanOrEqual(36);
+      expect(length(load.touch)).toBeLessThanOrEqual(32);
+      expect(length(load.notYet)).toBeLessThanOrEqual(TIP_MAX_CHARS);
+      // The load screen: its kicker and status, and the way in now on its 44 px pill.
+      expect(length(load.loading)).toBeLessThanOrEqual(24);
+      expect(length(load.slow)).toBeLessThanOrEqual(24);
+      expect(length(load.goNow)).toBeLessThanOrEqual(16);
+      expect(load.complete).toContain("{n}");
+    });
+
+    it(`${locale}: names neither him nor his role (the hero does), nor a job or a project`, () => {
+      const copy = JSON.stringify(load);
+      expect(copy).not.toContain(dict.hero.name);
+      expect(copy).not.toContain(dict.hero.role);
     });
   }
 });
@@ -365,7 +409,13 @@ describe("the game's own words", () => {
     ["es", es],
   ] as const) {
     it(`${locale}: never calls the site a film in the start menu, the intro's help, the settings or the description`, () => {
-      const copy = flatten({ loader: dict.loader, intro: dict.hero.intro, settings: dict.stats.settings, description: dict.meta.description });
+      const copy = flatten({
+        loader: dict.loader,
+        load: dict.load,
+        intro: dict.hero.intro,
+        settings: dict.stats.settings,
+        description: dict.meta.description,
+      });
       for (const [key, text] of Object.entries(copy)) expect(text, key).not.toMatch(FILM);
     });
   }

@@ -178,6 +178,17 @@ export function pushFragment(hash: string): void {
 }
 
 /**
+ * A history entry for the top of the page (LOAD GAME's prologue), as an
+ * in-page link leaves one: the entry she leaves remembers where the page
+ * was, so Back returns there, and the new one names no section.
+ */
+export function pushTop(): void {
+  const { history, location } = window;
+  history.replaceState(withPlace(history.state, window.scrollY), "");
+  history.pushState(withPlace(history.state, null), "", location.pathname + location.search);
+}
+
+/**
  * Drops the fragment from the address (back to top): a reload then starts
  * at the top, never at the section an earlier link named.
  */

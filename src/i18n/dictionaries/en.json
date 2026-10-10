@@ -275,13 +275,15 @@
     "menu": {
       "newGame": "New game",
       "continue": "Continue",
+      "load": "Load game",
       "settings": "Settings",
       "withMusic": "with music",
       "noMusic": "No music",
       "radioOff": "Radio off",
       "waiting": "waiting for the city",
       "early": "go now",
-      "settingsSub": "Audio · display · language · controls"
+      "settingsSub": "Audio · display · language · controls",
+      "loadSub": "Start wherever you like"
     },
     "keys": {
       "move": "Select",
@@ -294,6 +296,38 @@
       "saved": "Saved in this browser",
       "escape": "Esc goes back to the menu"
     }
+  },
+  "load": {
+    "title": "Load game",
+    "kicker": "Choose a save",
+    "open": "Load game",
+    "radio": "Radio",
+    "radioOff": "Off",
+    "slot": "Save",
+    "complete": "{n}% complete",
+    "here": "You are here",
+    "back": "Back",
+    "keys": {
+      "move": "Select",
+      "enter": "Enter",
+      "load": "Load"
+    },
+    "touch": "Tap a save to load it",
+    "waiting": "Waiting for the city",
+    "notYet": "Not yet: the city is still pulling in.",
+    "ready": "All set: choose a save.",
+    "tags": {
+      "quickest": "Quickest",
+      "contact": "Contact"
+    },
+    "opening": {
+      "word": "Prologue",
+      "ribbon": "Who I am, in six lines"
+    },
+    "statsRibbon": "Player profile · missions and map",
+    "loading": "Loading game",
+    "slow": "Still loading…",
+    "goNow": "Go in now"
   },
   "work": {
     "chapter": {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { whenUncovered } from "@/lib/uncovered";
 
 /** How much of a card shows before it plays its entrance. */
 const VISIBLE = 0.35;
@@ -18,12 +19,12 @@ function faces(card: HTMLElement): { font: string; text: string }[] {
  * capitals). Resolves once they are in, or once they have failed: a card
  * never stays hidden for a font that will not come.
  */
-function facesIn(card: HTMLElement): Promise<unknown> {
+export function facesIn(card: HTMLElement): Promise<unknown> {
   return Promise.all(faces(card).map(({ font, text }) => document.fonts.load(font, text))).catch(() => undefined);
 }
 
 /** Whether a card's faces are in already. */
-function facesReady(card: HTMLElement): boolean {
+export function facesReady(card: HTMLElement): boolean {
   return faces(card).every(({ font, text }) => document.fonts.check(font, text));
 }
 
@@ -40,6 +41,9 @@ function facesReady(card: HTMLElement): boolean {
  * where nothing plays) shows at once if its faces are in, and is held
  * hidden (`held`) until they are otherwise: no card ever paints in a
  * fallback face, even once a slow line outlasts the faces' block period.
+ * A card that comes up under a screen (the start menu, LOAD GAME's load
+ * screen landing a save on it) plays once the screen has gone, where she
+ * sees it (lib/uncovered.ts); the load screen waits for its faces.
  */
 export function ChapterMotion() {
   useEffect(() => {
@@ -62,13 +66,14 @@ export function ChapterMotion() {
     }
 
     let observer: IntersectionObserver | null = null;
+    const pending: (() => void)[] = [];
     if (below.length > 0) {
       const watch = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
             if (!entry.isIntersecting) continue;
             watch.unobserve(entry.target);
-            settle(entry.target as HTMLElement, "waiting", "in");
+            pending.push(whenUncovered(() => settle(entry.target as HTMLElement, "waiting", "in")));
           }
         },
         { threshold: VISIBLE },
@@ -83,6 +88,7 @@ export function ChapterMotion() {
     return () => {
       live = false;
       observer?.disconnect();
+      for (const cancel of pending) cancel();
       for (const card of cards) {
         if (card.dataset.chapter === "waiting" || card.dataset.chapter === "held") card.dataset.chapter = "";
       }

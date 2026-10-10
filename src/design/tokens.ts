@@ -456,6 +456,8 @@ export const layers = {
   radio: 6,
   /** The loading screen covers everything until the visitor enters. */
   loader: 7,
+  /** LOAD GAME's load screen covers the start menu too, as it gives way to the save she loads. */
+  load: 8,
 } as const;
 
 export const breakpoints = {

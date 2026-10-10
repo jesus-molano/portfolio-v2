@@ -7,6 +7,7 @@ import { Canvas } from "@react-three/fiber";
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "../SceneErrorBoundary";
+import { getServerLoadHolding, isLoadHolding, subscribeLoadHold } from "@/features/load/loadHold";
 import { getSceneLoading, subscribeSceneLoading } from "../sceneLoading";
 import type { QualityTier } from "../useQualityTier";
 import { Billboards } from "./Billboards";
@@ -92,6 +93,8 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
     () => getSceneLoading().ready,
     () => false,
   );
+  // A save loading under the load screen: its compile and teardown frames are no measure of the device.
+  const holding = useSyncExternalStore(subscribeLoadHold, isLoadHolding, getServerLoadHolding);
   // Behind the start menu the scene stops drawing a few seconds after it is ready (heroFrameloop).
   const [graceOver, setGraceOver] = useState(false);
   useEffect(() => {
@@ -140,7 +143,7 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
       <hemisphereLight args={[palette.pink, palette.ink, LIGHT.hemisphere]} />
       <directionalLight position={KEY_POSITION} intensity={LIGHT.key} color={palette.amber} />
 
-      {WATCH_FRAME_RATE && entered && frameloop === "always" ? (
+      {WATCH_FRAME_RATE && entered && !holding && frameloop === "always" ? (
         <PerformanceMonitor onDecline={() => setLevel((current) => declineLevel(tier, current))} />
       ) : null}
       <DevHandle />

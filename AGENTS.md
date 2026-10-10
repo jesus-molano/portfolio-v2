@@ -100,7 +100,7 @@ also exists as real DOM for keyboard and screen-reader users.
   paint to the click (must be exactly 0, also through a slow load, the
   slab sliding and SETTINGS opening and closing, and for returning
   visitors whose station the client reads after the first paint), the
-  fit matrix of fifteen viewports in both languages (tips, the menu's
+  fit matrix of sixteen viewports (down to 320 x 568) in both languages (tips, the menu's
   words, slab and lines, Next inside the tip card, no box over another), the menu's keys (↓ S W, a way in chosen
   too soon, Esc back to SETTINGS), and frames of every state (loading,
   slow, ready, CONTINUE selected, SETTINGS open, leaving, reduced motion)
@@ -130,7 +130,7 @@ also exists as real DOM for keyboard and screen-reader users.
   FAIL.
 - `node tools/capture/perf.mjs --url http://localhost:3100/en` (a
   production build running: `pnpm build && pnpm start -p 3100`; `--device
-  phone|desktop`, `--only menu,hero,cover,rest,radio,layers,leak`,
+  phone|desktop`, `--only menu,hero,cover,rest,radio,layers,leak,load`,
   `--cycles`, `--out`) — the page's heat on a phone (390 x 844 at 3x, an
   iPhone's user agent), one line of numbers per stop (frames each WebGL
   canvas drew per animation frame, rAF callbacks, script, task, style
@@ -143,8 +143,11 @@ also exists as real DOM for keyboard and screen-reader users.
   keys after) or a hidden tab puts its AudioContext to sleep; no compositor layer for a bulb out of sight;
   eight passes down into the city and back keep the JS heap flat (from
   the third pass, after the JIT's own warm-up) and no WebGL context
-  outlives its canvas. Run it after any change to a canvas, a looping
-  animation, the radio or a frame loop.
+  outlives its canvas; LOAD GAME save after save (the city, STATS, the
+  credits, the prologue, `--cycles` times) keeps the heap and the
+  listeners flat, and the idle load screen animates nothing. Run it after
+  any change to a canvas, a looping animation, the radio, a frame loop or
+  the load screen.
 
 ## Stack (pinned on purpose)
 
@@ -721,10 +724,11 @@ also exists as real DOM for keyboard and screen-reader users.
   taglines live in `radio.taglines` in the dictionaries.
 - `src/features/loader` — the loading screen, made a game's start menu
   (the owner's call): no name and no role on it (the hero shows them once
-  she starts), three huge items in the marquee face (`loader.menu`): NEW
+  she starts), four huge items in the marquee face (`loader.menu`): NEW
   GAME / NUEVA PARTIDA (in with the radio: the station chip under it, or
-  "Radio off"), CONTINUE / CONTINUAR (in without music) and SETTINGS /
-  CONFIGURACIÓN; a game tip card (bottom right; under the menu on a
+  "Radio off"), CONTINUE / CONTINUAR (in without music), LOAD GAME /
+  CARGAR PARTIDA (the save slots, below) and SETTINGS / CONFIGURACIÓN; a
+  game tip card (bottom right; under the menu on a
   phone), the languages top right, and the load as a status line and a
   percentage riding the progress line on the bottom edge: nothing else
   shows the load (the owner's call: the sun sinking, the lamps lighting
@@ -755,6 +759,19 @@ also exists as real DOM for keyboard and screen-reader users.
     other language reopens the settings there; it applies when she
     starts. STATS's pause-only row (its tabs' shoulder keys, `only:
     "stats"` in the dictionaries) is not shown there.
+  - LOAD GAME opens the save slots (`src/features/load`, below) over the
+    menu, `where="start"`: its radio switch is NEW GAME's cue
+    (`cueEntry`, so NEW GAME's line follows it), its focus starts on
+    PAUSED (`QUICKEST`, "Quickest"), and a slot goes in as NEW GAME does,
+    with the radio the switch says, to its part: the address names it
+    (`pushFragment`, so Back returns to the top of the drive) and the
+    load screen (below) takes it over the menu, which goes at once
+    beneath it (`afterLoadHold` keeps the page locked until it lifts;
+    PageEntry leaves the landing to it, `loadOwnsEntry`); the prologue's
+    is NEW GAME itself. Before the city is in a
+    slot says "not yet" (it shakes, the dialog's own live region says
+    so; the foot reads "waiting for the city"), as the ways in do. Esc or
+    Back return to the menu on LOAD GAME.
   - The picture (`horizon.ts`, pure and tested; `Horizon.tsx`, a server
     component passed in as `art`, so its geometry never ships to the
     client) is the causeway at sunset, drawn as SVG from the tokens with
@@ -816,6 +833,84 @@ also exists as real DOM for keyboard and screen-reader users.
     first card, then her tips in authored order alternating with shuffled
     trivia) and times them (`tipDuration`: reading time plus 1.5 s, at
     least 5 s); hover or focus holds a tip, Next skips it.
+- `src/features/load` — LOAD GAME / CARGAR PARTIDA, the owner's idea for
+  a visitor in a hurry (a recruiter): the page's parts as a game's save
+  slots (`saves.ts`, pure and tested), from the start menu or, once she is
+  in, from the page controls' floppy disk (`LoadButton.tsx`, left of the
+  radio, its words from 1100 px and the disk alone under, home page only:
+  the 404 shares the controls). Six slots in the page's order: Prologue /
+  Portada (the hero, "who I am, in six lines"), then each section by its
+  chapter card's word and ribbon (`slotWords.ts`; PAUSED's ribbon names
+  its missions and map), each with a 16:9 picture from the site's own
+  (`tools/art/load/thumbs.py`: the share card's frames, Dante's strike,
+  the STATS portrait, the cinema and the dawn plate, two sizes, AVIF and
+  WebP, per locale where they carry words; rerun it when a source
+  changes), "Save 04", how far into the story it stands (`complete`, the
+  same for everyone) and a tag on PAUSED ("Quickest") and on the credits
+  ("Contact"; its slot lands on `#contact`). `LoadMenu.tsx` is one native
+  modal dialog for both places: a radio switch on top (`role="switch"`,
+  named "Radio", never "music": the owner's word; described by the
+  station or "Off" / «Apagada») shows the radio as it is and she can flip
+  it; it applies when she loads, never before
+  (in the page, `LoadGame.tsx`: `tune` inside her gesture; nothing
+  changes on Back). Each slot is a real link (`#suspects` ... `#contact`,
+  named "Save 04: Paused. Player profile · missions and map. 70%
+  complete. Quickest"); every load goes through the load screen below,
+  after a history entry as an in-page link leaves one (`pushFragment`,
+  or `pushTop` for the prologue: Back returns to where she was). The
+  slot she is in says "You are here"
+  (`aria-current="location"`, `currentSave`: the last part whose top is
+  past the middle of the screen) and takes the focus. Keys: the slots
+  are one tab stop between the switch and Back, the arrows walk their
+  grid (`slotMove`: two columns from about 760 px, one on a phone, the
+  columns read from the grid itself), Home and End, Enter or Space
+  loads, a mouse over a slot selects it, a click on the backdrop or Esc
+  goes back (the focus back on its opener). Nothing behind hears a key
+  while it is open: Lenis is stopped (the hero and the city ignore their
+  keys then), the dialog stops every key but Esc, and its Esc reaches the
+  page already prevented, so the hero's next Esc does not skip the film
+  either. It is rendered before `<main>`, so focus in it never counts as
+  having left the hero forward. On a phone it scrolls on its own
+  (`data-lenis-prevent`), the foot says "Tap a save to load it" and Back
+  is the word alone; on its side the slots shrink to fit. Forced colours
+  draw it in system colours, the selected slot in Highlight.
+  - The load screen (`LoadCurtain.tsx`, `curtainController.ts`; its
+    rules pure and tested in `loadCurtain.ts`; `loadHold.ts` the store),
+    the owner's call for slow phones: never a sudden jump onto a
+    half-ready place. In her click, in one task, it covers the screen
+    (night, opaque at once, `--va-z-load`, over the start menu too) and
+    the page jumps under it (`goTo`, walls opened on the way past). It
+    lifts once the place is drawn: two frames painted and 0.4 s at
+    least; the pictures on her first screen loaded and decoded (lazy
+    ones told to load now, `fetchPriority` high; 4 s at most); the
+    chapter card's faces in (1.5 s); the hero's canvas drawn three fresh
+    frames at the top (2.5 s); the city's scene mounted wherever it is
+    wanted (its mount is one long task, next to STATS too) and, on
+    screen, ready with two fresh frames (6 s); every check true for two
+    polls in a row, 100 ms apart. A tip shows at 0.9 s, "Still loading"
+    and "Go in now" at 2.5 s, and it lifts at 6 s whatever is left (on
+    the city its own opening cover and title wall take over). Its times
+    count only time she could see it (a hidden tab never, a main thread
+    blocked for seconds in full). It shows the save she loads (the
+    slot's picture, already in the cache, its words, how far in), the
+    radio she loads with and a bar on the bottom edge that never fills
+    before the place is in. While it holds nothing behind hears her: the
+    keys that would scroll, play, drive or skip are prevented (every page
+    handler leaves a prevented key; Tab, the browser's shortcuts and "Go
+    in now" pass); a wheel or a finger on it stops there (Lenis never
+    sees it); `html[data-loading]` is set as under the start menu (the
+    page locked, the radio wheel and STATS's shoulder keys refused,
+    STATS's pause, a chapter card's entrance and the wanted level's flash
+    held until it goes: `lib/uncovered.ts`). An input she made while it
+    held but the browser delivers only after the lift (a busy phone
+    queues it) is dropped by its own time stamp, a finger's whole stroke
+    with it, and the key that loaded never repeats into the place. The
+    scenes' performance monitors ignore the frames under it
+    (`isLoadHolding`): a load's compile never steps a phone down for the
+    visit. Back or a fragment while it holds lands there instead
+    (PageEntry), the focus with it. At the lift the focus goes to the
+    place (the hero's title, the section, STATS's panel). It never stops
+    or starts Lenis.
 - `src/features/work` — the career as a night drive (`#work`). A pinned stage like
   the hero's: the scroll is the picture, `workTimeline.ts` lays the beats
   out (a share of the film per natural second, cards timed by
@@ -1909,13 +2004,13 @@ To add a track to a station:
   (`/en#contact`) lands on its target with the focus through
   `lib/navigate.ts`, which opens the hero's walls on the way past it (a
   target in a closed tab opens it first, `lib/reveal.ts`); otherwise the
-  keyboard starts at the top of the page (skip link, radio, languages,
+  keyboard starts at the top of the page (skip link, LOAD GAME, radio, languages,
   then Skip). It also takes every same-page link (`a[href="#..."]`, a
   plain click no handler has taken) and every later fragment change the
   same way, the address naming the target as the browser's jump would,
   and Back returning to where she was. Never move the page with `scrollIntoView`, `window.scrollTo` or a bare
   `lenis.scrollTo(..., { immediate })` next to a native jump: use `goTo`.
-- The page controls (RADIO, EN/ES) are fixed at the top right
+- The page controls (LOAD GAME, RADIO, EN/ES) are fixed at the top right
   (`components/PageControls.tsx`). Over the hero's picture they float on
   their own glass; anywhere else they sit on one backing (`data-backdrop`,
   the `controlsBackdrop` token, opaque, drawn around them so they never
@@ -1996,7 +2091,7 @@ the dictionaries and the test: hold it to the map by hand.
 What each section is for, and what it owns:
 
 - Loading screen (the start menu) — the trailer: how to drive and what
-  is on the radio, one tip at a time, and trivia about the shoot that no
+  is on the radio (and LOAD GAME's way straight to any part), one tip at a time, and trivia about the shoot that no
   other section tells; it gives nothing away, and names neither him nor
   his role. It is a game, never a film: no copy of the start menu, the
   intro's help, the settings or the description calls the site a film

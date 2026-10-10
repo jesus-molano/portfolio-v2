@@ -24,6 +24,11 @@ export const night = {
   snap: false,
   /** The frame loop woke (the stage back on screen, NightScene): the car lands on the picture once (CarDrive). */
   woke: false,
+  /**
+   * The scene is wanted: mounted or mounting, near the stage (NightCanvas). The load screen waits for
+   * a wanted scene to have drawn (or failed) before it lifts, so its compile never lands in her face.
+   */
+  wanted: false,
   /** Every stop warmed up (compiled, uploaded) and nothing loading (Warmup): the opening cover may rest the canvas. */
   warm: false,
   /**

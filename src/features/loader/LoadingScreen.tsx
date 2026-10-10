@@ -20,14 +20,18 @@ import {
   markEntered,
   subscribeSceneLoading,
 } from "@/features/hero/sceneLoading";
-import { getEntryChoice, getServerEntryChoice, requestMusic, subscribeRadio } from "@/features/music/radio";
+import { afterLoadHold, beginLoad, isLoadHolding } from "@/features/load/loadHold";
+import { LoadMenu } from "@/features/load/LoadMenu";
+import { QUICKEST, type Save, SAVES, saveHref } from "@/features/load/saves";
+import type { SlotWords } from "@/features/load/slotWords";
+import { cueEntry, getEntryChoice, getServerEntryChoice, requestMusic, subscribeRadio } from "@/features/music/radio";
 import { findStation, formatFrequency, STATIONS } from "@/features/music/stations";
 import { Settings } from "@/features/settings/Settings";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { type Locale, localeNames, locales } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
-import { goTo } from "@/lib/navigate";
+import { clearFragment, goTo, pushFragment } from "@/lib/navigate";
 import styles from "./LoadingScreen.module.css";
 import { canChoose, itemState, longestEm, MENU_ITEMS, type MenuItem, menuMove, moveSelection } from "./menu";
 import { smoothProgress } from "./smoothProgress";
@@ -37,6 +41,9 @@ type Props = {
   dict: Dictionary["loader"];
   /** The same settings as the pause menu's (STATS's SETTINGS tab). */
   settings: Dictionary["stats"]["settings"];
+  /** LOAD GAME's words, and each save slot's (its section's chapter card). */
+  load: Dictionary["load"];
+  words: SlotWords;
   lang: Locale;
   /** The picture behind the menu, drawn on the server (Horizon.tsx). */
   art?: ReactNode;
@@ -53,9 +60,13 @@ const SLOW_POLL_MS = 250;
 const TOUCH_QUERY = "(pointer: coarse)";
 /** The start menu's settings were open when she switched language: they open again on the new page. */
 const REOPEN_KEY = "va-start-settings";
+const SETTINGS = MENU_ITEMS.indexOf("settings");
+const LOAD = MENU_ITEMS.indexOf("load");
 /** The slab's room around its word: before it, and after it (past the word's slide to the right). */
 const SLAB_BEFORE = 14;
 const SLAB_AFTER = 40;
+
+const QUICKEST_SLOT = SAVES.findIndex((save) => save.id === QUICKEST);
 
 const subscribeNothing = () => () => {};
 
@@ -114,7 +125,7 @@ function serverFirst(index: number, stillFirst: number): "motion" | "still" | "a
  * kept inside, Esc or Back return to the menu, on SETTINGS). Without
  * JavaScript the screen is hidden (see NO_JS_STYLE in the layout).
  */
-export function LoadingScreen({ dict, settings, lang, art }: Props) {
+export function LoadingScreen({ dict, settings, load, words: slotWords, lang, art }: Props) {
   const { progress, ready } = useSyncExternalStore(subscribeSceneLoading, getSceneLoading, getServerSceneLoading);
   const hydrated = useHydrated();
   const reducedMotion = usePrefersReducedMotion();
@@ -125,6 +136,7 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
   const [slow, setSlow] = useState(false);
   const [selected, setSelected] = useState(0);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [loadOpen, setLoadOpen] = useState(false);
   const [live, setLive] = useState("");
   const [nudge, setNudge] = useState(0);
   /** Each word's width (px), measured once the faces are in: the slab's length. */
@@ -186,7 +198,7 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
       // Blocked storage: the menu, as usual.
     }
     if (reopen && panel.current && !panel.current.open) {
-      buttons.current[2]?.focus({ preventScroll: true });
+      buttons.current[SETTINGS]?.focus({ preventScroll: true });
       panel.current.showModal();
       setPanelOpen(true);
     }
@@ -209,9 +221,12 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
       document.querySelector("[data-page-controls]"),
     ];
     if (phase === "gone") {
-      delete html.dataset.loading;
-      behind.forEach((element) => element?.removeAttribute("inert"));
-      lenis?.start();
+      // A save loading under LOAD GAME's load screen keeps the page until that screen lifts.
+      afterLoadHold(() => {
+        delete html.dataset.loading;
+        behind.forEach((element) => element?.removeAttribute("inert"));
+        lenis?.start();
+      });
       return;
     }
     html.dataset.loading = "";
@@ -297,15 +312,20 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
     };
   }, [lang, gone]);
 
-  const enter = useCallback((music: boolean, via: EnteredVia) => {
+  /** A way in does something now: the city is in, or the wait has turned slow ("go now"). */
+  const canEnterNow = useCallback(() => {
     const now = phaseRef.current;
-    if (now !== "ready" && !(now === "loading" && slowRef.current)) return;
+    return now === "ready" || (now === "loading" && slowRef.current);
+  }, []);
+
+  const enter = useCallback((music: boolean, via: EnteredVia) => {
+    if (!canEnterNow()) return;
     phaseRef.current = "leaving";
     // Inside the click or key press: the browser allows audio.play() here.
     requestMusic(music);
     markEntered(via);
     setPhase("leaving");
-  }, []);
+  }, [canEnterNow]);
 
   const openPanel = useCallback(() => {
     const dialog = panel.current;
@@ -318,6 +338,10 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
     (item: MenuItem, via: EnteredVia) => {
       if (item === "settings") {
         openPanel();
+        return;
+      }
+      if (item === "load") {
+        setLoadOpen(true);
         return;
       }
       if (!canChoose(item, { loaded: phaseRef.current !== "loading", slow: slowRef.current })) {
@@ -333,7 +357,7 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
 
   // The menu's keys: ↑ ↓, W S, Home and End move the focus, and the slab with it.
   useEffect(() => {
-    if (phase === "leaving" || phase === "gone" || panelOpen) return;
+    if (phase === "leaving" || phase === "gone" || panelOpen || loadOpen) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       const move = menuMove(event);
@@ -354,11 +378,12 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, panelOpen, selected, choose]);
+  }, [phase, panelOpen, loadOpen, selected, choose]);
 
   useEffect(() => {
     if (phase !== "leaving") return;
-    const timer = setTimeout(() => setPhase("gone"), reducedMotion ? 0 : LEAVE_MS);
+    // Under LOAD GAME's load screen nobody sees the fade: the menu goes at once.
+    const timer = setTimeout(() => setPhase("gone"), reducedMotion || isLoadHolding() ? 0 : LEAVE_MS);
     return () => clearTimeout(timer);
   }, [phase, reducedMotion]);
 
@@ -437,6 +462,28 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
   // The slab: on the selected item, as long as its word plus its margins.
   const slabWidth = widths ? widths[selected] + SLAB_BEFORE + SLAB_AFTER : 0;
 
+  /**
+   * A save slot: in, as NEW GAME goes in (with the radio the switch says,
+   * the cue NEW GAME plays too). The prologue is NEW GAME itself (the menu
+   * has waited for the hero), the address cleared. Any other save loads
+   * under LOAD GAME's load screen, over this menu: the address names it, a
+   * new entry as an in-page link leaves (Back returns to the top of the
+   * drive), the page jumps there under the screen, the menu goes at once
+   * beneath it, and the screen lifts (and lets the page go: `afterLoadHold`
+   * above) once the place is drawn.
+   */
+  const loadSave = (save: Save, event: MouseEvent<HTMLAnchorElement>, picture: string) => {
+    event.preventDefault();
+    if (!canEnterNow()) return;
+    const via = event.detail > 0 ? "pointer" : "key";
+    if (save.id === "hero") clearFragment();
+    else {
+      if (window.location.hash !== saveHref(save)) pushFragment(saveHref(save));
+      beginLoad(save, { mode: "start", via, picture });
+    }
+    enter(true, via);
+  };
+
   const describe = (item: MenuItem): string => {
     const state = itemState(item, loading);
     const tail = state === "wait" ? dict.menu.waiting : state === "early" ? dict.menu.early : "";
@@ -447,7 +494,9 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
           : dict.menu.radioOff
         : item === "continue"
           ? dict.menu.noMusic
-          : dict.menu.settingsSub;
+          : item === "load"
+            ? dict.menu.loadSub
+            : dict.menu.settingsSub;
     return tail ? `${head}, ${tail}.` : `${head}.`;
   };
 
@@ -465,7 +514,13 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
       aria-labelledby="loader-title"
       aria-describedby="loader-state"
       tabIndex={-1}
-      style={{ "--p": initialP, "--longest": longestEm(MENU_ITEMS.map((item) => dict.menu[item])) } as CSSProperties}
+      style={
+        {
+          "--p": initialP,
+          "--rows": MENU_ITEMS.length,
+          "--longest": longestEm(MENU_ITEMS.map((item) => dict.menu[item])),
+        } as CSSProperties
+      }
     >
       <div className={styles.art} aria-hidden="true">
         {art}
@@ -518,7 +573,7 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
                     type="button"
                     className={styles.item}
                     data-item={item}
-                    data-enter={item === "newGame" ? "music" : item === "continue" ? "silent" : "settings"}
+                    data-enter={item === "newGame" ? "music" : item === "continue" ? "silent" : item}
                     data-state={state}
                     data-selected={selected === i ? "" : undefined}
                     aria-disabled={state === "wait" ? "true" : undefined}
@@ -554,9 +609,11 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
                           {choice.on ? stationLabel : dict.menu.radioOff}
                         </span>
                       ) : (
-                        <span className={styles.lead}>{item === "continue" ? dict.menu.noMusic : dict.menu.settingsSub}</span>
+                        <span className={styles.lead}>
+                          {item === "continue" ? dict.menu.noMusic : item === "load" ? dict.menu.loadSub : dict.menu.settingsSub}
+                        </span>
                       )}
-                      {item === "settings" ? null : (
+                      {item === "settings" || item === "load" ? null : (
                         <span className={styles.states}>
                           <span data-when="wait">
                             {dict.menu.waiting}
@@ -689,8 +746,8 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
         data-lenis-prevent
         onClose={() => {
           setPanelOpen(false);
-          setSelected(2);
-          buttons.current[2]?.focus({ preventScroll: true });
+          setSelected(SETTINGS);
+          buttons.current[SETTINGS]?.focus({ preventScroll: true });
         }}
       >
         <div className={styles.panelInner}>
@@ -728,6 +785,27 @@ export function LoadingScreen({ dict, settings, lang, art }: Props) {
           </p>
         </div>
       </dialog>
+
+      <LoadMenu
+        dict={load}
+        words={slotWords}
+        lang={lang}
+        where="start"
+        open={loadOpen}
+        onClose={(loaded) => {
+          setLoadOpen(false);
+          if (loaded) return;
+          setSelected(LOAD);
+          buttons.current[LOAD]?.focus({ preventScroll: true });
+        }}
+        radio={{ on: choice.on, station: stationLabel }}
+        onRadio={(on) => cueEntry({ station: choice.station, on })}
+        onLoad={loadSave}
+        current={null}
+        initial={QUICKEST_SLOT}
+        waiting={!canChoose("newGame", loading)}
+        ready={load.ready}
+      />
     </div>
   );
 }

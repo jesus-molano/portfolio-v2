@@ -4,21 +4,55 @@ import { describe, expect, it } from "vitest";
 import { chapterName, shadeLayers } from "@/components/ChapterCard/chapterLayout";
 import { MISSIONS } from "@/features/stats/statsLayout";
 import { Horizon } from "@/features/loader/Horizon";
+import { LoadGame } from "@/features/load/LoadGame";
+import { slotWords } from "@/features/load/slotWords";
 import { LoadingScreen } from "@/features/loader/LoadingScreen";
 import { locales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { HomeMain } from "./HomeMain";
 
-/** The home page as the server renders it: the loading screen, then every section in <main>. */
+/** The home page as the server renders it: the loading screen, LOAD GAME (its menu and load screen), then every section in <main>. */
 async function renderHome(lang: (typeof locales)[number]): Promise<string> {
   const dict = await getDictionary(lang);
+  const words = slotWords(dict);
   return renderToStaticMarkup(
-    createElement("body", null, createElement(LoadingScreen, { dict: dict.loader, settings: dict.stats.settings, lang, art: createElement(Horizon) }), createElement(HomeMain, { dict, lang })),
+    createElement(
+      "body",
+      null,
+      createElement(LoadingScreen, { dict: dict.loader, settings: dict.stats.settings, load: dict.load, words, lang, art: createElement(Horizon) }),
+      createElement(LoadGame, { dict: dict.load, words, lang, tips: dict.loader.tips, labels: dict.loader.labels }),
+      createElement(HomeMain, { dict, lang }),
+    ),
   );
 }
 
 const inPageTargets = (html: string) => [...html.matchAll(/\shref="#([^"]*)"/g)].map((match) => decodeURIComponent(match[1]));
 const ids = (html: string) => new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]));
+
+describe("LOAD GAME in the server HTML", () => {
+  for (const lang of locales) {
+    it(`/${lang}: the load screen is idle, inert and out of the accessibility tree, before <main>, with no link`, async () => {
+      const html = await renderHome(lang);
+      const curtain = html.match(/<div[^>]*data-load-curtain[^>]*>/)?.[0] ?? "";
+      expect(curtain).toContain('data-state="idle"');
+      expect(curtain).toContain("inert");
+      expect(curtain).toContain('aria-hidden="true"');
+      expect(html.indexOf("data-load-curtain")).toBeLessThan(html.indexOf('id="main"'));
+      const inside = html.slice(html.indexOf("data-load-curtain"), html.indexOf("data-load-live"));
+      expect(inside).not.toMatch(/<a\s/);
+      // Every save's word is there from the first paint, each once, named for aria-labelledby.
+      for (const id of ["hero", "suspects", "work", "stats", "projects", "credits"]) {
+        expect(html.match(new RegExp(`id="load-curtain-word-${id}"`, "g"))).toHaveLength(1);
+      }
+    });
+
+    it(`/${lang}: no id is used twice (two load menus, one load screen)`, async () => {
+      const html = await renderHome(lang);
+      const all = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
+      expect(all.filter((id, i) => all.indexOf(id) !== i)).toEqual([]);
+    });
+  }
+});
 
 describe("in-page links", () => {
   for (const lang of locales) {

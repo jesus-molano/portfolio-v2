@@ -131,6 +131,7 @@ export function RadioButton({ dict }: Props) {
         aria-describedby="radio-gesture"
         title={gesture}
         data-playing={radio.playing}
+        data-radio-button
         style={isStation(entry) ? ({ "--station": `var(--va-radio-${entry.accent})` } as CSSProperties) : undefined}
         onClick={() => openWheel("browse", "button", button.current)}
       >

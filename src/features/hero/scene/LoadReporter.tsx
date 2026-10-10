@@ -3,7 +3,7 @@
 import { useProgress } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { getSceneLoading, markSceneReady, reportSceneProgress } from "../sceneLoading";
+import { getSceneLoading, heroFrames, markSceneReady, reportSceneProgress } from "../sceneLoading";
 
 /** Frames the scene renders after the last asset before it counts as ready. */
 const SETTLE_FRAMES = 8;
@@ -28,6 +28,7 @@ export function LoadReporter() {
   }, [progress]);
 
   useFrame(() => {
+    heroFrames.count += 1;
     if (getSceneLoading().ready) return;
     settled.current = done ? settled.current + 1 : 0;
     if (settled.current >= SETTLE_FRAMES) markSceneReady();

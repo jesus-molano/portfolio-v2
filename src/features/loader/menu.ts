@@ -1,12 +1,13 @@
 /**
  * The start menu's rules, pure and tested (menu.test.ts); LoadingScreen.tsx
- * wires them up. Three items, a game's main menu: NEW GAME (in with the
- * radio), CONTINUE (in without music) and SETTINGS (the same settings as
- * the pause menu's). The two ways in wait for the scene; SETTINGS works
- * at once.
+ * wires them up. Four items, a game's main menu: NEW GAME (in with the
+ * radio), CONTINUE (in without music), LOAD GAME (the save slots: straight
+ * into any part of the page, src/features/load) and SETTINGS (the same
+ * settings as the pause menu's). The two ways in wait for the scene; LOAD
+ * GAME and SETTINGS open at once (a slot, too, waits for the scene).
  */
 
-export const MENU_ITEMS = ["newGame", "continue", "settings"] as const;
+export const MENU_ITEMS = ["newGame", "continue", "load", "settings"] as const;
 export type MenuItem = (typeof MENU_ITEMS)[number];
 
 /**
@@ -17,11 +18,11 @@ export type MenuItem = (typeof MENU_ITEMS)[number];
 export type ItemState = "wait" | "early" | "ready";
 
 export function itemState(item: MenuItem, { loaded, slow }: { loaded: boolean; slow: boolean }): ItemState {
-  if (item === "settings" || loaded) return "ready";
+  if (item === "settings" || item === "load" || loaded) return "ready";
   return slow ? "early" : "wait";
 }
 
-/** Whether choosing the item does something now (SETTINGS always; a way in once loaded or slow). */
+/** Whether choosing the item does something now (LOAD GAME and SETTINGS always; a way in once loaded or slow). */
 export function canChoose(item: MenuItem, loading: { loaded: boolean; slow: boolean }): boolean {
   return itemState(item, loading) !== "wait";
 }

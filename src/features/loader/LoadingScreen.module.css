@@ -79,13 +79,14 @@
   --card-bottom: calc(var(--inset-bottom) + 18px);
 
   /*
-   * The menu: three rows of one word each in the marquee face, as big as
-   * the height allows and as the width lets the longest word in this
-   * language fit (--longest, in ems, set from the words on the server).
+   * The menu: four rows of one word each in the marquee face (--rows, set
+   * from the items on the server), as big as the height allows and as the
+   * width lets the longest word in this language fit (--longest, in ems,
+   * set from the words on the server).
    */
   --menu-w: min(820px, 100cqw - var(--tip-w) - 3 * var(--gutter) - var(--safe-left) - var(--safe-right));
   --index-w: 44px;
-  --word: min(clamp(52px, min(12.6cqh, 9cqw), 150px), calc((var(--menu-w) - var(--index-w) - 64px) / var(--longest, 5.6)));
+  --word: min(clamp(44px, min(9.6cqh, 7.4cqw), 120px), calc((var(--menu-w) - var(--index-w) - 64px) / var(--longest, 5.6)));
   --word-h: calc(var(--word) * 0.92);
   --line-h: 22px;
   --line-gap: 4px;
@@ -95,7 +96,8 @@
   --kicker-gap: clamp(10px, 2.4cqh, 26px);
   --legend-h: 26px;
   --legend-gap: clamp(12px, 3cqh, 30px);
-  --menu-h: calc(var(--kicker-h) + var(--kicker-gap) + 3 * var(--row) + 2 * var(--item-gap) + var(--legend-gap) + var(--legend-h));
+  --menu-h: calc(var(--kicker-h) + var(--kicker-gap) + var(--items-h) + var(--legend-gap) + var(--legend-h));
+  --items-h: calc(var(--rows, 4) * var(--row) + (var(--rows, 4) - 1) * var(--item-gap));
   --status-w: 21rem;
   /* The line under each word, and the station's display in it (one width for every station: see .station). */
   --line-fs: 11px;
@@ -281,7 +283,7 @@ a.lang:focus-visible {
 
 .items {
   position: relative;
-  height: calc(3 * var(--row) + 2 * var(--item-gap));
+  height: var(--items-h);
 }
 
 .list {
@@ -1091,6 +1093,14 @@ a.lang:focus-visible {
   }
 }
 
+/* The narrowest phones (320 px): the station and "waiting for the city" on one line still. */
+@media (max-width: 359.98px) {
+  .loader {
+    --line-fs: 9px;
+    --line-ls: 0.06em;
+  }
+}
+
 /* ---------- Phones and portrait screens ---------- */
 
 @media (orientation: portrait), (max-width: 699.98px) and (min-height: 521px) {
@@ -1104,10 +1114,12 @@ a.lang:focus-visible {
     --card-bottom: calc(40px + var(--safe-bottom));
     --menu-w: min(640px, 100cqw - 2 * var(--gutter));
     --index-w: 0px;
-    --word: min(15cqw, 8.4cqh, 92px, calc((var(--menu-w) - 56px) / var(--longest, 5.6)));
+    /* Four rows in about the room three had, so the sky (sun, moon, birds, palm crowns) keeps its place over the menu. */
+    --word: min(15cqw, 6.4cqh, 92px, calc((var(--menu-w) - 56px) / var(--longest, 5.6)));
     --word-h: calc(var(--word) * 0.92);
-    --line-h: 20px;
-    --item-gap: clamp(2px, 1cqh, 12px);
+    --line-h: 18px;
+    --line-gap: 3px;
+    --item-gap: clamp(2px, 0.8cqh, 10px);
     --kicker-gap: 10px;
     --legend-h: 0px;
     --legend-gap: 0px;
@@ -1179,6 +1191,13 @@ a.lang:focus-visible {
   }
 }
 
+/* Short phones upright: every tip fits three lines (tools/loader/check.mjs fits them), and the line given back is sky. */
+@media (orientation: portrait) and (max-height: 720px) {
+  .loader {
+    --card-lines: 3;
+  }
+}
+
 /* ---------- Short landscape: phones on their side, short windows ---------- */
 
 @media (orientation: landscape) and (max-height: 520px) {
@@ -1191,7 +1210,7 @@ a.lang:focus-visible {
     --card-head: 28px;
     --card-bottom: calc(var(--inset-bottom) + 20px);
     --index-w: 0px;
-    --word: min(clamp(32px, 10.4cqh, 64px), calc((var(--menu-w) - 56px) / var(--longest, 5.6)));
+    --word: min(clamp(26px, 8cqh, 52px), calc((var(--menu-w) - 56px) / var(--longest, 5.6)));
     --line-h: 18px;
     --line-gap: 2px;
     --item-gap: clamp(2px, 1.2cqh, 8px);

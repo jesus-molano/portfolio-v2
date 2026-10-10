@@ -174,7 +174,7 @@ async function enter(page, lang) {
 }
 
 async function openWheel(page, kind) {
-  const button = page.locator('button[aria-haspopup="dialog"]').first();
+  const button = page.locator("button[data-radio-button]");
   if (kind === "desktop") await button.click();
   else await button.tap();
   await page.waitForSelector('[role="dialog"][aria-modal="true"]', { state: "visible" });

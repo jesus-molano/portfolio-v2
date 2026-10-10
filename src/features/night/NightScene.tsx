@@ -2,11 +2,12 @@
 
 import { Environment, Lightformer, PerformanceMonitor, useProgress } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Group, Material, Mesh, Texture, WebGLRenderer } from "three";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "@/features/hero/SceneErrorBoundary";
 import { FULL_DPR } from "@/features/hero/scene/degrade";
+import { getServerLoadHolding, isLoadHolding, subscribeLoadHold } from "@/features/load/loadHold";
 import type { QualityTier } from "@/features/hero/useQualityTier";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -232,6 +233,8 @@ export function NightScene({ tier, active, timeline, work, locale, onCreated }: 
   const groups = useRef<(Group | null)[]>([]);
   // The hero's pixels (degrade.ts), and its one step down on a slow device: dpr 1, never back up.
   const [slow, setSlow] = useState(false);
+  // A save loading under the load screen: its compile frames are no measure of the device (never a step down for them).
+  const holding = useSyncExternalStore(subscribeLoadHold, isLoadHolding, getServerLoadHolding);
   // The frame loop wakes as the stage comes back on screen: the car lands on the picture (CarDrive).
   useEffect(() => {
     if (active) night.woke = true;
@@ -254,7 +257,7 @@ export function NightScene({ tier, active, timeline, work, locale, onCreated }: 
       <DisposeOnUnmount />
       <color attach="background" args={[palette.night]} />
       <fog attach="fog" args={[palette.nightFog, FOG.near, FOG.far]} />
-      {WATCH_FRAME_RATE && active && !slow ? <PerformanceMonitor onDecline={() => setSlow(true)} /> : null}
+      {WATCH_FRAME_RATE && active && !slow && !holding ? <PerformanceMonitor onDecline={() => setSlow(true)} /> : null}
       <SetSwitch groups={groups} />
       {/* Steps the car toward the picture before the camera, which pans with it, and the street, which it lights. */}
       <CarDrive timeline={timeline} />

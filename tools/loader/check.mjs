@@ -12,25 +12,25 @@
  *   click, at 1440 x 900 and on a 390 x 844 phone. One run loads normally
  *   (loading, ready); one holds every .glb request, so the screen goes
  *   loading, slow, then ready once they are let through; both move the
- *   selection and open and close SETTINGS on the way. The total must be
+ *   selection and open and close LOAD GAME and SETTINGS on the way. The total must be
  *   exactly 0, and the menu, the tip card, the status and the languages
  *   must keep the same box (to half a pixel) in every phase. Two more runs
  *   per device and language are returning visitors (a remembered station,
  *   the radio cued off in the other language), whose NEW GAME line the
  *   client changes after the server's first paint.
- * - fit: fifteen viewports, from 1920 x 1080 down to 360 x 640,
+ * - fit: sixteen viewports, from 1920 x 1080 down to 320 x 568,
  *   667 x 375 on its side and 720 x 450 (1440 x 900 at 200 %). Every tip and the slow note must fit their
  *   card; every item's word (with its slab) and its line must fit the
- *   menu, its three rows the menu's box; the menu, card, status,
+ *   menu, its four rows the menu's box; the menu, card, status,
  *   languages and progress line must stay apart and inside the safe
  *   viewport; Next and the counter must stay inside the tip card; Next is clicked through every tip the visitor would see.
  * - frames: screenshots of loading, slow, ready, CONTINUE selected,
- *   SETTINGS open and leaving (350 ms in) on desktop and phone, and
+ *   LOAD GAME open, SETTINGS open and leaving (350 ms in) on desktop and phone, and
  *   loading and ready with reduced motion. On the way it checks the
  *   menu's keys: NEW GAME has the focus from the start, ↓ and S and W
  *   move the focus and the slab, a way in chosen too soon says "not yet"
- *   and stays, SETTINGS opens a modal dialog and Esc brings the focus
- *   back to SETTINGS. Look at the frames before calling a change done.
+ *   and stays, LOAD GAME and SETTINGS open modal dialogs and Esc brings
+ *   the focus back to their item. Look at the frames before calling a change done.
  *   Leaving and reduced motion run without WebGL, so their frames are
  *   drawn on time.
  * - scroll: SETTINGS runs below the screen on a phone, and the screen
@@ -87,6 +87,8 @@ const FIT = [
   [800, 600, false],
   // 1440 x 900 at 200 % zoom.
   [720, 450, false],
+  // The smallest phone upright (an iPhone SE of 2016): four items and three tip lines under its sky.
+  [320, 568, true],
 ];
 /** Returning visitors: what the client reads after hydration differs from the server's first paint. */
 const RETURNING = [
@@ -222,11 +224,18 @@ async function clsPass() {
         await page.goto(`${values.url}/${lang}`, { waitUntil: "commit" });
         await page.waitForSelector('[data-loader][data-phase="ready"]', { timeout: READY_TIMEOUT });
         await page.waitForTimeout(1200);
-        // The slab slides, the settings open over the menu and close again: still nothing moves.
+        // The slab slides, LOAD GAME and then the settings open over the menu and close again:
+        // still nothing moves.
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Enter");
-        await page.waitForSelector("[data-loader] dialog[open]", { timeout: 5000 });
+        await page.waitForSelector("[data-loader] dialog[data-load-menu][open]", { timeout: 5000 });
+        await page.waitForTimeout(500);
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(500);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Enter");
+        await page.waitForSelector("[data-loader] dialog[data-settings][open]", { timeout: 5000 });
         await page.waitForTimeout(500);
         await page.keyboard.press("Escape");
         await page.waitForTimeout(500);
@@ -288,7 +297,7 @@ function measureFit() {
   const rect = (name) => loader.querySelector(`[data-box="${name}"]`).getBoundingClientRect();
   const boxes = Object.fromEntries(["menu", "card", "status", "langs", "line"].map((name) => [name, rect(name)]));
   // The menu: each word, slid right on its slab (14 px) with the slab's 40 px after it, inside the
-  // menu's box; each line inside its row; the three rows inside the box's height.
+  // menu's box; each line inside its row; the rows inside the box's height.
   const menu = boxes.menu;
   for (const button of loader.querySelectorAll("[data-item]")) {
     const word = button.children[1];
@@ -376,7 +385,8 @@ async function checkMenu(page, label) {
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("ArrowUp");
   const wrap = await state();
-  if (wrap.focus !== "settings" || wrap.selected !== 2) fail(`${label}: ↑ from NEW GAME went to ${wrap.focus}, not round to SETTINGS`);
+  if (wrap.focus !== "settings" || wrap.selected !== 3) fail(`${label}: ↑ from NEW GAME went to ${wrap.focus}, not round to SETTINGS`);
+  await page.keyboard.press("w");
   await page.keyboard.press("w");
   await page.keyboard.press("w");
   // Chosen while the city loads: it stays, and says why. A machine so busy that the wait has
@@ -419,13 +429,27 @@ async function framesPass() {
       await page.waitForSelector('[data-loader][data-phase="ready"]', { timeout: READY_TIMEOUT });
       await page.waitForTimeout(1000);
       await shot(page, `${name}-${lang}-ready`);
-      // CONTINUE selected, then SETTINGS open over the menu.
+      // CONTINUE selected, then LOAD GAME and SETTINGS open over the menu.
       await page.keyboard.press("ArrowDown");
       await page.waitForTimeout(600);
       await shot(page, `${name}-${lang}-continue`);
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("Enter");
-      await page.waitForSelector("[data-loader] dialog[open]", { timeout: 5000 });
+      await page.waitForSelector("[data-loader] dialog[data-load-menu][open]", { timeout: 5000 });
+      await page.waitForTimeout(600);
+      await shot(page, `${name}-${lang}-load`);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(300);
+      const loadBack = await page.evaluate(() => ({
+        open: Boolean(document.querySelector("[data-loader] dialog[open]")),
+        focus: document.activeElement?.getAttribute("data-item"),
+      }));
+      if (loadBack.open || loadBack.focus !== "load") {
+        fail(`${name} ${lang}: Esc left LOAD GAME ${loadBack.open ? "open" : "closed"} with the focus on ${loadBack.focus}, not on LOAD GAME`);
+      }
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await page.waitForSelector("[data-loader] dialog[data-settings][open]", { timeout: 5000 });
       await page.waitForTimeout(600);
       await shot(page, `${name}-${lang}-settings`);
       await page.keyboard.press("Escape");
