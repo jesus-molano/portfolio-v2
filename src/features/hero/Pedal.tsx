@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useEffect, useRef } from "react";
+import { type CSSProperties, useEffect, useId, useRef } from "react";
 import styles from "./Hero.module.css";
 
 type Props = {
@@ -27,6 +27,8 @@ const RIBS = [0, 1, 2, 3, 4, 5];
  * a W keycap where there is a keyboard (Hero.module.css).
  */
 export function Pedal({ label, tag, help }: Props) {
+  // Its own id: the hero and the career city each have a pedal, and two "hero-pedal-help" made the page's ids clash.
+  const helpId = `pedal-help${useId()}`;
   const button = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function Pedal({ label, tag, help }: Props) {
         data-pedal
         data-vis="hidden"
         aria-label={label}
-        aria-describedby="hero-pedal-help"
+        aria-describedby={helpId}
         aria-keyshortcuts="W Space"
       >
         {/* The pedal itself; the button around it is its larger hit area, out toward the thumb. */}
@@ -79,7 +81,7 @@ export function Pedal({ label, tag, help }: Props) {
           </span>
         </span>
       </button>
-      <span id="hero-pedal-help" className={`sr-only ${styles.helpMotion}`}>
+      <span id={helpId} className={`sr-only ${styles.helpMotion}`}>
         {help}
       </span>
     </>
