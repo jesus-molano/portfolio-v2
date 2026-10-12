@@ -1677,18 +1677,20 @@ also exists as real DOM for keyboard and screen-reader users.
     Windows and a CachyOS machine (no heist, no Hyprland), and Expenses
     Log never promises a push reminder without a connection. trazada, the
     owner's unofficial Formula 1 replay app (local only: no public site,
-    no data published), is a prestige sports drama: BASED ON REAL EVENTS.
-    / EXCEPT WHERE NOTED. (its rule that anything derived is labelled
-    Estimated) and "No kerbs were invented in the making of this film"
-    (it draws none: no source has them; «pianos» in Spanish). The art is
+    no data published), is a prestige sports drama: BLINK AND YOU'LL MISS
+    IT. / LUCKILY, THERE'S A REPLAY. and "Lights out. Again." («SI
+    PARPADEAS, TE LO PIERDES. / POR SUERTE, HAY REPETICIÓN.», «Se apagan
+    los semáforos. Otra vez.», the owner's pick): words anyone gets,
+    never an in-joke about how the app works (the owner threw out "except
+    where noted" and the kerbs nobody invented: «sé genérico, no cosas que
+    solo sé yo»). The art is
     an invented circuit (never a real layout) floating in the afterglow
     under a plain low sun, drawn as the app draws a track (a ribbon on
     relief x2 with skirts) but twice as wide, the racing line painted
     through its hairpin, the cars as the app's speed-coloured trails, its
     generic single-seater (two of its 2.4 m "Separar coches" slots
     outside the centre line, so the paint never runs under it; a dark
-    keyline round its body) with the pink compare ghost behind, and the
-    app's Estimated chip on the crest, tied to it by a leader; its title
+    keyline round its body) with the pink compare ghost behind; its title
     is the app's own face, Barlow Condensed, slanted; the sector colours
     rule under it. No F1 logo, team, livery, driver, number or official
     face; lit, only the line, the trails, the car's own trail and its rain

@@ -227,10 +227,8 @@ function dotfiles(p, lang, id, hot = false) {
  * meaning. The cars are light trails coloured by speed, as its Trails
  * layer draws them, and at the hairpin its generic single-seater runs
  * with the compare ghost behind it (in a slot outside the paint, so the
- * line never runs under them), under a plain low sun. The tagline's
- * "except where noted" hangs on the crest as the app's own Estimated
- * chip. No real circuit, team, driver, number or logo; no kerbs, since
- * the app draws none.
+ * line never runs under them), under a plain low sun. No real circuit,
+ * team, driver, number or logo; no kerbs, since the app draws none.
  */
 const TRZ = (() => {
   // A pinhole camera pitched down 31 degrees, world metres (x right, y up, z away).
@@ -267,12 +265,9 @@ const TRZ = (() => {
   for (let i = 1; i <= M; i++) S.push(S[i - 1] + Math.hypot(centre[i % M][0] - centre[i - 1][0], centre[i % M][1] - centre[i - 1][1]));
   const lap = S[M];
   const top = Math.max(...centre.map((c) => c[2]));
-  // The hairpin's apex (the nearest point of the first third) and the crest (the highest).
-  let apex = 0, crest = 0;
-  for (let i = 0; i < M; i++) {
-    if (i < M / 3 && centre[i][1] < centre[apex][1]) apex = i;
-    if (centre[i][2] > centre[crest][2]) crest = i;
-  }
+  // The hairpin's apex: the nearest point of the first third.
+  let apex = 0;
+  for (let i = 0; i < M / 3; i++) if (centre[i][1] < centre[apex][1]) apex = i;
   /** A point at arc length u, `o` metres to the left of travel, `lift` over the surface; its tangent and normal. */
   const frame = (u, o = 0, lift = 0) => {
     u = ((u % lap) + lap) % lap;
@@ -284,7 +279,7 @@ const TRZ = (() => {
     return { p: [L(a.c[0], b.c[0]) + nv[0] * o, L(a.c[1], b.c[1]) + lift, L(a.c[2], b.c[2]) + nv[1] * o], t: tv, n: nv };
   };
   const at = (u, o = 0, lift = 0.6) => proj(frame(u, o, lift).p);
-  return { proj, horizon, pts, M, HALF, top, frame, at, lap, apex: S[apex], crest: S[crest] };
+  return { proj, horizon, pts, M, HALF, top, frame, at, lap, apex: S[apex] };
 })();
 
 /** The ribbon: skirts dropping 34 m from both edges in fading bands (one path per band, no seams), then the surface, far to near. */
@@ -405,7 +400,7 @@ function trzCar(id, u, { ghost = false, hot = false } = {}) {
 
 function trazada(p, lang, id, hot = false) {
   const r = rng(41);
-  const { horizon, apex, crest: crestAt, lap, at, HALF } = TRZ;
+  const { horizon, apex, lap, at, HALF } = TRZ;
   // Trails: [metres from the apex, length, slot, ramp] near the hairpin; [share of the lap, ...] far away.
   const trails = [
     [apex + 260, 150, 0, "fast"], [apex - 170, 140, 2.4, "braking"], [apex + 620, 250, 0, "fast"],
@@ -419,7 +414,6 @@ function trazada(p, lang, id, hot = false) {
   for (let d = -160; d <= 160; d += 3) line.push(at(apex + d, trzLineOffset(d), 0.3));
   const lineD = `M${line.map((q) => `${f(q[0])},${f(q[1])}`).join("L")}`;
   const fl = at(apex + 420, -HALF + 1, 0.3), fr = at(apex + 420, HALF - 1, 0.3); // the finish line
-  const crest = at(crestAt, 0, 2);
   let stars = "";
   for (let i = 0; i < 40; i++) {
     const x = r() * W, y = 8 + r() * (horizon - 30), q = r();
@@ -428,9 +422,6 @@ function trazada(p, lang, id, hot = false) {
   }
   // The sky: lavender over a sodium-and-peach band whose brightest line is the camera's horizon.
   const SKY = [[0, C.night], [18, C.ink], [36, "#4a2a66"], [59, C.lilac], [73, C.haze], [82, C.orange], [87, C.sodium], [90, C.amber], [93, "#ffb347"], [115, C.orange], [149, "#c25a7a"], [191, "#6a2f62"], [270, C.ink], [400, C.night]];
-  // The note: Estimated, with the app's chip and its ≈ (drawn: the face has no U+2248), on the crest's x2 relief.
-  const note = lang === "es" ? { word: "Estimado", w: 42 } : { word: "Estimated", w: 46 };
-  const cx = 14, cy = 66;
   const [t1, t2] = p.tag[lang];
   const title = (attrs) => `<text x="${W / 2}" y="322" text-anchor="middle" font-family="'Barlow Condensed'" font-style="italic" font-weight="800" font-size="66" textLength="214" lengthAdjust="spacingAndGlyphs" ${attrs}>TRAZADA</text>`;
   return `<symbol id="${id}" viewBox="0 0 ${W} ${H}">
@@ -462,13 +453,6 @@ function trazada(p, lang, id, hot = false) {
   ${hot ? own.svg : ""}
   ${trzCar(id, ghostAt, { ghost: true })}
   ${trzCar(id, carAt, { hot })}
-  <path d="M${f(cx + note.w / 2)},${cy + 6}L${f(crest[0])},${f(crest[1])}" stroke="${C.ink}" stroke-width="2.4" stroke-linecap="round" opacity=".45"/>
-  <path d="M${f(cx + note.w / 2)},${cy + 6}L${f(crest[0])},${f(crest[1])}" stroke="#f3c6ff" stroke-width="1.1" stroke-linecap="round"/>
-  <circle cx="${f(crest[0])}" cy="${f(crest[1])}" r="2.6" fill="${C.ink}" opacity=".45"/><circle cx="${f(crest[0])}" cy="${f(crest[1])}" r="1.8" fill="#e07af5"/>
-  <rect x="${cx}" y="${cy - 6}" width="${note.w}" height="12" rx="3" fill="${C.ink}" fill-opacity=".85" stroke="#e07af5" stroke-width=".7"/>
-  <path d="M${cx + 4},${cy - 1.2} q1.1,-1.2 2.2,0 t2.2,0 M${cx + 4},${cy + 1.4} q1.1,-1.2 2.2,0 t2.2,0" stroke="#e07af5" stroke-width=".75" fill="none"/>
-  ${txt(cx + 10.5, cy + 2, 6.6, note.word, { fam: "'Barlow Condensed'", w: 600, ls: 0.3, fill: "#f3c6ff", anchor: "start" })}
-  <path d="M${cx + 10.5},${cy + 3.6} h${note.w - 14.5}" stroke="#e07af5" stroke-width=".5" stroke-dasharray=".8 .9"/>
   <rect y="250" width="${W}" height="150" fill="url(#${id}scrim)"/>
   ${txt(W / 2, 30, 10, t1, { fam: "'Barlow Condensed'", w: 600, ls: 3.4 })}
   ${txt(W / 2, 43, 10, t2, { fam: "'Barlow Condensed'", w: 600, ls: 3.4, fill: C.sodium })}
