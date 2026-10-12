@@ -315,20 +315,37 @@ function trzRibbon(id) {
 }
 
 /**
- * The racing line through the hairpin: its offset from the centre line
- * (+ is the inside, left of travel) by metres from the apex, eased
- * between keys: outside down the left leg, a late apex, outside again.
+ * The racing line through the hairpin, as its offset from the centre line
+ * (+ is the inside, left of travel) by metres from the apex: outside down
+ * the left leg, one long turn-in to a late apex hugging the inside, one
+ * long track-out to the outside up the right leg. Each move is a half
+ * cosine, so the line sweeps through the corner and never hesitates on
+ * its way (keys eased one by one stopped it at every key: it wobbled).
  */
-const TRZ_LINE = [[-150, -10], [-90, -10], [-45, -2], [-5, 9.5], [15, 10], [55, 1], [100, -10], [150, -10]];
+const TRZ_LINE = { outside: -10, inside: 10, turnIn: -95, apex: 5, trackOut: 105 };
 function trzLineOffset(d) {
-  const K = TRZ_LINE;
-  if (d <= K[0][0]) return K[0][1];
-  for (let j = 0; j < K.length - 1; j++) {
-    if (d > K[j + 1][0]) continue;
-    const t = (d - K[j][0]) / (K[j + 1][0] - K[j][0]);
-    return K[j][1] + (K[j + 1][1] - K[j][1]) * t * t * (3 - 2 * t);
+  const { outside, inside, turnIn, apex, trackOut } = TRZ_LINE;
+  const ease = (t) => (1 - Math.cos(Math.PI * clamp(t))) / 2;
+  if (d <= apex) return outside + (inside - outside) * ease((d - turnIn) / (apex - turnIn));
+  return inside + (outside - inside) * ease((d - apex) / (trackOut - apex));
+}
+
+/**
+ * A smooth path through points sampled along the track, in poster units:
+ * relaxed a little (the ends kept), then joined by Catmull-Rom curves, so
+ * a stroke along the ribbon reads as one sweep, never a shaky polyline.
+ */
+function trzSmooth(ps, passes = 3) {
+  let q = ps.map((p) => [p[0], p[1]]);
+  for (let k = 0; k < passes; k++) {
+    q = q.map((p, i) => (i === 0 || i === q.length - 1 ? p : [(q[i - 1][0] + 2 * p[0] + q[i + 1][0]) / 4, (q[i - 1][1] + 2 * p[1] + q[i + 1][1]) / 4]));
   }
-  return K.at(-1)[1];
+  let d = `M${f(q[0][0])},${f(q[0][1])}`;
+  for (let i = 0; i < q.length - 1; i++) {
+    const p0 = q[Math.max(0, i - 1)], p1 = q[i], p2 = q[i + 1], p3 = q[Math.min(q.length - 1, i + 2)];
+    d += `C${f(p1[0] + (p2[0] - p0[0]) / 6)},${f(p1[1] + (p2[1] - p0[1]) / 6)} ${f(p2[0] - (p3[0] - p1[0]) / 6)},${f(p2[1] - (p3[1] - p1[1]) / 6)} ${f(p2[0])},${f(p2[1])}`;
+  }
+  return d;
 }
 
 /** Speed ramps of the app's Trails layer (violet slow, blue, ice fast), as gradient stops tail to head. */
@@ -342,7 +359,7 @@ function trzTrail(id, key, head, len, slot, ramp, hot, { dot = true } = {}) {
   const ps = Array.from({ length: 29 }, (_, j) => TRZ.at(head - len + (len * j) / 28, slot));
   const a = ps[0], b = ps[28];
   const w = Math.max(0.55, 950 / b[2]) * (hot ? 1.35 : 1);
-  const d = `M${ps.map((p) => `${f(p[0])},${f(p[1])}`).join("L")}`;
+  const d = trzSmooth(ps);
   const grad = `<linearGradient id="${id}t${key}" gradientUnits="userSpaceOnUse" x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}">${TRZ_RAMPS[ramp].map(([o, c, op]) => `<stop offset="${o}" stop-color="${c}" stop-opacity="${op}"/>`).join("")}</linearGradient>`;
   const svg =
     (hot ? `<path d="${d}" fill="none" stroke="url(#${id}t${key})" stroke-width="${f(w * 3.2)}" stroke-linecap="round" opacity=".6" filter="url(#${id}b2)"/>` : "") +
@@ -411,8 +428,8 @@ function trazada(p, lang, id, hot = false) {
   // Lit, the car draws its own trail, ending under its rear wing.
   const own = trzTrail(id, "own", carAt - 2.4 * TRZ_CAR, 80, TRZ_SLOT, "fast", true, { dot: false });
   const line = [];
-  for (let d = -160; d <= 160; d += 3) line.push(at(apex + d, trzLineOffset(d), 0.3));
-  const lineD = `M${line.map((q) => `${f(q[0])},${f(q[1])}`).join("L")}`;
+  for (let d = -160; d <= 160; d += 4) line.push(at(apex + d, trzLineOffset(d), 0.3));
+  const lineD = trzSmooth(line);
   const fl = at(apex + 420, -HALF + 1, 0.3), fr = at(apex + 420, HALF - 1, 0.3); // the finish line
   let stars = "";
   for (let i = 0; i < 40; i++) {

@@ -1687,7 +1687,9 @@ also exists as real DOM for keyboard and screen-reader users.
     an invented circuit (never a real layout) floating in the afterglow
     under a plain low sun, drawn as the app draws a track (a ribbon on
     relief x2 with skirts) but twice as wide, the racing line painted
-    through its hairpin, the cars as the app's speed-coloured trails, its
+    through its hairpin in one sweep (outside, a late apex, outside: two
+    half cosines, drawn as a smoothed curve, `trzSmooth`; eased key by
+    key and drawn as a polyline it wobbled like a shaky hand), the cars as the app's speed-coloured trails, its
     generic single-seater (two of its 2.4 m "Separar coches" slots
     outside the centre line, so the paint never runs under it; a dark
     keyline round its body) with the pink compare ghost behind; its title
