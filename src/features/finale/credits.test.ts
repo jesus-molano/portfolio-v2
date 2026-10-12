@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -21,6 +23,8 @@ import {
 } from "./credits";
 import { EndCredits } from "./EndCredits";
 import { FEATURES } from "./links";
+
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../..");
 
 const LOCALES = [
   ["en", en],
@@ -177,7 +181,7 @@ describe("the cast and the rest", () => {
   it("keeps one list of his toolkit and one of what the site is built with, no name in both", () => {
     for (const list of [TOOLKIT, BUILT_WITH]) expect(new Set(list).size).toBe(list.length);
     expect(TOOLKIT.filter((name) => (BUILT_WITH as readonly string[]).includes(name))).toEqual([]);
-    // What only this site uses stays in BUILT_WITH.
+    // What this site is built with stays in BUILT_WITH, even where a side project uses it too.
     for (const name of ["Three.js", "React Three Fiber", "GSAP"]) expect(BUILT_WITH).toContain(name);
     expect(en.credits.toolkit).toBe("HIS TOOLKIT");
     expect(es.credits.toolkit).toBe("SU CAJA DE HERRAMIENTAS");
@@ -208,6 +212,19 @@ describe("the cast and the rest", () => {
     // The chapter cards' faces (src/app/fonts), under the site's titles: the word's script (OFL) and the banner's capitals.
     expect(TYPEFACES.site).toContain("Mr Dafoe");
     expect(TYPEFACES.site).toContain("Big Shoulders Display");
+  });
+
+  it("credits every face the cinema's art is drawn in (tools/art/finale)", () => {
+    const faces: readonly string[] = [...TYPEFACES.site, ...TYPEFACES.radio, ...TYPEFACES.posters];
+    const families = (file: string, list: string) => {
+      const source = readFileSync(path.join(ROOT, "tools/art/finale", file), "utf8");
+      const body = source.match(new RegExp(`const ${list} = \\[([^\\]]*)\\]`))?.[1] ?? "";
+      return [...body.matchAll(/"([^":]+)(?::[^"]*)?"/g)].map((match) => match[1]);
+    };
+    const drawn = [...families("posters.mjs", "POSTER_FONTS"), ...families("build.mjs", "PLATE_FONTS")];
+    expect(drawn).toContain("Barlow Condensed");
+    expect(drawn).toContain("Limelight");
+    for (const family of drawn) expect(faces, family).toContain(family);
   });
 });
 

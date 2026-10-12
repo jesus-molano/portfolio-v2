@@ -24,7 +24,7 @@ Telpark) as a rotating trivision billboard; Logixs (2025-2026;
 Bytetravel, Retech) as torn wheat-paste posters on a wall,
 like the Rolling Stones "Angry" video; Heuristik (2026-now).
 Content may break out of the board's frame. Then the personal projects,
-faster: dotfiles, tessera-studio, project-atlas, Expenses-Log-App. Every
+faster: dotfiles, trazada, project-atlas, Expenses-Log-App. Every
 billboard, sign and poster is a link with a hover state, and its text
 also exists as real DOM for keyboard and screen-reader users.
 
@@ -1658,7 +1658,15 @@ also exists as real DOM for keyboard and screen-reader users.
     Each poster is encoded 432 and 216 px wide, a srcset (`links.ts`,
     `POSTER_SIZES`): a case on a 1x facade takes the small one. The dawn
     plates hang the same posters, dimmed, so a poster change rebuilds
-    them too (`--only dawn-wide,dawn-tall,posters`).
+    them too (`--only dawn-wide,dawn-tall,posters`), and so do LOAD
+    GAME's credits thumbnails, cut from the dawn plate around the car
+    (`python3 tools/art/load/thumbs.py`). A project swapped on the bill
+    (`BILL` in `cinema.mjs`, `FEATURES` in `links.ts`, the same order)
+    rebuilds `night-wide` too, whose brass plates print the repositories,
+    and deletes the old poster's sixteen files. Every face the art is
+    drawn in is credited in `TYPEFACES` (`credits.test.ts` reads
+    `POSTER_FONTS` and `PLATE_FONTS`). The build is deterministic: a
+    rerun with nothing changed writes the same bytes.
   - Every part of a poster has one job, and none repeats another: the
     tagline and the line under the title (`tagline`, `sub`) make the
     joke; the billing block (baked in `posters.mjs`) gives names and
@@ -1667,7 +1675,25 @@ also exists as real DOM for keyboard and screen-reader users.
     what the project does. A poster only claims what its repository does:
     dotfiles is a fifties sci-fi bill, a saucer beaming his setup onto a
     Windows and a CachyOS machine (no heist, no Hyprland), and Expenses
-    Log never promises a push reminder without a connection.
+    Log never promises a push reminder without a connection. trazada, the
+    owner's unofficial Formula 1 replay app (local only: no public site,
+    no data published), is a prestige sports drama: BASED ON REAL EVENTS.
+    / EXCEPT WHERE NOTED. (its rule that anything derived is labelled
+    Estimated) and "No kerbs were invented in the making of this film"
+    (it draws none: no source has them; «pianos» in Spanish). The art is
+    an invented circuit (never a real layout) floating in the afterglow
+    under a plain low sun, drawn as the app draws a track (a ribbon on
+    relief x2 with skirts) but twice as wide, the racing line painted
+    through its hairpin, the cars as the app's speed-coloured trails, its
+    generic single-seater (two of its 2.4 m "Separar coches" slots
+    outside the centre line, so the paint never runs under it; a dark
+    keyline round its body) with the pink compare ghost behind, and the
+    app's Estimated chip on the crest, tied to it by a leader; its title
+    is the app's own face, Barlow Condensed, slanted; the sector colours
+    rule under it. No F1 logo, team, livery, driver, number or official
+    face; lit, only the line, the trails, the car's own trail and its rain
+    light come on. Its caption may say Formula 1, plainly, beside
+    "unofficial"; his fandom stays STATS's.
   - The car parked at the kerb on the dawn plates is not drawn: it is a
     Cycles render of the hero's own `convertible.glb`
     (`tools/blender/render_finale_car.py`: the hero's paint, top down,
@@ -1706,8 +1732,9 @@ also exists as real DOM for keyboard and screen-reader users.
     the fine print: PROPS AND SETS (the CC BY 3.0 car, the CC0 traffic and
     body, the cats' Apache-2.0 base as a modified version, the map's
     public-domain relief), every radio track in its author's format, the
-    typefaces, HIS TOOLKIT and BUILT WITH (no name in both: what only this
-    site uses is in BUILT WITH alone; the toolkit opens on the owner's own
+    typefaces, HIS TOOLKIT and BUILT WITH (no name in both: what this site is
+    built with is in BUILT WITH alone, Three.js and GSAP too, though
+    trazada uses them; the toolkit opens on the owner's own
     list in his order, Vue, Nuxt, TypeScript, React, Next.js, Tailwind CSS,
     Claude Code, Codex, Supabase, Firebase, AWS Amplify, Docker, Linux, and
     ends on «y un largo etcétera» / "and the list goes on"), smaller and two
@@ -2078,7 +2105,9 @@ where the army's posting is a fact, not the joke; the rivalry's wink
 (chicharrero, canariones) only in `hero.lines` and the service record's
 remark (`work.record.remarks.value`, the owner's request); the cardboard box only
 on Metal Gear's star in STATS's achievement tree
-(`stats.achievements.nodes.metalGear.line`); "from the sofa"
+(`stats.achievements.nodes.metalGear.line`); Formula 1 (F1, Grand
+Prix) only in STATS, the start menu's tips (the pit-lane limiter) and
+trazada's caption (`projects.posters.trazada.oneLiner`); "from the sofa"
 once; remote only in the main missions' work-mode label
 (`stats.missions.modes.remote`, the owner's «En remoto»); "off the
 clock" / "fuera de horario" at most once, inside STATS (its card now
@@ -2135,7 +2164,9 @@ Each subject, who tells it in full, and what the rest may do:
   tin on the STATS sheet, the four cats by their aliases in the credits'
   cast.
 - F1: STATS (the 4 a.m. race and Alonso's 33rd stars, RACECRAFT and the Grand Prix record). The
-  loader: the pit-lane limiter tip only. The hero: its dashboard.
+  loader: the pit-lane limiter tip only. The hero: its dashboard. The
+  cinema: trazada's caption, what the app replays, never his fandom
+  (`contentMap.test.ts`).
 - The favourites (games, films, series) and his sporting goals: STATS's
   achievement tree. No radio winks there: no station is named.
 - The cardboard box: Metal Gear's star in STATS's achievement tree. Nowhere else.

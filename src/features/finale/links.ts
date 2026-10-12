@@ -13,7 +13,7 @@ export const PROFILE_LABELS = {
 } as const;
 
 /** Dictionary key of a feature on the bill (`projects.posters.<id>`). */
-export type FeatureId = "dotfiles" | "tessera-studio" | "project-atlas" | "expenses-log-app";
+export type FeatureId = "dotfiles" | "trazada" | "project-atlas" | "expenses-log-app";
 
 export type Feature = {
   id: FeatureId;
@@ -38,7 +38,7 @@ const feature = (id: FeatureId, repo: string, anchor: string): Feature => ({
  */
 export const FEATURES: readonly Feature[] = [
   feature("dotfiles", "dotfiles", "project-dotfiles"),
-  feature("tessera-studio", "tessera-studio", "project-tessera-studio"),
+  feature("trazada", "trazada", "project-trazada"),
   feature("project-atlas", "project-atlas", "project-atlas"),
   feature("expenses-log-app", "Expenses-Log-App", "project-expenses-log-app"),
 ];

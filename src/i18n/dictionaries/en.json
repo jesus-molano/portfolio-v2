@@ -918,15 +918,15 @@
         "sub": "Formatting won't save you.",
         "oneLiner": "My Windows and CachyOS dotfiles: a freshly installed machine set up the way I like it, without redoing every step by hand."
       },
-      "tessera-studio": {
-        "title": "TESSERA STUDIO",
-        "genre": "Art heist",
+      "trazada": {
+        "title": "TRAZADA",
+        "genre": "Sports drama",
         "tagline": [
-          "LOOK ALL YOU WANT.",
-          "TOUCH NOTHING."
+          "BASED ON REAL EVENTS.",
+          "EXCEPT WHERE NOTED."
         ],
-        "sub": "Zero dependencies, because it works alone.",
-        "oneLiner": "A local, read-only viewer for Tessera catalogues: their components, the inventory behind them and the decisions on what to reuse."
+        "sub": "No kerbs were invented in the making of this film.",
+        "oneLiner": "An unofficial app for reliving Formula 1 sessions in 3D on your own PC: every car in sync, with the leaderboard, telemetry, team radio and race control."
       },
       "project-atlas": {
         "title": "PROJECT ATLAS",

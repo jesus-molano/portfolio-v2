@@ -60,13 +60,13 @@ describe("the finale's links", () => {
   it("sends every feature to its repository under the profile, with its own anchor", () => {
     expect(FEATURES.map((feature) => feature.href)).toEqual([
       "https://github.com/jesus-molano/dotfiles",
-      "https://github.com/jesus-molano/tessera-studio",
+      "https://github.com/jesus-molano/trazada",
       "https://github.com/jesus-molano/project-atlas",
       "https://github.com/jesus-molano/Expenses-Log-App",
     ]);
     expect(FEATURES.map((feature) => feature.anchor)).toEqual([
       "project-dotfiles",
-      "project-tessera-studio",
+      "project-trazada",
       "project-atlas",
       "project-expenses-log-app",
     ]);
@@ -93,7 +93,7 @@ describe("the finale's links", () => {
 
   it("offers the small poster for a 1x facade and the full one for a 2x phone", () => {
     expect(posterSrcSet(FEATURES[1], "en", "avif")).toBe(
-      "/finale/poster-tessera-studio-en-216.avif 216w, /finale/poster-tessera-studio-en.avif 432w",
+      "/finale/poster-trazada-en-216.avif 216w, /finale/poster-trazada-en.avif 432w",
     );
     // The last size is the wide layout's: a case on the facade.
     expect(POSTER_SIZES.split(", ").at(-1)).toBe("7.6vw");

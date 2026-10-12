@@ -918,15 +918,15 @@
         "sub": "Ni formateando te libras.",
         "oneLiner": "Mis dotfiles de Windows y CachyOS: con ellos dejo un equipo recién instalado a mi gusto sin repetir cada paso a mano."
       },
-      "tessera-studio": {
-        "title": "TESSERA STUDIO",
-        "genre": "Robo de arte",
+      "trazada": {
+        "title": "TRAZADA",
+        "genre": "Drama deportivo",
         "tagline": [
-          "MIRA TODO LO QUE QUIERAS.",
-          "NO TOQUES NADA."
+          "BASADA EN HECHOS REALES.",
+          "SALVO DONDE SE INDIQUE."
         ],
-        "sub": "Cero dependencias, porque trabaja solo.",
-        "oneLiner": "Un visor local, de solo lectura, para catálogos de Tessera: sus componentes, el inventario que hay detrás y las decisiones sobre qué reutilizar."
+        "sub": "Ningún piano fue inventado durante el rodaje.",
+        "oneLiner": "Una app no oficial para revivir en 3D sesiones de Fórmula 1 en tu PC: todos los coches a la vez, con la torre de tiempos, la telemetría, las radios de equipo y la dirección de carrera."
       },
       "project-atlas": {
         "title": "PROJECT ATLAS",

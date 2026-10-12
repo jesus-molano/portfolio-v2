@@ -33,7 +33,7 @@ function cached(url) {
   return fs.readFileSync(file);
 }
 
-/** A Google Fonts CSS URL for the given families ("Bebas Neue", "Cinzel:wght@800;900", ...). */
+/** A Google Fonts CSS URL for the given families ("Bebas Neue", "Oswald:wght@500;700", ...). */
 export function fontUrl(families) {
   const query = families.map((family) => `family=${family.replace(/ /g, "+")}`).join("&");
   return `https://fonts.googleapis.com/css2?${query}&display=block`;

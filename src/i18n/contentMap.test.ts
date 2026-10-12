@@ -22,8 +22,10 @@ type Rule = {
 const RULES: Rule[] = [
   {
     // The cinema tells the side projects; STATS and the credits name none.
+    // "Trazada" is also plain Spanish (a racing line, a traced route): a
+    // section that needs the word as such widens this rule with a comment.
     subject: "a side project's repository",
-    pattern: /dotfiles|tessera[\s_-]*studio|project[\s_-]*atlas|expenses[\s_-]*log/i,
+    pattern: /dotfiles|\btrazada\b|project[\s_-]*atlas|expenses[\s_-]*log/i,
     owners: [/^projects\./],
   },
   {
@@ -75,6 +77,14 @@ const RULES: Rule[] = [
     pattern: /\bremot|teletrabajo/i,
     owners: [/^stats\.missions\.modes\.remote$/],
     max: 1,
+  },
+  {
+    // Formula 1 is STATS's: RACECRAFT, the Grand Prix record, the 4 a.m. race and Alonso's 33rd. The start
+    // menu's pit-lane limiter tip explains a control by it, and the cinema's trazada caption says plainly
+    // what that side project replays; neither retells his fandom.
+    subject: "Formula 1",
+    pattern: /\bF1\b|F[oó]rmula\s*(1|One)|Grand Prix|Gran Premio/i,
+    owners: [/^stats\./, /^loader\.tips\.\d+\.text$/, /^projects\.posters\.trazada\.oneLiner$/],
   },
   {
     // Said once, under RACECRAFT on the STATS sheet.
@@ -148,7 +158,7 @@ describe("the content map", () => {
           .map(([, value]) => value)
           .join("\n");
       const cinema = text(/^projects\.posters\./);
-      for (const repo of [/dotfiles/i, /tessera[\s_-]*studio/i, /project[\s_-]*atlas/i, /expenses[\s_-]*log/i]) {
+      for (const repo of [/dotfiles/i, /trazada/i, /project[\s_-]*atlas/i, /expenses[\s_-]*log/i]) {
         expect(cinema, String(repo)).toMatch(repo);
       }
       const missions = text(/^stats\.missions\.items\./);

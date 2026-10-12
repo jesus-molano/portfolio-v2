@@ -69,8 +69,9 @@ export const COPYRIGHT = "© 2026 Jesús Molano";
  * His toolkit: what he works with, the owner's list first in his order,
  * then the rest from the jobs and the side projects; the roll ends it on
  * "and the list goes on" (`credits.toolkitMore`), as he put it. No name
- * here is in BUILT_WITH: the libraries only this site uses are listed
- * there alone.
+ * here is in BUILT_WITH: what this site is built with is listed there
+ * alone, even where a side project uses it too (Three.js and GSAP drive
+ * trazada as well); each name is credited once.
  */
 export const TOOLKIT = [
   "Vue", "Nuxt", "TypeScript", "React", "Next.js", "Tailwind CSS", "Claude Code", "Codex", "Supabase", "Firebase",
@@ -97,7 +98,7 @@ export const TYPEFACES = {
    */
   site: ["Unbounded", "Space Grotesk", "JetBrains Mono", "Mr Dafoe", "Big Shoulders Display", "Special Elite"],
   radio: ["Shrikhand", "Kanit", "Playfair Display", "Yellowtail", "Bowlby One", "Limelight", "Bebas Neue"],
-  posters: ["Cinzel", "Oswald", "Anton", "Six Caps"],
+  posters: ["Barlow Condensed", "Oswald", "Anton", "Six Caps"],
 } as const;
 
 /**

@@ -1,7 +1,7 @@
 /**
  * The four one-sheets of The Afterglow (src/features/finale): one original
  * poster per side project, each in its own genre (a fifties sci-fi
- * B-movie, a museum job, a procedural's evidence board, a neo-noir). 27 x
+ * B-movie, a sports drama, a procedural's evidence board, a neo-noir). 27 x
  * 40 ratio, 270 x 400 units, one per repository and locale; title, tagline
  * and billing are baked in. Our own drawings and type, no borrowed art or
  * logos.
@@ -14,7 +14,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { C, rng, f, mix, esc } from "./lib.mjs";
+import { C, rng, f, clamp, mix, esc } from "./lib.mjs";
 
 /** The tagline and the line under the title come from the dictionaries (projects.posters), like the page's captions. */
 const DICTS = Object.fromEntries(
@@ -38,12 +38,12 @@ export const POSTERS = [
     },
   },
   {
-    key: "tes", repo: "tessera-studio",
-    tag: copy("tessera-studio", "tagline"),
-    sub: copy("tessera-studio", "sub"),
+    key: "trz", repo: "trazada",
+    tag: copy("trazada", "tagline"),
+    sub: copy("trazada", "sub"),
     bill: {
-      en: ["THE AFTERGLOW PRESENTS · STARRING PYTHON 3.11 AND ITS STANDARD LIBRARY", "WITH PLAIN HTML · CSS · ES MODULES · AND A STRICT CSP"],
-      es: ["THE AFTERGLOW PRESENTA · CON PYTHON 3.11 Y SU BIBLIOTECA ESTÁNDAR", "HTML · CSS · MÓDULOS ES · Y UNA CSP ESTRICTA"],
+      en: ["THE AFTERGLOW PRESENTS · STARRING NUXT 4 · VUE 3 · TRESJS · THREE.JS", "WITH PYTHON 3.13 · FASTF1 · PANDAS · UPLOT · GSAP · AND A BINARY FORMAT OF ITS OWN"],
+      es: ["THE AFTERGLOW PRESENTA · CON NUXT 4 · VUE 3 · TRESJS · THREE.JS", "PYTHON 3.13 · FASTF1 · PANDAS · UPLOT · GSAP · Y UN FORMATO BINARIO PROPIO"],
     },
   },
   {
@@ -217,98 +217,269 @@ function dotfiles(p, lang, id, hot = false) {
 </symbol>`;
 }
 
-/* ----------------------------------------------------- 2 tessera-studio */
-function tessera(p, lang, id, hot = false) {
-  const r = rng(23);
-  // the mosaic: a component card set in tesserae, a gold border
-  const cols = 17, rows = 22, t = 4.7, gap = 0.75, x0 = 95.5, y0 = 98;
-  let tiles = "";
-  const pick = (i, j) => {
-    if (i < 1 || j < 1 || i > cols - 2 || j > rows - 2) return (i + j) % 2 ? "#f0c36a" : "#d9963f";
-    if (i < 2 || j < 2 || i > cols - 3 || j > rows - 3) return "#3a1a52";
-    // card
-    if (i >= 3 && i <= cols - 4 && j >= 3 && j <= rows - 4) {
-      const ci = i - 3, cj = j - 3;
-      const dxA = ci - 2.2, dyA = cj - 2.4;
-      if (dxA * dxA + dyA * dyA <= 3.6) return cj < 2 ? "#ff8fd0" : "#ff2d95";
-      if (cj >= 1 && cj <= 2 && ci >= 5 && ci <= 9) return cj === 1 ? "#2b1848" : "#8c62b8";
-      if (cj === 6 && ci >= 1 && ci <= 9) return "#2b1848";
-      if (cj === 8 && ci >= 1 && ci <= 8) return "#a58cc8";
-      if (cj === 10 && ci >= 1 && ci <= 6) return "#a58cc8";
-      if (cj >= 12 && cj <= 13 && ci >= 1 && ci <= 6) return "#ffb83a";
-      return "#fbf0e4";
-    }
-    return "#2b1848";
+/* ------------------------------------------------------------ 2 trazada */
+/**
+ * A prestige sports drama: an invented circuit floating in the afterglow,
+ * drawn the way trazada draws a track (a ribbon on its real relief, made
+ * twice as tall and labelled Estimated, with skirts falling to nothing)
+ * but twice as wide, so it reads in a case. Through its hairpin, the
+ * racing line itself, painted outside, inside, outside: the word's
+ * meaning. The cars are light trails coloured by speed, as its Trails
+ * layer draws them, and at the hairpin its generic single-seater runs
+ * with the compare ghost behind it (in a slot outside the paint, so the
+ * line never runs under them), under a plain low sun. The tagline's
+ * "except where noted" hangs on the crest as the app's own Estimated
+ * chip. No real circuit, team, driver, number or logo; no kerbs, since
+ * the app draws none.
+ */
+const TRZ = (() => {
+  // A pinhole camera pitched down 31 degrees, world metres (x right, y up, z away).
+  const pitch = (31 * Math.PI) / 180, sin = Math.sin(pitch), cos = Math.cos(pitch);
+  const cam = { x: -10, y: 125, z: -245, F: 280, ox: 135, oy: 258 };
+  const horizon = cam.oy - cam.F * Math.tan(pitch);
+  const proj = ([x, y, z]) => {
+    const dy = y - cam.y, dz = z - cam.z;
+    const yc = dy * cos + dz * sin, zc = -dy * sin + dz * cos;
+    return [cam.ox + (cam.F * (x - cam.x)) / zc, cam.oy - (cam.F * yc) / zc, zc];
   };
-  for (let j = 0; j < rows; j++) {
-    for (let i = 0; i < cols; i++) {
-      const c = pick(i, j);
-      const jit = (r() - 0.5) * 0.9;
-      const shade = r() < 0.5 ? mix(c, "#ffffff", r() * 0.14) : mix(c, "#1a0d38", r() * 0.18);
-      tiles += `<rect x="${f(x0 + i * (t + gap) + jit)}" y="${f(y0 + j * (t + gap) + (r() - 0.5) * 0.9)}" width="${t}" height="${t}" rx=".6" fill="${shade}" transform="rotate(${f((r() - 0.5) * 6)} ${f(x0 + i * (t + gap) + t / 2)} ${f(y0 + j * (t + gap) + t / 2)})"/>`;
+  // The circuit, invented: [x, z, height] in metres, anticlockwise from above; a closed Catmull-Rom.
+  const CTRL = [
+    [-170, 420, 8], [-110, 200, 3], [-62, 70, 0], [-48, 8, 0], [-10, -18, 0], [28, 8, 0], [44, 70, 0],
+    [100, 240, 2], [170, 420, 6], [230, 600, 12], [300, 860, 22], [360, 1010, 30], [300, 1110, 34],
+    [160, 1080, 38], [40, 1150, 42], [-110, 1100, 50], [-300, 1150, 62], [-440, 1060, 72], [-430, 860, 58],
+    [-330, 660, 36], [-240, 520, 18],
+  ];
+  const RELIEF = 2; // the app's "Relieve x2", which it labels Estimated
+  const HALF = 14; // half the ribbon's width: the app's 14 m track, drawn twice as wide
+  const cr = (p0, p1, p2, p3, t) =>
+    p1.map((_, i) => 0.5 * (2 * p1[i] + (-p0[i] + p2[i]) * t + (2 * p0[i] - 5 * p1[i] + 4 * p2[i] - p3[i]) * t * t + (-p0[i] + 3 * p1[i] - 3 * p2[i] + p3[i]) * t * t * t));
+  const n = CTRL.length, centre = [];
+  for (let i = 0; i < n; i++) for (let k = 0; k < 16; k++) centre.push(cr(CTRL[(i + n - 1) % n], CTRL[i], CTRL[(i + 1) % n], CTRL[(i + 2) % n], k / 16));
+  const M = centre.length;
+  const pts = centre.map(([x, z, h], i) => {
+    const [x2, z2] = centre[(i + 1) % M], [x0, z0] = centre[(i + M - 1) % M];
+    const tx = x2 - x0, tz = z2 - z0, l = Math.hypot(tx, tz);
+    const nx = -tz / l, nz = tx / l; // left of travel
+    const y = h * RELIEF;
+    return { c: [x, y, z], L: [x + nx * HALF, y, z + nz * HALF], R: [x - nx * HALF, y, z - nz * HALF], n: [nx, nz], t: [tx / l, tz / l], h };
+  });
+  const S = [0];
+  for (let i = 1; i <= M; i++) S.push(S[i - 1] + Math.hypot(centre[i % M][0] - centre[i - 1][0], centre[i % M][1] - centre[i - 1][1]));
+  const lap = S[M];
+  const top = Math.max(...centre.map((c) => c[2]));
+  // The hairpin's apex (the nearest point of the first third) and the crest (the highest).
+  let apex = 0, crest = 0;
+  for (let i = 0; i < M; i++) {
+    if (i < M / 3 && centre[i][1] < centre[apex][1]) apex = i;
+    if (centre[i][2] > centre[crest][2]) crest = i;
+  }
+  /** A point at arc length u, `o` metres to the left of travel, `lift` over the surface; its tangent and normal. */
+  const frame = (u, o = 0, lift = 0) => {
+    u = ((u % lap) + lap) % lap;
+    let i = 0;
+    while (S[i + 1] < u) i++;
+    const k = (u - S[i]) / (S[i + 1] - S[i]), a = pts[i], b = pts[(i + 1) % M];
+    const L = (p, q) => p + (q - p) * k;
+    const nv = [L(a.n[0], b.n[0]), L(a.n[1], b.n[1])], tv = [L(a.t[0], b.t[0]), L(a.t[1], b.t[1])];
+    return { p: [L(a.c[0], b.c[0]) + nv[0] * o, L(a.c[1], b.c[1]) + lift, L(a.c[2], b.c[2]) + nv[1] * o], t: tv, n: nv };
+  };
+  const at = (u, o = 0, lift = 0.6) => proj(frame(u, o, lift).p);
+  return { proj, horizon, pts, M, HALF, top, frame, at, lap, apex: S[apex], crest: S[crest] };
+})();
+
+/** The ribbon: skirts dropping 34 m from both edges in fading bands (one path per band, no seams), then the surface, far to near. */
+function trzRibbon(id) {
+  const { pts, M, proj, top } = TRZ;
+  const DROP = 34, BANDS = [0.95, 0.84, 0.61, 0.41, 0.24, 0.1, 0.02];
+  const bands = BANDS.map(() => []), quads = [];
+  const P = (q) => `${f(q[0])},${f(q[1])}`;
+  for (let i = 0; i < M; i++) {
+    const a = pts[i], b = pts[(i + 1) % M];
+    for (const side of ["L", "R"]) {
+      const p1 = proj(a[side]), p2 = proj(b[side]);
+      const p3 = proj([b[side][0], b[side][1] - DROP, b[side][2]]), p4 = proj([a[side][0], a[side][1] - DROP, a[side][2]]);
+      const along = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+      BANDS.forEach((_, k) => {
+        const t0 = k / BANDS.length, t1 = (k + 1) / BANDS.length;
+        bands[k].push(`M${P(along(p1, p4, t0))}L${P(along(p2, p3, t0))}L${P(along(p2, p3, t1))}L${P(along(p1, p4, t1))}Z`);
+      });
     }
+    const A = proj(a.L), B = proj(b.L), Cc = proj(b.R), D = proj(a.R);
+    const depth = (proj(a.c)[2] + proj(b.c)[2]) / 2;
+    const far = clamp((depth - 560) / 940);
+    const fill = mix(mix(C.ink, "#4a3270", (a.h + b.h) / 2 / top), "#7a3f78", far * 0.55);
+    quads.push({
+      depth,
+      svg:
+        `<path d="M${P(A)}L${P(B)}L${P(Cc)}L${P(D)}Z" fill="${fill}" stroke="${fill}" stroke-width=".4" stroke-linejoin="round"/>` +
+        `<path d="M${P(A)}L${P(B)}M${P(D)}L${P(Cc)}" stroke="${C.cream}" stroke-opacity="${f(0.45 + 0.4 * (1 - far))}" stroke-width="${f(Math.max(0.4, 330 / depth))}" stroke-linecap="round"/>`,
+    });
   }
-  const mw = cols * (t + gap) - gap, mh = rows * (t + gap) - gap;
-  // fluted back wall
-  let flutes = "";
-  for (let x = 6; x < W; x += 15) flutes += `<rect x="${x}" y="0" width="7" height="300" fill="#ffffff" opacity=".028"/>`;
-  // the lasers (strict CSP)
-  const beams = [[0, 112, 270, 176], [0, 196, 270, 104], [0, 150, 270, 226], [0, 236, 270, 148]];
-  let lasers = "";
-  for (const [a, b, c, d] of beams) {
-    lasers += `<path d="M${a},${b} L${c},${d}" stroke="#ff2d6f" stroke-width="${hot ? 6 : 3.2}" opacity="${hot ? 0.7 : 0.35}" filter="url(#${id}b2)"/>`;
-    lasers += `<path d="M${a},${b} L${c},${d}" stroke="#ff9ab8" stroke-width=".6"/>`;
-    lasers += `<circle cx="${a + 2}" cy="${b}" r="2" fill="#ff2d6f"/><circle cx="${c - 2}" cy="${d}" r="2" fill="#ff2d6f"/>`;
+  quads.sort((p, q) => q.depth - p.depth);
+  return `<g filter="url(#${id}sk)">${bands.map((d, k) => `<path d="${d.join("")}" fill="${C.ink}" fill-opacity="${BANDS[k]}"/>`).join("")}</g>${quads.map((q) => q.svg).join("")}`;
+}
+
+/**
+ * The racing line through the hairpin: its offset from the centre line
+ * (+ is the inside, left of travel) by metres from the apex, eased
+ * between keys: outside down the left leg, a late apex, outside again.
+ */
+const TRZ_LINE = [[-150, -10], [-90, -10], [-45, -2], [-5, 9.5], [15, 10], [55, 1], [100, -10], [150, -10]];
+function trzLineOffset(d) {
+  const K = TRZ_LINE;
+  if (d <= K[0][0]) return K[0][1];
+  for (let j = 0; j < K.length - 1; j++) {
+    if (d > K[j + 1][0]) continue;
+    const t = (d - K[j][0]) / (K[j + 1][0] - K[j][0]);
+    return K[j][1] + (K[j + 1][1] - K[j][1]) * t * t * (3 - 2 * t);
   }
+  return K.at(-1)[1];
+}
+
+/** Speed ramps of the app's Trails layer (violet slow, blue, ice fast), as gradient stops tail to head. */
+const TRZ_RAMPS = {
+  fast: [[0, "#8b6cff", 0], [0.3, "#8b6cff", 0.45], [0.7, "#4aa8ff", 0.85], [1, "#d9f3ff", 1]],
+  braking: [[0, "#d9f3ff", 0], [0.3, "#4aa8ff", 0.6], [1, "#8b6cff", 1]],
+  slow: [[0, "#8b6cff", 0], [0.35, "#8b6cff", 0.6], [1, "#b9a8ff", 1]],
+};
+/** A car's light trail on the centre line (cars ride it, as in the app), at a 2.4 m slot of "Separar coches"; `head: false` for the car's own. */
+function trzTrail(id, key, head, len, slot, ramp, hot, { dot = true } = {}) {
+  const ps = Array.from({ length: 29 }, (_, j) => TRZ.at(head - len + (len * j) / 28, slot));
+  const a = ps[0], b = ps[28];
+  const w = Math.max(0.55, 950 / b[2]) * (hot ? 1.35 : 1);
+  const d = `M${ps.map((p) => `${f(p[0])},${f(p[1])}`).join("L")}`;
+  const grad = `<linearGradient id="${id}t${key}" gradientUnits="userSpaceOnUse" x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}">${TRZ_RAMPS[ramp].map(([o, c, op]) => `<stop offset="${o}" stop-color="${c}" stop-opacity="${op}"/>`).join("")}</linearGradient>`;
+  const svg =
+    (hot ? `<path d="${d}" fill="none" stroke="url(#${id}t${key})" stroke-width="${f(w * 3.2)}" stroke-linecap="round" opacity=".6" filter="url(#${id}b2)"/>` : "") +
+    `<path d="${d}" fill="none" stroke="url(#${id}t${key})" stroke-width="${f(w)}" stroke-linecap="round"/>` +
+    (dot
+      ? `<circle cx="${f(b[0])}" cy="${f(b[1])}" r="${f(w * 3.6)}" fill="#d9f3ff" opacity="${hot ? 0.55 : 0.3}" filter="url(#${id}b2)"/><circle cx="${f(b[0])}" cy="${f(b[1])}" r="${f(w * 1.25)}" fill="#fff" opacity="${hot ? 1 : 0.9}"/>`
+      : "");
+  return { grad, svg };
+}
+
+/**
+ * The app's generic single-seater (halo, wings, sidepods, grey helmet; no
+ * number, logo or livery), as polygons on the track through the same
+ * camera, grown `TRZ_CAR` times as the app grows its cars to map scale.
+ * Local metres: x forward, y left, z up. The ghost is the compare ghost:
+ * the same car in pink at the app's 35 %, with a pale rim, and no shadow.
+ */
+const TRZ_CAR = 6.5;
+/** Both cars run two of the app's 2.4 m "Separar coches" slots outside the centre line, clear of the paint inside them. */
+const TRZ_SLOT = -4.8;
+function trzCar(id, u, { ghost = false, hot = false } = {}) {
+  const { p, t, n } = TRZ.frame(u, TRZ_SLOT);
+  const K = TRZ_CAR;
+  const at3 = (x, y, z) => TRZ.proj([p[0] + (t[0] * x + n[0] * y) * K, p[1] + z * K, p[2] + (t[1] * x + n[1] * y) * K]);
+  const path = (q) => q.map((v) => `${f(v[0])},${f(v[1])}`).join("L");
+  const poly = (xy, z, fill, extra = "") => `<path d="M${path(xy.map(([x, y]) => at3(x, y, z)))}Z" fill="${fill}" ${extra}/>`;
+  const box = (x0, x1, y0, y1, z, fill, extra) => poly([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], z, fill, extra);
+  const oval = (cx, cy, rx, ry, z, fill, extra) => poly(Array.from({ length: 20 }, (_, i) => [cx + rx * Math.cos((i * Math.PI) / 10), cy + ry * Math.sin((i * Math.PI) / 10)]), z, fill, extra);
+  const G = "#ff9fd0", rim = "#ffd0ea";
+  const carbon = ghost ? G : "#35373c", tyre = ghost ? G : "#1b1a22";
+  const body = [[2.9, 0.1], [2.9, -0.1], [0.9, -0.42], [0.6, -0.82], [-1.25, -0.82], [-2.05, -0.34], [-2.05, 0.34], [-1.25, 0.82], [0.6, 0.82], [0.9, 0.42]];
+  const deck = [[2.85, 0.07], [2.85, -0.07], [0.9, -0.3], [0.55, -0.62], [-1.2, -0.62], [-1.95, -0.24], [-1.95, 0.24], [-1.2, 0.62], [0.55, 0.62], [0.9, 0.3]];
+  let g = ghost ? "" : oval(-0.1, 0, 3.1, 1.25, 0.02, "#120820", `opacity=".6" filter="url(#${id}b1)"`);
+  g += box(-2.1, 1.3, -0.8, 0.8, 0.1, carbon); // floor
+  for (const s of [-1, 1]) {
+    g += box(1.4, 2.1, s * 0.62, s * 1.02, 0.36, tyre) + box(-2, -1.28, s * 0.58, s * 1.06, 0.38, tyre);
+    // The compound on the tyre's shoulder, as the app paints it: a known one, never red.
+    if (!ghost) g += box(1.4, 2.1, s * 0.97, s * 1.02, 0.4, C.sodium) + box(-2, -1.28, s * 1.01, s * 1.06, 0.42, C.sodium);
+  }
+  g += box(2.45, 2.95, -0.98, 0.98, 0.16, carbon); // front wing
+  g += poly(body, 0.32, ghost ? G : "#b9a0c8") + poly(deck, 0.6, ghost ? G : "#f2eee3");
+  g += oval(0.05, 0, 0.46, 0.26, 0.64, ghost ? G : "#1c1626"); // cockpit
+  g += `<path d="M${path([[0.6, -0.3], [0.75, 0], [0.6, 0.3]].map(([x, y]) => at3(x, y, 0.95)))}" fill="none" stroke="${ghost ? rim : "#3f4245"}" stroke-width="${f(0.084 * K)}" stroke-linejoin="round"/>`; // halo
+  g += oval(0, 0, 0.17, 0.15, 0.92, ghost ? rim : "#9599a0"); // helmet
+  g += `<path d="M${path([at3(-0.25, 0, 0.85), at3(-1.9, 0, 0.7)])}" stroke="${ghost ? rim : "#fffaee"}" stroke-width="${f(0.09 * K)}" stroke-linecap="round"/>`; // engine cover
+  g += box(-2.85, -2.35, -0.52, 0.52, 0.98, carbon); // rear wing
+  const outline = `M${path(body.map(([x, y]) => at3(x, y, 0.32)))}Z`;
+  // The ghost: the track's ink under it, so the line and the sky never show through its 35 %, and a pale rim.
+  if (ghost) return `<path d="${outline}" fill="${C.ink}" opacity=".7"/><g opacity=".35">${g}</g><path d="${outline}" fill="none" stroke="${rim}" stroke-width="1" stroke-opacity=".95" stroke-linejoin="round"/>`;
+  // A dark keyline round the body, so its cream deck stands off the cream paint.
+  g = `<path d="${outline}" fill="none" stroke="#1c1626" stroke-width="1.6" stroke-linejoin="round"/>` + g;
+  const [lx, ly] = at3(-2.9, 0, 0.42); // the rain light
+  return g + (hot ? `<circle cx="${f(lx)}" cy="${f(ly)}" r="1.6" fill="#ff2d6f" opacity=".75" filter="url(#${id}b1)"/><circle cx="${f(lx)}" cy="${f(ly)}" r=".55" fill="#ff9ab8"/>` : `<circle cx="${f(lx)}" cy="${f(ly)}" r=".55" fill="#ff2d6f"/>`);
+}
+
+function trazada(p, lang, id, hot = false) {
+  const r = rng(41);
+  const { horizon, apex, crest: crestAt, lap, at, HALF } = TRZ;
+  // Trails: [metres from the apex, length, slot, ramp] near the hairpin; [share of the lap, ...] far away.
+  const trails = [
+    [apex + 260, 150, 0, "fast"], [apex - 170, 140, 2.4, "braking"], [apex + 620, 250, 0, "fast"],
+    [0.52 * lap, 170, 0, "slow"], [0.64 * lap, 150, -2.4, "slow"], [0.9 * lap, 200, 0, "fast"],
+  ].map(([u, len, slot, ramp], k) => trzTrail(id, k, u, len, slot, ramp, hot));
+  // The car just past the apex, side on, in its slot outside the paint; the ghost nose to tail, 40 m behind.
+  const carAt = apex + 20, ghostAt = carAt - 40;
+  // Lit, the car draws its own trail, ending under its rear wing.
+  const own = trzTrail(id, "own", carAt - 2.4 * TRZ_CAR, 80, TRZ_SLOT, "fast", true, { dot: false });
+  const line = [];
+  for (let d = -160; d <= 160; d += 3) line.push(at(apex + d, trzLineOffset(d), 0.3));
+  const lineD = `M${line.map((q) => `${f(q[0])},${f(q[1])}`).join("L")}`;
+  const fl = at(apex + 420, -HALF + 1, 0.3), fr = at(apex + 420, HALF - 1, 0.3); // the finish line
+  const crest = at(crestAt, 0, 2);
+  let stars = "";
+  for (let i = 0; i < 40; i++) {
+    const x = r() * W, y = 8 + r() * (horizon - 30), q = r();
+    if (y < 52 && Math.abs(x - W / 2) < 104) continue; // clear of the tagline
+    stars += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(0.25 + q * 0.6)}" fill="${q > 0.8 ? C.amber : C.cream}" opacity="${f(0.15 + r() * 0.45)}"/>`;
+  }
+  // The sky: lavender over a sodium-and-peach band whose brightest line is the camera's horizon.
+  const SKY = [[0, C.night], [18, C.ink], [36, "#4a2a66"], [59, C.lilac], [73, C.haze], [82, C.orange], [87, C.sodium], [90, C.amber], [93, "#ffb347"], [115, C.orange], [149, "#c25a7a"], [191, "#6a2f62"], [270, C.ink], [400, C.night]];
+  // The note: Estimated, with the app's chip and its ≈ (drawn: the face has no U+2248), on the crest's x2 relief.
+  const note = lang === "es" ? { word: "Estimado", w: 42 } : { word: "Estimated", w: 46 };
+  const cx = 14, cy = 66;
   const [t1, t2] = p.tag[lang];
-  const lot = lang === "es" ? ["LOTE 07", "REUSAR ✓"] : ["LOT 07", "REUSE ✓"];
+  const title = (attrs) => `<text x="${W / 2}" y="322" text-anchor="middle" font-family="'Barlow Condensed'" font-style="italic" font-weight="800" font-size="66" textLength="214" lengthAdjust="spacingAndGlyphs" ${attrs}>TRAZADA</text>`;
   return `<symbol id="${id}" viewBox="0 0 ${W} ${H}">
   <defs>
-    <linearGradient id="${id}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#241040"/><stop offset=".72" stop-color="#170a2c"/><stop offset="1" stop-color="#0d0619"/></linearGradient>
-    <linearGradient id="${id}cone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9c8" stop-opacity=".42"/><stop offset="1" stop-color="#ffe9c8" stop-opacity="0"/></linearGradient>
-    <radialGradient id="${id}pool" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffe1b0" stop-opacity=".5"/><stop offset="1" stop-color="#ffe1b0" stop-opacity="0"/></radialGradient>
-    <linearGradient id="${id}gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4d6"/><stop offset=".45" stop-color="#f0c36a"/><stop offset=".55" stop-color="#c98a3a"/><stop offset="1" stop-color="#ffe2a0"/></linearGradient>
-    <linearGradient id="${id}slab" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6ea"/><stop offset="1" stop-color="#cdb7c8"/></linearGradient>
-    <linearGradient id="${id}plinth" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a1442"/><stop offset=".45" stop-color="#5a3a78"/><stop offset=".55" stop-color="#6a4a88"/><stop offset="1" stop-color="#22103a"/></linearGradient>
-    <filter id="${id}b2" x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur stdDeviation="2"/></filter>
-    <filter id="${id}b5" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>
+    <linearGradient id="${id}bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H}">${SKY.map(([y, c]) => `<stop offset="${f(y / H)}" stop-color="${c}"/>`).join("")}</linearGradient>
+    <radialGradient id="${id}glow" cx=".5" cy="${f(horizon / H)}" r=".55" gradientTransform="translate(0 ${f(horizon / H)}) scale(1 .5) translate(0 ${f(-horizon / H)})"><stop offset="0" stop-color="${C.sodium}" stop-opacity=".55"/><stop offset=".5" stop-color="${C.orange}" stop-opacity=".18"/><stop offset="1" stop-color="${C.orange}" stop-opacity="0"/></radialGradient>
+    <linearGradient id="${id}sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffaee"/><stop offset=".55" stop-color="${C.sodium}"/><stop offset="1" stop-color="${C.orange}" stop-opacity="0"/></linearGradient>
+    <linearGradient id="${id}title" gradientUnits="userSpaceOnUse" x1="0" y1="275.8" x2="0" y2="322"><stop offset="0" stop-color="#fffaee"/><stop offset=".55" stop-color="${C.amber}"/><stop offset="1" stop-color="#ffb347"/></linearGradient>
+    <linearGradient id="${id}scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.night}" stop-opacity="0"/><stop offset=".22" stop-color="${C.night}" stop-opacity=".82"/><stop offset="1" stop-color="#140a2a" stop-opacity=".94"/></linearGradient>
+    ${trails.map((t) => t.grad).join("")}${own.grad}
+    <filter id="${id}sk" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation=".7"/></filter>
+    <filter id="${id}b1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1"/></filter>
+    <filter id="${id}b2" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="${id}b3" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="${id}b4" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
     ${paperGrain(id + "g")}
   </defs>
   <rect width="${W}" height="${H}" fill="url(#${id}bg)"/>
-  ${flutes}
-  <path d="M118,0 H152 L232,262 H38 Z" fill="url(#${id}cone)" filter="url(#${id}b5)"/>
-  <ellipse cx="135" cy="262" rx="92" ry="12" fill="url(#${id}pool)"/>
-  <!-- plinth -->
-  <rect x="86" y="230" width="98" height="34" fill="url(#${id}plinth)"/>
-  ${[0, 1, 2, 3, 4, 5, 6].map((i) => `<rect x="${92 + i * 13}" y="232" width="5" height="30" fill="#ffffff" opacity=".06"/>`).join("")}
-  <rect x="78" y="224" width="114" height="7" fill="url(#${id}slab)"/>
-  <rect x="78" y="263" width="114" height="5" fill="#cdb7c8" opacity=".7"/>
-  <!-- the vitrine -->
-  <rect x="84" y="80" width="102" height="144" fill="#ffffff" fill-opacity=".04" stroke="#fff4f1" stroke-opacity=".55" stroke-width=".7"/>
-  <path d="M84,80 L92,72 H194 L186,80 M194,72 V216 L186,224" fill="none" stroke="#fff4f1" stroke-opacity=".35" stroke-width=".6"/>
-  <rect x="${x0 - 3}" y="${y0 - 3}" width="${f(mw + 6)}" height="${f(mh + 6)}" fill="#120624"/>
-  ${tiles}
-  <path d="M92,82 L120,82 L96,222 L86,222 Z" fill="#ffffff" opacity=".09"/>
-  <path d="M150,82 L160,82 L136,222 L130,222 Z" fill="#ffffff" opacity=".05"/>
-  <!-- the lot tag -->
-  <path d="M186,96 C196,104 200,112 204,120" fill="none" stroke="#e8d6c8" stroke-width=".6"/>
-  <g transform="rotate(9 214 132)">
-    <path d="M200,118 h30 v28 h-30 l-5,-14 z" fill="#f6ead8"/><circle cx="201.5" cy="132" r="1.6" fill="#241040"/>
-    <text x="215" y="129" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="5.6" fill="#241040">${lot[0]}</text>
-    <text x="215" y="139" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="5" fill="#b0306a">${lot[1]}</text>
-  </g>
-  ${lasers}
-  ${hot ? `<rect width="${W}" height="272" fill="#ff2d6f" opacity=".13"/><circle cx="135" cy="6" r="60" fill="#ff2d6f" opacity=".35" filter="url(#${id}b5)"/>` : ""}
-  <rect y="272" width="${W}" height="128" fill="#0d0619" fill-opacity=".45"/>
-  ${txt(W / 2, 30, 9, t1, { fam: "Cinzel", w: 800, ls: 2.6 })}
-  ${txt(W / 2, 43, 9, t2, { fam: "Cinzel", w: 800, ls: 2.6, fill: "#f0c36a" })}
-  <text x="${W / 2}" y="314" text-anchor="middle" font-family="Cinzel" font-weight="900" font-size="44" fill="#1a0b2c" transform="translate(1.5 2)" textLength="224" lengthAdjust="spacingAndGlyphs">TESSERA</text>
-  <text x="${W / 2}" y="314" text-anchor="middle" font-family="Cinzel" font-weight="900" font-size="44" fill="url(#${id}gold)" textLength="224" lengthAdjust="spacingAndGlyphs">TESSERA</text>
-  ${txt(W / 2, 331, 11, "STUDIO", { fam: "Cinzel", w: 800, ls: 11, fill: C.cream })}
-  ${txt(W / 2, 346, 8.4, p.sub[lang], { w: 500, fill: "#ffd8a8", ls: 0.4, extra: subFit(p.sub[lang], 8.4) })}
+  <g>${stars}</g>
+  <rect width="${W}" height="${H}" fill="url(#${id}glow)" opacity=".7"/>
+  <circle cx="160" cy="84" r="42" fill="${C.sodium}" opacity=".3" filter="url(#${id}b4)"/>
+  <circle cx="160" cy="84" r="16" fill="url(#${id}sun)" opacity=".9"/>
+  ${trzRibbon(id)}
+  <path d="M${f(fl[0])},${f(fl[1])}L${f(fr[0])},${f(fr[1])}" stroke="#f2eee3" stroke-width=".9" opacity=".8"/>
+  ${hot ? `<path d="${lineD}" fill="none" stroke="${C.magenta}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity=".6" filter="url(#${id}b3)"/>` : ""}
+  <path d="${lineD}" fill="none" stroke="#f2eee3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="${lineD}" fill="none" stroke="#fff" stroke-width="${hot ? 1.4 : 1}" stroke-linecap="round" opacity="${hot ? 1 : 0.6}"/>
+  ${trails.map((t) => t.svg).join("")}
+  ${hot ? own.svg : ""}
+  ${trzCar(id, ghostAt, { ghost: true })}
+  ${trzCar(id, carAt, { hot })}
+  <path d="M${f(cx + note.w / 2)},${cy + 6}L${f(crest[0])},${f(crest[1])}" stroke="${C.ink}" stroke-width="2.4" stroke-linecap="round" opacity=".45"/>
+  <path d="M${f(cx + note.w / 2)},${cy + 6}L${f(crest[0])},${f(crest[1])}" stroke="#f3c6ff" stroke-width="1.1" stroke-linecap="round"/>
+  <circle cx="${f(crest[0])}" cy="${f(crest[1])}" r="2.6" fill="${C.ink}" opacity=".45"/><circle cx="${f(crest[0])}" cy="${f(crest[1])}" r="1.8" fill="#e07af5"/>
+  <rect x="${cx}" y="${cy - 6}" width="${note.w}" height="12" rx="3" fill="${C.ink}" fill-opacity=".85" stroke="#e07af5" stroke-width=".7"/>
+  <path d="M${cx + 4},${cy - 1.2} q1.1,-1.2 2.2,0 t2.2,0 M${cx + 4},${cy + 1.4} q1.1,-1.2 2.2,0 t2.2,0" stroke="#e07af5" stroke-width=".75" fill="none"/>
+  ${txt(cx + 10.5, cy + 2, 6.6, note.word, { fam: "'Barlow Condensed'", w: 600, ls: 0.3, fill: "#f3c6ff", anchor: "start" })}
+  <path d="M${cx + 10.5},${cy + 3.6} h${note.w - 14.5}" stroke="#e07af5" stroke-width=".5" stroke-dasharray=".8 .9"/>
+  <rect y="250" width="${W}" height="150" fill="url(#${id}scrim)"/>
+  ${txt(W / 2, 30, 10, t1, { fam: "'Barlow Condensed'", w: 600, ls: 3.4 })}
+  ${txt(W / 2, 43, 10, t2, { fam: "'Barlow Condensed'", w: 600, ls: 3.4, fill: C.sodium })}
+  ${title(`fill="${C.orange}" opacity=".55" filter="url(#${id}b4)"`)}
+  ${title(`fill="${C.magenta}" opacity=".85" transform="translate(2 3)"`)}
+  ${title(`fill="url(#${id}title)"`)}
+  <rect x="96" y="330" width="24" height="1.6" fill="#b36bff"/><rect x="123" y="330" width="24" height="1.6" fill="#2fbf71"/><rect x="150" y="330" width="24" height="1.6" fill="#e5c22b"/>
+  ${txt(W / 2, 346, 8, p.sub[lang], { w: 500, fill: C.amber, ls: 0.3, extra: subFit(p.sub[lang], 8) })}
   ${billing(361, p.bill[lang], { width: 232, size: 13.5 })}
   ${footer(lang, p, { y: 386 })}
-  ${grainRect(id + "g", 0.15)}
+  ${grainRect(id + "g", 0.16)}
 </symbol>`;
 }
 
@@ -514,7 +685,7 @@ function expenses(p, lang, id, hot = false) {
 </symbol>`;
 }
 
-const ART = { dot: dotfiles, tes: tessera, atl: atlas, exp: expenses };
+const ART = { dot: dotfiles, trz: trazada, atl: atlas, exp: expenses };
 const posterId = (p, lang, hot) => `ps-${p.key}-${lang}${hot ? "-hot" : ""}`;
 
 /** One poster as an SVG <symbol> (viewBox 270 x 400) and its id, for drawing it inside a larger frame. */
@@ -527,8 +698,9 @@ export function posterSymbol(repo, lang, hot = false) {
 
 /**
  * One poster as a standalone SVG document, `width` x `height` pixels.
- * `hot`: the lit state, with the poster's prop in action (the dial turned
- * and the route lit, the lasers flared, the string glowing, the stamp down).
+ * `hot`: the lit state, with the poster's prop in action and every word in
+ * place (the beam on, the racing line burning and the trails lit, the
+ * string glowing, the stamp down).
  */
 export function posterSvg(repo, lang, { width = W, height = H, hot = false } = {}) {
   const { id, svg } = posterSymbol(repo, lang, hot);
@@ -540,7 +712,7 @@ export const POSTER_FONTS = [
   "Space Grotesk:wght@400;500;700",
   "JetBrains Mono:wght@400;500;700",
   "Big Shoulders Display:wght@800;900",
-  "Cinzel:wght@800;900",
+  "Barlow Condensed:ital,wght@0,600;1,800",
   "Oswald:wght@500;700",
   "Anton",
   "Six Caps",
