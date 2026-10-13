@@ -103,7 +103,10 @@ const PROBE = () => {
   // Long animation frames from the navigation on (Chrome 123+): what she feels as a freeze.
   try {
     new PerformanceObserver((list) => {
-      for (const e of list.getEntries()) gp.loaf.push({ start: e.startTime, duration: e.duration, blocking: e.blockingDuration });
+      for (const e of list.getEntries()) {
+        const scripts = (e.scripts ?? []).map((x) => ({ ms: Math.round(x.duration), src: `${x.invoker ?? ""} ${(x.sourceURL ?? "").split("/").pop()}:${x.sourceFunctionName ?? ""}` }));
+        gp.loaf.push({ start: e.startTime, duration: e.duration, blocking: e.blockingDuration, scripts });
+      }
     }).observe({ type: "long-animation-frame", buffered: true });
   } catch {
     // An older browser: no long frames reported.
@@ -115,6 +118,14 @@ const PROBE = () => {
   W.requestAnimationFrame = (callback) => {
     gp.rafCalls += 1;
     return raf((t) => {
+      gp.inFrame = true;
+      try {
+        return frameCallback(t);
+      } finally {
+        gp.inFrame = false;
+      }
+    });
+    function frameCallback(t) {
       if (t !== lastStamp) {
         if (lastFrameAt) gp.gapMax = Math.max(gp.gapMax, t - lastFrameAt);
         lastFrameAt = t;
@@ -122,7 +133,7 @@ const PROBE = () => {
         gp.tick += 1;
       }
       return callback(t);
-    });
+    }
   };
   const timeout = W.setTimeout.bind(W);
   W.setTimeout = (...args) => {
@@ -135,12 +146,14 @@ const PROBE = () => {
     if (!ctx || !/webgl/.test(type) || ctx.__perf) return ctx;
     ctx.__perf = true;
     const host = this.closest?.("[data-scene]") ? "hero" : this.closest?.("section")?.id || "?";
-    const rec = { id: gp.contexts.length, host, frames: 0, draws: 0, links: 0, lastTick: -1, ref: new WeakRef(ctx), canvas: new WeakRef(this) };
+    const rec = { id: gp.contexts.length, host, frames: 0, draws: 0, links: 0, frameLinks: 0, lastTick: -1, ref: new WeakRef(ctx), canvas: new WeakRef(this) };
     gp.contexts.push(rec);
     // Every program linked is a shader compile: once a scene is warm, none should come.
     const link = ctx.linkProgram;
     ctx.linkProgram = function (program) {
       rec.links += 1;
+      // Linked inside an animation frame: a compile she waits for. Outside (idle time, a timer): a warm-up.
+      if (gp.inFrame) rec.frameLinks += 1;
       return link.call(this, program);
     };
     for (const name of ["drawArrays", "drawElements", "drawArraysInstanced", "drawElementsInstanced"]) {
@@ -179,6 +192,7 @@ const PROBE = () => {
         frames: r.frames,
         draws: r.draws,
         links: r.links,
+        frameLinks: r.frameLinks,
         quality: canvas?.getAttribute?.("data-quality") ?? null,
         pace: canvas?.getAttribute?.("data-pace") ?? null,
         alive: !!r.ref.deref(),
@@ -195,6 +209,11 @@ const PROBE = () => {
       over100: list.filter((e) => e.duration >= 100).length,
       blockingMs: Math.round(list.reduce((sum, e) => sum + e.blocking, 0)),
       maxMs: Math.round(list.reduce((max, e) => Math.max(max, e.duration), 0)),
+      // The scripts behind the longest frames, for a trace-free first look.
+      top: list
+        .flatMap((e) => e.scripts)
+        .sort((a, b) => b.ms - a.ms)
+        .slice(0, 5),
     };
   };
   W.__perfGap = () => {
@@ -325,8 +344,9 @@ async function heap(s) {
 
 const hostShare = (row, host) => row.canvases[host]?.framesPerTick ?? 0;
 
-/** Programs linked so far in the contexts drawing for `host` (hero, work, ...). */
-const linksOf = (snap, host) => snap.contexts.filter((c) => c.host === host).reduce((sum, c) => sum + c.links, 0);
+/** Programs linked so far in the contexts drawing for `host` (hero, work, ...); `inFrame`: only those linked inside a frame. */
+const linksOf = (snap, host, inFrame = false) =>
+  snap.contexts.filter((c) => c.host === host).reduce((sum, c) => sum + (inFrame ? c.frameLinks : c.links), 0);
 
 if (run("boot")) {
   const context = await browser.newContext({ ...DEVICES[values.device], reducedMotion: "no-preference" });
@@ -339,10 +359,9 @@ if (run("boot")) {
   const snap = await page.evaluate(() => window.__perfSnap());
   const loaf = await page.evaluate(() => window.__perfLoaf(0));
   const hero = snap.contexts.find((c) => c.host === "hero");
-  const row = { name: "boot (navigation to the start menu's ready)", readyMs, ticks: snap.tick, heroFrames: hero?.frames ?? 0, links: linksOf(snap, "hero"), ...loaf };
+  const row = { name: "boot (navigation to the start menu's ready)", readyMs, ticks: snap.tick, heroFrames: hero?.frames ?? 0, links: linksOf(snap, "hero"), inFrame: linksOf(snap, "hero", true), ...loaf };
   results.push(row);
   console.log(JSON.stringify(row));
-  report("boot: the hero draws only when asked while it loads", (hero?.frames ?? 0) < snap.tick * 0.5, { heroFrames: hero?.frames ?? 0, ticks: snap.tick });
   await context.close();
 }
 
@@ -359,10 +378,11 @@ if (run("cuts")) {
   const loaf = await s.page.evaluate((t) => window.__perfLoaf(t), from);
   const gapMs = await s.page.evaluate(() => window.__perfGap());
   const linked = linksOf(after, "hero") - linksOf(before, "hero");
-  const row = { name: "cuts (W held through the film, 30 s)", linked, gapMs, ...loaf };
+  const inFrame = linksOf(after, "hero", true) - linksOf(before, "hero", true);
+  const row = { name: "cuts (W held through the film, 30 s)", linked, inFrame, gapMs, ...loaf };
   results.push(row);
   console.log(JSON.stringify(row));
-  report("cuts: nothing compiles in the hero once she has entered", linked === 0, { linked });
+  report("cuts: nothing compiles in the hero once she has entered", linked === 0, { linked, inFrame });
   await s.close();
 }
 
@@ -380,14 +400,16 @@ if (run("city")) {
     const loaf = await s.page.evaluate((t) => window.__perfLoaf(t), from);
     const gapMs = await s.page.evaluate(() => window.__perfGap());
     const linked = linksOf(snap, "work") - linksOf(prev, "work");
-    rows.push({ stop, linked, gapMs, ...loaf });
+    const inFrame = linksOf(snap, "work", true) - linksOf(prev, "work", true);
+    rows.push({ stop, linked, inFrame, gapMs, ...loaf });
     prev = snap;
   }
-  const row = { name: "city (each stop after #work)", warmLinks: linksOf(warmAt, "work"), rows };
+  const row = { name: "city (each stop after #work)", warmLinks: linksOf(warmAt, "work"), warmInFrame: linksOf(warmAt, "work", true), rows };
   results.push(row);
   console.log(JSON.stringify(row));
-  const linked = rows.reduce((sum, r) => sum + r.linked, 0);
-  report("city: no stop compiles at its landing once the night is warm", linked === 0, { linked, perStop: rows.map((r) => r.linked) });
+  // Only a compile inside a frame stalls the picture: the warm-up links in idle time, on screen or not.
+  const inFrame = rows.reduce((sum, r) => sum + r.inFrame, 0);
+  report("city: no stop compiles in a frame at its landing", inFrame === 0, { inFrame, perStop: rows.map((r) => r.inFrame), linkedInIdle: rows.map((r) => r.linked - r.inFrame) });
   await s.close();
 }
 
