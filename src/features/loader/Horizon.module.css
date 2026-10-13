@@ -25,8 +25,8 @@
  * in paint order: a stage over the picture's box (the page's .art), a size
  * container, and in it a frame that is the viewBox's rectangle as those
  * <svg>s lay it out; in the frame, the layers whose transform and opacity
- * the compositor animates, each over a drawing of the whole viewBox. The
- * stage clips as the one <svg> did, at the picture's box.
+ * the compositor animates, each over a drawing of its own part of the
+ * viewBox. The stage clips as the one <svg> did, at the picture's box.
  */
 .stage {
   position: absolute;
@@ -72,24 +72,36 @@
   }
 }
 
-/* A layer and its drawing fill the frame, so the drawing's coordinates are the picture's. */
+/*
+ * A layer is its box of the picture (horizon.ts `Box`, in viewBox units:
+ * --lx and --ly from its frame's corner, or the flock's, --lw and --lh),
+ * as big as what it draws, and its drawing fills it with that box as its
+ * viewBox, so the drawing's coordinates are still the picture's. Each layer
+ * filled the frame once: WebKit backs a composited layer by its box, not by
+ * what it paints, and a phone held about 95 screen-sized stores (some
+ * 750 MB) for a few stars, glints and birds.
+ */
 .twinkle,
 .drift,
 .shimmer,
 .sway,
 .flock,
-.flap,
+.flap {
+  position: absolute;
+  top: calc(var(--ly) * var(--u));
+  left: calc(var(--lx) * var(--u));
+  width: calc(var(--lw) * var(--u));
+  height: calc(var(--lh) * var(--u));
+}
+
+/* Its edges' anti-aliasing past the box still shows, up to the stage's edge, as in one <svg>. */
 .drawing {
   position: absolute;
   top: 0;
   left: 0;
+  display: block;
   width: 100%;
   height: 100%;
-}
-
-/* What lies past the viewBox (a cloud's tail, a swell) shows up to the stage's edge, as in one <svg>. */
-.drawing {
-  display: block;
   overflow: visible;
 }
 
