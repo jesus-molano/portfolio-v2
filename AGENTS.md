@@ -161,7 +161,14 @@ also exists as real DOM for keyboard and screen-reader users.
   one tick of GSAP's ticker: Lenis first (SmoothScroll), then the stages'
   ticks, then both canvases (`lib/frameTicker.ts`, tested, its `"stage"`
   and `"render"` phases; the canvases' frame driver below): neither
-  canvas runs R3F's own requestAnimationFrame loop beside it.
+  canvas runs R3F's own requestAnimationFrame loop beside it, nor the
+  character select its own. The page's offset is read once a frame,
+  right after `lenis.raf` and before anything of the frame is written
+  (`scroll/frameScroll.ts`, tested), and the stages' ticks (the hero, the
+  select, the city) draw from that reading; a gate that puts the page
+  back in the frame reads it again. Each stage asked the page itself,
+  after the one before had written its styles, and every such read laid
+  the page out mid-frame. Event handlers still read the page themselves.
 
 ## Structure
 
@@ -244,7 +251,8 @@ also exists as real DOM for keyboard and screen-reader users.
 - `src/features/hero` — the hero: stage, title, canvas, scroll bridge and the
   3D scene (`scene/`), with GLSL in `shaders/`.
   - The car never moves. `scene/drive.ts` holds the shared distance that the
-    road, palms, traffic and wheels read; `DriveClock` advances it.
+    road, palms, traffic and wheels read (the state itself in
+    `scene/driveState.ts`, without three.js); `DriveClock` advances it.
   - The hero is a film the visitor scrubs (`scroll/story.ts`, unit tested
     with a model of real scrollers in `scroll/testing/scrollerModel.ts`).
     The page scroll is the picture: camera, cuts, title, bars, cards and
@@ -289,7 +297,13 @@ also exists as real DOM for keyboard and screen-reader users.
     Xiaomi); pinch zoom stays, and a scroller inside pans as ever; it
     lets go under reduced motion and on iOS while a text selection is up
     (`gate.ts` touchHeld: Lenis leaves a stroke landing near the
-    selection's ends to the browser, which must be free to pan it);
+    selection's ends to the browser, which must be free to pan it), and
+    it is set only on a device that can touch (`gate.ts` touchCapable:
+    a touch screen or any coarse pointer, read again when that changes,
+    and from the first touch of a device that never said so): its
+    touch-action reaches every element, and a mouse-only desktop
+    restyled the whole page at every section boundary for strokes that
+    never come;
     below the hero, every wall open (the career city's too: a closed one
     there is gated like the hero's, and a fling's momentum within 1.5 s
     of the lift is still hers, never navigation), a stroke is the
@@ -486,7 +500,10 @@ also exists as real DOM for keyboard and screen-reader users.
     career city's; measured with the viewport, once
     the fonts have arrived and when the subtitle size changes, never in
     the frame, and measured again in its fitted box until it settles:
-    balance re-wraps a narrower box onto other breaks, `settleFits`);
+    balance re-wraps a narrower box onto other breaks, `settleFits`; the
+    hero keeps each card's fitted height then, for the hold note above
+    it, which it read in the frame at every new card, laying the page
+    out there);
     the reading bar and then the marker sit under the block, never in
     the text. Her first
     input is answered in place of the title hint ("You have the wheel",
@@ -552,7 +569,8 @@ also exists as real DOM for keyboard and screen-reader users.
     hang over the next section's chapter card (after the end of the
     drive, Skip or a deep link). `scroll/film.ts` only lays the cards out on the film
     (`buildTimeline`).
-  - Film progress cuts between the shots in `scene/shots.ts`; `CameraRig`
+  - Film progress cuts between the shots in `scene/shots.ts` (where the
+    cuts fall, `scene/shotTiming.ts`, without three.js); `CameraRig`
     evaluates the pose. `HeroStage` draws the title, letterbox, subtitle
     cards, HUD and fade to night from the same film position every tick.
   - Subtitle cards come from `hero.lines` in the dictionaries: one array of
@@ -1071,7 +1089,9 @@ also exists as real DOM for keyboard and screen-reader users.
   the frame with a board, PwC's blade, where a tap plays the next line),
   and the aim's corners follow that quad by transform only (container
   units of the frame, never `left`/`top`: a layout shift per move;
-  `layoutShift.test.ts`).
+  `layoutShift.test.ts`), each a layer of its own while it shows (painted
+  in with the page, every move drew its two shadows again), none while
+  hidden.
   The film opens on the chapter card «Historia principal» / "Main story"
   (the game's main storyline, as STATS's main missions are; ribbon
   «Trayectoria · 2018 — LIVE» / "Career · 2018 — LIVE"), held 1.2 s
@@ -1107,13 +1127,15 @@ also exists as real DOM for keyboard and screen-reader users.
   years live on the board. The cues (scroll, swipe, click, pedal, Space,
   Skip) are the hero's own words, `common.cues`, shared by both stages.
   Its subtitle cards are the hero's (one block, balanced, fitted by
-  `hero/fitCards.ts`, the reading bar and the marker under the block) and
+  `hero/fitCards.ts`, the reading bar and the marker under the block; the
+  bar thickens under a push by a transform, as the hero's, never by its
+  height, which laid it out every frame for half a second a push) and
   stand with their cue over the night cover and the dip, so a line
   played as the picture dips reads at full strength. The HUD
   names the section as its ribbon does («Trayectoria» / "Career"). On a
   portrait screen a stop whose art holds the top left of its shots puts
-  the HUD and the super on the right (`phoneCaptions` in
-  `night/direction.ts`, `data-caption-side`; copies on the right fade in as
+  the HUD and the super on the right (`PHONE_CAPTIONS` in
+  `night/captions.ts`, `data-caption-side`; copies on the right fade in as
   the left ones fade out, never moved there: a layout shift): PwC, whose blade's C stands
   over the readerboard, left of the car, in every reading shot.
   The city drives with the hero's pedal (`Pedal.tsx`, the same button,
@@ -1137,7 +1159,15 @@ also exists as real DOM for keyboard and screen-reader users.
   its minimum fade times over a cut (below). The chapter card has a
   layer of its own (`will-change`), since its fade and rise as the drive
   starts repainted the whole sign every frame (100 to 400 ms frames
-  on a slow device at every pass through the top of the city).
+  on a slow device at every pass through the top of the city); the
+  opening's night cover has one only while it lifts (`data-lifting`),
+  where every step of its fade repainted the whole screen's gradient.
+  Its frame rests while the stage is more than a screen below everything
+  on screen, its walls closed or not (`scroll/farRest.ts`): it ran in
+  full through the hero and the select above it from the moment she
+  entered. Its wall stays written for the input gate while it rests, and
+  the frame reads the page before it decides, so a jump onto the stage
+  runs its gate in the frame it lands.
   - Pacing and continuity, as polished as the hero: every drive between
     two stops is held (`workTimeline.ts` BEAT_SECONDS: each stop's
     `open` is its arrival, each `leave` its departure, both `hold` beats;
@@ -2209,11 +2239,17 @@ To add a track to a station:
   changed and stops once the load line is full, and its tip timer and
   resize listener stop once she has entered; the hero's and the city's
   frames return early more than a screen away from their stage with every
-  wall open and nothing in flight (`scroll/farRest.ts`, tested; a closed
-  wall always keeps the frame running); no ScrollTrigger; the radio's
+  wall open and nothing in flight, and a stage more than a screen below
+  everything on screen whatever its walls (`scroll/farRest.ts`, tested:
+  nothing reaches a wall down there but the page, and the frame reads the
+  page before it decides; nearer, a closed wall always keeps the frame
+  running); no ScrollTrigger; the radio's
   equalizer scales its bars (transform, a box-shadow on each bar) and the
   wheel's rim breathes only while the wheel is open; the title's letters
-  drop their reveal's `filter` once formed. Check with
+  drop their reveal's `filter` once formed, and the title its layers
+  once it has faded out (`data-gone`, `will-change: auto`; not
+  `visibility: hidden`, which took the page's heading out of the
+  accessibility tree and from the focus). Check with
   `tools/capture/perf.mjs`.
 - Where the page starts once she is in is `PageEntry` (in `HomeMain.tsx`),
   once the loading screen has given `<main>` back: a deep link
@@ -2264,6 +2300,25 @@ To add a track to a station:
   every visit revalidated each file, a round trip before the scene could
   use it. The page must stay readable without WebGL: real text in the
   DOM, CSS sky as fallback.
+- Three.js stays out of the page's first bundle: no module the page's own
+  client code imports statically builds a three.js object as it loads
+  (a shot's camera, the drive's scratch matrices, the night camera), and
+  a stage that needs a number from the scene reads it from a module that
+  imports nothing (`scene/shotTiming.ts` for the cuts,
+  `scene/driveState.ts` for the drive, `lib/random.ts` for
+  `createRandom`, `night/captions.ts` for the city's captions on a phone;
+  each re-exported where it lived). The stages' imports of those numbers
+  put three.js in the first bundle, parsed and run before hydration.
+  `src/app/[lang]/firstBundle.test.ts` walks the static imports from
+  every client component outside the scenes.
+- The islands far down the page that hold no wall and no passage,
+  `AchievementSky`, `ProjectsMarquee` and `BackToTop`, are each wrapped in
+  a `<Suspense>` with no fallback in their server parents: React hydrates
+  them after the page's first pass, in their own tasks (sooner if she
+  touches one), and the server's HTML is the same. Never the ones that
+  must be in place before the load screen lifts: `StatsTabs` (a deep
+  link's tab), `CharacterSelect` and `WorkStage` (their walls and
+  passages, `lib/navigate.ts`).
 - Nothing inside a Canvas re-renders when the frame loop, a cover, the
   scene's readiness or the load screen changes, nor at a cut (a slow
   device's step down reaches the root's pixel ratio at most): R3F's Canvas renders whatever it holds again at every render of
@@ -2285,8 +2340,10 @@ To add a track to a station:
   their count holds, `parts/instancedAttribute.ts`, tested).
 - Scroll progress flows through `heroProgress` (a mutable object), never
   through React state. `HeroStage` writes `target` from the page scroll
-  (the frame reads the page's offset after Lenis has written it, and no
-  element geometry; the stage is measured when the viewport changes),
+  (the frame reads the page's offset after Lenis has written it, the
+  frame's one reading, `scroll/frameScroll.ts`, and no element geometry;
+  the stage and its cards' heights are measured when the viewport, the
+  fonts or the subtitle size change),
   clamps it to the story frontier into `value`, and `useFrame` reads
   `value`.
 - Nothing in the page flow is sized with `vh`, `svh`, `lvh` or `dvh`:
@@ -2315,7 +2372,7 @@ To add a track to a station:
   fine pointer the tier no longer changes (`settleTier`, shared by both
   canvases): a desktop window narrowed under the phone width mid-film
   built the whole scene again in front of her.
-- Deterministic layouts use `createRandom(seed)` so screenshots are stable.
+- Deterministic layouts use `createRandom(seed)` (`lib/random.ts`) so screenshots are stable.
 
 ## Content map
 

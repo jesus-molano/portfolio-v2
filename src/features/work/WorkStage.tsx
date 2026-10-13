@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { motion } from "@/design/tokens";
 import { decay, ELASTIC, rubberBand, touchStretchMax } from "@/features/hero/scroll/elastic";
 import { type FarRestInput, restsFarAway } from "@/features/hero/scroll/farRest";
+import { frameScroll, refreshFrameScroll } from "@/features/hero/scroll/frameScroll";
 import { lenisMissed, type PageReading, pageScroll } from "@/features/hero/scroll/gate";
 import { type InputSource, recordInput, scrollGate, scrollInput } from "@/features/hero/scroll/heroProgress";
 import { PEDAL } from "@/features/hero/scroll/pedal";
@@ -30,7 +31,7 @@ import { meterRate } from "@/features/hero/scroll/throttle";
 import { markCut } from "@/features/hero/scene/qualityStore";
 import { getSceneLoading } from "@/features/hero/sceneLoading";
 import { getRadio } from "@/features/music/radio";
-import { DIRECTION } from "@/features/night/direction";
+import { PHONE_CAPTIONS } from "@/features/night/captions";
 import { NightCanvas } from "@/features/night/NightCanvas";
 import { type NightCoverInput, nightCovered } from "@/features/night/nightCover";
 import { getNightReadiness, night, setNightCovered, subscribeNightReadiness } from "@/features/night/nightState";
@@ -91,6 +92,9 @@ const CUE_IDLE = 1;
 const HOLDING_MS = 220;
 /** How often the board's hit area follows a moving camera (ms). */
 const HOTSPOT_MS = 100;
+/** The aim's corner properties, written by the frame (never built in it). */
+const CORNER_X = ["--c0x", "--c1x", "--c2x", "--c3x"] as const;
+const CORNER_Y = ["--c0y", "--c1y", "--c2y", "--c3y"] as const;
 /** The pedal's knock flash (ms), as in the hero. */
 const KNOCK_MS = 300;
 /** How long a push held at a drive's wall rides it on (ms; see the ride in update). */
@@ -257,19 +261,20 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       });
       const scrollFor = (p: number) => geom.top + p * geom.range;
       const progressFor = (y: number) => (y - geom.top) / geom.range;
-      // Where the page is, as the hero reads it (gate.ts): its own offset, drawn from Lenis' sub-pixel
-      // value while the two agree, and Lenis started again from the page when it missed a native move,
-      // so the picture is the page even under the browser's own fling.
+      // Where the page is, as the hero reads it (gate.ts): its own offset (in the frame, the frame's one
+      // reading, frameScroll.ts; an event reads the page itself), drawn from Lenis' sub-pixel value while
+      // the two agree, and Lenis started again from the page when it missed a native move, so the
+      // picture is the page even under the browser's own fling.
       const reading: PageReading = { page: 0, lenis: 0, gliding: false };
-      const readScroll = () => {
-        reading.page = window.scrollY;
+      const readScroll = (page = window.scrollY) => {
+        reading.page = page;
         if (!lenis) return reading.page;
         reading.lenis = lenis.scroll;
         reading.gliding = lenis.isScrolling === "smooth";
         if (lenisMissed(reading)) lenis.animatedScroll = lenis.targetScroll = reading.page;
         return pageScroll(reading);
       };
-      const scrollNow = readScroll;
+      const scrollNow = () => readScroll();
 
       const key = walls.map((w) => `${w.kind}:${w.from.toFixed(5)}`).join("|");
       if (kept.current?.key !== key) {
@@ -317,6 +322,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       let lastActive = -1;
       let lastStop = -1;
       let arm = DISARMED;
+      /** The arming's clock, one event written in place each frame. */
+      const tick: Extract<ArmEvent, { type: "tick" }> = { type: "tick", at: 0 };
       let quadPath = "";
       let quadPathAt = 0;
       /** The mouse's last place (client px; NaN before it moves): its place on the board is read again as the board moves under it. */
@@ -374,6 +381,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           scrollGate.pressure += Math.min(over, geom.vh * 0.3);
           scrollGate.pushedAt = now;
           lenis.scrollTo(max, { immediate: true, force: true });
+          // A tick after this one in the frame reads the page where it is now.
+          refreshFrameScroll();
         } else {
           // The scrollbar, find in page, an anchor or a screen reader's cursor: open up to where it landed.
           const landed = progressFor(scroll);
@@ -408,6 +417,17 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       /** The pedal (hero/scroll/pedalDriver.ts), created once the line step exists. */
       let driver: ReturnType<typeof createPedalDriver> | null = null;
       const drawnPedal = { lv: Number.NaN };
+      /** What the driver reads of the stage each tick, one object written in place. */
+      const pedalFrame = {
+        maxStep: STORY.maxStep,
+        end: 0,
+        wall: 0,
+        wallIndex: -1,
+        vh: 0,
+        atEnd: false,
+        backAt: Number.NEGATIVE_INFINITY,
+        frozen: false,
+      };
 
       /** What farRest.ts reads, filled each frame. */
       const farIn: FarRestInput = {
@@ -423,13 +443,16 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       };
       /** What nightCover.ts reads, filled each frame (the frame allocates nothing). */
       const coverIn: NightCoverInput = { ready: false, sceneIn: 0, endT: 0, dip: 0, warm: false };
-      const update = (deltaMs: number) => {
+      /** The first frame always runs: it sets the stop, the covers and every state the later ones only change. */
+      let drawnOnce = false;
+      const update = (deltaMs: number, page = window.scrollY) => {
         const now = performance.now();
         // The pedal lets go whenever its holder may be gone: the radio wheel opened, Lenis stopped, a lost keyup.
         driver?.watch(now, getRadio().wheel !== null || !lenis || lenis.isStopped);
-        const scroll = scrollNow();
-        // Far from the city with every wall open and nothing in flight (no dip settling either), the
-        // frame has nothing to do (farRest.ts).
+        const scroll = readScroll(page);
+        // More than a screen below everything on screen, whatever its walls (the hero and the select above
+        // it), or far from the city with every wall open and nothing in flight, the frame has nothing to do
+        // (farRest.ts), but for a dip still settling.
         farIn.wallsOpen = stageFrontierIndex(story) < 0;
         farIn.scroll = scroll;
         farIn.top = geom.top;
@@ -439,7 +462,23 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         farIn.sincePush = now - scrollGate.pushedAt;
         farIn.pedalDown = driver?.pedal.down ?? false;
         farIn.scrolling = Boolean(lenis?.isScrolling);
-        if (view.dip === 0 && restsFarAway(farIn)) return;
+        if (drawnOnce && view.dip === 0 && restsFarAway(farIn)) {
+          // Its wall stays where the input gate trims to (SmoothScroll), wherever the stage was measured to now.
+          const fr = stageFrontier(walls, story);
+          stageGate.maxScroll = Number.isFinite(fr) ? scrollFor(fr) : Number.POSITIVE_INFINITY;
+          // What the frame would have settled to out of sight, where the page is: the picture's place (no
+          // rewind read on the way back), no line up off the film, the chapter card over the night above
+          // the stage and gone below it, no press's carry riding from this far, and the canvas asleep on
+          // its last picture, so the cover holds until it has drawn again once the stage is back on screen
+          // (wakeFrom). A jump onto a stop finds the stage as if it had run all along.
+          lastP = clamp01(Math.min(progressFor(scroll), fr));
+          story.opacity.fill(0);
+          shownTitleOut = openingAt(timeline, lastP, openState).titleOut;
+          carry = null;
+          if (getNightReadiness() === "ready") wasCovered = true;
+          return;
+        }
+        drawnOnce = true;
         let dt = Math.min(Math.max(0, deltaMs) / 1000, STORY.maxStep);
         const visible = document.visibilityState === "visible";
         if (visible && wasHidden) {
@@ -479,7 +518,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           night.stop = stop;
           fire({ type: "stopChanged" });
         }
-        fire({ type: "tick", at: now });
+        tick.at = now;
+        fire(tick);
         night.armed += (night.armTarget - night.armed) * (1 - Math.exp(-dt / ARM_TAU));
 
         // Held input: the active card gives a little under the push.
@@ -542,6 +582,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         if (wakeFrom >= 0 && night.frames <= wakeFrom) shownOpening = 0;
         else shownOpening = Math.min(opening, shownOpening + realDt / TITLE_MIN_FADE);
         set(el.fade, "opacity", (1 - shownOpening).toFixed(3));
+        // Its own layer only while it lifts: each opacity there repainted the whole screen's gradient.
+        attr(el.fade, "data-lifting", shownOpening > 0 && shownOpening < 1);
         // The letterbox slides away as the drive starts, as in the hero.
         const bars = Math.round(easeOutCubic(shownOpening) * 500) / 500;
         set(el.barTop, "transform", `translate3d(0, ${(-100 * bars).toFixed(1)}%, 0)`);
@@ -559,15 +601,16 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         // Between two stops the picture dips to night and back (dip.ts): the cut happens under it.
         set(el.dip, "opacity", dip.toFixed(3));
 
-        el.cards.forEach((card, i) => {
+        for (let i = 0; i < el.cards.length; i += 1) {
+          const card = el.cards[i];
           const opacity = story.opacity[i];
-          if (opacity === 0 && drawnOpacity[i] === 0 && i !== active && i !== lastActive) return;
+          if (opacity === 0 && drawnOpacity[i] === 0 && i !== active && i !== lastActive) continue;
           drawnOpacity[i] = opacity;
           set(card, "opacity", opacity.toFixed(3));
           const y = i === active ? STORY.cardRise * (1 - opacity) - nudge : -STORY.cardRise * (1 - opacity);
           set(card, "transform", `translate3d(0, ${y.toFixed(2)}px, 0)`);
           attr(card, "data-active", i === active);
-        });
+        }
         if (active !== lastActive) {
           if (lastActive >= 0) attr(el.cards[lastActive], "data-ready", null);
           if (active >= 0 && scrollInput.source === "key" && el.live) {
@@ -594,28 +637,32 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           el.supers.forEach((node, i) => attr(node, "data-active", i === stop));
           el.supersRight.forEach((node) => attr(node, "data-active", Number(node.dataset.superRight) === stop));
           el.articles.forEach((node, i) => attr(node, "data-active", i === stop));
-          // On a phone the captions give the top left to a stop's art that holds it (direction.ts phoneCaptions):
+          // On a phone the captions give the top left to a stop's art that holds it (night/captions.ts):
           // the right-hand copies fade in and the left ones out, so nothing moves (no layout shift).
-          attr(stage, "data-caption-side", DIRECTION[stop]?.phoneCaptions ?? null);
+          attr(stage, "data-caption-side", PHONE_CAPTIONS[stop] ?? null);
           lastStop = stop;
         }
         attr(stage, "data-chrome", showChrome);
-        timeline.stops.forEach((range, i) => {
+        for (let i = 0; i < timeline.stops.length; i += 1) {
+          const range = timeline.stops[i];
           const f = clamp01((p - range.from) / Math.max(1e-6, range.to - range.from));
           set(el.reel[i], "--fill", f.toFixed(3));
-        });
+        }
         attr(el.skip, "data-visible", inStage && p < endBeat.start && k >= 0);
 
         // The hotspot over the active board, and the reticle on its corners.
         const targetable = showChrome && dip < 0.35 && night.quadOnScreen && quadIsTargetable(night.quad, night.facing);
-        const path = targetable ? quadClipPath(night.quad) : "";
-        // The camera never quite rests (its hand-held life): the hit area follows it ten times a second, not every frame.
-        const toggled = Boolean(path) !== Boolean(quadPath);
-        if (path !== quadPath && el.hotspot && (toggled || now - quadPathAt > HOTSPOT_MS)) {
-          quadPath = path;
-          quadPathAt = now;
-          el.hotspot.style.clipPath = path || "none";
-          attr(el.hotspot, "data-live", Boolean(path));
+        // The camera never quite rests (its hand-held life): the hit area follows it ten times a second, not every
+        // frame, and its polygon is only written out when it may be applied.
+        const toggled = targetable !== Boolean(quadPath);
+        if (el.hotspot && (toggled || (targetable && now - quadPathAt > HOTSPOT_MS))) {
+          const path = targetable ? quadClipPath(night.quad) : "";
+          if (path !== quadPath) {
+            quadPath = path;
+            quadPathAt = now;
+            el.hotspot.style.clipPath = path || "none";
+            attr(el.hotspot, "data-live", Boolean(path));
+          }
         }
         if (!targetable && arm.via === "pointer") fire({ type: "pointermove", overQuad: false, resting: false });
         // The board moves under a still mouse (the scroll, the camera's hand-held life): its place on it moves too.
@@ -628,10 +675,11 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           // Its corners move with the camera, by transform (percent of the frame, read in container units):
           // written only while it shows, and never laid out again.
           if (shown || hint) {
-            night.quad.forEach(([x, y], i) => {
-              set(el.reticle, `--c${i}x`, (((x + 1) / 2) * 100).toFixed(1));
-              set(el.reticle, `--c${i}y`, (((1 - y) / 2) * 100).toFixed(1));
-            });
+            for (let i = 0; i < night.quad.length; i += 1) {
+              const [x, y] = night.quad[i];
+              set(el.reticle, CORNER_X[i], (((x + 1) / 2) * 100).toFixed(1));
+              set(el.reticle, CORNER_Y[i], (((1 - y) / 2) * 100).toFixed(1));
+            }
           }
           attr(el.reticle, "data-visible", shown);
           attr(el.reticle, "data-hint", hint);
@@ -755,7 +803,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       };
 
       // After Lenis and before the canvases (lib/frameTicker.ts): the night draws this frame's picture and cover.
-      const removeTick = addFrameTick("stage", (_time, deltaMs) => update(deltaMs));
+      const removeTick = addFrameTick("stage", (time, deltaMs) => update(deltaMs, frameScroll(time)));
       update(0);
 
       /**
@@ -819,16 +867,13 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           const target = progressFor(scrollNow());
           if (target < -0.02 || target > 1.02) return null;
           const end = scrollFor(1);
-          return {
-            maxStep: STORY.maxStep,
-            end,
-            wall: Math.min(stageGate.maxScroll, end),
-            wallIndex: stageFrontierIndex(story),
-            vh: geom.vh,
-            atEnd: night.p >= 0.999,
-            backAt,
-            frozen: false,
-          };
+          pedalFrame.end = end;
+          pedalFrame.wall = Math.min(stageGate.maxScroll, end);
+          pedalFrame.wallIndex = stageFrontierIndex(story);
+          pedalFrame.vh = geom.vh;
+          pedalFrame.atEnd = night.p >= 0.999;
+          pedalFrame.backAt = backAt;
+          return pedalFrame;
         },
         readScroll,
       });
@@ -1190,7 +1235,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         </div>
         <div className={`${styles.supers} ${styles.supersRight}`} aria-hidden="true">
           {STOPS.map((stop, i) =>
-            DIRECTION[i]?.phoneCaptions === "right" ? (
+            PHONE_CAPTIONS[i] === "right" ? (
               <p key={stop.id} className={styles.super} data-super-right={i}>
                 {work.stop} {String(stop.index).padStart(2, "0")}/{String(STOPS.length).padStart(2, "0")} · {work.stops[stop.id].h3}
                 <span className={styles.superLine}>{work.stops[stop.id].line}</span>

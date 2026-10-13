@@ -1,7 +1,11 @@
 import { Vector3 } from "three";
 import { CAR_POSITION } from "./drive";
 import { DRIVER_SEAT } from "./driverPose";
+import { SHOT_COUNT, shotIndexAt } from "./shotTiming";
 import { world } from "./world";
+
+// The cuts on the film, in a module without three.js for the stage's frame (shotTiming.ts).
+export { CUT_BAND, SHOT_COUNT, type ShotPick, shotIndexAt, stickyShot } from "./shotTiming";
 
 /**
  * The hero is a five-shot sequence cut on scroll, like a mission intro.
@@ -193,49 +197,6 @@ export const SHOTS: Shot[] = [
     },
   },
 ];
-
-export const SHOT_COUNT = SHOTS.length;
-
-export function shotIndexAt(progress: number): number {
-  return Math.min(SHOT_COUNT - 1, Math.max(0, Math.floor(progress * SHOT_COUNT)));
-}
-
-/** How far past a cut (film progress) the picture must go before it cuts (stickyShot). */
-export const CUT_BAND = 0.002;
-
-/** A shot and the film progress to show in it (stickyShot). */
-export type ShotPick = { shot: number; p: number };
-
-/**
- * Keeps the current shot until the progress is more than `band` past a
- * cut, clamping the progress into that shot, so a finger resting on the
- * glass at a cut never strobes between two shots. A jump of more than one
- * shot cuts at once. Writes into `out` when given, so a frame allocates
- * nothing.
- */
-export function stickyShot(
-  progress: number,
-  previous: number,
-  band = CUT_BAND,
-  out: ShotPick = { shot: 0, p: 0 },
-): ShotPick {
-  const natural = shotIndexAt(progress);
-  out.shot = natural;
-  out.p = progress;
-  if (previous < 0 || previous >= SHOT_COUNT || Math.abs(natural - previous) !== 1) return out;
-  if (natural > previous) {
-    const cut = (previous + 1) / SHOT_COUNT;
-    if (progress > cut + band) return out;
-    out.shot = previous;
-    out.p = Math.min(progress, cut - 1e-6);
-    return out;
-  }
-  const cut = previous / SHOT_COUNT;
-  if (progress < cut - band) return out;
-  out.shot = previous;
-  out.p = Math.max(progress, cut);
-  return out;
-}
 
 /** Local time (0..1) inside the shot at a film progress. */
 export function shotLocalTime(progress: number): number {

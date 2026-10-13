@@ -1,17 +1,25 @@
 /**
  * Whether a stage's frame (HeroStage, WorkStage) may skip its work this
- * frame: every wall of it open, the page more than a screen away from it
- * (above or below), and nothing of hers in flight. Down at the cinema or
- * the credits both stages still ran their whole frame sixty times a second,
- * story, dash and feedback included, for a picture nobody could see.
+ * frame. Down at the cinema or the credits both stages still ran their
+ * whole frame sixty times a second, story, dash and feedback included, for
+ * a picture nobody could see; and the career city, its walls closed until
+ * she has driven it, ran its whole frame through the hero and the
+ * character select above it, from the moment she entered.
  *
- * A closed wall always keeps the frame running, wherever the page is: the
- * same-frame pullback of a scrollbar drag or a find in page needs it. So
- * do a held pedal, a page in motion (Lenis gliding or the browser
- * scrolling), held input still decaying (`pressure`) and a push of the
- * last second: the frame runs again the moment any of them starts, or the
- * page comes within a screen of the stage, and it reads the page itself
- * before deciding.
+ * A stage more than a screen below everything on screen rests, whatever
+ * its walls, its motion or the pressure held: nothing of hers reaches a
+ * wall down there but the page itself, and the frame reads where the page
+ * is before it decides, so a jump onto the stage (a link, the scrollbar,
+ * find in page) runs its whole frame, gate included, in the frame it
+ * lands. Every other stage rests only with every wall of it open, the
+ * page more than a screen past it (or before it), and nothing of hers in
+ * flight: a closed wall keeps the frame running wherever the page is
+ * below its top, since the same-frame pullback of a scrollbar drag or a
+ * find in page needs it. So do a held pedal, a page in motion (Lenis
+ * gliding or the browser scrolling), held input still decaying
+ * (`pressure`) and a push of the last second: the frame runs again the
+ * moment any of them starts, or the page comes within a screen of the
+ * stage.
  */
 export type FarRestInput = {
   /** Every wall of the stage is open (its story complete or opened). */
@@ -35,8 +43,10 @@ export type FarRestInput = {
 export const PUSH_QUIET_MS = 1000;
 
 export function restsFarAway(input: FarRestInput): boolean {
+  const viewportBottom = input.scroll + input.vh;
+  // More than a screen below everything on screen: the page has to come to it first.
+  if (viewportBottom < input.top - input.vh) return true;
   if (!input.wallsOpen || input.pedalDown || input.scrolling) return false;
   if (input.pressure > 0 || input.sincePush < PUSH_QUIET_MS) return false;
-  const viewportBottom = input.scroll + input.vh;
-  return input.scroll > input.bottom + input.vh || viewportBottom < input.top - input.vh;
+  return input.scroll > input.bottom + input.vh;
 }

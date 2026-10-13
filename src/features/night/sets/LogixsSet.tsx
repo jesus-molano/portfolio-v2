@@ -65,6 +65,13 @@ const LENS_Y = [0.47, 0.12, -0.23] as const;
 const LENS_FRONT = SIGNAL[2] + 0.11;
 const LENS_OFF = ["#3a1820", "#3a2a14", "#14301f"] as const;
 const LENS_ON = [new Color("#ff3a5c").multiplyScalar(2.2), new Color("#4dffb0").multiplyScalar(2.2)] as const;
+/** The dark lenses and the light the crossing throws on the wall, built once: parsed from their strings every frame they were not. */
+const LENS_DARK = LENS_OFF.map((hex) => new Color(hex));
+const SIGNAL_RED = new Color("#ff3a5c").multiplyScalar(0.6);
+const SIGNAL_GREEN = new Color("#4dffb0").multiplyScalar(0.6);
+/** The pointer's and the tap's place on the board, written in place each frame (searchlight.ts reads them at once). */
+const POINTER_UV: [number, number] = [0, 0];
+const TAP_UV: [number, number] = [0, 0];
 /** The board (the hotspot's quad) on the wall, metres: the searchlight's pointer and tap land on it. */
 const BOARD: SpotArea = { x0: -9.5, x1: 7.0, y0: 0.6, y1: 4.4 };
 /**
@@ -125,6 +132,21 @@ const GIG = POSTERS[6];
 function setUniform(material: ShaderMaterial | null, name: string, value: number): void {
   const uniform = material?.uniforms[name];
   if (uniform) uniform.value = value;
+}
+
+/** Aims the searchlight in one set of uniforms (the set's lit surfaces, the wall's, the bills'), if it has them. */
+function aimSpot(
+  u: Record<string, { value: unknown }> | undefined,
+  from: Vector3,
+  axis: Vector3,
+  tan: number,
+  level: number,
+): void {
+  if (!u?.uSpotFrom) return;
+  (u.uSpotFrom.value as Vector3).copy(from);
+  (u.uSpotAxis.value as Vector3).copy(axis);
+  u.uSpotTan.value = tan;
+  (u.uSpotColor.value as Color).copy(SPOT_LIGHT).multiplyScalar(level);
 }
 
 function uvRect(rect: readonly number[]): [number, number, number, number] {
@@ -372,8 +394,18 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     setUniform(posterMaterial.current, "uTime", t);
     setUniform(posterMaterial.current, "uLiftExtra", 0.35 * night.armed);
     // Armed: a police helicopter's searchlight hunts along the wall, after the pointer, at a tap, or on its own.
-    const pointer: BoardUv | null = Number.isFinite(night.pointerU) && Number.isFinite(night.pointerV) ? [night.pointerU, night.pointerV] : null;
-    const tap: BoardUv | null = Number.isFinite(night.tapU) && Number.isFinite(night.tapV) ? [night.tapU, night.tapV] : null;
+    let pointer: BoardUv | null = null;
+    if (Number.isFinite(night.pointerU) && Number.isFinite(night.pointerV)) {
+      POINTER_UV[0] = night.pointerU;
+      POINTER_UV[1] = night.pointerV;
+      pointer = POINTER_UV;
+    }
+    let tap: BoardUv | null = null;
+    if (Number.isFinite(night.tapU) && Number.isFinite(night.tapV)) {
+      TAP_UV[0] = night.tapU;
+      TAP_UV[1] = night.tapV;
+      tap = TAP_UV;
+    }
     stepSearchlight(searchlight, BOARD, { armed: night.armTarget > 0, pointer, tap, dt: delta });
     const beam = spotBeam(searchlight, WALL_Z);
     spot.from.set(...beam.from);
@@ -381,13 +413,9 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     spot.axis.subVectors(spot.to, spot.from);
     const length = spot.axis.length();
     spot.axis.divideScalar(Math.max(length, 1e-3));
-    for (const u of [light, wallMaterial.current?.uniforms, posterMaterial.current?.uniforms]) {
-      if (!u?.uSpotFrom) continue;
-      (u.uSpotFrom.value as Vector3).copy(spot.from);
-      (u.uSpotAxis.value as Vector3).copy(spot.axis);
-      u.uSpotTan.value = beam.tan;
-      (u.uSpotColor.value as Color).copy(SPOT_LIGHT).multiplyScalar(beam.level);
-    }
+    aimSpot(light, spot.from, spot.axis, beam.tan, beam.level);
+    aimSpot(wallMaterial.current?.uniforms, spot.from, spot.axis, beam.tan, beam.level);
+    aimSpot(posterMaterial.current?.uniforms, spot.from, spot.axis, beam.tan, beam.level);
     // The shaft is always drawn (its program compiled with the set, never at arming); off, it discards.
     if (haze.current) {
       spot.q.setFromUnitVectors(spot.down, spot.axis);
@@ -430,9 +458,9 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
     const green = p >= beats.signal[0];
     glows.current?.setLevel(0, green ? 0 : 1);
     glows.current?.setLevel(1, green ? 1 : 0);
-    lenses.current[0]?.color.set(green ? LENS_OFF[0] : LENS_ON[0]);
-    lenses.current[2]?.color.set(green ? LENS_ON[1] : LENS_OFF[2]);
-    light.uSignalColor.value.set(green ? "#4dffb0" : "#ff3a5c").multiplyScalar(0.6);
+    lenses.current[0]?.color.copy(green ? LENS_DARK[0] : LENS_ON[0]);
+    lenses.current[2]?.color.copy(green ? LENS_ON[1] : LENS_DARK[2]);
+    light.uSignalColor.value.copy(green ? SIGNAL_GREEN : SIGNAL_RED);
   });
 
   return (

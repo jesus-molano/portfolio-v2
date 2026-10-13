@@ -24,9 +24,11 @@ import {
   steadyFling,
   strokeLift,
   strokeMove,
+  touchCapable,
   touchHeld,
   type PageReading,
 } from "./gate";
+import { takeFrameScroll } from "./frameScroll";
 import { recordInput, scrollDrive, scrollGate, scrollInput } from "./heroProgress";
 
 /**
@@ -374,6 +376,20 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       held = next;
       document.documentElement.toggleAttribute("data-touch-held", next);
     };
+    // Only a device that can touch holds the pan (gate.ts touchCapable), read again when that
+    // changes (a 2-in-1, the browser's touch emulation), and from the first touch of one that
+    // never said it could.
+    const coarse = window.matchMedia("(any-pointer: coarse)");
+    let canTouch = false;
+    const onPointers = () => {
+      canTouch = touchCapable(navigator.maxTouchPoints, coarse.matches);
+    };
+    onPointers();
+    coarse.addEventListener("change", onPointers);
+    const onTouch = () => {
+      canTouch = true;
+    };
+    window.addEventListener("touchstart", onTouch, { capture: true, passive: true });
     // A text selection on the page (iOS leaves strokes near its ends to the browser: gate.ts touchHeld).
     let selecting = false;
     const onSelection = () => {
@@ -387,6 +403,9 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       scrollDrive.step?.(deltaMs, lenis);
       for (const step of scrollDrive.steps) step(deltaMs, lenis);
       lenis.raf(time * 1000);
+      // The page's one reading of the frame, before anything of this frame is written: the stages'
+      // ticks draw from it (frameScroll.ts) instead of each asking the page after the last one's writes.
+      takeFrameScroll(time, window.scrollY);
       // The next stroke is Lenis' (the hero, a closed wall, the career city's film: gate.ts
       // browserStroke): the browser must not pan it. A phone too busy to answer a touch in time
       // gets its moves uncancelable (Chrome stops waiting), so they were never cancelled: the
@@ -395,17 +414,18 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       // ahead of the stroke (the compositor reads it at the touch, not the page) nothing pans,
       // however late the page answers. Pinch zoom stays.
       hold(
-        touchHeld(
-          !browserStroke(
-            lenis.animatedScroll,
-            scrollGate.heroEnd,
-            firstWall(scrollGate.maxScroll, selectGate.maxScroll, stageGate.maxScroll),
-            { from: stageGate.pinFrom, to: stageGate.pinTo },
-            lenis.isScrolling === "native",
+        canTouch &&
+          touchHeld(
+            !browserStroke(
+              lenis.animatedScroll,
+              scrollGate.heroEnd,
+              firstWall(scrollGate.maxScroll, selectGate.maxScroll, stageGate.maxScroll),
+              { from: stageGate.pinFrom, to: stageGate.pinTo },
+              lenis.isScrolling === "native",
+            ),
+            reducedRef.current,
+            selecting && (lenis as unknown as LenisTouch).isIos === true,
           ),
-          reducedRef.current,
-          selecting && (lenis as unknown as LenisTouch).isIos === true,
-        ),
       );
     };
     // First on the ticker: the hero then draws this frame's scroll, not the last one's.
@@ -414,6 +434,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
     return () => {
       gsap.ticker.remove(update);
       gsap.ticker.lagSmoothing(500, 33);
+      coarse.removeEventListener("change", onPointers);
+      window.removeEventListener("touchstart", onTouch, true);
       document.removeEventListener("selectionchange", onSelection);
       hold(false);
     };

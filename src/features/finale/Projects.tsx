@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ChapterCard, chapterVars } from "@/components/ChapterCard/ChapterCard";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { cq, PLATES, rectCq } from "./finaleLayout";
@@ -69,11 +70,14 @@ export function Projects({ dict, newTab, locale }: Props) {
       <ChapterCard id="projects-title" chapter={dict.chapter} lang={locale} className={styles.chapter} />
       <div className={styles.cinema}>
         <PlatePicture mood="night" locale={locale} className={styles.plate} />
-        <ProjectsMarquee
-          idle={[idleTop, idleBottom]}
-          showing={showing}
-          rowStyles={[rowVars(NIGHT, 0, sizes), rowVars(NIGHT, 1, sizes)]}
-        />
+        {/* Hydrated on its own, after the page's first pass: the server's letters show until then. */}
+        <Suspense>
+          <ProjectsMarquee
+            idle={[idleTop, idleBottom]}
+            showing={showing}
+            rowStyles={[rowVars(NIGHT, 0, sizes), rowVars(NIGHT, 1, sizes)]}
+          />
+        </Suspense>
         <div className={styles.strips} aria-hidden="true">
           <BulbStrips plates={NIGHT} />
         </div>

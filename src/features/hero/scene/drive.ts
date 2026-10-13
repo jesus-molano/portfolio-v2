@@ -1,21 +1,8 @@
 import { type InstancedMesh, Matrix4, Quaternion, Vector3 } from "three";
 import { world } from "./world";
 
-/**
- * The car drives on its own at constant speed; the world streams past it
- * (treadmill). Scroll never moves the car: it cuts between camera shots.
- *
- * Coherence rule: everything fixed to the ground moves toward +z by
- * `distance`. Instanced props use `wrapZ(z0 + distance, window)`; shaders
- * use `worldZ - distance` for their patterns (lane dashes, asphalt, sand,
- * water).
- */
-export const drive = {
-  /** Metres travelled since load. */
-  distance: 0,
-  /** Metres per second. */
-  speed: 18,
-};
+// The treadmill's state (distance and speed), in a module without three.js for the stage (driveState.ts).
+export { drive } from "./driveState";
 
 /**
  * Where the hero car sits in the world: right lane, never moves. Its group

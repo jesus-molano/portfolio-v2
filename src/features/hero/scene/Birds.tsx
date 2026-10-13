@@ -51,6 +51,14 @@ function createBirdGeometry(): BufferGeometry {
  */
 const FLOCK = { z: -115, y: 24, span: 220, period: 70 } as const;
 
+/** Each bird banks about its line of sight (the cameras look down -z). */
+const ROLL = new Vector3(0, 0, 1);
+/** Scratch for placing the flock every frame: the frame allocates nothing. */
+const matrix = new Matrix4();
+const quaternion = new Quaternion();
+const position = new Vector3();
+const scale = new Vector3();
+
 /** A loose, irregular flock crossing the sky slowly, right to left. */
 export function Birds({ animate, count = 11 }: Props) {
   const mesh = useRef<InstancedMesh>(null);
@@ -80,25 +88,21 @@ export function Birds({ animate, count = 11 }: Props) {
   );
 
   const place = (instanced: InstancedMesh, time: number) => {
-    const matrix = new Matrix4();
-    const quaternion = new Quaternion();
-    const roll = new Vector3(0, 0, 1);
-    const position = new Vector3();
-    const scale = new Vector3();
     const progress = (time % FLOCK.period) / FLOCK.period;
     const x = FLOCK.span / 2 - progress * FLOCK.span;
-    flock.forEach((bird, i) => {
+    for (let i = 0; i < flock.length; i += 1) {
+      const bird = flock[i];
       position.set(
         x + bird.dx,
         FLOCK.y + bird.dy + Math.sin(time * 0.7 + bird.bob) * 0.9,
         FLOCK.z + bird.dz,
       );
       // A slight, slowly changing bank, so no two birds look stamped.
-      quaternion.setFromAxisAngle(roll, bird.bank + Math.sin(time * 0.5 + bird.bob) * 0.12);
+      quaternion.setFromAxisAngle(ROLL, bird.bank + Math.sin(time * 0.5 + bird.bob) * 0.12);
       scale.setScalar(bird.scale);
       matrix.compose(position, quaternion, scale);
       instanced.setMatrixAt(i, matrix);
-    });
+    }
     instanced.instanceMatrix.needsUpdate = true;
   };
 

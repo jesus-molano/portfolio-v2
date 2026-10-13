@@ -11,7 +11,7 @@
  * Pure functions on a small mutable state; HeroStage steps them on the GSAP
  * ticker and SmoothScroll trims the page scroll to the frontier.
  */
-import { CUT_BAND, SHOT_COUNT } from "../scene/shots";
+import { CUT_BAND, SHOT_COUNT } from "../scene/shotTiming";
 import { type Beat, buildTimeline, type FilmTimeline, type ShotTiming } from "./film";
 
 export const STORY = {
