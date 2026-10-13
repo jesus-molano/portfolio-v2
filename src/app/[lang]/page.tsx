@@ -15,8 +15,10 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
   // The hero's models, named in the head so they download beside the page's own code: left to the
   // scene's chunk, they started only once every script had run, hydration had reached the canvas
   // and the chunk itself had come in. Asked for as three.js asks (cors, same-origin credentials), so
-  // its own fetch takes the preloaded response. Here, never in the layout: the 404 has no scene.
-  for (const { url, fetchPriority } of MODEL_PRELOADS) preload(url, { as: "fetch", crossOrigin: "anonymous", fetchPriority });
+  // its own fetch takes the preloaded response. At low priority, behind the page's own scripts:
+  // ahead of them, the driver's megabyte held up hydration and the start menu's keys on a slow link
+  // (modelUrls.ts). Here, never in the layout: the 404 has no scene.
+  for (const url of MODEL_PRELOADS) preload(url, { as: "fetch", crossOrigin: "anonymous", fetchPriority: "low" });
   const dict = await getDictionary(lang);
 
   return (

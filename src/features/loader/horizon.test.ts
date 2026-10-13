@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Horizon } from "./Horizon";
-import { buildHorizon, CAUSEWAY, LAYOUTS, project, TWINKLE_GROUPS } from "./horizon";
+import { type Box, boxAround, buildHorizon, CAUSEWAY, LAYER_PAD, LAYOUTS, pathPoints, project, TWINKLE_GROUPS } from "./horizon";
 
 /** The numbers in an SVG path, as points. */
 function points(d: string): { x: number; y: number }[] {
@@ -260,6 +260,82 @@ for (const layout of Object.values(LAYOUTS)) {
   });
 }
 
+/** An element's attributes in static markup, by name. */
+function attributes(tag: string): Record<string, string> {
+  return Object.fromEntries([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map((match) => [match[1], match[2]]));
+}
+
+/** An inline style's declarations, by property. */
+function declarations(style: string): Record<string, string> {
+  return Object.fromEntries(
+    style
+      .split(";")
+      .filter(Boolean)
+      .map((declaration) => [declaration.slice(0, declaration.indexOf(":")), declaration.slice(declaration.indexOf(":") + 1)]),
+  );
+}
+
+/** A layer's place in its parent (--lx, --ly, --lw, --lh), as a box. */
+function placeOf(style: Record<string, string>): Box {
+  return { x: Number(style["--lx"]), y: Number(style["--ly"]), w: Number(style["--lw"]), h: Number(style["--lh"]) };
+}
+
+/** What a drawing draws, each shape's extent with its stroke's half width. */
+function extents(drawing: string): Box[] {
+  return [...drawing.matchAll(/<(rect|circle|ellipse|path)\s([^>]*)>/g)].map(([, shape, tag]) => {
+    const a = attributes(tag);
+    const n = (name: string) => Number(a[name]);
+    if (shape === "rect") return { x: n("x"), y: n("y"), w: n("width"), h: n("height") };
+    if (shape === "circle") return { x: n("cx") - n("r"), y: n("cy") - n("r"), w: 2 * n("r"), h: 2 * n("r") };
+    if (shape === "ellipse") return { x: n("cx") - n("rx"), y: n("cy") - n("ry"), w: 2 * n("rx"), h: 2 * n("ry") };
+    const half = a["stroke-width"] ? n("stroke-width") / 2 : 0;
+    const box = boxAround(pathPoints(a.d));
+    return { x: box.x - half, y: box.y - half, w: box.w + 2 * half, h: box.h + 2 * half };
+  });
+}
+
+type Layer = { kind: string; style: Record<string, string>; viewBox: Box; drawn: Box[] };
+
+/** Every moving layer of a layout's markup, with the drawing over it; and the flock's place. */
+function layersOf(markup: string): { layers: Layer[]; flock: Box } {
+  const layers = [
+    ...markup.matchAll(/<span class="_(twinkle|drift|shimmer|sway|flap)_[^"]*" style="([^"]*)"><svg ([^>]*)>([\s\S]*?)<\/svg>/g),
+  ].map(([, kind, style, svg, drawing]) => {
+    const [x, y, w, h] = attributes(svg).viewBox.split(" ").map(Number);
+    return { kind, style: declarations(style), viewBox: { x, y, w, h }, drawn: extents(drawing) };
+  });
+  const flock = /<span class="_flock_[^"]*" style="([^"]*)">/.exec(markup);
+  return { layers, flock: placeOf(declarations(flock![1])) };
+}
+
+/** A transform origin's percentages, as a point of the picture on a layer over `box`. */
+function originPoint(origin: string, box: Box): { x: number; y: number } {
+  const [x, y] = origin.split(" ").map((share) => parseFloat(share) / 100);
+  return { x: box.x + x * box.w, y: box.y + y * box.h };
+}
+
+describe("a moving layer's box", () => {
+  it("reads every point a path names, its curves' control points too, and refuses what it would read wrong", () => {
+    expect(pathPoints("M1 2L3.5 -4Q5 6 7 8Z")).toEqual([
+      { x: 1, y: 2 },
+      { x: 3.5, y: -4 },
+      { x: 5, y: 6 },
+      { x: 7, y: 8 },
+    ]);
+    // An arc's flags and a relative command's offsets are no points.
+    expect(() => pathPoints("M0 0A5 5 0 1 0 10 0")).toThrow();
+    expect(() => pathPoints("M0 0l5 5")).toThrow();
+  });
+
+  it("holds its points, a pad past them, its edges rounded outward to tenths", () => {
+    expect(boxAround([{ x: 1.04, y: 2.3 }, { x: 3.21, y: 5 }], 1)).toEqual({ x: 0, y: 1.3, w: 4.3, h: 4.7 });
+    expect(boxAround([{ x: 2.3, y: 0.7 }, { x: 8.3, y: 1.1 }])).toEqual({ x: 2.3, y: 0.7, w: 6, h: 0.4 });
+    // A tenth is never pushed out to the next one by a float's last digit: (2.3 - 2) * 10 is 2.9999999999999982.
+    expect(boxAround([{ x: 2.3, y: 2.3 }], 2)).toEqual({ x: 0.3, y: 0.3, w: 4, h: 4 });
+    expect(() => boxAround([])).toThrow();
+  });
+});
+
 /*
  * The picture is a stack: its still parts are whole <svg>s the pages place
  * (`.art > svg[data-layout]`), and between them each moving group is HTML
@@ -301,6 +377,64 @@ describe("the start menu's picture, on the compositor", () => {
       expect(count("flock")).toBe(1);
       expect(count("flap")).toBe(scene.birds.length);
     });
+
+    /*
+     * WebKit backs a composited layer by its box, whatever it paints: with
+     * every layer as big as the frame, a phone held about 95 screen-sized
+     * stores for a few stars, glints and birds, and a wide screen 149.
+     */
+    it(`${layout.name}: sizes each layer to what it draws, its drawing's viewBox its box, so the picture is unchanged`, () => {
+      const { layers, flock } = layersOf(own);
+      expect(layers).toHaveLength(own.match(/class="_(twinkle|drift|shimmer|sway|flap)_/g)!.length);
+      const frame = layout.width * layout.height;
+      let area = (flock.w * flock.h) / frame;
+      for (const [i, layer] of layers.entries()) {
+        const where = `${layer.kind} ${i}`;
+        // The drawing's viewBox is the layer's box of the picture (a bird's from the flock's corner).
+        const place = placeOf(layer.style);
+        const within = layer.kind === "flap" ? flock : { x: 0, y: 0 };
+        expect({ x: place.x + within.x, y: place.y + within.y, w: place.w, h: place.h }, where).toEqual({
+          x: expect.closeTo(layer.viewBox.x, 6),
+          y: expect.closeTo(layer.viewBox.y, 6),
+          w: layer.viewBox.w,
+          h: layer.viewBox.h,
+        });
+        // It holds everything drawn on it, its stroke included, with room for the edges' anti-aliasing,
+        // and reaches no further than that room (and a tenth's rounding) past it.
+        expect(layer.drawn.length, where).toBeGreaterThan(0);
+        const x0 = Math.min(...layer.drawn.map((box) => box.x));
+        const y0 = Math.min(...layer.drawn.map((box) => box.y));
+        const x1 = Math.max(...layer.drawn.map((box) => box.x + box.w));
+        const y1 = Math.max(...layer.drawn.map((box) => box.y + box.h));
+        const { x, y, w, h } = layer.viewBox;
+        for (const room of [x0 - x, y0 - y, x + w - x1, y + h - y1]) {
+          expect(room, where).toBeGreaterThanOrEqual(LAYER_PAD - 0.01);
+          expect(room, where).toBeLessThanOrEqual(LAYER_PAD + 0.11);
+        }
+        area += (w * h) / frame;
+        // No layer is the picture: the stars' groups and the clouds' band are the largest.
+        expect(w * h, where).toBeLessThan(frame / 3);
+      }
+      // All of them together about one frame, where each was a frame of its own.
+      expect(area).toBeLessThan(1.5);
+    });
+
+    it(`${layout.name}: turns each layer about the point it turned about on the whole frame`, () => {
+      const { layers } = layersOf(own);
+      const at = (kind: string) => layers.filter((layer) => layer.kind === kind);
+      const near = (a: { x: number; y: number }, b: { x: number; y: number }, where: string) => {
+        expect(a.x, where).toBeCloseTo(b.x, 2);
+        expect(a.y, where).toBeCloseTo(b.y, 2);
+      };
+      // A glint, a swell or a ripple about its middle.
+      for (const [i, layer] of at("shimmer").entries()) {
+        const [stroke] = layer.drawn;
+        near(originPoint(layer.style["transform-origin"], layer.viewBox), { x: stroke.x + stroke.w / 2, y: stroke.y + stroke.h / 2 }, `shimmer ${i}`);
+      }
+      // A crown about the top of its trunk, a bird's wings where they hinge.
+      for (const [i, layer] of at("sway").entries()) near(originPoint(layer.style["transform-origin"], layer.viewBox), scene.palms[i].crown, `crown ${i}`);
+      for (const [i, layer] of at("flap").entries()) near(originPoint(layer.style["transform-origin"], layer.viewBox), scene.birds[i].pivot, `bird ${i}`);
+    });
   }
 });
 
@@ -315,6 +449,15 @@ describe("the moving groups lie on the picture as the pages place it", () => {
   const horizon = sheet("src/features/loader/Horizon.module.css");
   const tallStage = horizon.search(/\.stage\[data-layout="tall"\] \{\s*display: block;/);
   const { width, height, horizon: hy } = LAYOUTS.tall;
+
+  it("places each layer at its box of the picture, in the frame's units, its drawing filling it", () => {
+    expect(horizon).toMatch(
+      /\.twinkle,\s*\.drift,\s*\.shimmer,\s*\.sway,\s*\.flock,\s*\.flap \{\s*position: absolute;\s*top: calc\(var\(--ly\) \* var\(--u\)\);\s*left: calc\(var\(--lx\) \* var\(--u\)\);\s*width: calc\(var\(--lw\) \* var\(--u\)\);\s*height: calc\(var\(--lh\) \* var\(--u\)\);\s*\}/,
+    );
+    expect(horizon).toMatch(/\.drawing \{\s*position: absolute;\s*top: 0;\s*left: 0;\s*display: block;\s*width: 100%;\s*height: 100%;\s*overflow: visible;\s*\}/);
+    // Only the still <svg>s and the drawings fill their parents: no layer is as big as the frame.
+    expect([...horizon.matchAll(/([^{}]+)\{[^}]*width: 100%;[^}]*\}/g)].map((rule) => rule[1].trim())).toEqual([".scene", ".drawing"]);
+  });
 
   it("places each frame as the <svg>s lay out the viewBox: wide sliced from the right, tall from --horizon-y", () => {
     expect(tallStage).toBeGreaterThan(0);
