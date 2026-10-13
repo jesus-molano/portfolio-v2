@@ -1173,7 +1173,8 @@ also exists as real DOM for keyboard and screen-reader users.
   beat's pace with nine tenths of her wheel thrown away (the owner: «se
   ve muy laggeado»). A notch, flick or swipe held at the opening's walls
   (the title or the arrival) carries the page on to the first line at
-  the beats' own pace (the press's carry, WorkStage; a finger on the
+  the beats' own pace (the press's carry, WorkStage, `pushTake.ts`,
+  tested: only a push held there, on the stage; a finger on the
   glass holds it, any input event of hers lets it go, and so does a
   pedal held past a tap, whose letting go stops the picture; the held
   pedal's own frames do not), so one push brings the
@@ -1233,7 +1234,11 @@ also exists as real DOM for keyboard and screen-reader users.
   full through the hero and the select above it from the moment she
   entered. Its wall stays written for the input gate while it rests, and
   the frame reads the page before it decides, so a jump onto the stage
-  runs its gate in the frame it lands.
+  runs its gate in the frame it lands. Resting, it lets every push held
+  at the hero's walls or the select's go by (`passPush`), as it did when
+  it ran there: kept, the first frame back on the stage took one as a
+  push at the title wall, and after LOAD GAME, Back or a fragment the
+  city drove itself to the first line with no input of hers.
   - Pacing and continuity, as polished as the hero: every drive between
     two stops is held (`workTimeline.ts` BEAT_SECONDS: each stop's
     `open` is its arrival, each `leave` its departure, both `hold` beats;
@@ -1472,12 +1477,16 @@ also exists as real DOM for keyboard and screen-reader users.
   in turns (`artQueue.ts`, tested; `paintSet.ts`): one painter step per
   task, the stop she reaches soonest first (`stopRank`: along the film,
   never round, the stop ahead before the one behind), Logixs' wall a bill
-  at a time (`paintLogixsSteps`). A step for the stop on screen runs
-  after the next frame; any other waits for a quiet moment (`mayPaint`,
-  `PAINT_GATE`: an idle period with no scroll of hers, `scrollInput`, and
-  no move of the page in the last 200 ms, a second at most): a step is
-  50 to 600 ms on a phone, and a frame apart they landed as hitches all
-  through her drive into the city. Run
+  at a time (`paintLogixsSteps`). A step for the stop on screen or a
+  stop beside it (`nearStop`: the next she reaches, whichever way she
+  drives) runs after the next frame; one further off waits for a quiet
+  moment (`mayPaint`, `PAINT_GATE`: an idle period with no scroll of
+  hers, `scrollInput`, and no move of the page in the last 200 ms, a
+  second at most): a step is 50 to 600 ms on a phone, and a frame apart
+  they landed as hitches all through her drive into the city. With only
+  the stop on screen let through, a wheel that never stopped (back up
+  from STATS) left Logixs' wall a step a second, and she reached it bare
+  and watched it paint frame after frame. Run
   as each set's faces came in, all five painted in one task as the
   night mounted, up to twenty seconds without a frame on a slow phone. `palette.onAir` is the LIVE tally's red
   and nothing else's. Armed, Logixs' wall is hunted by a police

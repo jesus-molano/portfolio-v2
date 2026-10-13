@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { IdleScheduler } from "@/lib/idle";
-import { createArtQueue, createQuietWait, mayPaint, nextJob, PAINT_GATE, stopOrder, stopRank } from "./artQueue";
+import { createArtQueue, createQuietWait, mayPaint, NEAR_RANK, nearStop, nextJob, PAINT_GATE, stopOrder, stopRank } from "./artQueue";
 
 /** A queue whose steps run only when the test says so, the stop on screen's and the others' alike. */
 function manual() {
@@ -145,24 +145,63 @@ describe("the paint gate", () => {
     return { queue, now, waiting };
   }
 
-  it("paints the stop on screen after a frame, and makes every other wait for a quiet moment", () => {
+  it("paints the stop on screen after a frame, and makes every stop two or more away wait for a quiet moment", () => {
     const { queue, now, waiting } = split();
     const ran: string[] = [];
     let current = 0;
-    queue.paint(() => ran.push("pwc"), () => stopRank(1, current));
+    queue.paint(() => ran.push("cloud"), () => stopRank(2, current));
     expect(now).toHaveLength(0);
     expect(waiting).toHaveLength(1);
     expect(waiting[0].urgent()).toBe(false);
-    // She reaches PwC while it waits: it is the stop on screen now.
+    // She reaches PwC while it waits: Cloud District is the stop ahead now.
     current = 1;
     expect(waiting[0].urgent()).toBe(true);
     waiting.shift()?.run();
-    expect(ran).toEqual(["pwc"]);
-    queue.paint(() => ran.push("pwc again"), () => stopRank(1, current));
+    expect(ran).toEqual(["cloud"]);
+    queue.paint(() => ran.push("pwc"), () => stopRank(1, current));
     expect(now).toHaveLength(1);
     expect(waiting).toHaveLength(0);
     now.shift()?.();
-    expect(ran).toEqual(["pwc", "pwc again"]);
+    expect(ran).toEqual(["cloud", "pwc"]);
+  });
+
+  it("counts the stops beside the one on screen as near, whichever way she drives, and no other", () => {
+    for (let current = 0; current < 5; current += 1) {
+      for (let index = 0; index < 5; index += 1) {
+        expect(nearStop(stopRank(index, current))).toBe(Math.abs(index - current) <= 1);
+      }
+    }
+    // The stop behind is the furthest of the three.
+    expect(NEAR_RANK).toBe(stopRank(0, 1));
+  });
+
+  it("paints the whole of a board she is about to reach ahead of her, never a step a second, while she keeps scrolling", () => {
+    const { queue, now, waiting } = split();
+    const ran: string[] = [];
+    // Back up from STATS with the wheel, never still: Heuristik on screen, Logixs' wall (a dozen steps) next.
+    const current = 4;
+    function* wall() {
+      for (let bill = 1; bill < 12; bill += 1) {
+        ran.push(`bill ${bill}`);
+        yield;
+      }
+      ran.push("bill 12");
+      return "wall";
+    }
+    queue.paint(wall(), () => stopRank(3, current));
+    queue.paint(() => ran.push("cloud"), () => stopRank(2, current));
+    // Every step of the wall goes after a frame, one a task, before the stop two away.
+    for (let step = 1; step <= 12; step += 1) {
+      expect(waiting).toHaveLength(0);
+      expect(now).toHaveLength(1);
+      now.shift()?.();
+      expect(ran).toHaveLength(step);
+    }
+    expect(ran.at(-1)).toBe("bill 12");
+    // Then Cloud District, two stops away, waits for a quiet moment.
+    expect(now).toHaveLength(0);
+    expect(waiting).toHaveLength(1);
+    expect(waiting[0].urgent()).toBe(false);
   });
 
   it("paints the stop on screen first even when another was asked for earlier", () => {
