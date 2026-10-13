@@ -1,5 +1,5 @@
 /**
- * Shared state between the work stage (DOM, GSAP ticker) and the night
+ * Shared state between the work stage (DOM, the page's frame) and the night
  * scene (R3F frame loop). Plain mutable objects: nothing here goes through
  * React state on a frame.
  * - The stage writes the picture (`p`), the beat it plays and how armed

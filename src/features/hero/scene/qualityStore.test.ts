@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { COMMIT_MS, LAST_LEVEL, LEVELS } from "./degrade";
 import {
+  canStepDown,
   commitIfDue,
   getQuality,
   getServerQuality,
   lockStructure,
   markCut,
   qualityRuntime,
+  registerScreen,
   reportRefresh,
   requestDecline,
   resetQuality,
@@ -135,6 +137,38 @@ describe("qualityStore", () => {
     lockStructure();
     lockStructure();
     expect(calls).toBe(after + 1);
+    off();
+  });
+
+  it("skips the levels the canvases' screens draw the same, while they are registered", () => {
+    resetQuality();
+    seedFromRenderer(renderer(RTX));
+    lockStructure();
+    const off = registerScreen({ tier: "low", cssWidth: 390, cssHeight: 844, deviceRatio: 3 });
+    requestDecline(60, 0);
+    expect(getQuality().pending).toBe(3);
+    markCut(10);
+    expect(getQuality().level).toBe(3);
+    off();
+    requestDecline(60, 5000);
+    expect(getQuality().pending).toBe(4);
+  });
+
+  it("says whether a step down would change anything, without taking it", () => {
+    resetQuality();
+    seedFromRenderer(renderer(RTX));
+    lockStructure();
+    expect(canStepDown(60)).toBe(true);
+    expect(getQuality().pending).toBeNull();
+    const off = registerScreen({ tier: "low", cssWidth: 390, cssHeight: 844, deviceRatio: 3 });
+    for (let i = 0; i < 3; i++) {
+      requestDecline(60, i * 3000);
+      markCut(i * 3000 + 1);
+    }
+    expect(getQuality().level).toBe(5);
+    // Nothing below draws the phone differently; a fast display could still go to half rate.
+    expect(canStepDown(60)).toBe(false);
+    expect(canStepDown(144)).toBe(true);
     off();
   });
 

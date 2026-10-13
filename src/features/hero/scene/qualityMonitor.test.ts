@@ -85,6 +85,28 @@ describe("stepMonitor", () => {
     expect(declined).toBe(false);
   });
 
+  it("waits a second after a hitch, and after the gap of a rest (a hidden tab, a canvas back in view)", () => {
+    const m = newMonitor();
+    let now = 0;
+    now += 30_000;
+    expect(stepMonitor(m, { now, intervalMs: 30_000, expectedMs: VSYNC, skip: false })).toBe(false);
+    expect(m.quietUntil).toBe(now + MONITOR.hitchQuietMs);
+    // Every frame late after it, but none counted inside its second.
+    const after = run(m, { from: now, seconds: 0.9, every: 1 });
+    expect(after.declines).toEqual([]);
+    expect(m.samples).toBe(0);
+  });
+
+  it("steps down a canvas whose every frame takes longer than a hitch: only the first of a run is one", () => {
+    for (const frameMs of [300, 600, 1000]) {
+      const m = newMonitor();
+      const { declines } = run(m, { seconds: 8, every: 1, lateMs: frameMs, expectedMs: VSYNC });
+      expect(declines.length).toBeGreaterThan(0);
+      // The first second is the hitch's, then two bad windows.
+      expect(declines[0]).toBeLessThanOrEqual(MONITOR.hitchQuietMs + 3 * MONITOR.windowMs + frameMs * 2);
+    }
+  });
+
   it("learns nothing from skipped frames, and starts its window again after them", () => {
     // Bad frames, but every other second skipped: never two bad windows in a row.
     const skip = (now: number) => Math.floor(now / 1000) % 2 === 1;

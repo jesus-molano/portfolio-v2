@@ -1,10 +1,10 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { stableScreen } from "@/lib/screen";
 import type { QualityTier } from "../useQualityTier";
-import { pixelRatioFor, settingsFor } from "./degrade";
-import { getQuality, getServerQuality, subscribeQuality } from "./qualityStore";
+import { ratioOn, type Screen } from "./degrade";
+import { getQuality, getServerQuality, registerScreen, subscribeQuality } from "./qualityStore";
 
 /** The window as the canvases fill it: its width, the stable large screen's height and the screen's pixel ratio. */
 type Viewport = { width: number; height: number; ratio: number };
@@ -58,18 +58,17 @@ const getServerViewport = () => SERVER_VIEWPORT;
  * budget, floor and ceiling, degrade.ts) over the window it fills. The host
  * owns it, since R3F applies its Canvas's `dpr` prop again at every render
  * of the host; a bar-only resize on a phone changes nothing here
- * (lib/screen.ts), so the targets are never reallocated for it.
+ * (lib/screen.ts), so the targets are never reallocated for it. The screen
+ * is handed to the quality store too, so a step down skips the levels that
+ * would draw this canvas the same (degrade.ts `nextLevel`).
  */
 export function useCanvasDpr(tier: QualityTier): number {
   const level = useSyncExternalStore(subscribeQuality, getLevel, getServerLevel);
   const view = useSyncExternalStore(subscribeViewport, getViewport, getServerViewport);
-  const settings = settingsFor(tier, level);
-  return pixelRatioFor({
-    cssWidth: view.width,
-    cssHeight: view.height,
-    deviceRatio: view.ratio,
-    budgetPx: settings.budgetPx,
-    floor: settings.dprFloor,
-    ceil: settings.dprCeil,
-  });
+  const screen = useMemo<Screen>(
+    () => ({ tier, cssWidth: view.width, cssHeight: view.height, deviceRatio: view.ratio }),
+    [tier, view],
+  );
+  useEffect(() => registerScreen(screen), [screen]);
+  return ratioOn(screen, level);
 }

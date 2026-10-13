@@ -16,8 +16,13 @@ const SOFTWARE = /SwiftShader|llvmpipe|softpipe|Basic Render|Microsoft Basic|Sof
 /** Intel's plain integrated graphics, HD and UHD; Iris and Arc are more. */
 const INTEL_PLAIN = /Intel.*\bU?HD Graphics/i;
 const INTEL_MORE = /Iris|\bArc\b/i;
-/** Iris, and AMD's integrated Radeon (Ryzen's "Radeon(TM) Graphics", Vega). */
-const MID = /Iris|Radeon\(TM\) Graphics|Radeon Graphics|Vega/i;
+/**
+ * Iris, and AMD's integrated Radeon (Ryzen's "Radeon(TM) Graphics", "Vega 8
+ * Graphics"). Only the integrated naming: a bare "Vega" also took the
+ * discrete RX Vega and the Macs' Pro Vega for mid, and froze their post
+ * without its chromatic aberration for the visit.
+ */
+const MID = /Iris|Radeon\(TM\) Graphics|Radeon Graphics|Vega \d+ Graphics/i;
 /** Mesa's drivers (a Linux desktop, a Chromebook) and its software one. */
 const MESA = /Mesa|llvmpipe/i;
 /** The masked strings a browser gives instead of the GPU's own name. */

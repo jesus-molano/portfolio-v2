@@ -11,6 +11,11 @@ const STRINGS = {
   ryzen: "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001638) Direct3D11 vs_5_0 ps_5_0, D3D11)",
   mesaRyzen: "AMD Radeon Graphics (renoir, LLVM 15.0.7, DRM 3.49, 6.1.0)",
   vega: "ANGLE (AMD, AMD Radeon(TM) Vega 8 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  rxVega10: "ANGLE (AMD, Radeon RX Vega 10 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  mesaVega: "AMD Radeon Vega 8 Graphics (raven, LLVM 15.0.7, DRM 3.49, 6.1.0)",
+  rxVega: "ANGLE (AMD, Radeon RX Vega Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  proVega56: "ANGLE (AMD, AMD Radeon Pro Vega 56 OpenGL Engine, OpenGL 4.1)",
+  proVegaII: "AMD Radeon Pro Vega II",
   arc: "ANGLE (Intel, Intel(R) Arc(TM) A770 Graphics (0x000056A0) Direct3D11 vs_5_0 ps_5_0, D3D11)",
   swiftShader: "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
   llvmpipe: "llvmpipe (LLVM 15.0.7, 256 bits)",
@@ -49,6 +54,14 @@ describe("classifyRenderer", () => {
     expect(classifyRenderer(STRINGS.ryzen)).toBe("mid");
     expect(classifyRenderer(STRINGS.mesaRyzen)).toBe("mid");
     expect(classifyRenderer(STRINGS.vega)).toBe("mid");
+    expect(classifyRenderer(STRINGS.rxVega10)).toBe("mid");
+    expect(classifyRenderer(STRINGS.mesaVega)).toBe("mid");
+  });
+
+  it("starts AMD's discrete Vega cards at the top: RX Vega, the iMac Pro's and the Mac Pro's", () => {
+    expect(classifyRenderer(STRINGS.rxVega)).toBe("top");
+    expect(classifyRenderer(STRINGS.proVega56)).toBe("top");
+    expect(classifyRenderer(STRINGS.proVegaII)).toBe("top");
   });
 
   it("starts every other or unknown GPU at the top: the monitor catches a wrong guess", () => {

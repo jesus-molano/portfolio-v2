@@ -16,7 +16,7 @@ const reading = { time: Number.NaN, page: 0 };
 
 const pageNow = () => window.scrollY;
 
-/** The frame's reading, taken once Lenis has written the page; `time` is the frame's (GSAP's ticker time). */
+/** The frame's reading, taken once Lenis has written the page; `time` is the frame's (lib/frameTicker.ts). */
 export function takeFrameScroll(time: number, page: number): void {
   reading.time = time;
   reading.page = page;

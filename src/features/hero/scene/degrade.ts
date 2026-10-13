@@ -10,13 +10,14 @@ import type { GpuClass } from "./gpuHint";
  * two levels.
  *
  * In order: a cap on the pixels drawn (the canvas draws every pixel through
- * six to eight full-screen half-float passes, and a 4K screen at 150 % sent
+ * six to eight full-screen half-float passes, and a 4K screen at 150 % sends
  * 8.3 million of them through each), then, decided before she enters only,
  * chromatic aberration off and SMAA at its medium preset (both rebuild the
  * post's passes, so never mid-film: `Structure`), then lighter clouds (the
  * sky's fbm loses an octave and its self-shadow sample), then the depth of
  * field, and last of all fewer pixels than the screen has. Everything after
- * the structure is a uniform or the pixel ratio: no shader compiles.
+ * the structure is a uniform or the pixel ratio: no shader compiles. A step
+ * skips the levels that would change nothing on her screen (`nextLevel`).
  */
 export type Level = {
   /** Most pixels the canvas draws: its CSS area times the pixel ratio squared. */
@@ -33,8 +34,10 @@ export type Level = {
 };
 
 export const LEVELS: readonly Level[] = [
-  // Today's look: a 1440p screen at 125 % or a MacBook draws every pixel; a 4K one at 150 % is capped.
-  { budgetPx: 3.7e6, dprCeil: 1.5, dprFloor: 1, depthOfField: true, cloudOctaves: 5, cloudShadow: true },
+  // Today's look, every screen at its own ratio up to 1.5 and no budget: a budget here drew a 5K display,
+  // a MacBook or a 4K one at 200 % below its ratio for the whole visit, on a GPU that never dropped a
+  // frame. The cap is the first step, for a GPU that does.
+  { budgetPx: Number.POSITIVE_INFINITY, dprCeil: 1.5, dprFloor: 1, depthOfField: true, cloudOctaves: 5, cloudShadow: true },
   { budgetPx: 2.6e6, dprCeil: 1.5, dprFloor: 1, depthOfField: true, cloudOctaves: 5, cloudShadow: true },
   { budgetPx: 2.6e6, dprCeil: 1.5, dprFloor: 1, depthOfField: true, cloudOctaves: 4, cloudShadow: false },
   { budgetPx: 2.07e6, dprCeil: 1.25, dprFloor: 1, depthOfField: true, cloudOctaves: 4, cloudShadow: false },
@@ -154,14 +157,44 @@ export function seedQuality(
 /**
  * One step down. On a display of 118 Hz or more the first step is half
  * rate, which costs no detail at all; then one level at a time, down to the
- * last and never back up. A level waits (`pending`) for a cut to land under
- * (`shouldCommit`); a second decline before it lands steps from it.
+ * last and never back up: the next one that changes something on the
+ * canvases' screens (`nextLevel`), or none at all. A level waits
+ * (`pending`) for a cut to land under (`shouldCommit`); a second decline
+ * before it lands steps from it.
  */
-export function declineQuality(q: QualityState, hz: number | null, now: number): QualityState {
+export function declineQuality(
+  q: QualityState,
+  hz: number | null,
+  now: number,
+  screens: readonly Screen[] = [],
+): QualityState {
   if (hz !== null && hz >= HALF_RATE_HZ && !q.halfRate) return { ...q, halfRate: true };
-  const from = q.pending ?? q.level;
-  if (from >= LAST_LEVEL) return q;
-  return { ...q, pending: from + 1, declinedAt: q.declinedAt ?? now };
+  const to = nextLevel(q, q.pending ?? q.level, screens);
+  if (to === null) return q;
+  return { ...q, pending: to, declinedAt: q.declinedAt ?? now };
+}
+
+/**
+ * The first level below `from` that changes something: the post's
+ * structure, until she has entered, or what a canvas draws on its screen
+ * (`drawsAlike`); with no screen known, the next one. Null when none below
+ * does. Each step that changed nothing still landed, quieted the monitor
+ * for a second and waited for two more bad seconds: a phone that could not
+ * keep up reached its first fewer pixels three steps and about 14 s into
+ * the film, its first lines juddering all the while.
+ */
+export function nextLevel(
+  q: Pick<QualityState, "locked" | "structure">,
+  from: number,
+  screens: readonly Screen[],
+): number | null {
+  const nanGuard = q.structure.nanGuard;
+  for (let to = Math.max(0, from + 1); to <= LAST_LEVEL; to += 1) {
+    if (screens.length === 0) return to;
+    if (!q.locked && !sameStructure(structureFor(from, nanGuard), structureFor(to, nanGuard))) return to;
+    if (screens.some((screen) => !drawsAlike(screen, from, to))) return to;
+  }
+  return null;
 }
 
 /** Whether a pending decline lands now: a cut since it, or `COMMIT_MS` gone by. */
@@ -248,12 +281,45 @@ export function pixelRatioFor({
   return Math.max(lo, Math.round(snapped * 100) / 100);
 }
 
+/** A canvas's screen: the tier its scene is built for and the window it fills (useCanvasDpr). */
+export type Screen = { tier: QualityTier; cssWidth: number; cssHeight: number; deviceRatio: number };
+
+/** The pixel ratio a level draws a canvas at on its screen. */
+export function ratioOn(screen: Screen, level: number): number {
+  const s = settingsFor(screen.tier, level);
+  return pixelRatioFor({
+    cssWidth: screen.cssWidth,
+    cssHeight: screen.cssHeight,
+    deviceRatio: screen.deviceRatio,
+    budgetPx: s.budgetPx,
+    floor: s.dprFloor,
+    ceil: s.dprCeil,
+  });
+}
+
+/**
+ * Whether two levels draw a canvas the same on its screen: the same pixel
+ * ratio there (a phone keeps 1.5 under the first budget, a 1x screen keeps
+ * 1 down to the last levels), and the same of the detail its tier has (the
+ * low tier has no depth of field and three octaves at most).
+ */
+export function drawsAlike(screen: Screen, a: number, b: number): boolean {
+  const x = settingsFor(screen.tier, a);
+  const y = settingsFor(screen.tier, b);
+  return (
+    x.depthOfField === y.depthOfField &&
+    x.cloudOctaves === y.cloudOctaves &&
+    x.cloudShadow === y.cloudShadow &&
+    ratioOn(screen, a) === ratioOn(screen, b)
+  );
+}
+
 /**
  * How much smaller a grain clump is drawn than its `size`, in the canvas's
  * buffer pixels (FilmGrain.tsx): the pixel ratio drawn now over the one the
  * canvas drew at before the ladder had a pixel budget (the screen's own,
- * between 1 and 1.5). A canvas capped below its screen's ratio (a 4K
- * screen, a slow device's level) has fewer, larger buffer pixels, and grain
+ * between 1 and 1.5, level 0's). A canvas capped below its screen's ratio (a
+ * slow device's level on a large screen) has fewer, larger buffer pixels, and grain
  * sized in them came out coarser; scaled, a clump keeps its size on screen.
  */
 export function grainScale(drawnRatio: number, deviceRatio: number): number {

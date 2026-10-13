@@ -165,14 +165,20 @@ also exists as real DOM for keyboard and screen-reader users.
   does not support it yet), ESLint 9 (eslint-plugin-react does not support 10).
 - three `~0.186` (postprocessing requires `< 0.187`), `@react-three/fiber` 9,
   `@react-three/drei` 10, `@react-three/postprocessing` 3.
-- GSAP 3 + `@gsap/react` for timelines and the ticker; Lenis for smooth scroll
-  (no ScrollTrigger: nothing makes a trigger, and the plugin alone ran a
-  frame loop, a timer and a refresh on resize). One frame of the page is
-  one tick of GSAP's ticker: Lenis first (SmoothScroll), then the stages'
-  ticks, then both canvases (`lib/frameTicker.ts`, tested, its `"stage"`
-  and `"render"` phases; the canvases' frame driver below): neither
-  canvas runs R3F's own requestAnimationFrame loop beside it, nor the
-  character select its own. The page's offset is read once a frame,
+- GSAP 3 + `@gsap/react` for timelines (the title's reveal); Lenis for
+  smooth scroll (no ScrollTrigger: nothing makes a trigger, and the plugin
+  alone ran a frame loop, a timer and a refresh on resize). One frame of
+  the page is one requestAnimationFrame of its own (`lib/frameTicker.ts`,
+  tested): Lenis first (SmoothScroll, the `"scroll"` phase), then the
+  stages' ticks (`"stage"`), then both canvases (`"render"`; the
+  canvases' frame driver below): neither canvas runs R3F's own
+  requestAnimationFrame loop beside it, nor the character select its
+  own. It was a tick of GSAP's ticker, which dispatches at most 240 times
+  a second on Date.now's whole milliseconds: on a 300 Hz display it
+  skipped every fifth refresh, near 240 Hz one now and then, and the
+  canvases' monitor took the gaps for a GPU falling behind. GSAP's ticker
+  runs only its tweens, asleep between them, with its own lag smoothing
+  (what starts a tween made after a sleep at its beginning). The page's offset is read once a frame,
   right after `lenis.raf` and before anything of the frame is written
   (`scroll/frameScroll.ts`, tested), and the stages' ticks (the hero, the
   select, the city) draw from that reading; a gate that puts the page
@@ -674,14 +680,25 @@ also exists as real DOM for keyboard and screen-reader users.
     enters only) chromatic aberration and SMAA's high preset, then the
     clouds' fifth octave and shadow, pixels over 2.07 million, the depth of
     field, and last of all pixels under the screen's own (a floor of
-    0.85, then 0.7) and another octave. Level 0 is today's look; it only
-    caps a 4K screen at 150 % at 3.7 million pixels, which sent 8.3
-    million through every pass. The grain keeps its size on screen at any
+    0.85, then 0.7) and another octave. Level 0 is today's look, with no
+    pixel budget: every screen at its own ratio up to 1.5 (a budget there
+    drew a 5K display, a MacBook or a 4K screen at 200 % below its ratio
+    for the whole visit, on a GPU that never dropped a frame; a 4K screen
+    at 150 % sends 8.3 million pixels through every pass until its GPU
+    falls behind). A step skips the levels that would draw her screen the
+    same (`nextLevel`, `drawsAlike`: the pixel ratio there and the detail
+    the tier keeps, and before she enters the post's structure; each
+    canvas hands its screen to the store, `registerScreen` in
+    `useCanvasDpr`): a phone keeps 1.5 under the first budgets and has no
+    depth of field to lose, and each step that changed nothing still
+    waited for its cut and two more bad seconds, its first lines
+    juddering all the while. The grain keeps its size on screen at any
     ratio (`grainScale`). Where a
     visit starts comes from the renderer string, read locally (no network,
     no benchmark): Intel's plain HD and UHD low (level 4), Iris and the
-    integrated Radeon mid (2), a software rasteriser at the bottom (6),
-    every other or masked GPU at the top (0). The post's structure
+    integrated Radeon mid (2: "Radeon(TM) Graphics", "Vega 8 Graphics",
+    never a discrete RX Vega or Pro Vega), a software rasteriser at the
+    bottom (6), every other or masked GPU at the top (0). The post's structure
     (`Structure`: chromatic aberration and SMAA's high preset only for a
     visit starting on level 0 or 1; NanGuard in the night only on Mesa or a
     Linux that is not Android) follows the level until she enters and is
@@ -691,7 +708,10 @@ also exists as real DOM for keyboard and screen-reader users.
     fifth of its frames take more than 1.25 times the interval expected,
     the display's refresh times the pace, 60 Hz's until the rate is
     measured; two bad windows in a row step down, at most once every 2 s;
-    a frame over 250 ms is a hitch, not a level), and never one before she
+    a frame over 250 ms is a hitch, not a level, and quiets it for a
+    second, but only the first of a run: a canvas whose every frame took
+    longer, a masked renderer judged top on a weak GPU, never stepped
+    down), and never one before she
     has entered or in her first 2 s, under the load screen, in a hidden
     tab, in the first second after the canvas wakes, a level lands or the
     pace changes, or drawn on request: drei's PerformanceMonitor averaged
@@ -704,14 +724,21 @@ also exists as real DOM for keyboard and screen-reader users.
     below the top starts there; never at 100 Hz or less. A level lands
     under the next cut (`markCut`: HeroStage at a shot change, WorkStage
     at the bottom of a dip or under its cover) or 1.5 s after the step
-    anyway, its reallocated targets unseen, and never goes back up. A development build stays on level 0 with the full post and
+    anyway, its reallocated targets unseen, and never goes back up. React
+    applies the new pixel ratio in a microtask after the frame that drew at
+    the old one, and the resize clears the canvas: a canvas that is drawing
+    is drawn again at once, before the page paints (`redrawSoon`, from
+    `PacedRoot`'s size subscription: delta 0, never inside the render
+    phase or from a redraw's own frame, and only for a level landed since
+    the frame began: a window's resize lands in a task of its own, and the
+    next frame draws before the paint), or the cut showed a black frame. A development build stays on level 0 with the full post and
     never paces (captures stay comparable; `window.__vaQuality` forces a
     level, `window.__vaPace` a pace).
   - Frames (`frameDriver.ts`, its pure rules in `framePacing.ts`, both
     tested; a `PacedRoot` in each Canvas): both canvases run
     `frameloop="never"` for good and draw in the page's frame, after Lenis
     and the stages' ticks, in the same animation frame
-    (`lib/frameTicker.ts`): R3F's own loop ran beside GSAP's in whichever
+    (`lib/frameTicker.ts`): R3F's own loop ran beside the page's in whichever
     order the browser called the two, every change between drawing and
     resting went through a React render of the canvas, a frame or more
     late, and each started R3F's clock again from zero, so the clouds, the
@@ -732,12 +759,23 @@ also exists as real DOM for keyboard and screen-reader users.
     frame around the canvases that drew (the dev probes read pixels
     there). The pace is every refresh, or at half rate every second one of
     a display of 118 Hz or more, evenly (`paceDivisor`, `renderThisTick`;
-    240 Hz every fourth), while the page itself, Lenis and the cards, keeps
-    the display's rate. The display's rate is read from the frames in which
-    no canvas drew (`refreshFromIdle`: the 20th percentile of their
-    intervals, 30 at least; a frame that drew measures the GPU, not the
-    display), and read again as they come (another display, a power mode
-    holding the page at 30 frames a second). Each canvas carries
+    240 Hz every fourth, 300 every fifth, 360 every sixth), while the page
+    itself, Lenis and the cards, keeps the display's rate. The display's
+    rate is read from the frames in which no canvas drew
+    (`refreshFromIdle`: the 20th percentile of their intervals, 30 at
+    least, each between 1.5 and 50 ms; a frame that drew measures the GPU,
+    not the display), and read again as they come. At full pace no frame
+    is idle, so a step down is checked first when the rate was not read in
+    the last 10 s (`rateTrusted`; never one that would change nothing,
+    `canStepDown`): the canvases draw on every second frame
+    for a moment, twelve idle intervals read the rate again, and a new one
+    (`rateChanged`: another display, a panel dropped to 60 Hz on battery,
+    a power mode holding the page at 30 frames a second) is taken instead
+    of the step, since the frames were late only against the old one;
+    the same rate, or none read in 60 frames, steps down. A steady
+    cadence alone proves nothing: a GPU that takes 20 ms a frame at 60 Hz
+    shows each for two refreshes as a display at 30 Hz would, but its idle
+    frames still come every refresh. Each canvas carries
     `data-quality` and `data-pace`, written on change. A hidden frame
     (`warmFrame`, `isWarmFrame` while it draws) can compile under a cover
     without counting as a frame of the picture (the night's ReadyReporter

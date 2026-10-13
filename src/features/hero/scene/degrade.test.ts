@@ -6,10 +6,13 @@ import {
   TIER_MAX,
   commitQuality,
   declineQuality,
+  drawsAlike,
   forceLevel,
   grainScale,
   lockQuality,
+  nextLevel,
   pixelRatioFor,
+  ratioOn,
   seedQuality,
   settingsFor,
   settleTier,
@@ -39,7 +42,14 @@ describe("LEVELS", () => {
   });
 
   it("keeps today's look on level 0 and draws below the screen's resolution only at the bottom", () => {
-    expect(LEVELS[0]).toEqual({ budgetPx: 3.7e6, dprCeil: 1.5, dprFloor: 1, depthOfField: true, cloudOctaves: 5, cloudShadow: true });
+    expect(LEVELS[0]).toEqual({
+      budgetPx: Number.POSITIVE_INFINITY,
+      dprCeil: 1.5,
+      dprFloor: 1,
+      depthOfField: true,
+      cloudOctaves: 5,
+      cloudShadow: true,
+    });
     LEVELS.slice(0, 5).forEach((level) => expect(level.dprFloor).toBe(1));
     expect(LEVELS[LAST_LEVEL].dprFloor).toBeLessThan(1);
   });
@@ -132,6 +142,64 @@ describe("declineQuality", () => {
   });
 });
 
+describe("a step down on her screen", () => {
+  const phone = { tier: "low", cssWidth: 390, cssHeight: 844, deviceRatio: 3 } as const;
+  const desktop = { tier: "high", cssWidth: 1920, cssHeight: 1080, deviceRatio: 1 } as const;
+  const retina = { tier: "high", cssWidth: 1440, cssHeight: 900, deviceRatio: 2 } as const;
+  const entered = lockQuality(seed("top"));
+
+  it("compares what two levels draw there: the pixel ratio and the detail the tier keeps", () => {
+    expect(ratioOn(phone, 0)).toBe(1.5);
+    expect(ratioOn(retina, 1)).toBe(1.4);
+    expect(drawsAlike(phone, 0, 1)).toBe(true);
+    expect(drawsAlike(phone, 0, 2)).toBe(true);
+    expect(drawsAlike(phone, 0, 3)).toBe(false);
+    expect(drawsAlike(retina, 0, 1)).toBe(false);
+    expect(drawsAlike(desktop, 0, 1)).toBe(true);
+    expect(drawsAlike(desktop, 1, 2)).toBe(false);
+  });
+
+  it("goes straight to a phone's first fewer pixels once she is in, past the levels it draws the same", () => {
+    expect(nextLevel(entered, 0, [phone])).toBe(3);
+    expect(nextLevel(entered, 3, [phone])).toBe(5);
+    // Before she is in, the lighter post of level 2 is a change of its own.
+    expect(nextLevel(seed("top"), 0, [phone])).toBe(2);
+  });
+
+  it("skips what a 1x desktop draws the same: the first pixel caps", () => {
+    const path: number[] = [];
+    for (let from: number | null = 0; from !== null; from = nextLevel(entered, from, [desktop])) path.push(from);
+    expect(path).toEqual([0, 2, 4, 5, 6]);
+  });
+
+  it("takes a retina screen's pixels first", () => {
+    expect(nextLevel(entered, 0, [retina])).toBe(1);
+  });
+
+  it("steps as far as the first change on any canvas's screen", () => {
+    expect(nextLevel(entered, 0, [phone, retina])).toBe(1);
+  });
+
+  it("steps one level at a time while no screen is known", () => {
+    expect(nextLevel(entered, 0, [])).toBe(1);
+    expect(nextLevel(entered, LAST_LEVEL, [])).toBeNull();
+  });
+
+  it("leaves the state as it is when nothing below would change anything", () => {
+    const low = forceLevel(entered, 5);
+    expect(declineQuality(low, 60, 1000, [phone])).toBe(low);
+    const stepped = declineQuality(entered, 60, 1000, [phone]);
+    expect(stepped.pending).toBe(3);
+    expect(stepped.declinedAt).toBe(1000);
+  });
+
+  it("still goes to half rate first on a fast display", () => {
+    const q = declineQuality(entered, 144, 1000, [phone]);
+    expect(q.halfRate).toBe(true);
+    expect(q.pending).toBeNull();
+  });
+});
+
 describe("shouldCommit and commitQuality", () => {
   it("lands a decline under the next cut, or after COMMIT_MS anyway", () => {
     expect(shouldCommit(null, 5000, 5000)).toBe(false);
@@ -206,8 +274,24 @@ describe("pixelRatioFor", () => {
     expect(at(390, 844, 3, 0)).toBe(1.5);
   });
 
-  it("caps a large screen at the budget", () => {
-    expect(at(2560, 1440, 1.5, 0)).toBeCloseTo(1, 5);
+  it("draws every screen at its own ratio up to 1.5 on level 0, as before the ladder", () => {
+    // A 5K display, a Pro Display XDR, an iMac 24, a 4K screen at 200 % and 150 %, a MacBook Pro 16.
+    for (const [w, h, ratio] of [
+      [2560, 1335, 2],
+      [3008, 1600, 2],
+      [2240, 1155, 2],
+      [1920, 950, 2],
+      [2560, 1335, 1.5],
+      [1728, 1000, 2],
+    ]) {
+      expect(at(w, h, ratio, 0)).toBe(Math.min(Math.max(ratio, 1), 1.5));
+    }
+  });
+
+  it("caps a large screen at the budget from the first step down", () => {
+    expect(at(2560, 1440, 1.5, 1)).toBeCloseTo(1, 5);
+    expect(at(2560, 1335, 2, 1)).toBe(1);
+    expect(at(1728, 1000, 2, 1)).toBe(1.2);
     expect(at(1536, 864, 1.25, 5)).toBe(1);
   });
 

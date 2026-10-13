@@ -8,6 +8,7 @@ import {
   shouldCommit,
   startsAtHalfRate,
   type QualityState,
+  type Screen,
 } from "./degrade";
 import { classifyRenderer, needsNanGuard, rendererString } from "./gpuHint";
 
@@ -34,6 +35,8 @@ let seeded = false;
 /** performance.now() of the last cut or dip (markCut), or null. */
 let cutAt: number | null = null;
 const listeners = new Set<() => void>();
+/** The screens the canvases fill now (useCanvasDpr): a step down skips the levels that change nothing on them. */
+const screens = new Set<Screen>();
 
 /** What the frames read, kept in step with the state. */
 export const qualityRuntime = {
@@ -113,9 +116,26 @@ export function reportRefresh(hz: number | null) {
   if (!dev && seeded && !state.halfRate && startsAtHalfRate(state.gpu, hz)) set({ ...state, halfRate: true });
 }
 
-/** A monitor saw the canvas fall behind: one step down (half rate first on a fast display). */
+/**
+ * A monitor saw the canvas fall behind: one step down (half rate first on a
+ * fast display), to the next level that changes something on the screens
+ * the canvases fill (degrade.ts `nextLevel`), or none.
+ */
 export function requestDecline(hz: number | null, now: number) {
-  set(declineQuality(state, hz, now));
+  set(declineQuality(state, hz, now, [...screens]));
+}
+
+/** Whether a step down would change anything now: half rate, or a level that draws a screen differently. */
+export function canStepDown(hz: number | null): boolean {
+  return declineQuality(state, hz, 0, [...screens]) !== state;
+}
+
+/** A canvas fills this screen (its tier and window, useCanvasDpr) until the returned removal. */
+export function registerScreen(screen: Screen): () => void {
+  screens.add(screen);
+  return () => {
+    screens.delete(screen);
+  };
 }
 
 /**
@@ -166,6 +186,7 @@ export function resetQuality({ dev: asDev = false }: { dev?: boolean } = {}) {
   state = INITIAL;
   seeded = false;
   cutAt = null;
+  screens.clear();
   qualityRuntime.refreshHz = null;
   qualityRuntime.changedAt = Number.NEGATIVE_INFINITY;
   mirror();
