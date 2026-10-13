@@ -1770,18 +1770,36 @@ function atriumPanorama(ctx: Ctx, part: number) {
   frame(ctx, { bars: 1, colour: "#1e1626" });
 }
 
-/** The atlas: cells on a grid of ATLAS.cols x ATLAS.rows, painted once, deterministic. */
-export function paintWindows(): HTMLCanvasElement {
+/**
+ * The atlas a room at a time: each step paints one cell, and it yields the
+ * next cell's index between two (the night paints it in idle slices ahead
+ * of its mount, parts/Windows.tsx). The rooms come in the same order from
+ * the same seed, so the pixels are the same however it is stepped.
+ */
+export function* paintWindowsSteps(): Generator<number, HTMLCanvasElement, unknown> {
   const [canvas, ctx] = makeCanvas(WINDOW.w * ATLAS.cols, WINDOW.h * ATLAS.rows);
   const random = createRandom(1990);
-  PAINT.forEach((paint, i) => {
+  for (let i = 0; i < PAINT.length; i += 1) {
+    if (i > 0) yield i;
     ctx.save();
     ctx.translate((i % ATLAS.cols) * WINDOW.w, Math.floor(i / ATLAS.cols) * WINDOW.h);
     ctx.beginPath();
     ctx.rect(0, 0, WINDOW.w, WINDOW.h);
     ctx.clip();
-    paint(ctx, random);
+    PAINT[i](ctx, random);
     ctx.restore();
-  });
+  }
   return canvas;
+}
+
+/** Runs the rest of a stepped atlas to its end: the canvas. */
+export function finishWindows(steps: Generator<number, HTMLCanvasElement, unknown>): HTMLCanvasElement {
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** The atlas: cells on a grid of ATLAS.cols x ATLAS.rows, painted once, deterministic (in one go). */
+export function paintWindows(): HTMLCanvasElement {
+  return finishWindows(paintWindowsSteps());
 }

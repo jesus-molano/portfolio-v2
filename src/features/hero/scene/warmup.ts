@@ -66,14 +66,22 @@ export function warmKey(root: Object3D): string | null {
 
 /**
  * Uploads every texture the materials under `root` draw with, once each
- * (`seen`). One with nothing in it yet (an image still decoding, a render
- * target's own) is left for a later look. Returns how many it uploaded.
+ * (`seen`), at most `limit` of them (the night uploads one an idle slice:
+ * an atlas is a long upload on its own). One with nothing in it yet (an
+ * image still decoding, a render target's own) is left for a later look.
+ * Returns how many it uploaded.
  */
-export function uploadTextures(gl: Pick<WebGLRenderer, "initTexture">, root: Object3D, seen: WeakSet<Texture>): number {
+export function uploadTextures(
+  gl: Pick<WebGLRenderer, "initTexture">,
+  root: Object3D,
+  seen: WeakSet<Texture>,
+  limit = Number.POSITIVE_INFINITY,
+): number {
   const found = new Set<Texture>();
   eachMaterial(root, (material) => texturesOf(material, found));
   let uploaded = 0;
   for (const texture of found) {
+    if (uploaded >= limit) break;
     if (seen.has(texture) || texture.version === 0) continue;
     seen.add(texture);
     gl.initTexture(texture);

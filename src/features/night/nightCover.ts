@@ -9,8 +9,10 @@
  *   1), and closed from the end beat's end (`endT` 1);
  * - the opening cover still fully up (`sceneIn` 0: before the chapter
  *   card's beat plays), once the scene is ready and every
- *   stop has been warmed up (compiled and uploaded), since that warm-up
- *   runs in the frame loop.
+ *   stop has been warmed up (compiled, uploaded, its boards painted):
+ *   the warm-up runs in idle time drawing or not (Warmup), but what lands
+ *   until then (a model, a board) draws its first frame here, under the
+ *   cover, rather than as the cover lifts.
  */
 export type NightCoverInput = {
   /** The night scene has rendered its first settled frames. */

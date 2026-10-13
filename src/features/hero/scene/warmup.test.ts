@@ -94,6 +94,20 @@ describe("uploadTextures", () => {
     expect(uploadTextures(gl, root, seen)).toBe(1);
     expect(gl.initTexture).toHaveBeenLastCalledWith(empty);
   });
+
+  it("uploads at most as many as it is allowed, the rest at the next look", () => {
+    const geometry = new BoxGeometry();
+    const maps = [filled(), filled(), filled()];
+    const root = new Group();
+    for (const map of maps) root.add(new Mesh(geometry, new MeshStandardMaterial({ map })));
+    const gl = { initTexture: vi.fn() };
+    const seen = new WeakSet<Texture>();
+    expect(uploadTextures(gl, root, seen, 1)).toBe(1);
+    expect(uploadTextures(gl, root, seen, 1)).toBe(1);
+    expect(uploadTextures(gl, root, seen, 1)).toBe(1);
+    expect(uploadTextures(gl, root, seen, 1)).toBe(0);
+    expect(gl.initTexture.mock.calls.map(([texture]) => texture)).toEqual(maps);
+  });
 });
 
 describe("warmKey", () => {

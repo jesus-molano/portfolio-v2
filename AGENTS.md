@@ -709,7 +709,8 @@ also exists as real DOM for keyboard and screen-reader users.
     `data-quality` and `data-pace`, written on change. A hidden frame
     (`warmFrame`, `isWarmFrame` while it draws) can compile under a cover
     without counting as a frame of the picture (the night's ReadyReporter
-    leaves it out). Under reduced motion the hero is not driven: R3F's
+    leaves it out): the night's Warmup asks for one once every part is
+    warm, before the canvas has ever drawn. Under reduced motion the hero is not driven: R3F's
     "demand" draws its still frames.
   - Warm-up (`HeroWarmup.tsx`, `warmup.ts`, tested): behind the start menu
     the hero compiles every material, visible or not, as the composer
@@ -1200,11 +1201,16 @@ also exists as real DOM for keyboard and screen-reader users.
     never Madrid), the client is «Retech»; no "remote"; LIVE in English
     in both locales and only for Heuristik, whose stop shows role and
     dates only.
-- `src/features/night` — the night canvas under `#work`: mounted only near
+- `src/features/night` — the night canvas under `#work`: its code fetched
+  ahead in idle time (`prefetch.ts`, tested: once the hero has settled
+  and when LOAD GAME opens, never for a visitor saving data or under
+  reduced motion; one import, `loadNightScene`, feeds NightCanvas's
+  `dynamic()`, so the mount finds it in: fetched as the stage came near,
+  the chunk landed with the mount right as she chose him), mounted only near
   the stage (within 1.5 screens), never while the character select holds
   her (`setSelectHeld` in `selectWall.ts`: the city is out of her reach
   until she chooses, and its mount landed on a phone pushing at that
-  wall), and released only far from it (six
+  wall; the prefetch is the code alone, never the mount), and released only far from it (six
   screens: a pass back up into the hero's end keeps it, or the night came
   back under its cover, compiling, over the first stops), rendering only
   while it is on screen and not under the stage's own opaque night
@@ -1246,7 +1252,12 @@ also exists as real DOM for keyboard and screen-reader users.
   some left half lit), mirrored, dimmed or flickering like a television,
   and one reader in an armchair is the atlas' only person. A lobby is one
   room painted across its panes (`LOBBY`, the hotel's; `ATRIUM`, the
-  landmark's), never a framed copy per pane.
+  landmark's), never a framed copy per pane. The atlas is painted a room
+  per idle slice once the night's code is in (`paintWindowsSteps`, the
+  same rooms from the same seed as `paintWindows`; `paintWindowsAhead`),
+  and a mount that comes first paints what is left at once: painted in
+  the mount, it was one more long task in the commit that builds the five
+  sets.
   The car moves only with the scroll, but never step for step: `carAt`
   (`carPath.ts`) is its mark on the film, and the car chases that mark
   like a car driven smoothly (`carMotion.ts`, pure and tested; `CarDrive`
@@ -1335,22 +1346,38 @@ also exists as real DOM for keyboard and screen-reader users.
   stop's materials are compiled as the composer draws them
   (`compileAsComposed`, the hero's warm-up, `hero/scene/warmup.ts`:
   compiled for the screen, they were programs nothing drew, and every cut
-  compiled its stop again) and its textures uploaded ahead of its cut
-  (`Warmup` in `NightScene.tsx`, its target released with the canvas),
-  the next stop first; it keeps looking every 0.4 s of the page's clock
-  while the canvas draws (the scene's own clock stands still while it
-  rests): a set's art lands after its fonts and adds meshes or a texture
-  then (`warmKey`), and the set is warmed again. All five warm, nothing
-  loading and no board still on its way (`paintsPending` in
-  `paintSet.ts`: waiting for its faces, painting, or taken by its set
-  less than a frame ago) is `night.warm`: counted warm before its art
-  landed, the opening cover rested the canvas and the art was uploaded
-  at its cut. Board art is painted once per stop into canvases in
-  the site's fonts (`sets/art/`), in turns (`artQueue.ts`, tested;
-  `paintSet.ts`): one painter per task with a frame between, the stop
-  she reaches soonest first (`stopRank`: along the film, never round, the
-  stop ahead before the one behind), Logixs' wall a bill at a time
-  (`paintLogixsSteps`). Run
+  compiled its stop again) and its textures uploaded before she sees it
+  (`Warmup` in `NightScene.tsx`, its target released with the canvas), in
+  idle periods (`lib/idle.ts`, tested: as many steps as a period has room
+  for, one when it comes by its 0.5 s timeout) from the moment the night
+  mounts, drawing or not: a texture or a part a step, the shared street,
+  car and sky first (one group of their own), then the stops in the order
+  she reaches them (`stopOrder`, from `stopRank`). It ran in the frame
+  loop, so nothing warmed before the canvas drew, and her first frame of
+  the city compiled the whole of it in one long task as she scrolled in.
+  Every part warm before the canvas ever drew, it asks the frame driver
+  for one hidden frame (`warmFrame`, left out by ReadyReporter,
+  `night.frames` and the monitor), which compiles the post's passes and
+  uploads the stop's buffers, so the first frame she sees compiles
+  nothing. A part's art lands after its fonts and adds meshes or a
+  texture then (`warmKey`), and the part is warmed again: it looks every
+  0.4 s while anything is on its way, and once it has found everything
+  warm twice it rests until a model loads or a board is asked for or
+  lands (`onPaintsChange`). Every part warm, nothing loading and no board
+  still on its way (`paintsPending` in `paintSet.ts`: waiting for its
+  faces, painting, or taken by its set less than a frame ago) is
+  `night.warm`: counted warm before its art landed, the opening cover
+  rested the canvas and the art was uploaded at its cut. Board art is
+  painted once per stop into canvases in the site's fonts (`sets/art/`),
+  in turns (`artQueue.ts`, tested; `paintSet.ts`): one painter step per
+  task, the stop she reaches soonest first (`stopRank`: along the film,
+  never round, the stop ahead before the one behind), Logixs' wall a bill
+  at a time (`paintLogixsSteps`). A step for the stop on screen runs
+  after the next frame; any other waits for a quiet moment (`mayPaint`,
+  `PAINT_GATE`: an idle period with no scroll of hers, `scrollInput`, and
+  no move of the page in the last 200 ms, a second at most): a step is
+  50 to 600 ms on a phone, and a frame apart they landed as hitches all
+  through her drive into the city. Run
   as each set's faces came in, all five painted in one task as the
   night mounted, up to twenty seconds without a frame on a slow phone. `palette.onAir` is the LIVE tally's red
   and nothing else's. Armed, Logixs' wall is hunted by a police
