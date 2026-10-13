@@ -107,8 +107,8 @@ turned with her. Dante's swipe keeps his sit and lifts the right fore paw
 11 cm, forward, pads to the lens, with his ears flat sideways, his jaw
 open 16 degrees and his pupils round.
 
-Jesús (`tools/blender/lineup_man.py`) is the hero's driver model
-(`public/models/makehuman-driver/driver.glb`) with his aviators
+Jesús (`tools/blender/lineup_man.py`) is the hero's driver model (its
+source, `tools/models/source/makehuman-driver/driver.glb`) with his aviators
 (`public/models/sunglasses/aviator.glb`), dressed and lit like his STATS
 portrait (`build_stats_portrait.py`: skin, tee, hair shells, earring,
 lenses) and posed on one knee with two-bone IK in his own rig: his right

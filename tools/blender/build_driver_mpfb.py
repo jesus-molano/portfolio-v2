@@ -16,7 +16,9 @@ the bundled beards are AGPL).
 
 Writes <out_dir>/driver.blend, <out_dir>/driver.glb, textures in
 <out_dir>/tex and check renders in <out_dir>/renders. Use an out_dir outside
-the repository; only driver.glb is copied to public/models/makehuman-driver.
+the repository; only driver.glb goes on, to refine_driver_hair.py, whose
+output is tools/models/source/makehuman-driver/driver.glb (the page loads
+tools/models/compress.mjs's copy of that).
 """
 import json
 import math
