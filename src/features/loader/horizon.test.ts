@@ -1,5 +1,10 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { buildHorizon, CAUSEWAY, LAYOUTS, project } from "./horizon";
+import { Horizon } from "./Horizon";
+import { buildHorizon, CAUSEWAY, LAYOUTS, project, TWINKLE_GROUPS } from "./horizon";
 
 /** The numbers in an SVG path, as points. */
 function points(d: string): { x: number; y: number }[] {
@@ -190,6 +195,51 @@ for (const layout of Object.values(LAYOUTS)) {
       for (const bush of scene.islet.bushes) expect(bush.cy).toBeLessThanOrEqual(hy);
     });
 
+    it("twinkles its stars in a handful of phase groups, one layer each, never two neighbours on one clock", () => {
+      expect(TWINKLE_GROUPS).toBeGreaterThanOrEqual(6);
+      expect(TWINKLE_GROUPS).toBeLessThanOrEqual(8);
+      expect(scene.twinkles).toHaveLength(TWINKLE_GROUPS);
+      const twinkling = scene.stars.filter((star) => star.phase !== null);
+      expect(twinkling.length).toBeGreaterThanOrEqual(TWINKLE_GROUPS * 2);
+      expect(twinkling.length).toBeLessThan(scene.stars.length);
+      const apart = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+      for (let group = 0; group < TWINKLE_GROUPS; group += 1) {
+        const members = twinkling.filter((star) => star.phase === group);
+        // Spread over the sky: a group never blinks as a cluster.
+        expect(members.length, `group ${group}`).toBeGreaterThanOrEqual(2);
+        for (const a of members) for (const b of members) if (a !== b) expect(apart(a, b), `group ${group}`).toBeGreaterThan(W / 10);
+      }
+      for (const star of twinkling) {
+        const [nearest] = twinkling.filter((other) => other !== star).sort((a, b) => apart(a, star) - apart(b, star));
+        expect(nearest.phase, `the star at ${star.x}, ${star.y}`).not.toBe(star.phase);
+      }
+      // Each group at a pace of its own, 2 to 6 s a breath, as each star had.
+      expect(new Set(scene.twinkles.map((clock) => clock.dur)).size).toBe(TWINKLE_GROUPS);
+      for (const clock of scene.twinkles) {
+        expect(clock.dur).toBeGreaterThanOrEqual(2);
+        expect(clock.dur).toBeLessThanOrEqual(6);
+        expect(clock.delay).toBeLessThanOrEqual(0);
+        expect(clock.delay).toBeGreaterThanOrEqual(-4);
+      }
+    });
+
+    it("keeps the twinkling stars, drawn over the moon and its halo, clear of the moon", () => {
+      const { x, y, r } = layout.moon;
+      for (const star of scene.stars.filter((s) => s.phase !== null)) {
+        expect(Math.hypot(star.x - x, star.y - y)).toBeGreaterThan(r + star.r + 2);
+      }
+    });
+
+    it("flaps each bird about where its wings hinge: mid-span, 60 % down from the wings' peaks to their tips", () => {
+      for (const bird of scene.birds) {
+        const [tip, control, middle] = points(bird.d);
+        expect(Math.abs(bird.pivot.x - middle.x)).toBeLessThan(0.11);
+        // A quadratic's peak is halfway to its control point.
+        const peak = (tip.y + control.y) / 2;
+        expect(Math.abs(bird.pivot.y - (peak + (tip.y - peak) * 0.6))).toBeLessThan(0.15);
+      }
+    });
+
     it("keeps the moon whole in every window", () => {
       const { x, y, r } = layout.moon;
       for (const view of views) {
@@ -209,3 +259,78 @@ for (const layout of Object.values(LAYOUTS)) {
     });
   });
 }
+
+/*
+ * The picture is a stack: its still parts are whole <svg>s the pages place
+ * (`.art > svg[data-layout]`), and between them each moving group is HTML
+ * the compositor animates, placed by Horizon.module.css over the same
+ * picture. Chrome animates an SVG element on the main thread, repainting
+ * the whole drawing every frame, so no SVG element carries a motion.
+ */
+describe("the start menu's picture, on the compositor", () => {
+  const html = renderToStaticMarkup(createElement(Horizon));
+  // The wide layout's markup, then the tall one's, from the tag of its first part.
+  const tallFrom = html.lastIndexOf("<", html.indexOf('data-layout="tall"'));
+  const markup = { wide: html.slice(0, tallFrom), tall: html.slice(tallFrom) };
+  // Vitest names a CSS module's class `_<name>_<hash>`.
+  const MOVING = /<(\w+)[^>]*class="_(twinkle|drift|shimmer|sway|flock|flap)_/g;
+
+  for (const layout of Object.values(LAYOUTS)) {
+    const scene = buildHorizon(layout);
+    const own = markup[layout.name];
+
+    it(`${layout.name}: stacks the still <svg>s and the moving groups in paint order`, () => {
+      const stack = [...own.matchAll(new RegExp(`<(svg|div)[^>]*data-layout="${layout.name}"`, "g"))].map((match) => match[1]);
+      const palms = scene.palms.flatMap((_, i) => (i === 0 ? ["div"] : ["svg", "div"]));
+      // The sky, the twinkling stars, the clouds, the sun and the sea, the water's glints, the
+      // causeway and the headland, each palm's crown (the nearer trunk between), the grass, the birds.
+      expect(stack).toEqual(["svg", "div", "div", "svg", "div", "svg", ...palms, "svg", "div"]);
+      // Each group's frame is the layout's viewBox, its horizon where horizon.ts has it.
+      const frames = own.split(`style="--w:${layout.width};--h:${layout.height};--hy:${layout.horizon}"`).length - 1;
+      expect(frames).toBe(stack.filter((tag) => tag === "div").length);
+    });
+
+    it(`${layout.name}: moves HTML only, a layer per star group, glint, crown and bird`, () => {
+      const moving = [...own.matchAll(MOVING)];
+      expect(new Set(moving.map((match) => match[1]))).toEqual(new Set(["span"]));
+      const count = (kind: string) => moving.filter((match) => match[2] === kind).length;
+      expect(count("twinkle")).toBe(TWINKLE_GROUPS);
+      expect(count("drift")).toBe(1);
+      expect(count("shimmer")).toBeGreaterThan(scene.glitter.length + scene.swells.length);
+      expect(count("sway")).toBe(scene.palms.length);
+      expect(count("flock")).toBe(1);
+      expect(count("flap")).toBe(scene.birds.length);
+    });
+  }
+});
+
+describe("the moving groups lie on the picture as the pages place it", () => {
+  /** A stylesheet without its comments. */
+  const sheet = (file: string) => readFileSync(path.join(process.cwd(), file), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  /** The media query a rule at `at` sits in. */
+  const queryAt = (css: string, at: number) => {
+    const start = css.lastIndexOf("@media", at);
+    return css.slice(start, css.indexOf("{", start)).trim();
+  };
+  const horizon = sheet("src/features/loader/Horizon.module.css");
+  const tallStage = horizon.search(/\.stage\[data-layout="tall"\] \{\s*display: block;/);
+  const { width, height, horizon: hy } = LAYOUTS.tall;
+
+  it("places each frame as the <svg>s lay out the viewBox: wide sliced from the right, tall from --horizon-y", () => {
+    expect(tallStage).toBeGreaterThan(0);
+    expect(horizon).toMatch(/\.frame \{\s*--u: max\(100cqw \/ var\(--w\), 100cqh \/ var\(--h\)\);[^}]*top: calc\(50% - var\(--h\) \* var\(--u\) \/ 2\);\s*right: 0;/);
+    expect(horizon).toMatch(/\.stage\[data-layout="tall"\] \.frame \{\s*--u: calc\(100cqw \/ var\(--w\)\);\s*top: calc\(var\(--horizon-y\) - var\(--hy\) \* var\(--u\)\);/);
+  });
+
+  for (const page of ["src/features/loader/LoadingScreen.module.css", "src/app/[lang]/not-found.module.css"]) {
+    it(`${page} shows and places the layouts as Horizon.module.css does`, () => {
+      const css = sheet(page);
+      expect(css).toMatch(/\.art > svg\[data-layout="wide"\] \{\s*top: 0;\s*height: 100%;\s*\}/);
+      const tall = /\.art > svg\[data-layout="tall"\] \{\s*display: block;\s*top: calc\(var\(--horizon-y\) - ([\d.]+)cqw\);\s*height: ([\d.]+)cqw;\s*\}/.exec(css);
+      expect(tall).not.toBeNull();
+      expect(Number(tall![1])).toBeCloseTo((hy / width) * 100, 3);
+      expect(Number(tall![2])).toBeCloseTo((height / width) * 100, 3);
+      expect(queryAt(css, tall!.index)).toBe(queryAt(horizon, tallStage));
+    });
+  }
+});
