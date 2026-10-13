@@ -1326,7 +1326,9 @@ also exists as real DOM for keyboard and screen-reader users.
     dates only.
 - `src/features/night` — the night canvas under `#work`: its code fetched
   ahead in idle time (`prefetch.ts`, tested: once the hero has settled
-  and when LOAD GAME opens, never for a visitor saving data or under
+  and when LOAD GAME opens in the page (never under the start menu, where
+  running the module, one long task, landed as the dialog closed and the
+  menu's keys came back late), never for a visitor saving data or under
   reduced motion; one import, `loadNightScene`, feeds NightCanvas's
   `dynamic()`, so the mount finds it in: fetched as the stage came near,
   the chunk landed with the mount right as she chose him), mounted only near
