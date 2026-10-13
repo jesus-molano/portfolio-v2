@@ -9,7 +9,7 @@
  * check.
  *
  *   node tools/capture/perf.mjs [--url http://localhost:3000/en]
- *     [--device phone|desktop] [--only menu,hero,cover,rest,radio,layers,leak,load]
+ *     [--device phone|desktop] [--only boot,menu,hero,cuts,city,cover,rest,radio,layers,leak,load,pace]
  *     [--cycles 8] [--win 5000] [--out perf.json]
  *
  * Every WebGL context is counted from the inside (an init script wraps
@@ -19,6 +19,16 @@
  * layers), HeapProfiler (garbage collected before each heap reading).
  *
  * Checks:
+ * - boot: from the navigation to the start menu's ready, the long animation
+ *   frames (Long Animation Frames API), the programs each context linked and
+ *   the frames the hero drew: while it loads it draws only when asked.
+ * - cuts: once she has entered, through the film with W held, no program is
+ *   linked in the hero (every one was compiled behind the start menu), and
+ *   the long frames and the longest gap between two frames.
+ * - city: once the night is warm, no program is linked at any stop it lands
+ *   on (each stop compiled ahead of its cut), with the long frames per stop.
+ * - pace: the quality level and the pace each canvas draws at
+ *   (`data-quality`, `data-pace`): every frame at 60 Hz.
  * - menu: behind the start menu, once ready, the hero's canvas stops
  *   drawing after a few seconds, and the loader's own frame loop stops once
  *   its load line is full (no style writes on the screen).
@@ -88,14 +98,26 @@ const report = (name, ok, detail) => {
  */
 const PROBE = () => {
   const W = window;
-  const gp = { tick: 0, rafCalls: 0, timeouts: 0, contexts: [], audio: [] };
+  const gp = { tick: 0, rafCalls: 0, timeouts: 0, contexts: [], audio: [], loaf: [], gapMax: 0 };
   W.__perf = gp;
+  // Long animation frames from the navigation on (Chrome 123+): what she feels as a freeze.
+  try {
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) gp.loaf.push({ start: e.startTime, duration: e.duration, blocking: e.blockingDuration });
+    }).observe({ type: "long-animation-frame", buffered: true });
+  } catch {
+    // An older browser: no long frames reported.
+  }
+  // The longest gap between two animation frames since the last reset.
+  let lastFrameAt = 0;
   const raf = W.requestAnimationFrame.bind(W);
   let lastStamp = -1;
   W.requestAnimationFrame = (callback) => {
     gp.rafCalls += 1;
     return raf((t) => {
       if (t !== lastStamp) {
+        if (lastFrameAt) gp.gapMax = Math.max(gp.gapMax, t - lastFrameAt);
+        lastFrameAt = t;
         lastStamp = t;
         gp.tick += 1;
       }
@@ -113,8 +135,14 @@ const PROBE = () => {
     if (!ctx || !/webgl/.test(type) || ctx.__perf) return ctx;
     ctx.__perf = true;
     const host = this.closest?.("[data-scene]") ? "hero" : this.closest?.("section")?.id || "?";
-    const rec = { id: gp.contexts.length, host, frames: 0, draws: 0, lastTick: -1, ref: new WeakRef(ctx), canvas: new WeakRef(this) };
+    const rec = { id: gp.contexts.length, host, frames: 0, draws: 0, links: 0, lastTick: -1, ref: new WeakRef(ctx), canvas: new WeakRef(this) };
     gp.contexts.push(rec);
+    // Every program linked is a shader compile: once a scene is warm, none should come.
+    const link = ctx.linkProgram;
+    ctx.linkProgram = function (program) {
+      rec.links += 1;
+      return link.call(this, program);
+    };
     for (const name of ["drawArrays", "drawElements", "drawArraysInstanced", "drawElementsInstanced"]) {
       const draw = ctx[name];
       if (!draw) continue;
@@ -145,10 +173,35 @@ const PROBE = () => {
     timeouts: gp.timeouts,
     contexts: gp.contexts.map((r) => {
       const canvas = r.canvas.deref();
-      return { id: r.id, host: canvas?.closest?.("[data-scene]") ? "hero" : canvas?.closest?.("section")?.id || r.host, frames: r.frames, draws: r.draws, alive: !!r.ref.deref(), connected: !!canvas?.isConnected };
+      return {
+        id: r.id,
+        host: canvas?.closest?.("[data-scene]") ? "hero" : canvas?.closest?.("section")?.id || r.host,
+        frames: r.frames,
+        draws: r.draws,
+        links: r.links,
+        quality: canvas?.getAttribute?.("data-quality") ?? null,
+        pace: canvas?.getAttribute?.("data-pace") ?? null,
+        alive: !!r.ref.deref(),
+        connected: !!canvas?.isConnected,
+      };
     }),
     audio: gp.audio.map((context) => context.state),
   });
+  // The long frames since `from` (a performance.now() time): count, the summed blocking and the longest.
+  W.__perfLoaf = (from = 0) => {
+    const list = gp.loaf.filter((e) => e.start >= from);
+    return {
+      long: list.length,
+      over100: list.filter((e) => e.duration >= 100).length,
+      blockingMs: Math.round(list.reduce((sum, e) => sum + e.blocking, 0)),
+      maxMs: Math.round(list.reduce((max, e) => Math.max(max, e.duration), 0)),
+    };
+  };
+  W.__perfGap = () => {
+    const gap = gp.gapMax;
+    gp.gapMax = 0;
+    return Math.round(gap);
+  };
 };
 
 const browser = await chromium.launch({
@@ -271,6 +324,84 @@ async function heap(s) {
 }
 
 const hostShare = (row, host) => row.canvases[host]?.framesPerTick ?? 0;
+
+/** Programs linked so far in the contexts drawing for `host` (hero, work, ...). */
+const linksOf = (snap, host) => snap.contexts.filter((c) => c.host === host).reduce((sum, c) => sum + c.links, 0);
+
+if (run("boot")) {
+  const context = await browser.newContext({ ...DEVICES[values.device], reducedMotion: "no-preference" });
+  await context.addInitScript(PROBE);
+  const page = await context.newPage();
+  const t0 = Date.now();
+  await page.goto(values.url, { waitUntil: "commit" });
+  await page.waitForSelector('[data-loader][data-phase="ready"]', { timeout: 300_000 });
+  const readyMs = Date.now() - t0;
+  const snap = await page.evaluate(() => window.__perfSnap());
+  const loaf = await page.evaluate(() => window.__perfLoaf(0));
+  const hero = snap.contexts.find((c) => c.host === "hero");
+  const row = { name: "boot (navigation to the start menu's ready)", readyMs, ticks: snap.tick, heroFrames: hero?.frames ?? 0, links: linksOf(snap, "hero"), ...loaf };
+  results.push(row);
+  console.log(JSON.stringify(row));
+  report("boot: the hero draws only when asked while it loads", (hero?.frames ?? 0) < snap.tick * 0.5, { heroFrames: hero?.frames ?? 0, ticks: snap.tick });
+  await context.close();
+}
+
+if (run("cuts")) {
+  const s = await session();
+  await sleep(2500);
+  const before = await s.page.evaluate(() => window.__perfSnap());
+  const from = await s.page.evaluate(() => (window.__perfGap(), performance.now()));
+  // W held drives the film through every line at its reading pace, every cut on the way.
+  await s.page.keyboard.down("KeyW");
+  await sleep(30_000);
+  await s.page.keyboard.up("KeyW");
+  const after = await s.page.evaluate(() => window.__perfSnap());
+  const loaf = await s.page.evaluate((t) => window.__perfLoaf(t), from);
+  const gapMs = await s.page.evaluate(() => window.__perfGap());
+  const linked = linksOf(after, "hero") - linksOf(before, "hero");
+  const row = { name: "cuts (W held through the film, 30 s)", linked, gapMs, ...loaf };
+  results.push(row);
+  console.log(JSON.stringify(row));
+  report("cuts: nothing compiles in the hero once she has entered", linked === 0, { linked });
+  await s.close();
+}
+
+if (run("city")) {
+  const s = await session();
+  await sleep(1500);
+  await land(s.page, "#work", 10_000);
+  const warmAt = await s.page.evaluate(() => window.__perfSnap());
+  const rows = [];
+  let prev = warmAt;
+  for (const stop of ["#work-pwc", "#work-cloud", "#work-logixs", "#work-heuristik", "#work-army"]) {
+    const from = await s.page.evaluate(() => (window.__perfGap(), performance.now()));
+    await land(s.page, stop, 6000);
+    const snap = await s.page.evaluate(() => window.__perfSnap());
+    const loaf = await s.page.evaluate((t) => window.__perfLoaf(t), from);
+    const gapMs = await s.page.evaluate(() => window.__perfGap());
+    const linked = linksOf(snap, "work") - linksOf(prev, "work");
+    rows.push({ stop, linked, gapMs, ...loaf });
+    prev = snap;
+  }
+  const row = { name: "city (each stop after #work)", warmLinks: linksOf(warmAt, "work"), rows };
+  results.push(row);
+  console.log(JSON.stringify(row));
+  const linked = rows.reduce((sum, r) => sum + r.linked, 0);
+  report("city: no stop compiles at its landing once the night is warm", linked === 0, { linked, perStop: rows.map((r) => r.linked) });
+  await s.close();
+}
+
+if (run("pace")) {
+  const s = await session();
+  await sleep(3000);
+  const snap = await s.page.evaluate(() => window.__perfSnap());
+  const hero = snap.contexts.find((c) => c.host === "hero");
+  const row = { name: "pace (the hero's quality level and pace)", quality: hero?.quality ?? null, pace: hero?.pace ?? null };
+  results.push(row);
+  console.log(JSON.stringify(row));
+  report("pace: every frame at 60 Hz", hero?.pace === null || hero?.pace === "1", row);
+  await s.close();
+}
 
 if (run("menu")) {
   const s = await session({ enter: false });
