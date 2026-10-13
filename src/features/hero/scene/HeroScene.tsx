@@ -18,6 +18,7 @@ import { DevHandle } from "./DevHandle";
 import { DriveClock } from "./DriveClock";
 import { Effects } from "./Effects";
 import { Haze } from "./Haze";
+import { HeroWarmup } from "./HeroWarmup";
 import { Landmark } from "./Landmark";
 import { LoadReporter } from "./LoadReporter";
 import { Palms } from "./Palms";
@@ -119,7 +120,9 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
       // as the box moves with the page, re-renders the whole scene tree about twenty times a second.
       resize={{ scroll: false }}
       frameloop={frameloop}
-      gl={{ antialias: false, powerPreference: "high-performance", alpha: false, stencil: false }}
+      // No depth on the canvas's own buffer: the composer draws the scene into its own target, with its
+      // own depth, and only a full-screen pass ever reaches the screen.
+      gl={{ antialias: false, powerPreference: "high-performance", alpha: false, stencil: false, depth: false }}
       camera={{
         fov: world.camera.fov,
         near: 0.2,
@@ -130,6 +133,8 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
         // Read by the ToneMapping effect; the materials themselves stay
         // linear (flat) so bloom sees real HDR values.
         state.gl.toneMappingExposure = LIGHT.exposure;
+        // Production skips reading each program's logs back on its first use (a wait on the driver each).
+        state.gl.debug.checkShaderErrors = process.env.NODE_ENV !== "production";
         onCreated?.(state);
       }}
       aria-hidden
@@ -148,6 +153,7 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
       ) : null}
       <DevHandle />
       <LoadReporter />
+      <HeroWarmup />
       <DriveClock animate={animate} />
       <CameraRig parallax={high && animate} reducedMotion={reducedMotion} />
       <Sky tier={tier} animate={animate} />

@@ -57,8 +57,9 @@
     color-mix(in srgb, var(--va-color-night) 62%, transparent) 55%,
     color-mix(in srgb, var(--va-color-night) 82%, transparent) 100%
   );
-  -webkit-backdrop-filter: grayscale(0.8) brightness(0.7) blur(2px);
-  backdrop-filter: grayscale(0.8) brightness(0.7) blur(2px);
+  /* No blur: over the whole screen it re-blurred every frame of the scene behind (still drawing, slowed). */
+  -webkit-backdrop-filter: grayscale(0.8) brightness(0.7);
+  backdrop-filter: grayscale(0.8) brightness(0.7);
   opacity: 0;
   visibility: hidden;
   touch-action: none;

@@ -3,10 +3,11 @@
 import { Environment, Lightformer, PerformanceMonitor, useProgress } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { Group, Material, Mesh, Texture, WebGLRenderer } from "three";
+import type { Group, Material, Mesh, Texture, WebGLRenderer, WebGLRenderTarget } from "three";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "@/features/hero/SceneErrorBoundary";
 import { FULL_DPR } from "@/features/hero/scene/degrade";
+import { compileAsComposed, createWarmTarget, uploadTextures, warmKey } from "@/features/hero/scene/warmup";
 import { getServerLoadHolding, isLoadHolding, subscribeLoadHold } from "@/features/load/loadHold";
 import type { QualityTier } from "@/features/hero/useQualityTier";
 import type { Locale } from "@/i18n/config";
@@ -17,6 +18,7 @@ import { NightEffects } from "./NightEffects";
 import { NightRig } from "./NightRig";
 import { NightSky } from "./NightSky";
 import { night, setNightReadiness } from "./nightState";
+import { paintsPending } from "./paintSet";
 import { boundTextures } from "./releaseTextures";
 import { SETS } from "./sets/registry";
 import { StopLights } from "./StopLights";
@@ -52,55 +54,26 @@ function SetSwitch({ groups }: { groups: { current: (Group | null)[] } }) {
   return null;
 }
 
-/** Seconds between two looks at what is left to warm up. */
-const WARM_EVERY = 0.4;
-
-function meshCount(group: Group): number {
-  let count = 0;
-  group.traverse((object) => {
-    if ((object as Mesh).isMesh) count += 1;
-  });
-  return count;
-}
-
-/** Uploads every texture a group's materials use (maps and shader uniforms), once. */
-function uploadTextures(gl: WebGLRenderer, group: Group, seen: WeakSet<Texture>) {
-  const upload = (value: unknown) => {
-    const texture = value as Texture | null;
-    if (!texture || !texture.isTexture || seen.has(texture)) return;
-    seen.add(texture);
-    gl.initTexture(texture);
-  };
-  group.traverse((object) => {
-    const material = (object as Mesh).material as Material | Material[] | undefined;
-    if (!material) return;
-    for (const m of Array.isArray(material) ? material : [material]) {
-      for (const value of Object.values(m)) upload(value);
-      const uniforms = (m as { uniforms?: Record<string, { value: unknown }> }).uniforms;
-      if (uniforms) {
-        for (const uniform of Object.values(uniforms)) {
-          if (Array.isArray(uniform?.value)) uniform.value.forEach(upload);
-          else upload(uniform?.value);
-        }
-      }
-    }
-  });
-}
+/** Milliseconds between two looks at what is left to warm up. */
+const WARM_EVERY_MS = 400;
 
 /**
- * Warms every stop up before its cut: compiles its materials (in parallel
- * where the GPU allows) and uploads its textures while another stop is on
- * screen, the next one first, so the first frame of a stop never stalls on
- * a shader or a texture. A set that loads more later is warmed again.
- * Every stop warm and nothing loading is `night.warm`, which lets the
- * opening cover rest the canvas (nightCover.ts).
+ * Warms every stop up before its cut: compiles its materials as the
+ * composer draws them (compileAsComposed, in parallel where the GPU
+ * allows) and uploads its textures while another stop is on screen, the
+ * next one first, so the first frame of a stop never stalls on a shader or
+ * a texture. A set that loads more later, or whose board art lands, is
+ * warmed again. Every stop warm, nothing loading and no board still to
+ * paint (paintsPending) is `night.warm`, which lets the opening cover rest
+ * the canvas (nightCover.ts).
  */
 function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
   const gl = useThree((state) => state.gl);
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
-  const warm = useRef(new Map<number, number>());
+  const warm = useRef(new Map<number, string>());
   const textures = useRef(new WeakSet<Texture>());
+  const target = useRef<WebGLRenderTarget | null>(null);
   const busy = useRef(false);
   const lookAt = useRef(0);
   // Anything still loading (a set's model or texture) may add meshes to a set already warmed.
@@ -111,43 +84,50 @@ function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
     // Something new loads: look again once it is in.
     if (loading) night.warm = false;
   }, [loading]);
-  useEffect(
-    () => () => {
+  // The composer's kind of target, bound while it compiles; released with the canvas (a renderer's
+  // listener on it would keep the whole renderer).
+  useEffect(() => {
+    const made = createWarmTarget();
+    target.current = made;
+    return () => {
+      target.current = null;
+      made.dispose();
       night.warm = false;
-    },
-    [],
-  );
+    };
+  }, []);
 
-  useFrame(({ clock }) => {
-    // It keeps looking while the frame loop runs (a few small traversals every WARM_EVERY): a set's
-    // art lands after its fonts and adds its meshes then, and a stop counted warm before that
-    // compiled them in its first frame on screen.
-    if (busy.current || clock.elapsedTime < lookAt.current) return;
-    lookAt.current = clock.elapsedTime + WARM_EVERY;
+  useFrame(() => {
+    // It keeps looking while the frame loop runs (a few small traversals every WARM_EVERY_MS): a set's
+    // art lands after its fonts and adds its meshes or its texture then, and a stop counted warm before
+    // that compiled them in its first frame on screen. Timed on the page's clock: R3F's restarts at
+    // every flip of the frame loop, and a look timed on it waited out the whole gap again.
+    const now = performance.now();
+    if (busy.current || !target.current || now < lookAt.current) return;
+    lookAt.current = now + WARM_EVERY_MS;
     const count = groups.current.length;
     let ready = 0;
     for (let k = 0; k < count; k += 1) {
       const i = (night.stop + 1 + k) % count;
       const group = groups.current[i];
       if (!group) continue;
-      const meshes = meshCount(group);
-      if (meshes === 0) continue;
-      if (warm.current.get(i) === meshes) {
+      const key = warmKey(group);
+      if (key === null) continue;
+      if (warm.current.get(i) === key) {
         ready += 1;
         continue;
       }
-      warm.current.set(i, meshes);
+      warm.current.set(i, key);
       night.warm = false;
       busy.current = true;
       uploadTextures(gl, group, textures.current);
-      gl.compileAsync(group, camera, scene)
+      compileAsComposed(gl, group, camera, scene, target.current)
         .catch(() => undefined)
         .finally(() => {
           busy.current = false;
         });
       return;
     }
-    night.warm = count > 0 && ready === count && !loadingRef.current;
+    night.warm = count > 0 && ready === count && !loadingRef.current && paintsPending() === 0;
   });
   return null;
 }
@@ -249,9 +229,15 @@ export function NightScene({ tier, active, timeline, work, locale, onCreated }: 
       // as the box moves with the page, re-renders the whole scene tree about twenty times a second.
       resize={{ scroll: false }}
       frameloop={active ? "always" : "never"}
-      gl={{ antialias: false, powerPreference: "high-performance", alpha: false, stencil: false }}
+      // No depth on the canvas's own buffer: the composer draws the scene into its own target, with its
+      // own depth, and only a full-screen pass ever reaches the screen.
+      gl={{ antialias: false, powerPreference: "high-performance", alpha: false, stencil: false, depth: false }}
       camera={{ fov: 35, near: 0.25, far: 1200, position: [-6, 1.5, 9] }}
-      onCreated={onCreated}
+      onCreated={(state) => {
+        // Production skips reading each program's logs back on its first use (a wait on the driver each).
+        state.gl.debug.checkShaderErrors = process.env.NODE_ENV !== "production";
+        onCreated?.(state);
+      }}
       aria-hidden
     >
       <DisposeOnUnmount />
