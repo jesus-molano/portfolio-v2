@@ -89,6 +89,7 @@ import {
 import { drive } from "./scene/drive";
 import { isCovered, setHeroCovered } from "./heroCover";
 import { type FarRestInput, restsFarAway } from "./scroll/farRest";
+import { markCut } from "./scene/qualityStore";
 import { CUT_BAND, SHOT_COUNT, type ShotPick, shotIndexAt, stickyShot } from "./scene/shots";
 
 gsap.registerPlugin(useGSAP);
@@ -1265,6 +1266,8 @@ export function HeroStage({
         if (pick.shot !== currentShot) {
           currentShot = pick.shot;
           showShot(shotNumbers, shotLabels, pick.shot);
+          // A quality level waiting to land (qualityStore.ts) lands under the cut, its new pixels unseen.
+          markCut(now);
         }
 
         // A line she asked for at the title plays once the name has formed, unless she has driven on since.

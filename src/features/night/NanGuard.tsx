@@ -11,7 +11,8 @@ import { BlendFunction, Effect, EffectAttribute } from "postprocessing";
  * and blacked out the whole picture a second into the city; the hero's
  * shaders are guarded by hand (AGENTS.md, shader safety), and this is the
  * night's net. A convolution effect, so the composer gives it a pass of its
- * own (the bloom then reads what it wrote).
+ * own (the bloom then reads what it wrote), and only where such a driver
+ * may run: Mesa, or any Linux that is not Android (hero/scene/gpuHint.ts).
  */
 const FRAGMENT = /* glsl */ `
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {

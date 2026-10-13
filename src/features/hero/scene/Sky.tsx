@@ -5,7 +5,7 @@ import { useMemo, useRef } from "react";
 import { BackSide, type Mesh, type ShaderMaterial } from "three";
 import { skyFragmentShader, skyVertexShader } from "../shaders/sky";
 import type { QualityTier } from "../useQualityTier";
-import { cloudDefines, createSkyUniforms } from "./skyUniforms";
+import { cloudDefines, createSkyUniforms, writeCloudDetail } from "./skyUniforms";
 import { world } from "./world";
 
 type Props = { tier: QualityTier; animate: boolean };
@@ -30,9 +30,13 @@ export function Sky({ tier, animate }: Props) {
   // CameraRig is mounted first, so the camera already holds this frame's pose.
   useFrame(({ camera, clock }) => {
     dome.current?.position.copy(camera.position);
+    const m = material.current;
+    if (!m) return;
     // The clouds drift with time, never with the drive: they are kilometres
     // away. Under reduced motion they hold still.
-    if (animate && material.current) material.current.uniforms.uCloudTime.value = clock.elapsedTime;
+    if (animate) m.uniforms.uCloudTime.value = clock.elapsedTime;
+    // The quality level's cloud detail (degrade.ts), within what this tier's shader is built for.
+    writeCloudDetail(m.uniforms, tier);
   });
 
   return (

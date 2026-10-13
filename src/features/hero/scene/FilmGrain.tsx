@@ -2,14 +2,15 @@
 
 import { wrapEffect } from "@react-three/postprocessing";
 import { BlendFunction, Effect } from "postprocessing";
-import { Uniform, Vector3 } from "three";
+import { Uniform, Vector3, type WebGLRenderer } from "three";
 import { filmGrainFragmentShader } from "../shaders/filmGrain";
+import { grainScale } from "./degrade";
 import { gradeUniforms, type Rgb } from "./grade";
 
 type Options = {
   /** Largest change of brightness, as a fraction (0.06 = ±6% in the midtones). */
   amount?: number;
-  /** Clump size in pixels. */
+  /** Clump size in the canvas's pixels at its full pixel ratio (degrade.ts `grainScale`). */
   size?: number;
   /** Colour grade (see grade.ts); the default comes from GRADE. */
   lift?: Rgb;
@@ -26,6 +27,8 @@ type Options = {
  * `frameloop="demand"` (reduced motion).
  */
 class FilmGrainEffect extends Effect {
+  private readonly size: number;
+
   constructor({ amount = 0.06, size = 1.6, ...grade }: Options = {}) {
     const fallback = gradeUniforms();
     const lift = grade.lift ?? fallback.lift;
@@ -42,6 +45,14 @@ class FilmGrainEffect extends Effect {
         ["uShadowSaturation", new Uniform(grade.shadowSaturation ?? fallback.shadowSaturation)],
       ]),
     });
+    this.size = size;
+  }
+
+  /** Every frame, before the pass draws: the clump's size for the pixel ratio drawn now (a uniform, no new effect). */
+  override update(renderer: WebGLRenderer) {
+    const uniform = this.uniforms.get("uSize");
+    const ratio = typeof window === "undefined" ? 1 : window.devicePixelRatio;
+    if (uniform) uniform.value = this.size * grainScale(renderer.getPixelRatio(), ratio);
   }
 }
 

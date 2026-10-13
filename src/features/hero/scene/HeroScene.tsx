@@ -2,12 +2,10 @@
 
 import type { WebGLRenderer } from "three";
 
-import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { memo, Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "../SceneErrorBoundary";
-import { getServerLoadHolding, isLoadHolding, subscribeLoadHold } from "@/features/load/loadHold";
 import { getSceneLoading, subscribeSceneLoading } from "../sceneLoading";
 import type { QualityTier } from "../useQualityTier";
 import { Billboards } from "./Billboards";
@@ -23,6 +21,7 @@ import { Landmark } from "./Landmark";
 import { LoadReporter } from "./LoadReporter";
 import { Palms } from "./Palms";
 import { Props } from "./Props";
+import { QualityWatch } from "./QualityWatch";
 import { Road } from "./Road";
 import { Shore } from "./Shore";
 import { Sky } from "./Sky";
@@ -34,9 +33,10 @@ import { Water } from "./Water";
 import { Waterfront } from "./Waterfront";
 import { SHOTS } from "./shots";
 import { CAR_POSITION } from "./drive";
-import { declineLevel, degradedSettings } from "./degrade";
 import { READY_GRACE_MS, heroFrameloop } from "./heroFrameloop";
+import { getQuality, getServerQuality, seedFromRenderer, subscribeQuality } from "./qualityStore";
 import { sunDirection } from "./skyUniforms";
+import { useCanvasDpr } from "./useCanvasDpr";
 import { world } from "./world";
 
 /**
@@ -53,12 +53,16 @@ const LIGHT = { environment: 1.4, hemisphere: 0.25, key: 3.6, exposure: 1.0 } as
 const KEY_POSITION = sunDirection(CAR_POSITION).multiplyScalar(100).toArray();
 
 /**
- * Production only: development keeps full quality so captured frames stay
+ * Production only: development keeps level 0 so captured frames stay
  * comparable (SwiftShader runs at a few frames a second and would always
- * step down). Watching starts once the visitor has entered, after the
- * loading screen, so shader compilation never counts as a slow device.
+ * step down). QualityWatch counts nothing before the visitor has entered,
+ * after the loading screen, so shader compilation never counts as a slow
+ * device.
  */
 const WATCH_FRAME_RATE = process.env.NODE_ENV === "production";
+
+const getStructure = () => getQuality().structure;
+const getServerStructure = () => getServerQuality().structure;
 
 type Props = {
   tier: QualityTier;
@@ -74,7 +78,7 @@ type Props = {
 /**
  * Everything the hero's canvas draws, the post aside. Memoised, and fed only
  * what changes the world (the tier, the motion setting, the boards' copy):
- * the frame loop, readiness, the load screen and the performance monitor
+ * the frame loop, readiness, the quality level and the window's size
  * re-render HeroScene, and with it the Canvas, which re-renders whatever
  * it holds; here they stop at the root, so none of them reconciles the
  * scene's two dozen components.
@@ -144,14 +148,15 @@ const HeroWorld = memo(function HeroWorld({
 /**
  * The Three.js hero. Loaded client-side only (see HeroCanvas).
  * Under reduced motion the loop renders on demand: one still frame.
- * The Canvas is keyed by tier so a tier change rebuilds the renderer.
+ * The Canvas is keyed by tier so a tier change rebuilds the renderer (the
+ * tier holds once the scene is ready on a fine pointer, useQualityTier).
  */
 export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }: Props) {
   const animate = !reducedMotion;
   const opening = SHOTS[0].from;
-  // Steps down on a slow device (degrade.ts); never back up.
-  const [level, setLevel] = useState(0);
-  const quality = degradedSettings(tier, level);
+  // The visit's quality level (qualityStore.ts, shared with the night): its pixels, and the post's structure.
+  const dpr = useCanvasDpr(tier);
+  const structure = useSyncExternalStore(subscribeQuality, getStructure, getServerStructure);
   // A boolean snapshot, so the loading progress ticks do not re-render the scene.
   const entered = useSyncExternalStore(
     subscribeSceneLoading,
@@ -163,8 +168,6 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
     () => getSceneLoading().ready,
     () => false,
   );
-  // A save loading under the load screen: its compile and teardown frames are no measure of the device.
-  const holding = useSyncExternalStore(subscribeLoadHold, isLoadHolding, getServerLoadHolding);
   // Behind the start menu the scene stops drawing a few seconds after it is ready (heroFrameloop).
   const [graceOver, setGraceOver] = useState(false);
   useEffect(() => {
@@ -184,7 +187,7 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
     <Canvas
       key={tier}
       flat
-      dpr={quality.dpr}
+      dpr={dpr}
       // Measured on resize only: by default R3F re-measures its box on every scroll (a layout read) and,
       // as the box moves with the page, re-renders the whole scene tree about twenty times a second.
       resize={{ scroll: false }}
@@ -204,15 +207,15 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
         state.gl.toneMappingExposure = LIGHT.exposure;
         // Production skips reading each program's logs back on its first use (a wait on the driver each).
         state.gl.debug.checkShaderErrors = process.env.NODE_ENV !== "production";
+        // The visit's level starts from this GPU, unless the night's renderer came first.
+        seedFromRenderer(state.gl);
         onCreated?.(state);
       }}
       aria-hidden
     >
-      {WATCH_FRAME_RATE && entered && !holding && frameloop === "always" ? (
-        <PerformanceMonitor onDecline={() => setLevel((current) => declineLevel(tier, current))} />
-      ) : null}
+      {WATCH_FRAME_RATE && animate ? <QualityWatch /> : null}
       <HeroWorld tier={tier} reducedMotion={reducedMotion} billboards={billboards} />
-      <Effects tier={tier} depthOfField={quality.depthOfField} />
+      <Effects tier={tier} structure={structure} />
     </Canvas>
   );
 }
