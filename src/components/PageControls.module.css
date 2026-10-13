@@ -10,6 +10,18 @@
 }
 
 /*
+ * The controls' own glass, without the frost: a backdrop-filter over the
+ * scene's canvas blurred it again every frame the canvas drew, three times
+ * over (the disk, the radio, the languages). The on-screen display's fill
+ * keeps their text as legible over the bright sky as the blur did. Only
+ * here: the same ghost controls elsewhere keep theirs.
+ */
+.controls :is(button, nav) {
+  background-color: var(--va-color-osd);
+  backdrop-filter: none;
+}
+
+/*
  * Off the hero's picture, one backing behind both controls and the gap
  * between them (PageControls.tsx sets data-backdrop), so the text of
  * STATS and the credits never shows through as it scrolls under them.

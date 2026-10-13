@@ -619,6 +619,23 @@ also exists as real DOM for keyboard and screen-reader users.
     field (`LensDepthOfField.tsx`), which reads `lens.ts` every frame and
     does no work while `bokehScale` is 0. In production a slow device steps
     down (`degrade.ts`): depth of field off, then dpr 1, never back up.
+  - Warm-up (`HeroWarmup.tsx`, `warmup.ts`, tested): behind the start menu
+    the hero compiles every material, visible or not, as the composer
+    draws it (`compileAsComposed`: a half-float target like the
+    composer's bound while three chooses the programs, since it compiles a
+    material for a target, linear and untoned, unlike for the screen),
+    first the procedural world while the models download, then again as
+    each lands, its textures uploaded: the shots after the first compiled
+    their parts (the traffic behind, the city, the crane's view) in the
+    first frame that showed them. `LoadReporter` counts the frames that
+    make the scene ready only once the downloads are done and the canvas is
+    warm (`isWarm`; 5 s after the downloads it is marked warm anyway, so a
+    slow GPU still gets in). It only reads the scene, never a material's
+    settings (the night clones the models' materials). Both canvases skip
+    three's read-back of every program's logs in production
+    (`debug.checkShaderErrors`) and have no depth buffer of their own
+    (`depth: false`): the composer draws into its own target, with its own
+    depth, and only full-screen passes reach the screen.
   - Palms are procedural (`palmGeometry.ts`): pinnate fronds, ringed curved
     trunks, rendered as violet silhouettes by `shaders/palm.ts`.
   - The city waterfront (`Waterfront.tsx`, layout in `waterfrontLayout.ts`)
@@ -1212,11 +1229,20 @@ also exists as real DOM for keyboard and screen-reader users.
   beat rises to the blade and reads it down). The driver sits in the car
   on every tier. Speed: the hero's dpr (`FULL_DPR`) and its one
   step down on a slow device (production, `PerformanceMonitor`); every
-  stop's materials are compiled and its textures uploaded ahead of its
-  cut (`Warmup` in `NightScene.tsx`), the next stop first; it keeps
-  looking while the frame loop runs (a set's art lands after its fonts
-  and adds meshes then), and all five warm with nothing loading is
-  `night.warm`. Board art is painted once per stop into canvases in
+  stop's materials are compiled as the composer draws them
+  (`compileAsComposed`, the hero's warm-up, `hero/scene/warmup.ts`:
+  compiled for the screen, they were programs nothing drew, and every cut
+  compiled its stop again) and its textures uploaded ahead of its cut
+  (`Warmup` in `NightScene.tsx`, its target released with the canvas),
+  the next stop first; it keeps looking every 0.4 s of the page's clock
+  while the frame loop runs (R3F's clock restarts at every flip of the
+  loop): a set's art lands after its fonts and adds meshes or a texture
+  then (`warmKey`), and the set is warmed again. All five warm, nothing
+  loading and no board still on its way (`paintsPending` in
+  `paintSet.ts`: waiting for its faces, painting, or taken by its set
+  less than a frame ago) is `night.warm`: counted warm before its art
+  landed, the opening cover rested the canvas and the art was uploaded
+  at its cut. Board art is painted once per stop into canvases in
   the site's fonts (`sets/art/`), in turns (`artQueue.ts`, tested;
   `paintSet.ts`): one painter per task with a frame between, the stop
   she reaches soonest first (`stopRank`: along the film, never round, the
@@ -1981,6 +2007,14 @@ To add a track to a station:
 - Depth precision: at 300 m the depth buffer resolves a few centimetres.
   Windows, signs and neon on a far facade stand at least 0.1 m off it, or
   they shimmer.
+- The sky draws last among the opaque parts: both domes (`Sky.tsx`,
+  `NightSky.tsx`) have render order 10 (every other opaque part's is 3 at
+  most), test depth and write none, so their shaders run only where
+  nothing nearer has drawn. Nothing opaque may stand beyond a dome (1200 m
+  in the hero, 800 m at night, both inside the far plane): the sky would
+  paint over it. Shaders skip work that has faded to exactly nothing (the
+  water's finest octave past 140 m), and only then: the picture must not
+  change.
 
 ## Development hooks (dev builds only)
 
@@ -2026,7 +2060,7 @@ To add a track to a station:
   frames return early more than a screen away from their stage with every
   wall open and nothing in flight (`scroll/farRest.ts`, tested; a closed
   wall always keeps the frame running); no ScrollTrigger; the radio's
-  equalizer scales its bars (transform, a drop-shadow on the row) and the
+  equalizer scales its bars (transform, a box-shadow on each bar) and the
   wheel's rim breathes only while the wheel is open; the title's letters
   drop their reveal's `filter` once formed. Check with
   `tools/capture/perf.mjs`.
@@ -2043,7 +2077,9 @@ To add a track to a station:
   `lenis.scrollTo(..., { immediate })` next to a native jump: use `goTo`.
 - The page controls (LOAD GAME, RADIO, EN/ES) are fixed at the top right
   (`components/PageControls.tsx`). Over the hero's picture they float on
-  their own glass; anywhere else they sit on one backing (`data-backdrop`,
+  their own glass, the on-screen display's fill and no frost (no
+  `backdrop-filter`: it blurred the canvas again every frame it drew);
+  anywhere else they sit on one backing (`data-backdrop`,
   the `controlsBackdrop` token, opaque, drawn around them so they never
   move), so the text of STATS and the credits never shows through. An
   IntersectionObserver whose root is the line of pixels at their bottom
