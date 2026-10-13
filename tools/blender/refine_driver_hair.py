@@ -68,9 +68,13 @@ their materials and alpha modes) is copied byte for byte.
 
 Usage (needs numpy and Pillow, which the Blender module venv has; Blender's
 own Python has no Pillow):
-    python refine_driver_hair.py <in.glb> <out.glb>
+    python refine_driver_hair.py <in.glb> tools/models/source/makehuman-driver/driver.glb
 Run it on the build script's driver.glb, never on its own output (it
-refuses); public/models/makehuman-driver holds the result.
+refuses). Its output is the driver's source: the Blender scripts read it
+(build_sunglasses.py, build_stats_portrait.py), and `node
+tools/models/compress.mjs` makes the page's copy in
+public/models/makehuman-driver from it, meshopt-compressed (which Blender
+cannot read) with the skin at 1024 px.
 """
 
 import io

@@ -37,7 +37,8 @@ also exists as real DOM for keyboard and screen-reader users.
   proxy redirects, the deterministic city layout, the chapter cards'
   layout, the shader `pow()` rule, the start menu's tips, keys and
   picture (`loader/horizon.test.ts`: a whole road, lamps at their size),
-  the content map (`i18n/contentMap.test.ts`), and the
+  the content map (`i18n/contentMap.test.ts`), the page's glTF models
+  (`hero/scene/modelAssets.test.ts`), and the
   hero's scroll UX acceptance checks (`scroll/acceptance.test.ts`).
   Add a test for every new pure function.
 - `pnpm build` — production build. `next/font/google` downloads fonts at build
@@ -148,6 +149,14 @@ also exists as real DOM for keyboard and screen-reader users.
   listeners flat, and the idle load screen animates nothing. Run it after
   any change to a canvas, a looping animation, the radio, a frame loop or
   the load screen.
+- `node tools/models/compress.mjs` — the driver's and the traffic cars'
+  GLBs as the page loads them (`public/models`), from their sources in
+  `tools/models/source` (as Blender wrote them, which the Blender scripts
+  read back: Blender cannot read a compressed one): the geometry quantized
+  and meshopt-compressed, the driver's skin texture at 1024 px. Run it
+  after any change to a source; a rerun with nothing changed writes the
+  same bytes. It writes `tools/models/sources.json`, and
+  `modelAssets.test.ts` fails on a model left behind.
 
 ## Stack (pinned on purpose)
 
@@ -584,7 +593,10 @@ also exists as real DOM for keyboard and screen-reader users.
     tools/blender/refine_driver_hair.py)^:public/models/makehuman-driver/driver.glb"
     > /tmp/driver.build.glb`, then run `python
     tools/blender/refine_driver_hair.py /tmp/driver.build.glb
-    public/models/makehuman-driver/driver.glb`; it is deterministic. In
+    tools/models/source/makehuman-driver/driver.glb` (the driver's source,
+    which the Blender scripts read) and `node tools/models/compress.mjs`
+    (the page's copy, `public/models/makehuman-driver/driver.glb`); both
+    are deterministic. In
     Cycles check renders raise `cycles.transparent_max_bounces` (twelve
     stacked layers; the default 8 draws black bands). It is posed with
     two-bone IK at load time
@@ -600,10 +612,11 @@ also exists as real DOM for keyboard and screen-reader users.
   - His gold aviators (`Sunglasses.tsx`) are a separate GLB in the frame
     of the head bone, added as that bone's child, so they follow the
     glance. The lenses mirror the environment map through a violet-to-pink
-    reflectance and read as dark glass from behind. If `driver.glb`
-    changes, rebuild them (`tools/blender/build_sunglasses.py`): the script
-    fits them to the new head and stops if any piece comes within 3 mm of
-    the skin, eyes, lashes, brows or hair shells.
+    reflectance and read as dark glass from behind. If the driver's source
+    changes, rebuild them (`tools/blender/build_sunglasses.py` on
+    `tools/models/source/makehuman-driver/driver.glb`): the script fits
+    them to the new head and stops if any piece comes within 3 mm of the
+    skin, eyes, lashes, brows or hair shells.
   - Light: the canvas stays `flat` (linear materials) so bloom sees HDR
     values; `SkyEnvironment.tsx` renders our own sky (uniforms from
     `skyUniforms.ts`, shared with `Sky.tsx`), a ground, a horizon strip and
@@ -1870,16 +1883,22 @@ also exists as real DOM for keyboard and screen-reader users.
   (asserted on land), town lights, runways and the career route (the
   ferry from Las Palmas to the dock, then up to home base); no hobby and
   no text in the SVG. Each file stays under 40 KB (it refuses more).
-- `tools/blender` — headless Blender scripts that build the GLB files in
-  `public/models` from the original downloads
-  (`blender -b -P <script> -- <input> <output>`; set `XDG_CONFIG_HOME` to a
-  temporary directory in the sandbox). `build_driver_mpfb.py` needs the
+- `tools/blender` — headless Blender scripts that build the GLB files from
+  the original downloads (`blender -b -P <script> -- <input> <output>`;
+  set `XDG_CONFIG_HOME` to a temporary directory in the sandbox): the
+  convertible and the aviators straight into `public/models`, the driver
+  (`refine_driver_hair.py`'s output) and the traffic cars
+  (`convert_cars.py`'s) into `tools/models/source`, which
+  `tools/models/compress.mjs` compresses into `public/models`. The Blender
+  scripts read those sources, never the compressed copies: Blender cannot
+  read them, and only the source has the driver's skin at 2048 px (the
+  STATS portrait and the line-up render it). `build_driver_mpfb.py` needs the
   MPFB 2 extension and the MakeHuman system assets installed in that
   profile; it writes the GLB, its textures and check renders to an output
   folder outside the repo. Its body and face values live in
   `tools/blender/driver.params.json`, which Git ignores: keep personal
-  data out of the published script. `build_sunglasses.py` runs on
-  `driver.glb` and writes `public/models/sunglasses/aviator.glb`, with
+  data out of the published script. `build_sunglasses.py` runs on the
+  driver's source and writes `public/models/sunglasses/aviator.glb`, with
   optional Cycles check renders of the head to a folder outside the repo.
   `render_finale_car.py` renders the hero's car for the finale's dawn
   plates (see `src/features/finale`).
@@ -1906,6 +1925,26 @@ also exists as real DOM for keyboard and screen-reader users.
 
 Each folder in `public/models` keeps its `LICENSE.txt`.
 
+The driver and the five traffic cars ship compressed by
+`tools/models/compress.mjs` from their sources in `tools/models/source`:
+the geometry quantized (`KHR_mesh_quantization`: positions 16 bits in one
+box per model, normals 10, UVs 14, skin weights 16, all well under what
+shows) and meshopt-compressed (`EXT_meshopt_compression`), and the
+driver's skin texture at 1024 px (a mipmap step of the 2048, in linear
+light). drei's `useGLTF` decodes them with the meshopt decoder
+three-stdlib bundles (no CDN), which predates meshoptimizer's version 1
+vertex codec: the streams are version 0 and use no filter newer than it
+(`modelAssets.test.ts` reads their headers). Compressing renames, merges
+or drops nothing (no join, flatten, weld or palette): every bone and
+material the code looks up keeps its name, the brows' and lashes'
+triangles keep their order (blended, drawn as they come), and the
+driver's meshes keep their one skin (the box's scale and offset go into
+its inverse bind matrices; a box per mesh gave each mesh a skin and the
+hero eight skeletons). The convertible and the aviators ship as Blender
+wrote them: `Car.tsx` reads the convertible's raw float arrays
+(`rimUvCircle`), and the aviators are 54 KB. Never edit a compressed GLB:
+change its source and rerun the compressor.
+
 - `poly-convertible` — "Convertible" by Poly by Google, CC BY 3.0. The
   licence requires the visible credit in the end credits; keep it.
   `tools/blender/refine_convertible.py` (runs on the GLB) paints the badges
@@ -1916,7 +1955,8 @@ Each folder in `public/models` keeps its `LICENSE.txt`.
   available as `pip install bpy==4.5.4` in a Python 3.11 venv (no
   download.blender.org needed); never name a script `inspect.py` (it
   shadows the module bpy imports).
-- `quaternius-cars` — Quaternius, CC0.
+- `quaternius-cars` — Quaternius, CC0, converted by
+  `tools/blender/convert_cars.py`.
 - `makehuman-driver` — built from the MakeHuman system assets, CC0. Never
   use the community beards bundled with MPFB (`wdg_scruffy_beard`,
   `grinsegold_beard_sigmund_wip`): they are AGPL. The reference photos of
