@@ -106,7 +106,7 @@ const HeroWorld = memo(function HeroWorld({
       <directionalLight position={KEY_POSITION} intensity={LIGHT.key} color={palette.amber} />
 
       <DevHandle />
-      <LoadReporter />
+      <LoadReporter animate={animate} />
       <HeroWarmup />
       <DriveClock animate={animate} />
       <CameraRig parallax={high && animate} reducedMotion={reducedMotion} />
@@ -168,7 +168,8 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
     () => getSceneLoading().ready,
     () => false,
   );
-  // Behind the start menu the scene stops drawing a few seconds after it is ready (heroFrameloop).
+  // Behind the start menu the scene draws only when asked while it loads, every frame for a few
+  // seconds once it is ready, then not at all until she enters (heroFrameloop).
   const [graceOver, setGraceOver] = useState(false);
   useEffect(() => {
     if (!ready || graceOver) return;

@@ -4,8 +4,9 @@ import { READY_GRACE_MS, heroFrameloop } from "./heroFrameloop";
 const base = { animate: true, active: true, ready: false, entered: false, sinceReadyMs: 0 };
 
 describe("heroFrameloop", () => {
-  it("draws every frame while the scene loads", () => {
-    expect(heroFrameloop(base)).toBe("always");
+  it("draws only when asked while the scene loads", () => {
+    expect(heroFrameloop(base)).toBe("demand");
+    expect(heroFrameloop({ ...base, sinceReadyMs: Number.POSITIVE_INFINITY })).toBe("demand");
   });
 
   it("keeps drawing for a short grace once ready, then rests behind the menu", () => {
@@ -17,13 +18,14 @@ describe("heroFrameloop", () => {
 
   it("draws every frame from the moment she enters", () => {
     expect(heroFrameloop({ ...base, ready: true, entered: true, sinceReadyMs: Number.POSITIVE_INFINITY })).toBe("always");
-    // A slow load lets her in early: still drawing.
+    // A slow load lets her in early: drawing every frame, the load or not.
     expect(heroFrameloop({ ...base, entered: true })).toBe("always");
   });
 
   it("renders on demand out of view, under opaque night and under reduced motion", () => {
     expect(heroFrameloop({ ...base, entered: true, ready: true, active: false })).toBe("demand");
     expect(heroFrameloop({ ...base, entered: true, ready: true, animate: false })).toBe("demand");
+    expect(heroFrameloop({ ...base, ready: true, animate: false })).toBe("demand");
     expect(heroFrameloop({ ...base, animate: false })).toBe("demand");
   });
 });

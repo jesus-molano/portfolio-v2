@@ -23,12 +23,11 @@ import { softDiscFragmentShader, softDiscVertexShader } from "../shaders/softDis
 import { CAR_MODEL, WHEEL_RADIUS } from "./carModel";
 import { CAR_POSITION, drive } from "./drive";
 import { Driver } from "./Driver";
+import { CAR_URL } from "./modelUrls";
 import { blurAmount, radialAverage, rimUvCircle, type UvCircle, wheelAngularSpeed } from "./wheelBlur";
 
 type Props = { animate: boolean; tier: QualityTier };
 
-/** "Convertible" by Poly by Google, CC BY 3.0 (see public/models/poly-convertible). */
-export const CAR_URL = "/models/poly-convertible/convertible.glb";
 const WHEEL_NAMES = ["wheel_front_l", "wheel_front_r", "wheel_rear_l", "wheel_rear_r"];
 
 useGLTF.preload(CAR_URL);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
   CanvasTexture,
@@ -27,6 +27,7 @@ import {
   packAtlas,
 } from "./billboardLayout";
 import { buildFrontage } from "./cityLayout";
+import { useSceneInvalidate } from "./invalidate";
 
 type Props = {
   /** One line of copy per board, in order (hero.billboards). */
@@ -104,7 +105,7 @@ function drawCopy(ctx: CanvasRenderingContext2D, rect: AtlasRect, board: Billboa
  * instanced draws: the faces, and the panels and posts.
  */
 export function Billboards({ texts }: Props) {
-  const invalidate = useThree((state) => state.invalidate);
+  const invalidate = useSceneInvalidate();
   const layout = useMemo(() => buildBillboards(buildFrontage()), []);
   const atlas = useMemo(() => packAtlas(layout.boards, ATLAS_WIDTH, GUTTER), [layout]);
   const copy = texts.join("\n");

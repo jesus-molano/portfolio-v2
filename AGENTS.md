@@ -679,7 +679,9 @@ also exists as real DOM for keyboard and screen-reader users.
     first frame that showed them. `LoadReporter` counts the frames that
     make the scene ready only once the downloads are done and the canvas is
     warm (`isWarm`; 5 s after the downloads it is marked warm anyway, so a
-    slow GPU still gets in). It only reads the scene, never a material's
+    slow GPU still gets in), and asks for each of them itself, the canvas
+    drawing only when asked while the scene loads (`heroFrameloop.ts`;
+    under reduced motion it asks for every frame until ready). It only reads the scene, never a material's
     settings (the night clones the models' materials). Both canvases skip
     three's read-back of every program's logs in production
     (`debug.checkShaderErrors`) and have no depth buffer of their own
@@ -2109,11 +2111,18 @@ To add a track to a station:
   (`animation-name: none` under `[data-offscreen]`), since a paused
   animation still kept a compositor layer per bulb. STATS keeps the pause
   (its states must not restart).
-- Nothing draws or ticks for what nobody sees: the hero's canvas stops
-  behind the start menu 3 s after the scene is ready
-  (`scene/heroFrameloop.ts`, tested; its QualityWatch only counts once
-  she has entered) and under its opaque night (`heroCover.ts`, the
-  fade at 0.999 or more); the loader's drawing loop writes only what
+- Nothing draws or ticks for what nobody sees: behind the start menu
+  the hero's canvas draws only when asked while the scene loads (drawn
+  every frame, the load ran the whole post chain at the display's rate
+  against the models' parsing and the shaders' compiling, and the menu
+  over it stuttered): LoadReporter asks at each step of the load and for
+  each frame that makes the scene ready, the warm-up once it is done, and
+  a part that changes for itself (a board's copy painted, the aviators
+  put on), every one through `useSceneInvalidate` (`scene/invalidate.ts`);
+  then every frame for 3 s once the scene is ready, and no more until she
+  enters (`scene/heroFrameloop.ts`, tested; its QualityWatch only counts
+  once she has entered); and it stops under its opaque night
+  (`heroCover.ts`, the fade at 0.999 or more); the loader's drawing loop writes only what
   changed and stops once the load line is full, and its tip timer and
   resize listener stop once she has entered; the hero's and the city's
   frames return early more than a screen away from their stage with every
@@ -2155,8 +2164,23 @@ To add a track to a station:
   card's rise over their top edge, so a link lands the whole card below
   them.
 - Three.js runs client-side only: `HeroCanvas` loads `HeroScene` with
-  `next/dynamic` and `ssr: false`, inside an error boundary. The page must stay
-  readable without WebGL: real text in the DOM, CSS sky as fallback.
+  `next/dynamic` and `ssr: false`, inside an error boundary. It asks for
+  the scene's chunk as its own module runs in the browser, before
+  hydration renders the canvas, and hands next/dynamic that same promise,
+  so a failed import still reaches the boundary: left to next/dynamic,
+  the chunk came a round trip after all of the page's code. The models'
+  URLs live in `scene/modelUrls.ts`, which imports nothing, and the home
+  page (`src/app/[lang]/page.tsx`, never the layout: the 404 has no
+  scene) names them in its head (`MODEL_PRELOADS`: React's `preload` as
+  `fetch` with `crossOrigin: "anonymous"`, as three.js fetches, so its
+  request takes the preloaded response; the traffic at low priority), so
+  they download beside the page's code instead of after the chunk
+  (`modelUrls.test.ts`). `next.config.ts` gives what `public/` serves the
+  page (`models`, `music`, `interlude`, `finale`, `load`, `stats`) a day
+  fresh and a week stale while the browser revalidates: with no policy,
+  every visit revalidated each file, a round trip before the scene could
+  use it. The page must stay readable without WebGL: real text in the
+  DOM, CSS sky as fallback.
 - Nothing inside a Canvas re-renders when the frame loop, a cover, the
   scene's readiness or the load screen changes, nor at a cut (a slow
   device's step down reaches the root's pixel ratio at most): R3F's Canvas renders whatever it holds again at every render of

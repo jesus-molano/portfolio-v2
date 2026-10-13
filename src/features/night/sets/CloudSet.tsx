@@ -20,6 +20,7 @@ import {
   Vector3,
 } from "three";
 import { palette } from "@/design/tokens";
+import { TRAFFIC_CAR } from "@/features/hero/scene/modelUrls";
 import { createRandom } from "@/features/hero/scene/world";
 import { glowFragmentShader, glowVertexShader } from "@/features/hero/shaders/neon";
 import { fonts, forTier, toTexture } from "../artCanvas";
@@ -76,7 +77,7 @@ const SLOT = { x: BOARD.x + 0.4, y: BOARD.y } as const;
 const PRISM = BOARD.w / TRIVISION.prisms;
 /** The prism under the piece's middle: once it starts to turn away, the piece goes with the face it completes. */
 const PIECE_PRISM = Math.floor((SLOT.x - (BOARD.x - BOARD.w / 2)) / PRISM);
-const TELPARK_CAR = "/models/quaternius-cars/SportsCar2.glb";
+const TELPARK_CAR = TRAFFIC_CAR.sportsCar2;
 
 /** The corner block: a footprint with a rounded prow, extruded to the cornice. */
 function buildBlock(): ExtrudeGeometry {
