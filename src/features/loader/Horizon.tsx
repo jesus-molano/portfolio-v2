@@ -1,7 +1,7 @@
 import { type CSSProperties, Fragment, type ReactNode } from "react";
 import { palette } from "@/design/tokens";
 import styles from "./Horizon.module.css";
-import { buildHorizon, type HorizonLayout, LAYOUTS, type Palm } from "./horizon";
+import { type Box, boxAround, buildHorizon, type HorizonLayout, LAYER_PAD, LAYOUTS, type Palm, r1 } from "./horizon";
 
 /** A colour between two palette hexes: the in-between tones of the sky and the sea, made of tokens. */
 export function mix(a: string, b: string, t: number): string {
@@ -30,10 +30,19 @@ const C = {
 
 const style = (vars: Record<string, string | number>) => vars as CSSProperties;
 
-/** A point of the picture as a transform origin on a layer as big as its viewBox (percentages of it). */
-function originOf(layout: HorizonLayout, x: number, y: number): string {
+/**
+ * A layer's place, in viewBox units (Horizon.module.css turns them into
+ * lengths): its box of the picture, from its frame's corner or, inside the
+ * flock, from the flock's.
+ */
+function place(box: Box, within?: Box): Record<string, number> {
+  return { "--lx": r1(box.x - (within?.x ?? 0)), "--ly": r1(box.y - (within?.y ?? 0)), "--lw": box.w, "--lh": box.h };
+}
+
+/** A point of the picture as a transform origin on a layer over `box` (percentages of it). */
+function originIn(box: Box, x: number, y: number): string {
   const share = (value: number, of: number) => `${Math.round((value / of) * 1e6) / 1e4}%`;
-  return `${share(x, layout.width)} ${share(y, layout.height)}`;
+  return `${share(x - box.x, box.w)} ${share(y - box.y, box.h)}`;
 }
 
 /** A lamp's streak on the water as the swell breaks it: short strokes, narrowing and fading downward. */
@@ -76,7 +85,8 @@ function ripples(r: { x: number; y: number; width: number; height: number }) {
  * transform and opacity, each over a drawing of its own. The stars blink
  * in a few phase groups, one layer each; every glint and ripple on the
  * water and each palm's crown is a layer, and the birds fly as one layer
- * with a layer for each one's wings.
+ * with a layer for each one's wings. Each layer is as big as what it draws
+ * (its `Box`, horizon.ts): WebKit backs a composited layer by its box.
  */
 export function Horizon() {
   return (
@@ -118,10 +128,10 @@ function Moving({ layout, children }: { layout: HorizonLayout; children: ReactNo
   );
 }
 
-/** A layer's drawing: the whole viewBox, over the whole frame, so its coordinates are the picture's. */
-function Drawing({ layout, children }: { layout: HorizonLayout; children: ReactNode }) {
+/** A layer's drawing: its box of the picture as its viewBox, filling the layer, so its coordinates are still the picture's. */
+function Drawing({ box, children }: { box: Box; children: ReactNode }) {
   return (
-    <svg className={styles.drawing} viewBox={`0 0 ${layout.width} ${layout.height}`}>
+    <svg className={styles.drawing} viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="none">
       {children}
     </svg>
   );
@@ -135,7 +145,7 @@ function Scene({ layout }: { layout: HorizonLayout }) {
   const sun = layout.sun;
 
   // The water's glints, its swells and the lamps' ripples, in the order they were drawn: each one
-  // breathes on its own clock, brighter and longer about its middle, so each is a layer.
+  // breathes on its own clock, brighter and longer about its middle, so each is a layer, its box the stroke's.
   const strokes = [
     ...scene.glitter.map((g, i) => ({ ...g, rx: 1, fill: i % 3 ? mix(C.amber, C.cream, 0.4) : C.cream })),
     ...scene.swells.map((s) => ({ ...s, rx: 0, fill: mix(C.pink, C.cream, 0.5) })),
@@ -150,7 +160,16 @@ function Scene({ layout }: { layout: HorizonLayout }) {
           }))
         : [],
     ),
-  ];
+  ].map((stroke) => ({
+    ...stroke,
+    box: boxAround(
+      [
+        { x: stroke.x, y: stroke.y },
+        { x: stroke.x + stroke.w, y: stroke.y + stroke.h },
+      ],
+      LAYER_PAD,
+    ),
+  }));
 
   // The farther palm a little lighter, in the haze; the nearest in the night's ink.
   const tone = (i: number) => (i === scene.palms.length - 1 ? C.ink : mix(C.ink, C.lilac, 0.16));
@@ -249,8 +268,8 @@ function Scene({ layout }: { layout: HorizonLayout }) {
       {/* Each phase group's stars at their own brightness; the layer's twinkle sets it while it runs (Horizon.module.css). */}
       <Moving layout={layout}>
         {scene.twinkles.map((clock, group) => (
-          <span key={group} className={styles.twinkle} style={style({ "--dur": `${clock.dur}s`, "--delay": `${clock.delay}s` })}>
-            <Drawing layout={layout}>
+          <span key={group} className={styles.twinkle} style={style({ ...place(clock.box), "--dur": `${clock.dur}s`, "--delay": `${clock.delay}s` })}>
+            <Drawing box={clock.box}>
               {scene.stars.map((star, i) =>
                 star.phase === group ? <circle key={i} cx={star.x} cy={star.y} r={star.r} fill={C.moon} opacity={star.o} /> : null,
               )}
@@ -260,8 +279,8 @@ function Scene({ layout }: { layout: HorizonLayout }) {
       </Moving>
 
       <Moving layout={layout}>
-        <span className={styles.drift}>
-          <Drawing layout={layout}>
+        <span className={styles.drift} style={style(place(scene.cloudBox))}>
+          <Drawing box={scene.cloudBox}>
             {scene.clouds.map((cloud, i) => (
               <ellipse key={i} cx={cloud.cx} cy={cloud.cy} rx={cloud.rx} ry={cloud.ry} fill={url(cloud.dim ? "cloudDim" : "cloud")} opacity={cloud.o} />
             ))}
@@ -302,13 +321,14 @@ function Scene({ layout }: { layout: HorizonLayout }) {
             key={i}
             className={styles.shimmer}
             style={style({
-              transformOrigin: originOf(layout, stroke.x + stroke.w / 2, stroke.y + stroke.h / 2),
+              ...place(stroke.box),
+              transformOrigin: originIn(stroke.box, stroke.x + stroke.w / 2, stroke.y + stroke.h / 2),
               "--o": stroke.o,
               "--dur": `${stroke.dur}s`,
               "--delay": `${stroke.delay}s`,
             })}
           >
-            <Drawing layout={layout}>
+            <Drawing box={stroke.box}>
               <rect x={stroke.x} y={stroke.y} width={stroke.w} height={stroke.h} rx={stroke.rx || undefined} fill={stroke.fill} />
             </Drawing>
           </span>
@@ -357,9 +377,14 @@ function Scene({ layout }: { layout: HorizonLayout }) {
           <Moving layout={layout}>
             <span
               className={styles.sway}
-              style={style({ transformOrigin: originOf(layout, palm.crown.x, palm.crown.y), "--dur": `${6 + i * 1.3}s`, "--delay": `${-i * 2.1}s` })}
+              style={style({
+                ...place(palm.box),
+                transformOrigin: originIn(palm.box, palm.crown.x, palm.crown.y),
+                "--dur": `${6 + i * 1.3}s`,
+                "--delay": `${-i * 2.1}s`,
+              })}
             >
-              <Drawing layout={layout}>
+              <Drawing box={palm.box}>
                 <path d={palm.leaflets} fill="none" stroke={tone(i)} strokeWidth={palm.width} strokeLinecap="round" />
                 <path d={palm.spines} fill={tone(i)} />
                 {palm.nuts.map((nut, j) => (
@@ -379,10 +404,14 @@ function Scene({ layout }: { layout: HorizonLayout }) {
 
       {/* The birds cross as one layer, each one's wings flapping on a layer of their own. */}
       <Moving layout={layout}>
-        <span className={styles.flock}>
+        <span className={styles.flock} style={style(place(scene.flock))}>
           {scene.birds.map((bird, i) => (
-            <span key={i} className={styles.flap} style={style({ transformOrigin: originOf(layout, bird.pivot.x, bird.pivot.y), "--delay": `${bird.delay}s` })}>
-              <Drawing layout={layout}>
+            <span
+              key={i}
+              className={styles.flap}
+              style={style({ ...place(bird.box, scene.flock), transformOrigin: originIn(bird.box, bird.pivot.x, bird.pivot.y), "--delay": `${bird.delay}s` })}
+            >
+              <Drawing box={bird.box}>
                 <path d={bird.d} fill="none" stroke={mix(C.ink, C.dusk, 0.3)} strokeWidth={bird.width} strokeLinecap="round" />
               </Drawing>
             </span>
