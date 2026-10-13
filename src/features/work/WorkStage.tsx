@@ -45,6 +45,7 @@ import { SUBTITLES_EVENT } from "@/lib/subtitleSize";
 import { tallestCards } from "./chipPlace";
 import { newDipView, stepDipView } from "./dip";
 import { openingAt } from "./opening";
+import { passPush, type PushFrame, type PushSeen, takePush } from "./pushTake";
 import { DISARMED, insideQuad, quadClipPath, quadIsTargetable, quadUv, stepArm, type ArmEvent } from "./hotspot";
 import { selectGate } from "@/features/suspects/selectWall";
 import { stageGate } from "./stageGate";
@@ -334,12 +335,15 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
        * every frame it is down, and the press's own let a Space or a tap on the pedal go at once.
        */
       let carry: { to: number; at: number } | null = null;
-      let lastPushedAt = scrollGate.pushedAt;
+      /** The last push held at a wall that the frame has taken or let go by (pushTake.ts). */
+      const pushSeen: PushSeen = { at: scrollGate.pushedAt };
       let pushFlash = 0;
       const drawnOpacity = el.cards.map(() => -1);
       const titleBeat = timeline.beats[0];
       /** The first line: a push into the opening carries the page on to it (see the push below). */
       const firstLine = stageLineStep(1, 0, timeline, Number.POSITIVE_INFINITY) ?? titleBeat.end;
+      /** What pushTake.ts reads, filled each frame. */
+      const pushIn: PushFrame = { pushedAt: 0, front: undefined, firstLine, inStage: false, rewinding: false, source: null };
       /** The card's fade as drawn (it eases; the film position only sets its goal). */
       let shownTitleOut = 0;
       // The opening's cover as drawn, and the canvas frame it waits for after waking (-1: not waiting).
@@ -475,6 +479,13 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
           story.opacity.fill(0);
           shownTitleOut = openingAt(timeline, lastP, openState).titleOut;
           carry = null;
+          // Pushes held at the hero's walls or the select's go by, and the dash's knock and step with them
+          // (pushTake.ts): kept, the first one the frame back on the stage took started a carry at the
+          // title wall, and the city drove itself to the first line after LOAD GAME, Back or a fragment.
+          passPush(pushSeen, scrollGate.pushedAt);
+          pushFlash = 0;
+          dashState.lastKnockAt = scrollGate.pushedAt;
+          dashState.lastStepAt = scrollInput.stepAt;
           if (getNightReadiness() === "ready") wasCovered = true;
           return;
         }
@@ -522,18 +533,21 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         fire(tick);
         night.armed += (night.armTarget - night.armed) * (1 - Math.exp(-dt / ARM_TAU));
 
-        // Held input: the active card gives a little under the push.
-        if (scrollGate.pushedAt !== lastPushedAt) {
-          lastPushedAt = scrollGate.pushedAt;
+        // Held input: the active card gives a little under the push. A notch, flick or swipe held at the
+        // opening (the title or the arrival, before the first line) carries the page on to that line at the
+        // beats' own pace, as a press does: nothing told her to keep scrolling, and the arrival played a
+        // notch at a time while most of her input was thrown away (pushTake.ts).
+        pushIn.pushedAt = scrollGate.pushedAt;
+        pushIn.front = k >= 0 ? walls[k] : undefined;
+        pushIn.inStage = inStage;
+        pushIn.rewinding = rewinding;
+        pushIn.source = scrollInput.source;
+        const took = takePush(pushSeen, pushIn);
+        if (took === "none") pushFlash = decay(pushFlash, dt, ELASTIC.pushTau);
+        else {
           pushFlash = 1;
-          // A notch, flick or swipe held at the opening (the title or the arrival, before the first line)
-          // carries the page on to that line at the beats' own pace, as a press does: nothing told her to
-          // keep scrolling, and the arrival played a notch at a time while most of her input was thrown away.
-          const front = k >= 0 ? walls[k] : undefined;
-          if (front && front.kind !== "card" && front.to <= firstLine && inStage && !rewinding && (scrollInput.source === "wheel" || scrollInput.source === "touch")) {
-            carry = { to: firstLine, at: scrollInput.eventAt };
-          }
-        } else pushFlash = decay(pushFlash, dt, ELASTIC.pushTau);
+          if (took === "carry") carry = { to: firstLine, at: scrollInput.eventAt };
+        }
         const holding = inStage && k >= 0 && now - scrollGate.pushedAt < HOLDING_MS;
         const touch = scrollGate.touching || scrollInput.source === "touch";
         const nudge = !holding
