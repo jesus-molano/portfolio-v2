@@ -3,6 +3,8 @@ import {
   PACING,
   frameIntervalMs,
   paceDivisor,
+  rateChanged,
+  rateTrusted,
   refreshFromIdle,
   renderThisTick,
   stepRootClock,
@@ -27,20 +29,29 @@ describe("refreshFromIdle", () => {
     expect(refreshFromIdle(idle(30, 60))).toBeCloseTo(30, 3);
   });
 
+  it("reads the fastest displays too: 240, 300 and 360 Hz", () => {
+    expect(refreshFromIdle(idle(240, 60))).toBeCloseTo(240, 3);
+    expect(refreshFromIdle(idle(300, 60))).toBeCloseTo(300, 3);
+    // 2.8 ms a refresh: under the old 3 ms floor every interval was thrown away, and the rate never read.
+    expect(refreshFromIdle(idle(360, 60))).toBeCloseTo(360, 3);
+  });
+
   it("is not fooled by stalls, which only ever lengthen an interval", () => {
     expect(refreshFromIdle(idle(144, 90, 3, 13.9))).toBeCloseTo(144, 3);
     expect(refreshFromIdle(idle(60, 90, 2, 33.3))).toBeCloseTo(60, 3);
   });
 
-  it("leaves out what is no refresh (a wake-up, a frame stalled for seconds)", () => {
-    const deltas = [...idle(144, 40), 0.5, 1, 2, 120, 900, 5000];
+  it("leaves out what is no refresh (an interval shorter than any display's, a frame stalled for seconds)", () => {
+    const deltas = [...idle(144, 40), 0.2, 0.5, 1, 120, 900, 5000];
     expect(refreshFromIdle(deltas)).toBeCloseTo(144, 3);
   });
 
-  it("waits for enough intervals", () => {
+  it("waits for enough intervals, a check fewer of them", () => {
     expect(refreshFromIdle(idle(144, PACING.samples - 1))).toBeNull();
     expect(refreshFromIdle([...idle(144, PACING.samples - 1), 300, 300])).toBeNull();
     expect(refreshFromIdle(idle(144, PACING.samples))).toBeCloseTo(144, 3);
+    expect(refreshFromIdle(idle(30, PACING.checkSamples - 1), undefined, PACING.checkSamples)).toBeNull();
+    expect(refreshFromIdle(idle(30, PACING.checkSamples), undefined, PACING.checkSamples)).toBeCloseTo(30, 3);
   });
 
   it("sorts in the scratch it is given, without touching the intervals", () => {
@@ -57,12 +68,15 @@ describe("paceDivisor", () => {
     for (const hz of [60, 120, 144, 165, 240]) expect(paceDivisor(hz, false)).toBe(1);
   });
 
-  it("halves 120 to 165 Hz, and draws 240 Hz on every fourth refresh", () => {
+  it("halves 120 to 165 Hz, and keeps the fastest displays near 60 frames a second", () => {
     expect(paceDivisor(118, true)).toBe(2);
     expect(paceDivisor(119.88, true)).toBe(2);
     expect(paceDivisor(144, true)).toBe(2);
     expect(paceDivisor(165, true)).toBe(2);
     expect(paceDivisor(239.8, true)).toBe(4);
+    expect(paceDivisor(240, true)).toBe(4);
+    expect(paceDivisor(300, true)).toBe(5);
+    expect(paceDivisor(360, true)).toBe(6);
   });
 
   it("never paces a display of 100 Hz or less, nor one not measured yet", () => {
@@ -77,6 +91,29 @@ describe("the interval a canvas that keeps up draws at", () => {
     expect(vsyncMs(144)).toBeCloseTo(1000 / 144, 6);
     expect(frameIntervalMs(144, 2)).toBeCloseTo(2000 / 144, 6);
     expect(frameIntervalMs(null, 1)).toBeCloseTo(1000 / 60, 6);
+  });
+});
+
+describe("checking the display's rate before a step down", () => {
+  it("trusts a rate read in the last ten seconds, and none never read", () => {
+    expect(rateTrusted(null, 1000)).toBe(false);
+    expect(rateTrusted(1000, 1000 + PACING.trustMs)).toBe(true);
+    expect(rateTrusted(1000, 1001 + PACING.trustMs)).toBe(false);
+  });
+
+  it("takes a rate off the one the frames were judged by as a new one (another display, a power mode)", () => {
+    expect(rateChanged(144, 60)).toBe(true);
+    expect(rateChanged(60, 30)).toBe(true);
+    // None measured yet: the frames were judged at 60 Hz.
+    expect(rateChanged(null, 30)).toBe(true);
+    expect(rateChanged(null, 60)).toBe(false);
+    expect(rateChanged(null, 59.94)).toBe(false);
+  });
+
+  it("takes the same rate as the same, within a measure's error: then the GPU is behind", () => {
+    expect(rateChanged(60, 59.94)).toBe(false);
+    expect(rateChanged(144, 143.5)).toBe(false);
+    expect(rateChanged(300, 300.4)).toBe(false);
   });
 });
 

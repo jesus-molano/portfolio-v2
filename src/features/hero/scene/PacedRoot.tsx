@@ -2,7 +2,7 @@
 
 import { useStore, useThree, type RootState } from "@react-three/fiber";
 import { useEffect, useLayoutEffect } from "react";
-import { registerRoot, requestFrames } from "./frameDriver";
+import { redrawSoon, registerRoot, requestFrames } from "./frameDriver";
 
 type Props = {
   /** Names the canvas (`hero`, `night`). */
@@ -29,8 +29,11 @@ export function PacedRoot({ id, wants, holds, onWake }: Props) {
 
   useLayoutEffect(() => registerRoot({ id, get, wants, holds, onWake }), [id, get, wants, holds, onWake]);
 
-  // A new size or pixel ratio (a resize, a quality level landing) clears the canvas's buffer: one at rest
-  // draws once more. R3F asks for that frame on any change of its store, but not under "never".
+  // A new size or pixel ratio (a resize, a quality level landing) clears the canvas's buffer: one that is
+  // drawing is drawn again before the page paints (a level lands after the frame has drawn, and the
+  // cleared buffer showed black for a frame), and one at rest draws once more. R3F asks for that frame on
+  // any change of its store, but not under "never". Its own subscription, made with the store, has
+  // resized the renderer by now.
   useEffect(() => {
     let { width, height } = store.getState().size;
     let dpr = store.getState().viewport.dpr;
@@ -40,6 +43,7 @@ export function PacedRoot({ id, wants, holds, onWake }: Props) {
       height = state.size.height;
       dpr = state.viewport.dpr;
       requestFrames(get);
+      redrawSoon(get);
     });
   }, [store, get]);
 

@@ -3,16 +3,19 @@ import { isLoadHolding } from "@/features/load/loadHold";
 import { addFrameTick } from "@/lib/frameTicker";
 import { getSceneLoading } from "../sceneLoading";
 import {
+  PACING,
   frameIntervalMs,
   paceDivisor,
+  rateChanged,
+  rateTrusted,
   refreshFromIdle,
   renderThisTick,
   stepRootClock,
   vsyncMs,
   type RootClock,
 } from "./framePacing";
-import { MONITOR, newMonitor, quietMonitor, stepMonitor, type Monitor } from "./qualityMonitor";
-import { commitIfDue, qualityRuntime, reportRefresh, requestDecline } from "./qualityStore";
+import { newMonitor, quietMonitor, stepMonitor, type Monitor } from "./qualityMonitor";
+import { canStepDown, commitIfDue, qualityRuntime, reportRefresh, requestDecline } from "./qualityStore";
 
 /**
  * The one frame loop of both canvases. Each runs R3F's `frameloop="never"`
@@ -37,7 +40,8 @@ import { commitIfDue, qualityRuntime, reportRefresh, requestDecline } from "./qu
  * (qualityMonitor.ts) against the interval it should keep (the display's
  * refresh, measured here from the frames in which no canvas drew, times the
  * pace) and asks the visit's quality level to step down when it falls
- * behind (qualityStore.ts).
+ * behind (qualityStore.ts), once the display's rate is known to hold: read
+ * lately, or checked first (framePacing.ts `rateTrusted`, `stepDown`).
  */
 
 type GetState = () => RootState;
@@ -72,6 +76,8 @@ type Root = PacedRootSpec & {
   levelAt: number;
   /** What its canvas element carries, written only on change. */
   marks: { canvas: HTMLCanvasElement | null; quality: number; pace: number };
+  /** A drawing of it is queued for before the page paints (`redrawSoon`). */
+  redrawQueued: boolean;
 };
 
 /** Production only: a development build's frame rate says nothing about the device, and its level holds. */
@@ -90,9 +96,6 @@ const MAX_PENDING = 60;
 const IDLE_KEEP = 120;
 const IDLE_READ_EVERY = 30;
 
-/** A rate this much off the one reported is a new one (another display, a power mode). */
-const REFRESH_CHANGE = 0.02;
-
 let roots: readonly Root[] = [];
 let stopTicking: (() => void) | null = null;
 /** Frames asked of a canvas whose PacedRoot has not registered yet (a layout effect earlier in the same commit). */
@@ -106,12 +109,24 @@ let idleSinceRead = 0;
 let lastStamp = Number.NaN;
 /** Whether a canvas drew in the last frame: only the interval after one that did not is a refresh. */
 let drewLast = true;
+/** When the display's rate was last read from idle frames (null: never). */
+let rateReadAt: number | null = null;
+
+/**
+ * A check of the display's rate before a step down (`stepDown`), while it
+ * runs: its frames so far, and the rate the late frames were judged by.
+ */
+let check: { frames: number; assumedHz: number | null } | null = null;
 
 /** The pace forced from the console (`window.__vaPace`, development only). */
 let forcedDivisor: number | null = null;
 
 /** True while a hidden frame draws (`warmFrame`). */
 let warming = false;
+/** True while the render phase runs. */
+let framing = false;
+/** True while a canvas is drawn again between frames (`redrawSoon`). */
+let redrawing = false;
 
 function find(get: GetState): Root | undefined {
   for (const root of roots) if (root.get === get) return root;
@@ -131,6 +146,7 @@ export function registerRoot(spec: PacedRootSpec): () => void {
     monitor: newMonitor(),
     levelAt: qualityRuntime.changedAt,
     marks: { canvas: null, quality: -1, pace: -1 },
+    redrawQueued: false,
   };
   early.delete(spec.get);
   roots = [...roots, root];
@@ -143,6 +159,7 @@ export function registerRoot(spec: PacedRootSpec): () => void {
     stopTicking = null;
     lastStamp = Number.NaN;
     drewLast = true;
+    check = null;
   };
 }
 
@@ -165,6 +182,46 @@ export function requestFrames(get: GetState, frames = 1): void {
   }
   const asked = early.get(get) ?? 0;
   early.set(get, frames > 1 ? Math.min(MAX_PENDING, asked + frames) : Math.max(asked, 1));
+}
+
+/**
+ * A new size or pixel ratio has just cleared a canvas's buffer: a canvas
+ * that is drawing is drawn again before the page paints, its clock still
+ * (delta 0: the same picture, at the new size), when a quality level
+ * landed since its frame began. A level lands in the stages' tick (a cut)
+ * or after the canvases drew (`commitIfDue`), and React applies the
+ * Canvas's new `dpr` in a microtask right after the frame, once the canvas
+ * had drawn at the old size: the cleared buffer, black, reached the screen
+ * for a frame, at the very cut that was to hide the change. A window's
+ * resize lands in a task of its own, and the next frame draws before the
+ * page paints. Queued as a microtask itself, so it draws once the commit
+ * that resized the canvas is done (its size and ratio both), never inside
+ * the render phase nor from a redraw's own frame. A canvas at rest is out
+ * of sight: its next frame is asked for (`requestFrames`).
+ */
+export function redrawSoon(get: GetState): void {
+  if (!(qualityRuntime.changedAt >= lastStamp)) return;
+  const root = find(get);
+  if (!root || root.redrawQueued || redrawing) return;
+  root.redrawQueued = true;
+  queueMicrotask(() => {
+    root.redrawQueued = false;
+    redraw(root);
+  });
+}
+
+function redraw(root: Root) {
+  if (framing || redrawing || !root.wanted || !roots.includes(root)) return;
+  const state = root.get();
+  if (!state.internal.active) return;
+  redrawing = true;
+  try {
+    advance(state.clock.elapsedTime, false, state);
+  } finally {
+    redrawing = false;
+  }
+  // The next frame comes after a canvas drew: its interval measures the GPU, not the display.
+  drewLast = true;
 }
 
 /**
@@ -191,17 +248,63 @@ function wake(root: Root, now: number) {
   root.onWake?.();
 }
 
-/** One more interval of a frame in which no canvas drew; now and then the display's rate is read again from them. */
-function sampleIdle(delta: number) {
+/**
+ * One more interval of a frame in which no canvas drew; now and then the
+ * display's rate is read again from them, and at once from a few while a
+ * check of it runs.
+ */
+function sampleIdle(delta: number, now: number) {
   idleDeltas[idleNext] = delta;
   idleNext = (idleNext + 1) % IDLE_KEEP;
   if (idleCount < IDLE_KEEP) idleCount += 1;
   idleSinceRead += 1;
-  if (idleSinceRead < IDLE_READ_EVERY) return;
+  const needed = check ? PACING.checkSamples : IDLE_READ_EVERY;
+  if (idleSinceRead < needed) return;
   idleSinceRead = 0;
-  const hz = refreshFromIdle(idleCount < IDLE_KEEP ? idleDeltas.subarray(0, idleCount) : idleDeltas, idleScratch);
+  const kept = idleCount < IDLE_KEEP ? idleDeltas.subarray(0, idleCount) : idleDeltas;
+  const hz = refreshFromIdle(kept, idleScratch, check ? PACING.checkSamples : PACING.samples);
+  if (hz === null) return;
+  rateReadAt = now;
   const known = qualityRuntime.refreshHz;
-  if (hz !== null && (known === null || Math.abs(hz - known) > known * REFRESH_CHANGE)) reportRefresh(hz);
+  if (known === null || Math.abs(hz - known) > known * PACING.rateChange) reportRefresh(hz);
+  if (check) endCheck(now, hz);
+}
+
+/**
+ * A canvas fell behind: one step down, once the display's rate its frames
+ * were judged by is known to hold. A rate read lately (idle frames come
+ * behind the start menu, at rest, at half rate) is trusted. Otherwise every
+ * frame drew since, and the rate may have changed under them (another
+ * display, a panel dropped to 60 Hz on battery, a power mode holding the
+ * page at 30 frames a second, all of them late against the old rate): the
+ * canvases draw on every second frame for a moment, the frames between
+ * read the rate again, and `endCheck` decides.
+ */
+function stepDown(now: number) {
+  // Nothing left to give up (the bottom of the ladder, or nothing below changes her screen): nothing to check.
+  if (check || !canStepDown(qualityRuntime.refreshHz)) return;
+  if (rateTrusted(rateReadAt, now)) {
+    requestDecline(qualityRuntime.refreshHz, now);
+    return;
+  }
+  check = { frames: 0, assumedHz: qualityRuntime.refreshHz };
+  // Read from the intervals to come only: the ones kept may be another display's.
+  idleCount = 0;
+  idleNext = 0;
+  idleSinceRead = 0;
+}
+
+/**
+ * The check is over. A new rate is taken instead of a step (`sampleIdle`
+ * has reported it): the frames were late only against the old one, and
+ * nothing the ladder gives up would have helped. The same rate, or none
+ * read in the check's frames (a canvas that slow), steps down.
+ */
+function endCheck(now: number, hz: number | null) {
+  const assumed = check?.assumedHz ?? null;
+  check = null;
+  if (hz !== null && rateChanged(assumed, hz)) return;
+  requestDecline(qualityRuntime.refreshHz, now);
 }
 
 /** Writes the canvas's level and pace on its element, for tools/capture/perf.mjs; only what changed. */
@@ -227,8 +330,6 @@ function mark(root: Root, state: RootState, divisor: number) {
 function watch(root: Root, now: number, intervalMs: number, expectedMs: number, divisor: number) {
   if (!WATCH) return;
   const m = root.monitor;
-  // A gap longer than a hitch is a rest and a wake (out of view, under a cover, a hidden tab).
-  if (!(intervalMs <= MONITOR.hitchMs)) quietMonitor(m, now + AFTER_WAKE_MS);
   if (qualityRuntime.changedAt !== root.levelAt || divisor !== root.divisor) {
     root.levelAt = qualityRuntime.changedAt;
     root.divisor = divisor;
@@ -240,17 +341,30 @@ function watch(root: Root, now: number, intervalMs: number, expectedMs: number, 
     now - loading.enteredAt < AFTER_ENTRY_MS ||
     isLoadHolding() ||
     document.visibilityState !== "visible";
-  if (stepMonitor(m, { now, intervalMs, expectedMs, skip })) requestDecline(qualityRuntime.refreshHz, now);
+  if (stepMonitor(m, { now, intervalMs, expectedMs, skip })) stepDown(now);
 }
 
 /** The render phase of the page's frame: every canvas that wants to, or was asked to, draws. */
 function renderFrame(_time: number, _deltaMs: number, stamp: number) {
+  framing = true;
+  try {
+    drawFrame(stamp);
+  } finally {
+    framing = false;
+  }
+}
+
+function drawFrame(stamp: number) {
   const delta = stamp - lastStamp;
-  if (!drewLast && delta > 0) sampleIdle(delta);
+  if (!drewLast && delta > 0) sampleIdle(delta, stamp);
   lastStamp = stamp;
+  // A check that read nothing in its frames gives up and steps down: the canvas is that slow.
+  if (check && ++check.frames > PACING.checkFrames) endCheck(stamp, null);
 
   const hz = qualityRuntime.refreshHz;
-  const divisor = forcedDivisor ?? paceDivisor(hz, qualityRuntime.halfRate);
+  // While the rate is checked the canvases skip every second frame by count, not by the rate it doubts.
+  const checking = check !== null && forcedDivisor === null;
+  const divisor = forcedDivisor ?? (checking ? PACING.checkDivisor : paceDivisor(hz, qualityRuntime.halfRate));
   const refresh = vsyncMs(hz);
   const list = roots;
   let drew = false;
@@ -266,7 +380,10 @@ function renderFrame(_time: number, _deltaMs: number, stamp: number) {
     if (wants && !root.wanted) wake(root, stamp);
     root.wanted = wants;
 
-    const paced = wants && renderThisTick(stamp, root.pacedAt, divisor, refresh);
+    const onPace = checking
+      ? (check?.frames ?? 0) % PACING.checkDivisor === 0
+      : renderThisTick(stamp, root.pacedAt, divisor, refresh);
+    const paced = wants && onPace;
     const asked = !wants && root.pending > 0 && !(root.holds?.(state) ?? false);
     // A canvas that draws anyway compiles what a hidden frame would.
     if (wants) root.warm = false;
