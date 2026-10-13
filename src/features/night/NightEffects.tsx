@@ -2,6 +2,7 @@
 
 import { Bloom, ChromaticAberration, EffectComposer, SMAA, ToneMapping, Vignette } from "@react-three/postprocessing";
 import { SMAAPreset, ToneMappingMode } from "postprocessing";
+import { memo } from "react";
 import { FilmGrain } from "@/features/hero/scene/FilmGrain";
 import { gradeUniforms } from "@/features/hero/scene/grade";
 import type { QualityTier } from "@/features/hero/useQualityTier";
@@ -18,7 +19,8 @@ const GRADE = gradeUniforms({ lift: 0.45, warmth: 0, contrast: 0.2, saturation: 
 const BLOOM = { threshold: 0.85, smoothing: 0.3, intensity: 0.95, radius: 0.7 } as const;
 const GRAIN = { amount: 0.08, size: 1.5 } as const;
 
-export function NightEffects({ tier }: { tier: QualityTier }) {
+/** Memoised, like the hero's (Effects.tsx): a re-render of the scene must not reach the composer. */
+export const NightEffects = memo(function NightEffects({ tier }: { tier: QualityTier }) {
   if (tier === "low") {
     return (
       <EffectComposer multisampling={0}>
@@ -48,4 +50,4 @@ export function NightEffects({ tier }: { tier: QualityTier }) {
       <FilmGrain amount={GRAIN.amount} size={GRAIN.size} {...GRADE} />
     </EffectComposer>
   );
-}
+});

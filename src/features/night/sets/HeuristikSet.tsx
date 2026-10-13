@@ -376,6 +376,12 @@ const SKYLINE: SkylineSpec = {
   lit: 0.42,
   clear: [{ x: [-20, 36], z: [-70, -20] }],
 };
+/**
+ * The low tier's, a constant too: a spec written in the render was a new
+ * object at every render of the set, and the skyline laid itself out again
+ * and gave its windows new buffers.
+ */
+const SKYLINE_LOW: SkylineSpec = { ...SKYLINE, count: 45, lit: 0.36 };
 
 const LAMP_BASES: [number, number, number][] = [
   [-22, 0.15, -7.2],
@@ -391,6 +397,7 @@ const HEURISTIK_PALMS: NightPalm[] = [
   { position: [18, 0, 4.6] as Vec3, rotation: 1.1, scale: 1.05, variant: 1 },
   { position: [24, 0, 5.3] as Vec3, rotation: 2.9, scale: 0.9, variant: 3 },
 ];
+const HEURISTIK_PALMS_LOW = HEURISTIK_PALMS.slice(0, 2);
 
 function HeuristikSet({ work, tier, timeline, index }: SetProps) {
   const layout = useMemo(() => buildLandmark(), []);
@@ -508,7 +515,7 @@ function HeuristikSet({ work, tier, timeline, index }: SetProps) {
 
   return (
     <group>
-      <Skyline spec={tier === "low" ? { ...SKYLINE, count: 45, lit: 0.36 } : SKYLINE} />
+      <Skyline spec={tier === "low" ? SKYLINE_LOW : SKYLINE} />
       {/* The plaza at the tower's foot. */}
       <mesh position={[TOWER.x, 0.08, -20]}>
         <boxGeometry args={[110, 0.16, 29]} />
@@ -524,7 +531,7 @@ function HeuristikSet({ work, tier, timeline, index }: SetProps) {
       </instancedMesh>
       <Windows panes={towerPanes} gain={1.05} fogAmount={0.45} />
       <GroundFloor name={name} index={index} />
-      <NightPalms palms={tier === "high" ? HEURISTIK_PALMS : HEURISTIK_PALMS.slice(0, 2)} />
+      <NightPalms palms={tier === "high" ? HEURISTIK_PALMS : HEURISTIK_PALMS_LOW} />
       {atlas ? (
         <>
           <mesh position={[SCREENS.name.x, SCREENS.name.y, SCREENS.name.z]}>

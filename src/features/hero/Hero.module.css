@@ -298,6 +298,24 @@
   visibility: visible;
 }
 
+/*
+ * The shot's number, "01/05": every one in one cell too, swapped by
+ * visibility. The frame shows the current one (data-current), so a cut
+ * renders nothing in React.
+ */
+.hudNo {
+  display: inline-grid;
+}
+
+.hudNoCell {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+
+.hudNoCell[data-current] {
+  visibility: visible;
+}
+
 
 /* Dialogue subtitles: speaker in pink, line in cream, bottom centre. */
 /*

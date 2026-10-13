@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SceneErrorBoundary } from "@/features/hero/SceneErrorBoundary";
 import { useQualityTier } from "@/features/hero/useQualityTier";
 import type { Locale } from "@/i18n/config";
@@ -29,7 +29,12 @@ type Props = { timeline: StageTimeline; work: Dictionary["work"]; locale: Locale
  */
 const markFailed = () => setNightReadiness("failed");
 
-export function NightCanvas({ timeline, work, locale }: Props) {
+/**
+ * Memoised: its props are the stage's copy and its timeline (memoised
+ * there), so the stage's own renders (the night's readiness) never reach
+ * the scene.
+ */
+export const NightCanvas = memo(function NightCanvas({ timeline, work, locale }: Props) {
   const tier = useQualityTier();
   const host = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
@@ -93,4 +98,4 @@ export function NightCanvas({ timeline, work, locale }: Props) {
       ) : null}
     </div>
   );
-}
+});

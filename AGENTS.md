@@ -364,9 +364,13 @@ also exists as real DOM for keyboard and screen-reader users.
     motion and forced colours it is not shown (its meaning is in text),
     and the camera readout is `aria-hidden` decoration like it (it
     keeps its widest shot label's width, every label in one cell, so
-    anchored right it never shifts at a cut; its status line is one line
-    tall, said or not, so the unit centred beside it never drops as the
-    dash goes; `layoutShift.test.ts`).
+    anchored right it never shifts at a cut; its number, "01/05", is one
+    cell of all five the same way, and the frame shows the current number
+    and label (`showShot`, `data-current`, written only at a cut): a React
+    state for the shot re-rendered the whole stage, and the canvas under
+    it, at every cut; its status line is one line tall, said or not, so
+    the unit centred beside it never drops as the dash goes;
+    `layoutShift.test.ts`).
     The tick only writes attributes and custom properties, and only what
     changed; Skip's patience reads her demand (`pushingHard`), not the
     capped pace, so "In a hurry?" still comes at a line. No gear letter (a
@@ -1138,7 +1142,12 @@ also exists as real DOM for keyboard and screen-reader users.
   frame: the car's stop point is the origin, the street runs along +x,
   the board stands at z < 0 and the camera at z > 0. It is one island at
   night at every stop (stars, a thin moon, one fog, palms along the kerb):
-  he never moved, so no stop may read as another city. Lit windows are
+  he never moved, so no stop may read as another city. The palms' four
+  shapes are built once per night (`NightPalmShapes`, around the whole
+  world) and shared by every set's palms, released with the night: each
+  of the six rows of palms built its own four, 24 builds in the mount.
+  Never a module cache, which a renderer's dispose listener would pin to
+  a dead context. Lit windows are
   painted interiors (`parts/Windows.tsx`, `sets/art/windows.ts`), never
   flat blocks: each pane a room from its building's mix (`pickPane`:
   hotel, home or office; never the same lit room as the pane beside it,
@@ -2098,6 +2107,23 @@ To add a track to a station:
 - Three.js runs client-side only: `HeroCanvas` loads `HeroScene` with
   `next/dynamic` and `ssr: false`, inside an error boundary. The page must stay
   readable without WebGL: real text in the DOM, CSS sky as fallback.
+- Nothing inside a Canvas re-renders when the frame loop, a cover, the
+  scene's readiness or the load screen changes, nor at a cut (a slow
+  device's step down reaches the post at most): R3F's Canvas renders whatever it holds again at every render of
+  its host, and a cut, the end cover, the loop waking or the city's cover
+  lifting reconciled two dozen components (the night's five sets, and its
+  environment captured its cube again). So `HeroCanvas` and `NightCanvas`
+  are memoised (their props are the server's copy and the stage's
+  memoised timeline), each scene's children are one memoised world
+  (`HeroWorld`, `NightWorld`) beside its monitor and its post, and the
+  post (`Effects`, `NightEffects`) and both environments
+  (`SkyEnvironment`, `NightEnvironment`: drei captures the cube again
+  whenever its children change) are memoised too. A part gets constants
+  or memoised values, never an object or a list written in the render: a
+  new one at a set's render (its art landing) placed every instance
+  again, and gave the night's windows new attribute buffers, whose old
+  ones three never frees (the windows write theirs in place while
+  their count holds, `parts/instancedAttribute.ts`, tested).
 - Scroll progress flows through `heroProgress` (a mutable object), never
   through React state. `HeroStage` writes `target` from the page scroll
   (the frame reads the page's offset after Lenis has written it, and no

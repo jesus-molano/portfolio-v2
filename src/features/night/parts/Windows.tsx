@@ -2,11 +2,12 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
-import { type CanvasTexture, InstancedBufferAttribute, type InstancedMesh, Matrix4, Quaternion, UniformsLib, UniformsUtils, Vector3 } from "three";
+import { type CanvasTexture, type InstancedMesh, Matrix4, Quaternion, UniformsLib, UniformsUtils, Vector3 } from "three";
 import { toTexture } from "../artCanvas";
 import type { Vec3 } from "../frame";
 import { ATLAS, type PaneLook, paintWindows } from "../sets/art/windows";
 import { windowFragmentShader, windowVertexShader } from "../shaders/windows";
+import { instancedAttribute } from "./instancedAttribute";
 
 /** A pane: centre, size (the plane faces +z) and how it shows its painted interior (`PANE`, `pickPane`). */
 export type Pane = { p: Vec3; s: readonly [number, number] } & PaneLook;
@@ -47,8 +48,11 @@ export function Windows({ panes, gain = 1.2, fogAmount = 0.3 }: { panes: Pane[];
     const q = new Quaternion();
     const p = new Vector3();
     const s = new Vector3();
-    const cells = new Float32Array(panes.length);
-    const looks = new Float32Array(panes.length * 3);
+    // Written in place (instancedAttribute): a new pair per layout left the old buffers on the GPU.
+    const cell = instancedAttribute(target.geometry, "aCell", panes.length, 1);
+    const look = instancedAttribute(target.geometry, "aLook", panes.length, 3);
+    const cells = cell.array as Float32Array;
+    const looks = look.array as Float32Array;
     panes.forEach((pane, i) => {
       m.compose(p.set(...pane.p), q, s.set(pane.s[0], pane.s[1], 1));
       target.setMatrixAt(i, m);
@@ -57,8 +61,8 @@ export function Windows({ panes, gain = 1.2, fogAmount = 0.3 }: { panes: Pane[];
       looks[i * 3 + 1] = pane.gain ?? 1;
       looks[i * 3 + 2] = pane.flicker ?? 0;
     });
-    target.geometry.setAttribute("aCell", new InstancedBufferAttribute(cells, 1));
-    target.geometry.setAttribute("aLook", new InstancedBufferAttribute(looks, 3));
+    cell.needsUpdate = true;
+    look.needsUpdate = true;
     target.instanceMatrix.needsUpdate = true;
   }, [panes]);
   useFrame((state) => {

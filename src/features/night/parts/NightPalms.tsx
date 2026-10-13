@@ -1,21 +1,47 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { Color, DoubleSide, type InstancedMesh, Matrix4, Quaternion, type ShaderMaterial, UniformsLib, UniformsUtils, Vector3 } from "three";
+import { createContext, type ReactNode, use, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  type BufferGeometry,
+  Color,
+  DoubleSide,
+  type InstancedMesh,
+  Matrix4,
+  Quaternion,
+  type ShaderMaterial,
+  UniformsLib,
+  UniformsUtils,
+  Vector3,
+} from "three";
 import { buildPalm, PALM_SHAPES } from "@/features/hero/scene/palmGeometry";
 import { palmFragmentShader, palmVertexShader } from "@/features/hero/shaders/palm";
 import type { Vec3 } from "../frame";
 
 export type NightPalm = { position: Vec3; rotation: number; scale: number; variant: number };
 
+const PalmShapes = createContext<readonly BufferGeometry[] | null>(null);
+
+/**
+ * The palms' four shapes (PALM_SHAPES), built once per night and shared by
+ * every set's palms: each of the six built its own, 24 builds of a few
+ * thousand triangles where four do, all in the night's mount. Released
+ * with the night. Not a module cache: a geometry a renderer has drawn keeps
+ * that renderer's dispose listener, and through it the dead context.
+ */
+export function NightPalmShapes({ children }: { children: ReactNode }) {
+  const shapes = useMemo(() => PALM_SHAPES.map(buildPalm), []);
+  useEffect(() => () => shapes.forEach((g) => g.dispose()), [shapes]);
+  return <PalmShapes value={shapes}>{children}</PalmShapes>;
+}
+
 /**
  * The hero's procedural palms at night: near-black violet silhouettes
- * against the city glow, swaying a little (ambient life, not story).
+ * against the city glow, swaying a little (ambient life, not story). Their
+ * shapes come from NightPalmShapes, above every set.
  */
 export function NightPalms({ palms, tip = "#2c1d4a" }: { palms: NightPalm[]; tip?: string }) {
-  const geometries = useMemo(() => PALM_SHAPES.map(buildPalm), []);
-  useEffect(() => () => geometries.forEach((g) => g.dispose()), [geometries]);
+  const geometries = use(PalmShapes);
   const uniforms = useMemo(
     () =>
       UniformsUtils.merge([
@@ -52,6 +78,7 @@ export function NightPalms({ palms, tip = "#2c1d4a" }: { palms: NightPalm[]; tip
     for (const material of materials.current) if (material) material.uniforms.uTime.value = clock.elapsedTime;
   });
 
+  if (!geometries) throw new Error("NightPalms needs NightPalmShapes above it (NightScene).");
   return (
     <group>
       {groups.map((list, variant) =>

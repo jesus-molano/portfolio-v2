@@ -174,6 +174,8 @@ const LOGIXS_PALMS: NightPalm[] = [
   { position: [-20, 0, 4.8] as Vec3, rotation: 1.6, scale: 1.05, variant: 3 },
   { position: [16, 0, 5.2] as Vec3, rotation: 0.2, scale: 1.0, variant: 2 },
 ];
+/** The low tier's, a constant too: a slice made in the render was a new prop each time, and the palms were placed again. */
+const LOGIXS_PALMS_LOW = LOGIXS_PALMS.slice(0, 2);
 
 /** The flats over the wall: three floors of windows, the rooms behind them, never anyone at them. */
 const ROOMS = [PANE.kitchen, PANE.dark, PANE.roomTv, PANE.curtained, PANE.dark, PANE.records, PANE.rollerBlind, PANE.dark, PANE.roomRight, PANE.dark, PANE.study, PANE.roomPink, PANE.dark, PANE.reader, PANE.dark];
@@ -490,7 +492,7 @@ function LogixsSet({ work, tier, timeline, index }: SetProps) {
           </mesh>
         </group>
       ))}
-      <NightPalms palms={high ? LOGIXS_PALMS : LOGIXS_PALMS.slice(0, 2)} />
+      <NightPalms palms={high ? LOGIXS_PALMS : LOGIXS_PALMS_LOW} />
       <Glows glows={glowList} handle={glows} />
       {/* The searchlight's shaft in the haze, down from the helicopter over the frame to its spot on the wall. */}
       <mesh ref={haze} renderOrder={4} frustumCulled={false}>
