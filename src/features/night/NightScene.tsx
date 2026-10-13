@@ -300,10 +300,11 @@ const NightWorld = memo(function NightWorld({ tier, timeline, work, locale }: Wo
       <CarDrive timeline={timeline} />
       <NightRig timeline={timeline} sets={SETS} parallax={tier === "high"} />
       <NightEnvironment tier={tier} />
+      {/* The lights stay out of the shared group: compiled with them inside it, three.js counted each twice (warmup.ts). */}
+      <StopLights sets={SETS} />
       {/* What every stop draws, in a group of its own: Warmup warms it first. */}
       <group ref={shared}>
         <NightSky />
-        <StopLights sets={SETS} />
         <Street sets={SETS} />
         <SceneErrorBoundary name="Night car">
           <Suspense fallback={null}>
