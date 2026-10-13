@@ -36,7 +36,8 @@ also exists as real DOM for keyboard and screen-reader users.
 - `pnpm test` — Vitest unit tests (`src/**/*.test.ts`): locale negotiation,
   proxy redirects, the deterministic city layout, the chapter cards'
   layout, the shader `pow()` rule, the start menu's tips, keys and
-  picture (`loader/horizon.test.ts`: a whole road, lamps at their size),
+  picture (`loader/horizon.test.ts`: a whole road, lamps at their size,
+  its motion on HTML layers only),
   the content map (`i18n/contentMap.test.ts`), and the
   hero's scroll UX acceptance checks (`scroll/acceptance.test.ts`).
   Add a test for every new pure function.
@@ -797,7 +798,21 @@ also exists as real DOM for keyboard and screen-reader users.
     lit) and never follows the load; its motion is CSS on its own clock:
     stars twinkle, clouds drift, the water glitters, palms sway, birds
     cross, the grain steps 24 times a second; under reduced motion all of
-    it rests.
+    it rests. It moves on the compositor: Chrome animates an SVG element on
+    the main thread, and the moving parts repainted the whole drawing every
+    frame through the load (hydration, the models, the shaders). So the
+    picture is a stack in paint order: its still parts are whole `<svg>`s
+    the page places (`.art > svg[data-layout]`), and between them each
+    moving group is HTML (a stage over the picture's box, a size container,
+    its frame the viewBox's rectangle as the `<svg>`s lay it out, the tall
+    one's horizon at the page's `--horizon-y`, under the pages' own media
+    query; `horizon.test.ts` holds both stylesheets to it) whose layers
+    animate only transform and opacity, each over a drawing of its own:
+    the stars in six interleaved phase groups, one layer each
+    (`TWINKLE_GROUPS`, the owner's call), a layer for every glint, swell
+    and ripple on the water (each breathes on its own clock), each palm's
+    crown, the flock and each bird's wings. No SVG element carries a
+    motion (tested).
   - No layout shift, ever: the loader is a size container and every box
     is placed against it with a fixed size (`cqw`, `cqh`: the menu's
     height is its rows', the card's its reserved lines'), every state of
