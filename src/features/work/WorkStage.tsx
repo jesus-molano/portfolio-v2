@@ -1,7 +1,6 @@
 "use client";
 
 import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
 import { useLenis } from "lenis/react";
 import {
   type MouseEvent,
@@ -38,6 +37,7 @@ import { getNightReadiness, night, setNightCovered, subscribeNightReadiness } fr
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { addFrameTick } from "@/lib/frameTicker";
 import { goTo, isNavigation, registerPassage } from "@/lib/navigate";
 import { stableScreen } from "@/lib/screen";
 import { SUBTITLES_EVENT } from "@/lib/subtitleSize";
@@ -754,8 +754,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         gate(stageFrontier(walls, story), scroll, now);
       };
 
-      const tick = (_time: number, deltaMs: number) => update(deltaMs);
-      gsap.ticker.add(tick);
+      // After Lenis and before the canvases (lib/frameTicker.ts): the night draws this frame's picture and cover.
+      const removeTick = addFrameTick("stage", (_time, deltaMs) => update(deltaMs));
       update(0);
 
       /**
@@ -1093,7 +1093,7 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
       };
 
       return () => {
-        gsap.ticker.remove(tick);
+        removeTick();
         setNightCovered(false);
         driver?.dispose();
         driver = null;

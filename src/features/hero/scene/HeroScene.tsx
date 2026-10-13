@@ -2,11 +2,12 @@
 
 import type { WebGLRenderer } from "three";
 
-import { Canvas } from "@react-three/fiber";
-import { memo, Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { Canvas, type RootState } from "@react-three/fiber";
+import { memo, Suspense, useSyncExternalStore } from "react";
 import { palette } from "@/design/tokens";
+import { getHeroCovered, getHeroInView } from "../heroCover";
 import { SceneErrorBoundary } from "../SceneErrorBoundary";
-import { getSceneLoading, subscribeSceneLoading } from "../sceneLoading";
+import { getSceneLoading } from "../sceneLoading";
 import type { QualityTier } from "../useQualityTier";
 import { Billboards } from "./Billboards";
 import { Birds } from "./Birds";
@@ -19,9 +20,9 @@ import { Haze } from "./Haze";
 import { HeroWarmup } from "./HeroWarmup";
 import { Landmark } from "./Landmark";
 import { LoadReporter } from "./LoadReporter";
+import { PacedRoot } from "./PacedRoot";
 import { Palms } from "./Palms";
 import { Props } from "./Props";
-import { QualityWatch } from "./QualityWatch";
 import { Road } from "./Road";
 import { Shore } from "./Shore";
 import { Sky } from "./Sky";
@@ -33,10 +34,11 @@ import { Water } from "./Water";
 import { Waterfront } from "./Waterfront";
 import { SHOTS } from "./shots";
 import { CAR_POSITION } from "./drive";
-import { READY_GRACE_MS, heroFrameloop } from "./heroFrameloop";
+import { heroFrameloop, type HeroFrameloopInput } from "./heroFrameloop";
 import { getQuality, getServerQuality, seedFromRenderer, subscribeQuality } from "./qualityStore";
 import { sunDirection } from "./skyUniforms";
 import { useCanvasDpr } from "./useCanvasDpr";
+import { isWarm } from "./warmup";
 import { world } from "./world";
 
 /**
@@ -52,14 +54,39 @@ const LIGHT = { environment: 1.4, hemisphere: 0.25, key: 3.6, exposure: 1.0 } as
 /** A directional light shines from its position toward the origin. */
 const KEY_POSITION = sunDirection(CAR_POSITION).multiplyScalar(100).toArray();
 
+/** When the scene first counted as ready (the frame's clock), for the grace behind the start menu. */
+let readyAt = Number.NaN;
+
+/** heroFrameloop's input, written in place: the driver asks every frame. */
+const wantsInput: HeroFrameloopInput = { animate: true, active: true, ready: false, entered: false, sinceReadyMs: 0 };
+
 /**
- * Production only: development keeps level 0 so captured frames stay
- * comparable (SwiftShader runs at a few frames a second and would always
- * step down). QualityWatch counts nothing before the visitor has entered,
- * after the loading screen, so shader compilation never counts as a slow
- * device.
+ * Whether the hero's canvas draws every frame (heroFrameloop.ts), read by
+ * the frame driver once a frame, after HeroStage has written the cover:
+ * in view, not under its opaque night, and behind the start menu only for
+ * the grace once the scene is ready, or from the moment she enters.
  */
-const WATCH_FRAME_RATE = process.env.NODE_ENV === "production";
+function heroWants(now: number): boolean {
+  const loading = getSceneLoading();
+  if (loading.ready && Number.isNaN(readyAt)) readyAt = now;
+  wantsInput.active = getHeroInView() && !getHeroCovered();
+  wantsInput.ready = loading.ready;
+  wantsInput.entered = loading.entered;
+  wantsInput.sinceReadyMs = loading.ready ? now - readyAt : 0;
+  return heroFrameloop(wantsInput) === "always";
+}
+
+/**
+ * Frames asked of the canvas at rest wait for its warm-up (HeroWarmup): a
+ * frame drawn before it compiled whatever it showed then and there, the
+ * main thread waiting on the driver, a stall of the start menu at each
+ * step of the load; the warm-up asks for every program at once and waits
+ * without blocking (in parallel where the GPU allows). Once she has
+ * entered, the canvas draws whether warm or not.
+ */
+function heroHolds(state: RootState): boolean {
+  return !isWarm(state.gl);
+}
 
 const getStructure = () => getQuality().structure;
 const getServerStructure = () => getServerQuality().structure;
@@ -67,8 +94,6 @@ const getServerStructure = () => getServerQuality().structure;
 type Props = {
   tier: QualityTier;
   reducedMotion: boolean;
-  /** False while the hero is scrolled out of view: the loop pauses. */
-  active: boolean;
   /** Copy of the rooftop billboards, one line per board. */
   billboards: string[];
   /** Hands the renderer over once created (HeroCanvas watches it for a lost context). */
@@ -78,10 +103,11 @@ type Props = {
 /**
  * Everything the hero's canvas draws, the post aside. Memoised, and fed only
  * what changes the world (the tier, the motion setting, the boards' copy):
- * the frame loop, readiness, the quality level and the window's size
- * re-render HeroScene, and with it the Canvas, which re-renders whatever
- * it holds; here they stop at the root, so none of them reconciles the
- * scene's two dozen components.
+ * the quality level and the window's size re-render HeroScene, and with it
+ * the Canvas, which re-renders whatever it holds; here they stop at the
+ * root, so none of them reconciles the scene's two dozen components (the
+ * frame loop, the covers and readiness re-render nothing at all: the frame
+ * driver reads them).
  */
 const HeroWorld = memo(function HeroWorld({
   tier,
@@ -146,43 +172,19 @@ const HeroWorld = memo(function HeroWorld({
 });
 
 /**
- * The Three.js hero. Loaded client-side only (see HeroCanvas).
- * Under reduced motion the loop renders on demand: one still frame.
+ * The Three.js hero. Loaded client-side only (see HeroCanvas). It draws in
+ * the page's frame (frameDriver.ts: `frameloop="never"` for good, so R3F's
+ * clock never starts again from zero); under reduced motion R3F draws it
+ * on demand: one still frame.
  * The Canvas is keyed by tier so a tier change rebuilds the renderer (the
  * tier holds once the scene is ready on a fine pointer, useQualityTier).
  */
-export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }: Props) {
+export function HeroScene({ tier, reducedMotion, billboards, onCreated }: Props) {
   const animate = !reducedMotion;
   const opening = SHOTS[0].from;
   // The visit's quality level (qualityStore.ts, shared with the night): its pixels, and the post's structure.
   const dpr = useCanvasDpr(tier);
   const structure = useSyncExternalStore(subscribeQuality, getStructure, getServerStructure);
-  // A boolean snapshot, so the loading progress ticks do not re-render the scene.
-  const entered = useSyncExternalStore(
-    subscribeSceneLoading,
-    () => getSceneLoading().entered,
-    () => false,
-  );
-  const ready = useSyncExternalStore(
-    subscribeSceneLoading,
-    () => getSceneLoading().ready,
-    () => false,
-  );
-  // Behind the start menu the scene draws only when asked while it loads, every frame for a few
-  // seconds once it is ready, then not at all until she enters (heroFrameloop).
-  const [graceOver, setGraceOver] = useState(false);
-  useEffect(() => {
-    if (!ready || graceOver) return;
-    const timer = setTimeout(() => setGraceOver(true), READY_GRACE_MS);
-    return () => clearTimeout(timer);
-  }, [ready, graceOver]);
-  const frameloop = heroFrameloop({
-    animate,
-    active,
-    ready,
-    entered,
-    sinceReadyMs: graceOver ? Number.POSITIVE_INFINITY : 0,
-  });
 
   return (
     <Canvas
@@ -192,7 +194,7 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
       // Measured on resize only: by default R3F re-measures its box on every scroll (a layout read) and,
       // as the box moves with the page, re-renders the whole scene tree about twenty times a second.
       resize={{ scroll: false }}
-      frameloop={frameloop}
+      frameloop={animate ? "never" : "demand"}
       // No depth on the canvas's own buffer: the composer draws the scene into its own target, with its
       // own depth, and only a full-screen pass ever reaches the screen.
       gl={{ antialias: false, powerPreference: "high-performance", alpha: false, stencil: false, depth: false }}
@@ -214,7 +216,8 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
       }}
       aria-hidden
     >
-      {WATCH_FRAME_RATE && animate ? <QualityWatch /> : null}
+      {/* First: registered before any other part asks for a frame. */}
+      {animate ? <PacedRoot id="hero" wants={heroWants} holds={heroHolds} /> : null}
       <HeroWorld tier={tier} reducedMotion={reducedMotion} billboards={billboards} />
       <Effects tier={tier} structure={structure} />
     </Canvas>

@@ -16,6 +16,11 @@
  * she enters. Otherwise it renders on demand: nothing, until she enters.
  * Out of view (or under opaque night, `active` false) and under reduced
  * motion it is on demand as before.
+ *
+ * The frame driver (frameDriver.ts) reads it every frame (HeroScene's
+ * `heroWants`): "always" draws at the pace, "demand" only the frames asked
+ * for, those asked before the warm-up is done once it is. Under reduced
+ * motion the canvas is not driven: R3F's own "demand" draws it.
  */
 export type HeroFrameloopInput = {
   /** Motion allowed (not reduced motion). */

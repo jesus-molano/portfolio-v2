@@ -1,7 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { getHeroCovered, isCovered, setHeroCovered, subscribeHeroCovered } from "./heroCover";
+import { afterEach, describe, expect, it } from "vitest";
+import { getHeroCovered, getHeroInView, isCovered, setHeroCovered, setHeroInView } from "./heroCover";
 
-afterEach(() => setHeroCovered(false));
+afterEach(() => {
+  setHeroCovered(false);
+  setHeroInView(true);
+});
 
 describe("heroCover", () => {
   it("counts the picture covered only under the opaque night", () => {
@@ -11,16 +14,12 @@ describe("heroCover", () => {
     expect(isCovered(1)).toBe(true);
   });
 
-  it("tells its listeners only when it flips", () => {
-    const listener = vi.fn();
-    const unsubscribe = subscribeHeroCovered(listener);
+  it("holds what the stage and the observer last wrote, in view until told otherwise", () => {
+    expect(getHeroCovered()).toBe(false);
+    expect(getHeroInView()).toBe(true);
     setHeroCovered(true);
-    setHeroCovered(true);
+    setHeroInView(false);
     expect(getHeroCovered()).toBe(true);
-    setHeroCovered(false);
-    expect(listener).toHaveBeenCalledTimes(2);
-    unsubscribe();
-    setHeroCovered(true);
-    expect(listener).toHaveBeenCalledTimes(2);
+    expect(getHeroInView()).toBe(false);
   });
 });

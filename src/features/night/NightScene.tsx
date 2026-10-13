@@ -6,7 +6,8 @@ import { memo, Suspense, useEffect, useLayoutEffect, useRef, useSyncExternalStor
 import type { Group, Material, Mesh, Texture, WebGLRenderer, WebGLRenderTarget } from "three";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "@/features/hero/SceneErrorBoundary";
-import { QualityWatch } from "@/features/hero/scene/QualityWatch";
+import { isWarmFrame } from "@/features/hero/scene/frameDriver";
+import { PacedRoot } from "@/features/hero/scene/PacedRoot";
 import { getQuality, getServerQuality, seedFromRenderer, subscribeQuality } from "@/features/hero/scene/qualityStore";
 import { useCanvasDpr } from "@/features/hero/scene/useCanvasDpr";
 import { compileAsComposed, createWarmTarget, uploadTextures, warmKey } from "@/features/hero/scene/warmup";
@@ -18,7 +19,7 @@ import { CarDrive, CarNight } from "./CarNight";
 import { NightEffects } from "./NightEffects";
 import { NightRig } from "./NightRig";
 import { NightSky } from "./NightSky";
-import { night, setNightReadiness } from "./nightState";
+import { getNightCovered, night, setNightReadiness } from "./nightState";
 import { paintsPending } from "./paintSet";
 import { NightPalmShapes } from "./parts/NightPalms";
 import { boundTextures } from "./releaseTextures";
@@ -28,17 +29,12 @@ import { Street } from "./Street";
 
 type Props = {
   tier: QualityTier;
-  /** False while the stage is out of view or covered: the loop stops. */
-  active: boolean;
   timeline: StageTimeline;
   work: Dictionary["work"];
   locale: Locale;
   /** Hands the renderer over once created (NightCanvas watches it for a lost context). */
   onCreated?: (state: { gl: WebGLRenderer }) => void;
 };
-
-/** Production only, as in the hero: a dev build's frame rate says nothing about the device. */
-const WATCH_FRAME_RATE = process.env.NODE_ENV === "production";
 
 const getStructure = () => getQuality().structure;
 const getServerStructure = () => getServerQuality().structure;
@@ -104,8 +100,8 @@ function Warmup({ groups }: { groups: { current: (Group | null)[] } }) {
   useFrame(() => {
     // It keeps looking while the frame loop runs (a few small traversals every WARM_EVERY_MS): a set's
     // art lands after its fonts and adds its meshes or its texture then, and a stop counted warm before
-    // that compiled them in its first frame on screen. Timed on the page's clock: R3F's restarts at
-    // every flip of the frame loop, and a look timed on it waited out the whole gap again.
+    // that compiled them in its first frame on screen. Timed on the page's clock: the scene's own stands
+    // still while the canvas rests (frameDriver.ts), and R3F's used to start again from zero at every wake.
     const now = performance.now();
     if (busy.current || !target.current || now < lookAt.current) return;
     lookAt.current = now + WARM_EVERY_MS;
@@ -201,6 +197,8 @@ function DevHandle() {
 function ReadyReporter() {
   const frames = useRef(0);
   useFrame(() => {
+    // A hidden frame (frameDriver `warmFrame`) is no frame of the picture: the stage waits for a real one.
+    if (isWarmFrame()) return;
     frames.current += 1;
     night.frames += 1;
     if (frames.current === 4) setNightReadiness("ready");
@@ -232,11 +230,11 @@ type WorldProps = { tier: QualityTier; timeline: StageTimeline; work: Dictionary
 
 /**
  * Everything the night's canvas draws, the post aside. Memoised, and fed
- * only what changes the city (the tier, the timeline, the copy): the frame
- * loop waking and resting, the quality level and the window's size
- * re-render NightScene, and with it the Canvas, which re-renders whatever
- * it holds; here they stop at the root, and none of them reconciles the
- * five sets.
+ * only what changes the city (the tier, the timeline, the copy): the
+ * quality level and the window's size re-render NightScene, and with it
+ * the Canvas, which re-renders whatever it holds; here they stop at the
+ * root, and none of them reconciles the five sets (the frame loop waking
+ * and resting re-renders nothing at all: the frame driver reads it).
  */
 const NightWorld = memo(function NightWorld({ tier, timeline, work, locale }: WorldProps) {
   const groups = useRef<(Group | null)[]>([]);
@@ -280,18 +278,31 @@ const NightWorld = memo(function NightWorld({ tier, timeline, work, locale }: Wo
 });
 
 /**
+ * Whether the night draws every frame, read by the frame driver once a
+ * frame after WorkStage has written the cover: the stage on screen
+ * (NightCanvas's observer) and not under its own opaque night
+ * (nightCover.ts).
+ */
+function nightWants(): boolean {
+  return night.onScreen && !getNightCovered();
+}
+
+/** The canvas draws again after a rest (the stage back on screen, its cover lifting): the car lands on the picture (CarDrive). */
+function wakeNight() {
+  night.woke = true;
+}
+
+/**
  * The night city: five small sets, one per stop, of which only the one on
  * screen is visible; the street, the car, the sky and the lights are
- * shared and take the stop's look at each cut.
+ * shared and take the stop's look at each cut. It draws in the page's
+ * frame (frameDriver.ts), only while the stage is on screen and not
+ * covered.
  */
-export function NightScene({ tier, active, timeline, work, locale, onCreated }: Props) {
+export function NightScene({ tier, timeline, work, locale, onCreated }: Props) {
   // The visit's quality level, the hero's (qualityStore.ts): a step down in either canvas holds in both.
   const dpr = useCanvasDpr(tier);
   const structure = useSyncExternalStore(subscribeQuality, getStructure, getServerStructure);
-  // The frame loop wakes as the stage comes back on screen: the car lands on the picture (CarDrive).
-  useEffect(() => {
-    if (active) night.woke = true;
-  }, [active]);
 
   return (
     <Canvas
@@ -301,7 +312,8 @@ export function NightScene({ tier, active, timeline, work, locale, onCreated }: 
       // Measured on resize only: by default R3F re-measures its box on every scroll (a layout read) and,
       // as the box moves with the page, re-renders the whole scene tree about twenty times a second.
       resize={{ scroll: false }}
-      frameloop={active ? "always" : "never"}
+      // Drawn by the frame driver (PacedRoot), never by R3F's own loop.
+      frameloop="never"
       // No depth on the canvas's own buffer: the composer draws the scene into its own target, with its
       // own depth, and only a full-screen pass ever reaches the screen.
       gl={{ antialias: false, powerPreference: "high-performance", alpha: false, stencil: false, depth: false }}
@@ -316,7 +328,7 @@ export function NightScene({ tier, active, timeline, work, locale, onCreated }: 
       aria-hidden
     >
       <DisposeOnUnmount />
-      {WATCH_FRAME_RATE ? <QualityWatch /> : null}
+      <PacedRoot id="night" wants={nightWants} onWake={wakeNight} />
       <NightWorld tier={tier} timeline={timeline} work={work} locale={locale} />
       <NightEffects tier={tier} structure={structure} />
     </Canvas>
