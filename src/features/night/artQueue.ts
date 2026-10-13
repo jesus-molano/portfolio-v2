@@ -12,12 +12,17 @@ import { browserIdle, type IdleScheduler } from "@/lib/idle";
  * step) or a generator that yields between its steps (Logixs' wall, cell
  * by cell).
  *
- * A step for the stop on screen (rank 0) runs after the next frame: she is
- * looking at its board. Any other waits for a quiet moment (`mayPaint`): an
- * idle period with no scroll of hers and no move of the page in the last
- * 200 ms, a second at most. A step is 50 to 600 ms on a phone (a grain
- * pass over every pixel of a big board), and run a frame apart they landed
- * as hitches all through her drive into the city.
+ * A step for the stop on screen or a stop beside it (`nearStop`) runs after
+ * the next frame: she is looking at the one, and the next she reaches,
+ * whichever way she drives, is one of the others. One further off waits
+ * for a quiet moment (`mayPaint`): an idle period with no scroll of hers and
+ * no move of the page in the last 200 ms, a second at most. A step is 50 to
+ * 600 ms on a phone (a grain pass over every pixel of a big board), and run
+ * a frame apart they landed as hitches all through her drive into the
+ * city. Only the stop on screen went at once at first: back up from STATS
+ * with the wheel, never still, Logixs' wall (a dozen steps) waited its
+ * second a step all through Heuristik's stretch, and she reached a bare
+ * wall that then painted frame after frame in front of her.
  */
 
 export type Painter<T> = (() => T) | Generator<unknown, T, unknown>;
@@ -50,15 +55,26 @@ function afterFrame(run: () => void): void {
   else setTimeout(run, 0);
 }
 
-/** How long the page must have been still before a step for another stop paints, and the longest such a step waits (ms). */
+/**
+ * The furthest rank (stopRank) that paints after the next frame: the stop on
+ * screen (0), the stop ahead (2) and the stop behind (3).
+ */
+export const NEAR_RANK = 3;
+
+/** Whether a stop of this rank is the one on screen or one beside it: she reaches it next, whichever way she drives. */
+export function nearStop(rank: number): boolean {
+  return rank <= NEAR_RANK;
+}
+
+/** How long the page must have been still before a step for a stop further off paints, and the longest such a step waits (ms). */
 export const PAINT_GATE = { quietMs: 200, timeoutMs: 1000 } as const;
 
 /**
  * Whether a step that has waited since `since` may paint at `now`: at once
- * for the stop on screen (`urgent`), else once nothing has scrolled for
- * `quietMs` (`scrolledAt`: her last input or the page's last move), or
- * once it has waited `timeoutMs` (a visitor who never stops still gets
- * her boards).
+ * for the stop on screen or one beside it (`urgent`), else once nothing
+ * has scrolled for `quietMs` (`scrolledAt`: her last input or the page's
+ * last move), or once it has waited `timeoutMs` (a visitor who never stops
+ * still gets her boards).
  */
 export function mayPaint(urgent: boolean, now: number, since: number, scrolledAt: number): boolean {
   return urgent || now - scrolledAt >= PAINT_GATE.quietMs || now - since >= PAINT_GATE.timeoutMs;
@@ -113,7 +129,8 @@ function quietWait(): Wait {
 
 /**
  * A queue of painters; `defer` schedules the next step when it is for the
- * stop on screen, `wait` when it is for another (tests pass their own).
+ * stop on screen or one beside it, `wait` when it is for one further off
+ * (tests pass their own).
  */
 export function createArtQueue(defer: (run: () => void) => void = afterFrame, wait: Wait = quietWait()) {
   const jobs: Job[] = [];
@@ -142,10 +159,10 @@ export function createArtQueue(defer: (run: () => void) => void = afterFrame, wa
     schedule();
   };
 
-  /** The next step is for the stop on screen. */
+  /** The next step is for the stop on screen or one beside it. */
   const urgent = () => {
     const job = nextJob(jobs);
-    return job !== undefined && job.rank() === 0;
+    return job !== undefined && nearStop(job.rank());
   };
 
   const schedule = () => {
