@@ -10,7 +10,7 @@
  *
  *   node tools/capture/perf.mjs [--url http://localhost:3000/en]
  *     [--device phone|desktop] [--only boot,menu,hero,cuts,city,cover,rest,radio,layers,leak,load,pace]
- *     [--cycles 8] [--win 5000] [--out perf.json]
+ *     [--cycles 8] [--win 5000] [--out perf.json] [--gpu]
  *
  * Every WebGL context is counted from the inside (an init script wraps
  * getContext and the draw calls): a canvas "renders" in an animation frame
@@ -49,6 +49,10 @@
  *
  * WebGL runs on SwiftShader, so absolute frame rates are a CPU's; the
  * counts (frames drawn, loops alive, contexts kept) are the device's.
+ * `--gpu` runs a visible Chromium on the machine's own GPU instead: on a
+ * real laptop the frame times, the long frames and the quality level and
+ * pace each canvas settles on (`data-quality`, `data-pace`) are the
+ * visitor's, which a software rasteriser taking seconds a frame never is.
  */
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
@@ -61,6 +65,7 @@ const { values } = parseArgs({
     cycles: { type: "string", default: "8" },
     win: { type: "string", default: "5000" },
     out: { type: "string", default: "" },
+    gpu: { type: "boolean", default: false },
   },
 });
 
@@ -224,10 +229,10 @@ const PROBE = () => {
 };
 
 const browser = await chromium.launch({
+  // Headless Chromium draws WebGL in software; a visible one draws on the GPU.
+  headless: !values.gpu,
   args: [
-    "--use-gl=angle",
-    "--use-angle=swiftshader",
-    "--enable-unsafe-swiftshader",
+    ...(values.gpu ? [] : ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]),
     "--ignore-gpu-blocklist",
     "--autoplay-policy=no-user-gesture-required",
     "--js-flags=--expose-gc",
