@@ -4,7 +4,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -243,6 +242,18 @@ function targetKind(target: EventTarget | null, clicked: Element | null): Target
   return control.tagName === "A" ? "link" : "button";
 }
 
+/**
+ * Shows the shot in the camera readout: its number and its label, each the
+ * one visible cell of a grid of them all (so the readout keeps its widest
+ * box). Written by the frame, and only when the shot changes: a React state
+ * for it re-rendered the whole stage, and the canvas under it, at every cut.
+ */
+function showShot(numbers: readonly Element[], labels: readonly Element[], shot: number) {
+  numbers.forEach((cell, i) => cell.toggleAttribute("data-current", i === shot));
+  const label = shot < labels.length ? shot : 0;
+  labels.forEach((cell, i) => cell.toggleAttribute("data-current", i === label));
+}
+
 type Probe = Record<string, number | string | boolean | null>;
 type DevWindow = Window & { __vaJump?: (p: number) => void; __vaProbe?: Probe[] };
 
@@ -308,7 +319,6 @@ export function HeroStage({
   const resume = useRef<{ p: number; until: number } | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const lenis = useLenis();
-  const [shot, setShot] = useState(0);
 
   const timeline = useMemo(() => heroTimeline(lines), [lines]);
   const walls = useMemo(() => buildWalls(timeline), [timeline]);
@@ -362,6 +372,8 @@ export function HeroStage({
       if (!root) return;
       const sticky = root.querySelector<HTMLElement>("[data-sticky]");
       const cards = Array.from(root.querySelectorAll<HTMLElement>("[data-card]"));
+      const shotNumbers = Array.from(root.querySelectorAll<HTMLElement>("[data-shot-no]"));
+      const shotLabels = Array.from(root.querySelectorAll<HTMLElement>("[data-shot-label]"));
 
       /** The hero's section: what a move past it opens (lib/navigate.ts). */
       const section = root.closest("section") ?? root;
@@ -390,7 +402,7 @@ export function HeroStage({
         ran.current = "still";
         heroProgress.value = heroProgress.target = STATIC_PROGRESS;
         scrollGate.maxScroll = Number.POSITIVE_INFINITY;
-        setShot(shotIndexAt(STATIC_PROGRESS));
+        showShot(shotNumbers, shotLabels, shotIndexAt(STATIC_PROGRESS));
         actions.current = { skip: jumpToEnd, skipPointerDown: () => {}, skipPointerUp: () => {} };
         // Side hints wait for a quiet moment: once she has scrolled the
         // still title away (nothing covers the name) and rests there.
@@ -1252,7 +1264,7 @@ export function HeroStage({
 
         if (pick.shot !== currentShot) {
           currentShot = pick.shot;
-          setShot(pick.shot);
+          showShot(shotNumbers, shotLabels, pick.shot);
         }
 
         // A line she asked for at the title plays once the name has formed, unless she has driven on since.
@@ -1809,8 +1821,6 @@ export function HeroStage({
     { scope: stage, dependencies: [reducedMotion, timeline, walls, lenis], revertOnUpdate: true },
   );
 
-  const shotLabel = shots[shot] ?? shots[0];
-
   return (
     <div ref={stage} className={styles.stage}>
       <div className={styles.sticky} data-sticky>
@@ -1820,12 +1830,23 @@ export function HeroStage({
 
         {/* Decoration, like the dash: the screen-reader help says what the film is. */}
         <p className={styles.hudCamera} data-hud aria-hidden="true">
-          {camera} {String(shot + 1).padStart(2, "0")}/{String(SHOT_COUNT).padStart(2, "0")}
+          {/* The camera and its number in one flex item, a space between them as in plain text. Every
+              number in one cell too, the first one shown until the frame shows another (showShot). */}
+          <span>
+            {camera}{" "}
+            <span className={styles.hudNo}>
+              {Array.from({ length: SHOT_COUNT }, (_, i) => (
+                <span key={i} className={styles.hudNoCell} data-shot-no data-current={i === 0 ? "" : undefined}>
+                  {String(i + 1).padStart(2, "0")}/{String(SHOT_COUNT).padStart(2, "0")}
+                </span>
+              ))}
+            </span>
+          </span>
           {/* Every label in one cell, the current one shown: the readout keeps the widest's width, so
               anchored right it never moves at a cut (a layout shift at every shot change). */}
           <span className={styles.hudShot}>
-            {shots.map((label) => (
-              <span key={label} className={styles.hudShotLabel} data-current={label === shotLabel ? "" : undefined}>
+            {shots.map((label, i) => (
+              <span key={label} className={styles.hudShotLabel} data-shot-label data-current={i === 0 ? "" : undefined}>
                 {label}
               </span>
             ))}

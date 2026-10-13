@@ -13,7 +13,7 @@ import type { Vec3 } from "../frame";
 import { night } from "../nightState";
 import { type BoxItem, Boxes } from "../parts/Boxes";
 import { type Glow, type GlowHandle, Glows } from "../parts/Glows";
-import { NightPalms } from "../parts/NightPalms";
+import { type NightPalm, NightPalms } from "../parts/NightPalms";
 import { type Pane, Windows } from "../parts/Windows";
 import { structureFragmentShader } from "../shaders/board";
 import { signFragmentShader, signVertexShader } from "../shaders/sign";
@@ -173,6 +173,29 @@ const SOFFIT: Glow[] = [-2.2, -0.7, 0.7, 2.2].flatMap((x) => [-6.9, -4.4].map((z
 // Clear of the lines from the cameras to the blade, the marquee, the years over the lobby and the car.
 const PROMENADE_LAMPS: Vec3[] = [-33, 14].map((x) => [x, 4.4, 3.2] as Vec3);
 
+/*
+ * What the set hands its parts is made once, here: a list made in the render
+ * was a new prop at every render of the set (its art landing), and the part
+ * placed every instance again.
+ */
+const PROMENADE_POSTS: BoxItem[] = PROMENADE_LAMPS.map(([x, , z]) => ({ p: [x, 2.1, z] as Vec3, s: [0.14, 4.2, 0.14] as Vec3 }));
+/**
+ * Past the hotel's door, down the promenade: on the near side before it a
+ * trunk stood in front of the car, the years over the lobby or the marquee
+ * in one shot or another.
+ */
+const PWC_PALMS: NightPalm[] = [
+  { position: [8, 0, 4.8], rotation: 3.1, scale: 1.1, variant: 1 },
+  { position: [18, 0, 5.2], rotation: 0.9, scale: 0.95, variant: 3 },
+  { position: [26, 0, 4.6], rotation: 0.3, scale: 1.05, variant: 0 },
+  { position: [33, 0, 5.4], rotation: 1.9, scale: 0.85, variant: 2 },
+];
+const PWC_PALMS_LOW: NightPalm[] = [PWC_PALMS[0], PWC_PALMS[2]];
+/** The zebra crossing's stripes. */
+const ZEBRA: BoxItem[] = Array.from({ length: 8 }, (_, i) => ({ p: [5.5, 0.012, -4.6 + i * 0.85] as Vec3, s: [2.4, 0.02, 0.45] as Vec3 }));
+/** The racing stripes' pulse, white hot enough to bloom. */
+const PULSE = new Color("#ffffff").multiplyScalar(3);
+
 function PwcSet({ work, tier, index, timeline }: SetProps) {
   const high = tier === "high";
   const board = work.stops.pwc.board;
@@ -331,7 +354,7 @@ function PwcSet({ work, tier, index, timeline }: SetProps) {
       </Boxes>
       <mesh ref={pulse} position={[-100, 15.45, FACADE_Z + 0.42]} visible={false}>
         <boxGeometry args={[1.2, 1.2, 0.1]} />
-        <meshBasicMaterial color={new Color("#ffffff").multiplyScalar(3)} transparent opacity={0.8} blending={AdditiveBlending} depthWrite={false} />
+        <meshBasicMaterial color={PULSE} transparent opacity={0.8} blending={AdditiveBlending} depthWrite={false} />
       </mesh>
 
       {/* The blade: enamel cabinet, neon faces both sides; the marquee under it. */}
@@ -369,25 +392,11 @@ function PwcSet({ work, tier, index, timeline }: SetProps) {
       <Glows glows={bulbs} handle={bulbHandle} />
 
       {/* The promenade: deco lamp globes, palms backlit by the neon. */}
-      <Boxes items={PROMENADE_LAMPS.map(([x, , z]) => ({ p: [x, 2.1, z] as Vec3, s: [0.14, 4.2, 0.14] as Vec3 }))}>
+      <Boxes items={PROMENADE_POSTS}>
         <meshStandardMaterial color={palette.asphalt} roughness={0.5} metalness={0.4} />
       </Boxes>
       <Glows glows={lampGlows} />
-      <NightPalms
-        // Past the hotel's door, down the promenade: on the near side before it a trunk stood in front of the
-        // car, the years over the lobby or the marquee in one shot or another.
-        palms={(high
-          ? [
-              { position: [8, 0, 4.8], rotation: 3.1, scale: 1.1, variant: 1 },
-              { position: [18, 0, 5.2], rotation: 0.9, scale: 0.95, variant: 3 },
-              { position: [26, 0, 4.6], rotation: 0.3, scale: 1.05, variant: 0 },
-              { position: [33, 0, 5.4], rotation: 1.9, scale: 0.85, variant: 2 },
-            ]
-          : [
-              { position: [8, 0, 4.8], rotation: 3.1, scale: 1.1, variant: 1 },
-              { position: [26, 0, 4.6], rotation: 0.3, scale: 1.05, variant: 0 },
-            ]) as { position: Vec3; rotation: number; scale: number; variant: number }[]}
-      />
+      <NightPalms palms={high ? PWC_PALMS : PWC_PALMS_LOW} />
       {/* The pavement, the zebra crossing and its light: the stop's signal. */}
       <mesh position={[-4, 0.1, -6.7]}>
         <boxGeometry args={[80, 0.2, 2.6]} />
@@ -397,7 +406,7 @@ function PwcSet({ work, tier, index, timeline }: SetProps) {
         <boxGeometry args={[80, 0.16, 5.2]} />
         <meshStandardMaterial color="#3a2d50" roughness={0.8} />
       </mesh>
-      <Boxes items={Array.from({ length: 8 }, (_, i) => ({ p: [5.5, 0.012, -4.6 + i * 0.85] as Vec3, s: [2.4, 0.02, 0.45] as Vec3 }))}>
+      <Boxes items={ZEBRA}>
         <meshStandardMaterial color="#b9b0cc" roughness={0.6} />
       </Boxes>
       <mesh position={[4.3, 1.3, 2.45]}>

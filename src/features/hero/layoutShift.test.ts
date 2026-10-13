@@ -50,6 +50,19 @@ describe("the hero's frame never shifts", () => {
     for (const dict of [en, es]) expect(new Set(dict.hero.shots).size).toBe(dict.hero.shots.length);
   });
 
+  it("keeps the shot's number in one cell too, every number there and the frame showing one: a cut renders nothing in React", () => {
+    expect(bodyOf(".hudNo")).toMatch(/display:\s*inline-grid/);
+    expect(bodyOf(".hudNoCell")).toMatch(/grid-area:\s*1\s*\/\s*1/);
+    expect(bodyOf(".hudNoCell")).toMatch(/visibility:\s*hidden/);
+    expect(bodyOf(".hudNoCell[data-current]")).toMatch(/visibility:\s*visible/);
+    expect(declared(/hudNo/, "display").map(([s]) => s)).toEqual([".hudNo"]);
+    // The frame writes data-current (showShot); a React state for the shot re-rendered the stage and its canvas at every cut.
+    const stage = readFileSync(new URL("./HeroStage.tsx", import.meta.url), "utf8");
+    expect(stage).toMatch(/data-shot-no/);
+    expect(stage).toMatch(/data-shot-label/);
+    expect(stage).not.toMatch(/\buseState\b/);
+  });
+
   it("keeps the title hint's box the size of its largest message: each in a fixed cell, swapped by visibility", () => {
     for (const cls of ["hintLine1", "hintAck", "hintOnward"]) expect(css).toMatch(new RegExp(`\\.${cls}[^{]*\\{[^}]*grid-area:\\s*1\\s*/\\s*1`));
     for (const cls of ["hintLine2", "hintArriving"]) expect(css).toMatch(new RegExp(`\\.${cls}[^{]*\\{[^}]*grid-area:\\s*2\\s*/\\s*1`));

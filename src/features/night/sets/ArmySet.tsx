@@ -22,7 +22,7 @@ import type { Vec3 } from "../frame";
 import { night } from "../nightState";
 import { type BoxItem, Boxes } from "../parts/Boxes";
 import { type Glow, type GlowHandle, Glows } from "../parts/Glows";
-import { NightPalms } from "../parts/NightPalms";
+import { type NightPalm, NightPalms } from "../parts/NightPalms";
 import { beamFragmentShader, beamVertexShader } from "../shaders/beam";
 import { boardFragmentShader, boardVertexShader, structureFragmentShader } from "../shaders/board";
 import { ARMY_GIRDER, ARMY_HOLE, ARMY_POSTER, ARMY_STEEL, armyFaces, paintArmyPoster } from "./art/army";
@@ -153,6 +153,16 @@ function structureItems(): BoxItem[] {
   });
   return items;
 }
+
+/**
+ * The palms past the lot, per tier. Constants: a list made in the render was
+ * a new prop at every render of the set, and the palms were placed again.
+ */
+const ARMY_PALMS: NightPalm[] = [
+  { position: [26, 0, -10], rotation: 0.4, scale: 1.0, variant: 1 },
+  { position: [33, 0, -14], rotation: 2.2, scale: 0.9, variant: 2 },
+];
+const ARMY_PALMS_LOW: NightPalm[] = [{ position: [27, 0, -11], rotation: 0.4, scale: 1.0, variant: 1 }];
 
 function ArmySet({ work, tier, timeline, index }: SetProps) {
   const high = tier === "high";
@@ -336,14 +346,7 @@ function ArmySet({ work, tier, timeline, index }: SetProps) {
       {/* The ground, the perimeter and the checkpoint, whose boom is the stop's signal (army/Site.tsx). */}
       <ArmySite tier={tier} timeline={timeline} index={index} />
 
-      <NightPalms
-        palms={(high
-          ? [
-              { position: [26, 0, -10] as Vec3, rotation: 0.4, scale: 1.0, variant: 1 },
-              { position: [33, 0, -14] as Vec3, rotation: 2.2, scale: 0.9, variant: 2 },
-            ]
-          : [{ position: [27, 0, -11] as Vec3, rotation: 0.4, scale: 1.0, variant: 1 }])}
-      />
+      <NightPalms palms={high ? ARMY_PALMS : ARMY_PALMS_LOW} />
     </group>
   );
 }

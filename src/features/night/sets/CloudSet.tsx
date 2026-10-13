@@ -33,7 +33,7 @@ import { type Pane, Windows } from "../parts/Windows";
 import { NightPalms, type NightPalm } from "../parts/NightPalms";
 import { type Glow, type GlowHandle, Glows } from "../parts/Glows";
 import { Lamps } from "../parts/Lamps";
-import { Skyline } from "../parts/Skyline";
+import { Skyline, type SkylineSpec } from "../parts/Skyline";
 import { buildPrism } from "../prismGeometry";
 import { structureFragmentShader } from "../shaders/board";
 import { signFragmentShader, signVertexShader } from "../shaders/sign";
@@ -131,6 +131,16 @@ const CLOUD_PALMS: NightPalm[] = [
   { position: [13, 0, 4.9] as Vec3, rotation: 1.3, scale: 1.05, variant: 1 },
   { position: [18, 0, 5.5] as Vec3, rotation: 2.8, scale: 0.9, variant: 3 },
 ];
+/** The low tier's, a constant too: a slice made in the render was a new prop each time, and the palms were placed again. */
+const CLOUD_PALMS_LOW = CLOUD_PALMS.slice(0, 2);
+
+/**
+ * The far skyline, per tier. A spec written in the render was a new object
+ * at every render of the set: the skyline laid itself out again and its
+ * windows got new buffers.
+ */
+const SKYLINE: SkylineSpec = { seed: 2024, count: 60, x: [-160, 170], z: [-200, -40], height: [12, 55], lit: 0.32, clear: [{ x: [-30, 30], z: [-50, -20] }] };
+const CLOUD_SKYLINE: Record<SetProps["tier"], SkylineSpec> = { high: SKYLINE, low: { ...SKYLINE, count: 40 } };
 
 /** The block's front, just behind the far pavement. */
 const BLOCK_FRONT = -6.6;
@@ -375,7 +385,7 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
 
   return (
     <group>
-      <Skyline spec={{ seed: 2024, count: high ? 60 : 40, x: [-160, 170], z: [-200, -40], height: [12, 55], lit: 0.32, clear: [{ x: [-30, 30], z: [-50, -20] }] }} />
+      <Skyline spec={CLOUD_SKYLINE[tier]} />
       {/* A dome on the skyline, like the old city's. */}
       <mesh position={[-48, 22, -95]} scale={[11, 9, 11]}>
         <sphereGeometry args={[1, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
@@ -422,7 +432,7 @@ function CloudSet({ work, tier, timeline, index }: SetProps) {
       <Boxes items={frame}>
         <shaderMaterial uniforms={uniforms.frame} vertexShader={instancedBoardVertexShader} fragmentShader={structureFragmentShader} fog />
       </Boxes>
-      <NightPalms palms={high ? CLOUD_PALMS : CLOUD_PALMS.slice(0, 2)} />
+      <NightPalms palms={high ? CLOUD_PALMS : CLOUD_PALMS_LOW} />
       <Glows glows={lampHeads} />
       {/* Breakouts: Naturgy's bolt, Pangea's last piece, Telpark's car. */}
       <group ref={bolt} position={BOLT_AT} rotation-z={-0.14}>

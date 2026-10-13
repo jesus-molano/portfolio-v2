@@ -9,6 +9,7 @@ import {
   Vignette,
 } from "@react-three/postprocessing";
 import { SMAAPreset, ToneMappingMode } from "postprocessing";
+import { memo } from "react";
 import type { QualityTier } from "../useQualityTier";
 import { FilmGrain } from "./FilmGrain";
 import { gradeUniforms } from "./grade";
@@ -38,6 +39,9 @@ const BLOOM = { threshold: 0.8, smoothing: 0.35, intensity: 0.7, radius: 0.75 } 
 /** A slight darkening toward the corners, as on a real lens. */
 const VIGNETTE = { offset: 0.3, darkness: 0.5 } as const;
 
+/** The day's grade (grade.ts): the same values for the life of the page. */
+const GRADE = gradeUniforms();
+
 /**
  * Pass layout (effects merge into one shader until a convolution effect):
  *   1. SMAA, [depth of field], bloom, tone mapping: SMAA reads the scene
@@ -45,10 +49,11 @@ const VIGNETTE = { offset: 0.3, darkness: 0.5 } as const;
  *   2. [chromatic aberration], vignette, grade and grain (display values).
  * On the low tier everything is one pass plus SMAA's two small ones: the
  * vignette and the grade cost a few instructions there, not a pass.
+ *
+ * Memoised: a re-render hands the composer a new list of effects, and
+ * nothing in it changes unless the tier or the depth of field does.
  */
-export function Effects({ tier, depthOfField }: Props) {
-  const grade = gradeUniforms();
-
+export const Effects = memo(function Effects({ tier, depthOfField }: Props) {
   if (tier === "low") {
     return (
       <EffectComposer multisampling={0}>
@@ -61,7 +66,7 @@ export function Effects({ tier, depthOfField }: Props) {
         />
         <ToneMapping mode={ToneMappingMode.NEUTRAL} />
         <Vignette eskil={false} offset={VIGNETTE.offset} darkness={VIGNETTE.darkness} />
-        <FilmGrain amount={GRAIN.amount} size={GRAIN.size} {...grade} />
+        <FilmGrain amount={GRAIN.amount} size={GRAIN.size} {...GRADE} />
       </EffectComposer>
     );
   }
@@ -80,7 +85,7 @@ export function Effects({ tier, depthOfField }: Props) {
       <ToneMapping mode={ToneMappingMode.NEUTRAL} />
       <ChromaticAberration offset={[0.0007, 0.0004]} radialModulation modulationOffset={0.35} />
       <Vignette eskil={false} offset={VIGNETTE.offset} darkness={VIGNETTE.darkness} />
-      <FilmGrain amount={GRAIN.amount} size={GRAIN.size} {...grade} />
+      <FilmGrain amount={GRAIN.amount} size={GRAIN.size} {...GRADE} />
     </EffectComposer>
   );
-}
+});

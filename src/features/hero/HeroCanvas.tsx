@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { isOnScreen, ON_SCREEN_THRESHOLDS } from "@/lib/onScreen";
 import styles from "./Hero.module.css";
@@ -30,9 +30,10 @@ type Props = {
  * the end of the drive (heroCover.ts), where nothing of it shows. A held right click or a
  * long-press on it opens the radio wheel (`data-radio-surface`, see
  * RadioWheel). While it is behind the page controls they need no backing
- * (`data-scene`, see PageControls).
+ * (`data-scene`, see PageControls). Memoised: its props are the server's
+ * copy, so nothing the stage renders reaches the scene.
  */
-export function HeroCanvas({ label, billboards }: Props) {
+export const HeroCanvas = memo(function HeroCanvas({ label, billboards }: Props) {
   const tier = useQualityTier();
   const reducedMotion = usePrefersReducedMotion();
   const wrapper = useRef<HTMLDivElement>(null);
@@ -68,4 +69,4 @@ export function HeroCanvas({ label, billboards }: Props) {
       </SceneErrorBoundary>
     </div>
   );
-}
+});

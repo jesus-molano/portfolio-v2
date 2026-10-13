@@ -4,7 +4,7 @@ import type { WebGLRenderer } from "three";
 
 import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { memo, Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "../SceneErrorBoundary";
 import { getServerLoadHolding, isLoadHolding, subscribeLoadHold } from "@/features/load/loadHold";
@@ -72,13 +72,82 @@ type Props = {
 };
 
 /**
+ * Everything the hero's canvas draws, the post aside. Memoised, and fed only
+ * what changes the world (the tier, the motion setting, the boards' copy):
+ * the frame loop, readiness, the load screen and the performance monitor
+ * re-render HeroScene, and with it the Canvas, which re-renders whatever
+ * it holds; here they stop at the root, so none of them reconciles the
+ * scene's two dozen components.
+ */
+const HeroWorld = memo(function HeroWorld({
+  tier,
+  reducedMotion,
+  billboards,
+}: {
+  tier: QualityTier;
+  reducedMotion: boolean;
+  billboards: string[];
+}) {
+  const animate = !reducedMotion;
+  const high = tier === "high";
+  return (
+    <>
+      <color attach="background" args={[palette.dusk]} />
+      <fog attach="fog" args={[palette.haze, world.fog.near, world.fog.far]} />
+      {/* Lit materials (car, driver, traffic, props, hotels): image-based
+          light from our own sky, a warm key from the low sun and a faint
+          sky/ground fill. Key against fill stays above 3:1. */}
+      <SkyEnvironment tier={tier} intensity={LIGHT.environment} />
+      <hemisphereLight args={[palette.pink, palette.ink, LIGHT.hemisphere]} />
+      <directionalLight position={KEY_POSITION} intensity={LIGHT.key} color={palette.amber} />
+
+      <DevHandle />
+      <LoadReporter />
+      <HeroWarmup />
+      <DriveClock animate={animate} />
+      <CameraRig parallax={high && animate} reducedMotion={reducedMotion} />
+      <Sky tier={tier} animate={animate} />
+      <Sun tier={tier} animate={animate} />
+      <Birds animate={animate} count={high ? 11 : 7} />
+      <Haze />
+      <Skyline tier={tier} />
+      <Landmark />
+      <Billboards texts={billboards} />
+      <SceneErrorBoundary name="Waterfront">
+        <Waterfront animate={animate} />
+      </SceneErrorBoundary>
+      <Water tier={tier} animate={animate} />
+      <Shore animate={animate} />
+      <Road animate={animate} />
+      <Props animate={animate} tier={tier} />
+      {/* One boundary per model group: the hero car never waits for the
+          traffic, and a missing GLB hides only its own part. */}
+      <SceneErrorBoundary name="Palms">
+        <Suspense fallback={null}>
+          <Palms animate={animate} count={high ? 28 : 18} />
+        </Suspense>
+      </SceneErrorBoundary>
+      <SceneErrorBoundary name="Car">
+        <Suspense fallback={null}>
+          <Car animate={animate} tier={tier} />
+        </Suspense>
+      </SceneErrorBoundary>
+      <SceneErrorBoundary name="Traffic">
+        <Suspense fallback={null}>
+          <Traffic animate={animate} perLane={high ? 3 : 2} />
+        </Suspense>
+      </SceneErrorBoundary>
+    </>
+  );
+});
+
+/**
  * The Three.js hero. Loaded client-side only (see HeroCanvas).
  * Under reduced motion the loop renders on demand: one still frame.
  * The Canvas is keyed by tier so a tier change rebuilds the renderer.
  */
 export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }: Props) {
   const animate = !reducedMotion;
-  const high = tier === "high";
   const opening = SHOTS[0].from;
   // Steps down on a slow device (degrade.ts); never back up.
   const [level, setLevel] = useState(0);
@@ -139,54 +208,10 @@ export function HeroScene({ tier, reducedMotion, active, billboards, onCreated }
       }}
       aria-hidden
     >
-      <color attach="background" args={[palette.dusk]} />
-      <fog attach="fog" args={[palette.haze, world.fog.near, world.fog.far]} />
-      {/* Lit materials (car, driver, traffic, props, hotels): image-based
-          light from our own sky, a warm key from the low sun and a faint
-          sky/ground fill. Key against fill stays above 3:1. */}
-      <SkyEnvironment tier={tier} intensity={LIGHT.environment} />
-      <hemisphereLight args={[palette.pink, palette.ink, LIGHT.hemisphere]} />
-      <directionalLight position={KEY_POSITION} intensity={LIGHT.key} color={palette.amber} />
-
       {WATCH_FRAME_RATE && entered && !holding && frameloop === "always" ? (
         <PerformanceMonitor onDecline={() => setLevel((current) => declineLevel(tier, current))} />
       ) : null}
-      <DevHandle />
-      <LoadReporter />
-      <HeroWarmup />
-      <DriveClock animate={animate} />
-      <CameraRig parallax={high && animate} reducedMotion={reducedMotion} />
-      <Sky tier={tier} animate={animate} />
-      <Sun tier={tier} animate={animate} />
-      <Birds animate={animate} count={high ? 11 : 7} />
-      <Haze />
-      <Skyline tier={tier} />
-      <Landmark />
-      <Billboards texts={billboards} />
-      <SceneErrorBoundary name="Waterfront">
-        <Waterfront animate={animate} />
-      </SceneErrorBoundary>
-      <Water tier={tier} animate={animate} />
-      <Shore animate={animate} />
-      <Road animate={animate} />
-      <Props animate={animate} tier={tier} />
-      {/* One boundary per model group: the hero car never waits for the
-          traffic, and a missing GLB hides only its own part. */}
-      <SceneErrorBoundary name="Palms">
-        <Suspense fallback={null}>
-          <Palms animate={animate} count={high ? 28 : 18} />
-        </Suspense>
-      </SceneErrorBoundary>
-      <SceneErrorBoundary name="Car">
-        <Suspense fallback={null}>
-          <Car animate={animate} tier={tier} />
-        </Suspense>
-      </SceneErrorBoundary>
-      <SceneErrorBoundary name="Traffic">
-        <Suspense fallback={null}>
-          <Traffic animate={animate} perLane={high ? 3 : 2} />
-        </Suspense>
-      </SceneErrorBoundary>
+      <HeroWorld tier={tier} reducedMotion={reducedMotion} billboards={billboards} />
       <Effects tier={tier} depthOfField={quality.depthOfField} />
     </Canvas>
   );

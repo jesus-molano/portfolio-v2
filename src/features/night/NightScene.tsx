@@ -2,7 +2,7 @@
 
 import { Environment, Lightformer, PerformanceMonitor, useProgress } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { memo, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Group, Material, Mesh, Texture, WebGLRenderer, WebGLRenderTarget } from "three";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "@/features/hero/SceneErrorBoundary";
@@ -19,6 +19,7 @@ import { NightRig } from "./NightRig";
 import { NightSky } from "./NightSky";
 import { night, setNightReadiness } from "./nightState";
 import { paintsPending } from "./paintSet";
+import { NightPalmShapes } from "./parts/NightPalms";
 import { boundTextures } from "./releaseTextures";
 import { SETS } from "./sets/registry";
 import { StopLights } from "./StopLights";
@@ -205,12 +206,81 @@ function ReadyReporter() {
 }
 
 /**
+ * The car's paint mirrors a night of its own: violet sky, a pink glow,
+ * sodium and cyan strips. Memoised, as the hero's SkyEnvironment is: drei
+ * renders the cube again (six faces, and three.js filters it again)
+ * whenever its children change, and inline they changed at every render
+ * of the scene, each time the stage came on screen or its cover lifted.
+ */
+const NightEnvironment = memo(function NightEnvironment({ tier }: { tier: QualityTier }) {
+  return (
+    <Environment resolution={tier === "high" ? 128 : 64} frames={1} background={false}>
+      <color attach="background" args={["#120a26"]} />
+      <Lightformer form="rect" intensity={2.2} color={palette.magenta} position={[0, 2, -14]} scale={[30, 2, 1]} />
+      <Lightformer form="rect" intensity={1.6} color={palette.sodiumNight} position={[-12, 6, 6]} scale={[6, 1, 1]} />
+      <Lightformer form="rect" intensity={1.2} color={palette.cyan} position={[12, 5, 4]} scale={[5, 0.6, 1]} />
+      <Lightformer form="rect" intensity={0.6} color={palette.violet} position={[0, 20, 0]} rotation-x={Math.PI / 2} scale={[40, 40, 1]} />
+    </Environment>
+  );
+});
+
+type WorldProps = { tier: QualityTier; timeline: StageTimeline; work: Dictionary["work"]; locale: Locale };
+
+/**
+ * Everything the night's canvas draws, the post aside. Memoised, and fed
+ * only what changes the city (the tier, the timeline, the copy): the frame
+ * loop waking and resting, the load screen and the performance monitor
+ * re-render NightScene, and with it the Canvas, which re-renders whatever
+ * it holds; here they stop at the root, and none of them reconciles the
+ * five sets.
+ */
+const NightWorld = memo(function NightWorld({ tier, timeline, work, locale }: WorldProps) {
+  const groups = useRef<(Group | null)[]>([]);
+  return (
+    <NightPalmShapes>
+      <color attach="background" args={[palette.night]} />
+      <fog attach="fog" args={[palette.nightFog, FOG.near, FOG.far]} />
+      <SetSwitch groups={groups} />
+      {/* Steps the car toward the picture before the camera, which pans with it, and the street, which it lights. */}
+      <CarDrive timeline={timeline} />
+      <NightRig timeline={timeline} sets={SETS} parallax={tier === "high"} />
+      <NightSky />
+      <StopLights sets={SETS} />
+      <NightEnvironment tier={tier} />
+      <Street sets={SETS} />
+      <SceneErrorBoundary name="Night car">
+        <Suspense fallback={null}>
+          <CarNight />
+        </Suspense>
+      </SceneErrorBoundary>
+      {SETS.map((set, i) => (
+        <group
+          key={i}
+          ref={(group) => {
+            groups.current[i] = group;
+          }}
+          visible={i === 0}
+        >
+          <SceneErrorBoundary name={`Night set ${i + 1}`}>
+            <Suspense fallback={null}>
+              <set.Set tier={tier} locale={locale} work={work} timeline={timeline} index={i} />
+            </Suspense>
+          </SceneErrorBoundary>
+        </group>
+      ))}
+      <Warmup groups={groups} />
+      <ReadyReporter />
+      <DevHandle />
+    </NightPalmShapes>
+  );
+});
+
+/**
  * The night city: five small sets, one per stop, of which only the one on
  * screen is visible; the street, the car, the sky and the lights are
  * shared and take the stop's look at each cut.
  */
 export function NightScene({ tier, active, timeline, work, locale, onCreated }: Props) {
-  const groups = useRef<(Group | null)[]>([]);
   // The hero's pixels (degrade.ts), and its one step down on a slow device: dpr 1, never back up.
   const [slow, setSlow] = useState(false);
   // A save loading under the load screen: its compile frames are no measure of the device (never a step down for them).
@@ -241,47 +311,8 @@ export function NightScene({ tier, active, timeline, work, locale, onCreated }: 
       aria-hidden
     >
       <DisposeOnUnmount />
-      <color attach="background" args={[palette.night]} />
-      <fog attach="fog" args={[palette.nightFog, FOG.near, FOG.far]} />
       {WATCH_FRAME_RATE && active && !slow && !holding ? <PerformanceMonitor onDecline={() => setSlow(true)} /> : null}
-      <SetSwitch groups={groups} />
-      {/* Steps the car toward the picture before the camera, which pans with it, and the street, which it lights. */}
-      <CarDrive timeline={timeline} />
-      <NightRig timeline={timeline} sets={SETS} parallax={tier === "high"} />
-      <NightSky />
-      <StopLights sets={SETS} />
-      {/* The car's paint mirrors a night of its own: violet sky, a pink glow, sodium and cyan strips. */}
-      <Environment resolution={tier === "high" ? 128 : 64} frames={1} background={false}>
-        <color attach="background" args={["#120a26"]} />
-        <Lightformer form="rect" intensity={2.2} color={palette.magenta} position={[0, 2, -14]} scale={[30, 2, 1]} />
-        <Lightformer form="rect" intensity={1.6} color={palette.sodiumNight} position={[-12, 6, 6]} scale={[6, 1, 1]} />
-        <Lightformer form="rect" intensity={1.2} color={palette.cyan} position={[12, 5, 4]} scale={[5, 0.6, 1]} />
-        <Lightformer form="rect" intensity={0.6} color={palette.violet} position={[0, 20, 0]} rotation-x={Math.PI / 2} scale={[40, 40, 1]} />
-      </Environment>
-      <Street sets={SETS} />
-      <SceneErrorBoundary name="Night car">
-        <Suspense fallback={null}>
-          <CarNight />
-        </Suspense>
-      </SceneErrorBoundary>
-      {SETS.map((set, i) => (
-        <group
-          key={i}
-          ref={(group) => {
-            groups.current[i] = group;
-          }}
-          visible={i === 0}
-        >
-          <SceneErrorBoundary name={`Night set ${i + 1}`}>
-            <Suspense fallback={null}>
-              <set.Set tier={tier} locale={locale} work={work} timeline={timeline} index={i} />
-            </Suspense>
-          </SceneErrorBoundary>
-        </group>
-      ))}
-      <Warmup groups={groups} />
-      <ReadyReporter />
-      <DevHandle />
+      <NightWorld tier={tier} timeline={timeline} work={work} locale={locale} />
       <NightEffects tier={tier} />
     </Canvas>
   );
