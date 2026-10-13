@@ -1,0 +1,68 @@
+{
+  "public/models/makehuman-driver/driver.glb": {
+    "files": {
+      "tools/models/compress.mjs": "cfabf52b2bc5084da6920443c5c45711bbccbf1dfb8798824e3b754b57896b9f",
+      "tools/models/source/makehuman-driver/driver.glb": "17e63da23782032b40d288c29cd3ba5bed00b2180872274d4749af9db09cc9e9"
+    },
+    "model": "602a5034687750ba0d8ad6329ad7073ca72760ab74a4f8682373b50ba4c41ef6",
+    "bytes": {
+      "source": 2180264,
+      "model": 985384
+    }
+  },
+  "public/models/quaternius-cars/SportsCar.glb": {
+    "files": {
+      "tools/models/compress.mjs": "cfabf52b2bc5084da6920443c5c45711bbccbf1dfb8798824e3b754b57896b9f",
+      "tools/models/source/quaternius-cars/SportsCar.glb": "7d7a2ab74abba725c955bfe9d854cde5d4bc537b8c1043cdc6256ee305fafa15"
+    },
+    "model": "c17e6361efe6174d262e0f55230eb9a54ae6f2c99f51d0ee55a5764fb7e44474",
+    "bytes": {
+      "source": 163264,
+      "model": 59144
+    }
+  },
+  "public/models/quaternius-cars/SportsCar2.glb": {
+    "files": {
+      "tools/models/compress.mjs": "cfabf52b2bc5084da6920443c5c45711bbccbf1dfb8798824e3b754b57896b9f",
+      "tools/models/source/quaternius-cars/SportsCar2.glb": "b1951af54f5e3cbdd0ccd74bb734a035d4bee10e15b8e636782d84c9adee0e57"
+    },
+    "model": "90b764bd1a84d079661a3891ad7db5f88cb962ebff2a6d33b71d8007a7d58b3e",
+    "bytes": {
+      "source": 168944,
+      "model": 60632
+    }
+  },
+  "public/models/quaternius-cars/NormalCar1.glb": {
+    "files": {
+      "tools/models/compress.mjs": "cfabf52b2bc5084da6920443c5c45711bbccbf1dfb8798824e3b754b57896b9f",
+      "tools/models/source/quaternius-cars/NormalCar1.glb": "e480a3873cafc8bdad5ca07c1d346f469bebaf73ce1236a85d0c06868da386c2"
+    },
+    "model": "6fb0b21d59bec2393fd0b71603fd6290c63fc28dfabb7e10ba1cf2985d0c2fef",
+    "bytes": {
+      "source": 158120,
+      "model": 57248
+    }
+  },
+  "public/models/quaternius-cars/Taxi.glb": {
+    "files": {
+      "tools/models/compress.mjs": "cfabf52b2bc5084da6920443c5c45711bbccbf1dfb8798824e3b754b57896b9f",
+      "tools/models/source/quaternius-cars/Taxi.glb": "b599c99cb52a3501c4d420af6048f5c9077463c56e513d1564e766f2e1b9af7e"
+    },
+    "model": "bec11c5cce2d0515d9048439646c1d349d321ce904140febed4f7fe363785fd2",
+    "bytes": {
+      "source": 173268,
+      "model": 61396
+    }
+  },
+  "public/models/quaternius-cars/SUV.glb": {
+    "files": {
+      "tools/models/compress.mjs": "cfabf52b2bc5084da6920443c5c45711bbccbf1dfb8798824e3b754b57896b9f",
+      "tools/models/source/quaternius-cars/SUV.glb": "9d513b42dbc5ddd358b104c436a754d94acea7d9ed15af92ad67a33722779ddd"
+    },
+    "model": "db0ef4efac2140a125f1d861c0677ca820cfd587a2ee512989d755adb52cb934",
+    "bytes": {
+      "source": 175488,
+      "model": 62960
+    }
+  }
+}

@@ -10,4 +10,6 @@ CC0 1.0 Universal (CC0 1.0)
 Public Domain Dedication
 https://creativecommons.org/publicdomain/zero/1.0/
 
-Converted to glTF (GLB) for this site with tools/blender/convert_cars.py.
+Converted to glTF (GLB) for this site with tools/blender/convert_cars.py
+(kept in tools/models/source/quaternius-cars), then quantized and
+meshopt-compressed by tools/models/compress.mjs.
