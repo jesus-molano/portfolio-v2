@@ -40,6 +40,15 @@ const SHADOW_RADIUS = 1.9;
  * of shape scale 1 (its crown sits about this high).
  */
 const THROW = groundShadow(sunDirection(CAR_POSITION), 10);
+/** Contact shadows lie flat on the sand; the long ones also turn away from the sun. */
+const FLAT = new Quaternion().setFromAxisAngle(X_AXIS, -Math.PI / 2);
+const THROW_YAW = new Quaternion().setFromAxisAngle(Y_AXIS, THROW.yaw).multiply(FLAT);
+/** Scratch for placing the instances every frame, as drive.ts does: the frame allocates nothing. */
+const matrix = new Matrix4();
+const quaternion = new Quaternion();
+const tilt = new Quaternion();
+const position = new Vector3();
+const scale = new Vector3();
 
 /** The four procedural palm geometries, disposed with the component. */
 function usePalmGeometries() {
@@ -135,16 +144,10 @@ function PalmInstances({ geometry, placements, animate }: InstancesProps) {
   const throws = useRef<InstancedMesh>(null);
 
   const place = (instanced: InstancedMesh, distance: number) => {
-    const matrix = new Matrix4();
-    const quaternion = new Quaternion();
-    const tilt = new Quaternion();
-    const flat = new Quaternion().setFromAxisAngle(X_AXIS, -Math.PI / 2);
-    const yaw = new Quaternion().setFromAxisAngle(Y_AXIS, THROW.yaw).multiply(flat);
-    const position = new Vector3();
-    const scale = new Vector3();
     const discs = shadows.current;
     const long = throws.current;
-    placements.forEach((p, i) => {
+    for (let i = 0; i < placements.length; i += 1) {
+      const p = placements[i];
       const z = p.fixed ? p.z0 : wrapZ(p.z0 + distance, p.window);
       quaternion.setFromAxisAngle(Y_AXIS, p.rotation);
       tilt.setFromAxisAngle(Z_AXIS, p.lean);
@@ -157,7 +160,7 @@ function PalmInstances({ geometry, placements, animate }: InstancesProps) {
         // Contact shadow at the foot of the trunk.
         scale.set(SHADOW_RADIUS * p.scale, SHADOW_RADIUS * p.scale * 0.8, 1);
         position.set(p.x, SHADOW_Y, z);
-        matrix.compose(position, flat, scale);
+        matrix.compose(position, FLAT, scale);
         discs.setMatrixAt(i, matrix);
       }
       if (long) {
@@ -166,10 +169,10 @@ function PalmInstances({ geometry, placements, animate }: InstancesProps) {
         const reach = length / 2 - SHADOW_RADIUS * 0.5;
         scale.set(SHADOW_RADIUS * 1.2 * p.scale, length, 1);
         position.set(p.x + THROW.x * reach, SHADOW_Y + 0.005, z + THROW.z * reach);
-        matrix.compose(position, yaw, scale);
+        matrix.compose(position, THROW_YAW, scale);
         long.setMatrixAt(i, matrix);
       }
-    });
+    }
     instanced.instanceMatrix.needsUpdate = true;
     if (discs) discs.instanceMatrix.needsUpdate = true;
     if (long) long.instanceMatrix.needsUpdate = true;
@@ -272,10 +275,6 @@ function StaticPalmInstances({
   useLayoutEffect(() => {
     const instanced = mesh.current;
     if (!instanced) return;
-    const matrix = new Matrix4();
-    const quaternion = new Quaternion();
-    const position = new Vector3();
-    const scale = new Vector3();
     palms.forEach((p, i) => {
       quaternion.setFromAxisAngle(Y_AXIS, p.rotation);
       position.set(p.x, p.y, p.z);

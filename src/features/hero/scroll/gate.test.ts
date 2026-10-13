@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { browserStroke, firstWall, GATE, gateAction, iosTouch, keyScrollsPage, lenisMissed, liftFling, newStroke, pageScroll, resetStroke, strokeLift, strokeMove, touchHeld } from "./gate";
+import { browserStroke, firstWall, GATE, gateAction, iosTouch, keyScrollsPage, lenisMissed, liftFling, newStroke, pageScroll, resetStroke, strokeLift, strokeMove, touchCapable, touchHeld } from "./gate";
 
 describe("where the page is", () => {
   it("draws from Lenis' sub-pixel value while it agrees with the page", () => {
@@ -281,5 +281,19 @@ describe("touchHeld", () => {
 
   it("lets go on iOS while a text selection is up: Lenis leaves strokes near its ends to the browser", () => {
     expect(touchHeld(true, false, true)).toBe(false);
+  });
+});
+
+describe("touchCapable", () => {
+  it("is a touch screen or any coarse pointer", () => {
+    expect(touchCapable(5, true)).toBe(true);
+    // A 2-in-1 whose browser reports touch points with a fine primary pointer.
+    expect(touchCapable(10, false)).toBe(true);
+    // Touch emulation, or a coarse pointer the browser reports without touch points.
+    expect(touchCapable(0, true)).toBe(true);
+  });
+
+  it("is never a mouse-only desktop: it holds no stroke that cannot come", () => {
+    expect(touchCapable(0, false)).toBe(false);
   });
 });

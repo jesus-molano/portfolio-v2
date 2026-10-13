@@ -153,6 +153,17 @@
   filter: drop-shadow(0 0 1px var(--va-color-night)) drop-shadow(0 0 2px var(--va-color-night));
 }
 
+/*
+ * While they show, each corner is a little layer of its own that the
+ * compositor moves: painted in with the page, every move drew its two
+ * shadows again, every frame (the camera never quite rests). None while
+ * they are hidden: no layer for something out of sight.
+ */
+.reticle[data-visible] span,
+.reticle[data-hint] span {
+  will-change: transform;
+}
+
 .reticle [data-corner="0"] {
   border-width: 2px 0 0 2px;
   transform: translate(calc(var(--c0x, 0) * 1cqw - 0.35rem), calc(var(--c0y, 0) * 1cqh - 0.35rem));
@@ -406,14 +417,19 @@
   font-weight: 700;
 }
 
-/* The line's reading time fills a short bar under the card's block, as in the hero. */
+/*
+ * The line's reading time fills a short bar under the card's block, as in
+ * the hero, and thickens under her push (--push, 3 px to 5 px) as the
+ * hero's does, by a transform: a height animated from the push laid the
+ * bar out again every frame for half a second after each one.
+ */
 .subtitle::after {
   content: "";
   position: absolute;
   top: calc(100% + 0.5rem);
   left: 50%;
   width: 4rem;
-  height: calc(3px + 2px * var(--push, 0));
+  height: 3px;
   border-radius: 2px;
   background: linear-gradient(
     to right,
@@ -421,7 +437,7 @@
     color-mix(in srgb, var(--va-color-cream) 25%, transparent) calc(var(--read, 0) * 100%)
   );
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--va-color-night) 45%, transparent);
-  transform: translateX(-50%);
+  transform: translateX(-50%) scaleY(calc(1 + var(--push, 0) * 2 / 3));
   opacity: 0;
   transition: opacity 200ms ease;
 }
@@ -434,11 +450,12 @@
   opacity: 0;
 }
 
-/* Wide: under a card up to 44rem wide, a longer, thicker bar reads at a glance (the hero's). */
+/* Wide: under a card up to 44rem wide, a longer, thicker bar reads at a glance (the hero's), 4 px to 6 px under a push. */
 @media (min-aspect-ratio: 1/1) and (min-width: 1024px) and (min-height: 501px) {
   .subtitle::after {
     width: 7rem;
-    height: calc(4px + 2px * var(--push, 0));
+    height: 4px;
+    transform: translateX(-50%) scaleY(calc(1 + var(--push, 0) / 2));
   }
 }
 
@@ -633,6 +650,16 @@
     var(--va-lineup-floor)
   );
   pointer-events: none;
+}
+
+/*
+ * Lifting (the opening, WorkStage's data-lifting), the cover is a layer of
+ * its own, so each step of its fade is the compositor's: painted in with
+ * the page, every one repainted the whole screen's gradient while the
+ * night under it started drawing. Only then: up or gone, it needs none.
+ */
+.fade[data-lifting] {
+  will-change: opacity;
 }
 
 /* The iris: night closes as a circle on the LIVE tally, the last light on screen. */

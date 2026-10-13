@@ -337,6 +337,19 @@ export function touchHeld(lenisDrives: boolean, reduced: boolean, iosSelection: 
   return lenisDrives && !reduced && !iosSelection;
 }
 
+/**
+ * Whether this device can make a touch stroke at all, so the hold above
+ * means anything: a touch screen (`maxTouchPoints`) or any coarse pointer
+ * (`(any-pointer: coarse)`, which a 2-in-1 or the browser's touch
+ * emulation reports). A mouse-only desktop never sets
+ * `html[data-touch-held]`: its touch-action reaches every element of the
+ * page, and flipping it at every section boundary restyled the whole
+ * document for strokes that never come.
+ */
+export function touchCapable(maxTouchPoints: number, anyCoarse: boolean): boolean {
+  return maxTouchPoints > 0 || anyCoarse;
+}
+
 /** The keys whose default action scrolls the page (with or without modifiers: Ctrl+End, Cmd+Down). */
 const PAGE_KEYS = new Set(["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "]);
 

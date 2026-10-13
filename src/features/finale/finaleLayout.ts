@@ -8,7 +8,7 @@
  * container-query widths (cqw), so the page and the plate scale together
  * at any size.
  */
-import { createRandom } from "@/features/hero/scene/world";
+import { createRandom } from "@/lib/random";
 import plates from "./plates.json";
 
 export type Rect = { x: number; y: number; w: number; h: number };

@@ -21,8 +21,11 @@
  * positions, so the pacing follows the script in both languages.
  */
 import type { StageTimeline } from "@/features/work/workTimeline";
+import { CAPTION_SPAN, type CaptionSide, PHONE_CAPTIONS } from "./captions";
 import { type Key, LENS, type Pose, type Vec3 } from "./frame";
 import { keyAt } from "./timelineKeys";
+
+export { CAPTION_SPAN };
 
 export type Direction = {
   /** Keys for a landscape screen. */
@@ -33,13 +36,11 @@ export type Direction = {
    * Where the stop's captions (the HUD and the super, top left) stand on a
    * portrait screen, a phone, when the stop's art holds the top left of its
    * portrait shots (work stage, `data-caption-side`; at most `CAPTION_SPAN`
-   * of the width). Left when unset.
+   * of the width). Left when unset. Set from captions.ts (PHONE_CAPTIONS),
+   * which the work stage reads without the camera's three.js.
    */
-  phoneCaptions?: "right";
+  phoneCaptions?: CaptionSide;
 };
-
-/** The share of a portrait screen's width the stop's captions take when they stand on the right (Work.module.css). */
-export const CAPTION_SPAN = 0.48;
 
 function pose(position: Vec3, look: Vec3, fov: number, extra: Pick<Pose, "track" | "fit"> = {}): Pose {
   return { position, look, fov, ...extra };
@@ -140,10 +141,7 @@ const pwc: Direction = {
     ];
   },
   // On a phone the hotel is fitted from the start (the blade, the years, the car); the marquee keeps its own close framing.
-  // There the blade's C stands over the readerboard, left of the car (seen from down the street the car is
-  // always right of the board), in the top left of every reading shot: no framing keeps the C, the readerboard
-  // and the car in a tall frame without it, so the captions stand on the right and the C reads whole.
-  phoneCaptions: "right",
+  // There the blade's C stands over the readerboard, left of the car, so the captions stand on the right (captions.ts).
   portrait: (timeline) => {
     const kerb = pose([-40, 2.2, 13], [0, 10, -5], LENS.mm35);
     const hotel = pose([-36, 2.4, 14], [0, 10, -5], LENS.mm35);
@@ -268,5 +266,8 @@ const heuristik: Direction = {
   },
 };
 
-/** One direction per stop, in the order of the drive (work/stops.ts, sets/registry.ts). */
-export const DIRECTION: readonly Direction[] = [army, pwc, cloud, logixs, heuristik];
+/** One direction per stop, in the order of the drive (work/stops.ts, sets/registry.ts), each with its captions' side (captions.ts). */
+export const DIRECTION: readonly Direction[] = [army, pwc, cloud, logixs, heuristik].map((direction, stop) => {
+  const side = PHONE_CAPTIONS[stop];
+  return side ? { ...direction, phoneCaptions: side } : direction;
+});

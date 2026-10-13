@@ -43,6 +43,7 @@ import {
 import { dashLayout, newDashState, stepDash, stepLimiter } from "./scroll/dash";
 import { deepWait, type FeedbackInput, newFeedback, stepFeedback } from "./scroll/feedback";
 import { GATE, gateAction, lenisMissed, type PageReading, pageScroll } from "./scroll/gate";
+import { frameScroll, refreshFrameScroll } from "./scroll/frameScroll";
 import { type PedalVia, pedalRibs, pedalVisibility, teachDip } from "./scroll/pedal";
 import {
   activeWindow,
@@ -87,11 +88,11 @@ import {
   TEASES,
   teaseOffset,
 } from "./scroll/transport";
-import { drive } from "./scene/drive";
+import { drive } from "./scene/driveState";
 import { isCovered, setHeroCovered } from "./heroCover";
 import { type FarRestInput, restsFarAway } from "./scroll/farRest";
 import { markCut } from "./scene/qualityStore";
-import { CUT_BAND, SHOT_COUNT, type ShotPick, shotIndexAt, stickyShot } from "./scene/shots";
+import { CUT_BAND, SHOT_COUNT, type ShotPick, shotIndexAt, stickyShot } from "./scene/shotTiming";
 
 gsap.registerPlugin(useGSAP);
 
@@ -509,7 +510,16 @@ export function HeroStage({
        * fonts have arrived, never in the frame.
        */
       const cardText = cards.map((card) => card.querySelector<HTMLElement>("[data-card-text]"));
-      const fitLines = () => fitCards(cardText);
+      /**
+       * Each card's height as fitted, read right after the fitting: the hold
+       * note stands above the card on screen. Read in the frame at every card
+       * change, after the frame's own writes, it laid the page out there.
+       */
+      const cardHeights = cards.map(() => 0);
+      const fitLines = () => {
+        fitCards(cardText);
+        for (let i = 0; i < cards.length; i += 1) cardHeights[i] = cards[i].offsetHeight;
+      };
       const measure = () => {
         const rect = root.getBoundingClientRect();
         geom.top = rect.top + window.scrollY;
@@ -530,13 +540,14 @@ export function HeroStage({
       const progressFor = (y: number) => (y - geom.top) / geom.range;
       /**
        * Where the page is (gate.ts): its own offset, read after Lenis wrote
-       * it this tick, drawn from Lenis' sub-pixel value while the two
-       * agree. If Lenis missed a native move of the page, it starts again
-       * from the page, so its next glide sets off from where she is.
+       * it this tick (the frame's one reading, frameScroll.ts; an event
+       * reads the page itself), drawn from Lenis' sub-pixel value while the
+       * two agree. If Lenis missed a native move of the page, it starts
+       * again from the page, so its next glide sets off from where she is.
        */
       const reading: PageReading = { page: 0, lenis: 0, gliding: false };
-      const readScroll = () => {
-        reading.page = window.scrollY;
+      const readScroll = (page = window.scrollY) => {
+        reading.page = page;
         if (!lenis) return reading.page;
         reading.lenis = lenis.scroll;
         reading.gliding = lenis.isScrolling === "smooth";
@@ -714,6 +725,17 @@ export function HeroStage({
       // The pedal (scroll/pedal.ts): her foot, who holds it down, and the line step it waits for.
       // The pedal (scroll/pedal.ts), held by a pointer, W or Space and pushed on the scroll's ticker by
       // the shared driver (scroll/pedalDriver.ts), the same as in the career city.
+      /** What the driver reads of the stage each tick, one object written in place. */
+      const pedalFrame = {
+        maxStep: STORY.maxStep,
+        end: 0,
+        wall: 0,
+        wallIndex: -1,
+        vh: 0,
+        atEnd: false,
+        backAt: Number.NEGATIVE_INFINITY,
+        frozen: false,
+      };
       const driver = createPedalDriver({
         button: () => el.pedal,
         // Below the hero the pedal has gone with it: a click left on it (Space on a focused pedal) does nothing.
@@ -727,16 +749,16 @@ export function HeroStage({
           return stepLine(1, source);
         },
         goOn: (source) => goOn(source),
-        frame: () => ({
-          maxStep: STORY.maxStep,
-          end: scrollFor(1),
-          wall: scrollGate.maxScroll,
-          wallIndex: frontierIndex(story),
-          vh: geom.vh,
-          atEnd: heroProgress.value >= 0.999,
-          backAt,
-          frozen: stillQuery.matches,
-        }),
+        frame: () => {
+          pedalFrame.end = scrollFor(1);
+          pedalFrame.wall = scrollGate.maxScroll;
+          pedalFrame.wallIndex = frontierIndex(story);
+          pedalFrame.vh = geom.vh;
+          pedalFrame.atEnd = heroProgress.value >= 0.999;
+          pedalFrame.backAt = backAt;
+          pedalFrame.frozen = stillQuery.matches;
+          return pedalFrame;
+        },
         readScroll: () => {
           readScroll();
         },
@@ -775,6 +797,7 @@ export function HeroStage({
         lit: Number.NaN,
         kick: Number.NaN,
         lim: Number.NaN,
+        cardH: Number.NaN,
       };
 
       /** Offers Skip ("in a hurry?") for a while. */
@@ -826,6 +849,8 @@ export function HeroStage({
         // be the wall while the page is not (lenisContract.test.ts).
         lenis.animatedScroll = lenis.targetScroll = scroll;
         lenis.scrollTo(max, { immediate: true, force: true });
+        // The ticks after this one in the frame (the select, the city) read the page where it is now.
+        refreshFrameScroll();
       };
 
       /** Lets go of the pedal: its push stops at once, and the plate springs back. */
@@ -850,12 +875,12 @@ export function HeroStage({
         pedalDown: false,
         scrolling: false,
       };
-      const update = (deltaMs: number) => {
+      const update = (deltaMs: number, page = window.scrollY) => {
         // Reduced motion just switched on: the CSS shows the still hero, and
         // the film must not touch the page before React hands over to it.
         if (stillQuery.matches) return;
         const now = performance.now();
-        const scroll = readScroll();
+        const scroll = readScroll(page);
         // Far below with every wall open and nothing in flight, the frame has nothing to do (farRest.ts).
         farIn.wallsOpen = frontierIndex(story) < 0;
         farIn.scroll = scroll;
@@ -1118,6 +1143,9 @@ export function HeroStage({
         if (titleO !== drawn.titleO) {
           drawn.titleO = titleO;
           set(title.current, "opacity", titleO.toFixed(3));
+          // Gone, the title gives its layers back (the halo's, and one per letter of the name), which
+          // stayed allocated for the whole drive; a rewind takes them again in this same frame.
+          attr(title.current, "data-gone", titleO === 0);
         }
         // The title lifts a little into the sky as it fades, and gives under a push.
         const titleY = round2(-8 * titleOut);
@@ -1180,8 +1208,6 @@ export function HeroStage({
           }
           drawn.read = drawn.push = Number.NaN;
           if (active >= 0) {
-            // One layout read per card change: the hold note sits above the card.
-            set(el.holdNote, "--va-card-h", `${el.cards[active].offsetHeight}px`);
             // Keyboard users hear the line they stepped to.
             // His name once per line, as in the script: the cards after a line's first are its words alone.
             if (scrollInput.source === "key" && el.live) {
@@ -1192,6 +1218,12 @@ export function HeroStage({
         }
         if (active >= 0) {
           const card = el.cards[active];
+          // The hold note sits above the card, at its height as last fitted (fitLines): no layout read here.
+          const cardH = cardHeights[active];
+          if (cardH !== drawn.cardH) {
+            drawn.cardH = cardH;
+            set(el.holdNote, "--va-card-h", `${cardH}px`);
+          }
           const read = readStep(fill);
           if (read !== drawn.read) {
             drawn.read = read;
@@ -1459,7 +1491,7 @@ export function HeroStage({
 
       // The frame runs from here on (stepLine above replays a line queued at the title): after Lenis, before
       // the canvases (lib/frameTicker.ts), so the scene draws this frame's picture and cover.
-      const removeTick = addFrameTick("stage", (_time, deltaMs) => update(deltaMs));
+      const removeTick = addFrameTick("stage", (time, deltaMs) => update(deltaMs, frameScroll(time)));
       update(0);
 
       const onKey = (event: KeyboardEvent) => {

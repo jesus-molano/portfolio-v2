@@ -98,3 +98,28 @@ describe("the career city's aim corners never shift", () => {
     expect(span).toMatch(/top:\s*0/);
   });
 });
+
+describe("the career city's overlays move on the compositor", () => {
+  const source = readFileSync(new URL("../work/Work.module.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const work = topLevelRules(source);
+  const workBody = (selector: string) => work.find(([sel]) => sel === selector)?.[1] ?? "";
+
+  it("thickens the reading bar under a push by a transform, as the hero's, never by its height (a layout every frame)", () => {
+    expect(source).not.toMatch(/height:[^;]*var\(--push/);
+    expect(workBody(".subtitle::after")).toMatch(/transform:[^;]*scaleY\([^;]*var\(--push/);
+  });
+
+  it("gives the aim's corners layers only while they show, and the opening's cover only while it lifts", () => {
+    expect(workBody(".reticle span")).not.toMatch(/will-change/);
+    expect(workBody(".reticle[data-visible] span,\n.reticle[data-hint] span")).toMatch(/will-change:\s*transform/);
+    expect(workBody(".fade")).not.toMatch(/will-change/);
+    expect(workBody(".fade[data-lifting]")).toMatch(/will-change:\s*opacity/);
+  });
+});
+
+describe("the hero's title, gone", () => {
+  it("gives its layers back without leaving the accessibility tree (no visibility: hidden: its heading takes the focus)", () => {
+    expect(bodyOf(".title[data-gone],\n.title[data-gone] .letter")).toMatch(/will-change:\s*auto/);
+    expect(rules.filter(([sel]) => sel.includes("[data-gone]")).map(([, body]) => body).join(";")).not.toMatch(/visibility/);
+  });
+});

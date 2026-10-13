@@ -12,7 +12,7 @@ export const C = {
   asphalt: "#3a2a5c", sodium: "#ffd27a", cream: "#fff4f1", text: "#f6f1ff", deep: "#0b0619", red: "#ff3b5c",
 };
 
-/** mulberry32, the same generator as createRandom (src/features/hero/scene/world.ts). */
+/** mulberry32, the same generator as createRandom (src/lib/random.ts). */
 export function rng(seed) {
   let a = seed >>> 0;
   return () => {
