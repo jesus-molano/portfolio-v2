@@ -22,10 +22,11 @@ type Props = {
  * a few frames have rendered (Suspense content mounted).
  *
  * While the scene loads its canvas draws only when asked (heroFrameloop.ts),
- * so this asks: a frame at each step of the load, one when the warm-up is
- * done (HeroWarmup asks for it), and from the first frame that finds both,
- * the next, until the settle frames are counted. Under reduced motion it
- * asks for every frame until ready, as it always has.
+ * so this asks: a frame at each step of the load (the frame driver keeps
+ * it until the warm-up is done), one when the warm-up is done (HeroWarmup
+ * asks for it), and from the first frame that finds both, the next, until
+ * the settle frames are counted. Under reduced motion it asks for every
+ * frame until ready, as it always has.
  */
 export function LoadReporter({ animate }: Props) {
   const loading = useProgress();

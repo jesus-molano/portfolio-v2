@@ -15,6 +15,7 @@ import { motion } from "@/design/tokens";
 import { getRadio } from "@/features/music/radio";
 import { REDUCED_MOTION_QUERY, usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { addFrameTick } from "@/lib/frameTicker";
 import { focusInPlace, goTo, registerPassage } from "@/lib/navigate";
 import { isOnScreen, lineBelow, lineRootMargin, ON_SCREEN_THRESHOLDS } from "@/lib/onScreen";
 import { stableScreen } from "@/lib/screen";
@@ -1147,7 +1148,7 @@ export function HeroStage({
         if (nightO !== drawn.night) {
           drawn.night = nightO;
           set(el.fade, "opacity", nightO.toFixed(3));
-          // Under opaque night the canvas stops drawing (HeroCanvas).
+          // Under opaque night the canvas stops drawing, from this very frame (the frame driver reads it next).
           setHeroCovered(isCovered(nightO));
         }
 
@@ -1456,9 +1457,9 @@ export function HeroStage({
        */
       const pressGas = (via: PedalVia, at: number): boolean => driver.press(via, at);
 
-      // The frame runs from here on (stepLine above replays a line queued at the title).
-      const tick = (_time: number, deltaMs: number) => update(deltaMs);
-      gsap.ticker.add(tick);
+      // The frame runs from here on (stepLine above replays a line queued at the title): after Lenis, before
+      // the canvases (lib/frameTicker.ts), so the scene draws this frame's picture and cover.
+      const removeTick = addFrameTick("stage", (_time, deltaMs) => update(deltaMs));
       update(0);
 
       const onKey = (event: KeyboardEvent) => {
@@ -1793,7 +1794,7 @@ export function HeroStage({
         scrollGate.heroEnd = Number.POSITIVE_INFINITY;
         for (const text of cardText) text?.style.removeProperty("--fit");
         unregisterPassage();
-        gsap.ticker.remove(tick);
+        removeTick();
         setHeroCovered(false);
         driver.dispose();
         window.removeEventListener("keydown", onKey);

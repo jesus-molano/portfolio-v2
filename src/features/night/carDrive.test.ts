@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 
 /*
  * CarDrive (CarNight.tsx) lands the car on the picture only on a dev jump
- * (night.snap) or as the frame loop wakes (night.woke, set by NightScene as
- * the stage comes back on screen). A long frame mid-drive is no waking:
- * carMotion integrates it. Snapping on any frame over 0.5 s jumped the car
- * its whole chase lag in one frame on a loaded phone, metres in sight.
+ * (night.snap) or as the frame loop wakes (night.woke, set by NightScene's
+ * `wakeNight`, which the frame driver calls as the canvas draws again
+ * after a rest: the stage back on screen, its cover lifting). A long frame
+ * mid-drive is no waking: carMotion integrates it. Snapping on any frame
+ * over 0.5 s jumped the car its whole chase lag in one frame on a loaded
+ * phone, metres in sight.
  */
 const carNight = readFileSync(new URL("./CarNight.tsx", import.meta.url), "utf8");
 const scene = readFileSync(new URL("./NightScene.tsx", import.meta.url), "utf8");
@@ -18,7 +20,8 @@ describe("CarDrive", () => {
     expect(carNight).toMatch(/night\.woke = false/);
   });
 
-  it("is woken by the stage coming back on screen", () => {
-    expect(scene).toMatch(/if \(active\) night\.woke = true/);
+  it("is woken by the frame driver as the canvas draws again after a rest", () => {
+    expect(scene).toMatch(/function wakeNight\(\) \{\s*night\.woke = true;\s*\}/);
+    expect(scene).toMatch(/<PacedRoot id="night" wants=\{nightWants\} onWake=\{wakeNight\} \/>/);
   });
 });

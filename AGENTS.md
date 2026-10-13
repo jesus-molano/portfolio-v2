@@ -157,7 +157,11 @@ also exists as real DOM for keyboard and screen-reader users.
   `@react-three/drei` 10, `@react-three/postprocessing` 3.
 - GSAP 3 + `@gsap/react` for timelines and the ticker; Lenis for smooth scroll
   (no ScrollTrigger: nothing makes a trigger, and the plugin alone ran a
-  frame loop, a timer and a refresh on resize).
+  frame loop, a timer and a refresh on resize). One frame of the page is
+  one tick of GSAP's ticker: Lenis first (SmoothScroll), then the stages'
+  ticks, then both canvases (`lib/frameTicker.ts`, tested, its `"stage"`
+  and `"render"` phases; the canvases' frame driver below): neither
+  canvas runs R3F's own requestAnimationFrame loop beside it.
 
 ## Structure
 
@@ -650,24 +654,63 @@ also exists as real DOM for keyboard and screen-reader users.
     visit starting on level 0 or 1; NanGuard in the night only on Mesa or a
     Linux that is not Android) follows the level until she enters and is
     frozen at `markEntered`: changing it compiles the passes again.
-    Production only, `QualityWatch` (one per canvas) counts late frames
-    (`qualityMonitor.ts`: a one-second window is bad when over a fifth of
-    its frames take more than 1.25 times the interval expected, the
-    display's or 60 Hz's until it is measured; two bad windows in a row
-    step down, at most once every 2 s; a frame over 250 ms is a hitch, not
-    a level), and never one before she has entered or in her first 2 s,
-    under the load screen, in a hidden tab, in the first second after the
-    loop wakes or a level lands, or drawn on request: drei's
-    PerformanceMonitor averaged the frame rate, so the judder of a vsync
-    missed every few frames never showed, and above 100 Hz it hardly ever
-    stepped down. On a display of 118 Hz or more (`reportRefresh`, once
-    measured) the first step is half rate, the 3D on every second refresh
-    (`halfRate`), and a GPU below the top starts there; never at 100 Hz or
-    less. A level lands under the next cut (`markCut`: HeroStage at a shot
-    change, WorkStage at the bottom of a dip or under its cover) or 1.5 s
-    after the step anyway, its reallocated targets unseen, and never goes
-    back up. A development build stays on level 0 with the full post
-    (captures stay comparable; `window.__vaQuality` forces a level).
+    Production only, the frame driver (below) counts each canvas's late
+    frames (`qualityMonitor.ts`: a one-second window is bad when over a
+    fifth of its frames take more than 1.25 times the interval expected,
+    the display's refresh times the pace, 60 Hz's until the rate is
+    measured; two bad windows in a row step down, at most once every 2 s;
+    a frame over 250 ms is a hitch, not a level), and never one before she
+    has entered or in her first 2 s, under the load screen, in a hidden
+    tab, in the first second after the canvas wakes, a level lands or the
+    pace changes, or drawn on request: drei's PerformanceMonitor averaged
+    the frame rate, so the judder of a vsync missed every few frames never
+    showed, and above 100 Hz it hardly ever stepped down. On a display of
+    118 Hz or more (its rate read by the frame driver, `reportRefresh`)
+    the first step is half rate, the 3D on every second refresh
+    (`halfRate`: a GPU just short of 144 frames a second showed each for
+    one refresh and then two, a judder worse than a steady 72), and a GPU
+    below the top starts there; never at 100 Hz or less. A level lands
+    under the next cut (`markCut`: HeroStage at a shot change, WorkStage
+    at the bottom of a dip or under its cover) or 1.5 s after the step
+    anyway, its reallocated targets unseen, and never goes back up. A development build stays on level 0 with the full post and
+    never paces (captures stay comparable; `window.__vaQuality` forces a
+    level, `window.__vaPace` a pace).
+  - Frames (`frameDriver.ts`, its pure rules in `framePacing.ts`, both
+    tested; a `PacedRoot` in each Canvas): both canvases run
+    `frameloop="never"` for good and draw in the page's frame, after Lenis
+    and the stages' ticks, in the same animation frame
+    (`lib/frameTicker.ts`): R3F's own loop ran beside GSAP's in whichever
+    order the browser called the two, every change between drawing and
+    resting went through a React render of the canvas, a frame or more
+    late, and each started R3F's clock again from zero, so the clouds, the
+    water and the palms jumped back. Every frame each canvas says whether
+    it wants to draw (`wants`: the hero's `heroFrameloop`, from its in-view
+    flag and `getHeroCovered()`, `heroCover.ts`; the night on screen,
+    `night.onScreen`, and not covered, `getNightCovered()`; plain flags, so
+    a flip re-renders nothing and counts in the very frame the stage wrote
+    it). One that wants draws at the pace; one at rest only the frames
+    asked of it (`requestFrames`, through `useSceneInvalidate` in the hero:
+    R3F's `invalidate` does nothing under "never"; a resize or a new pixel
+    ratio asks for one), and the hero's wait for its warm-up while it is
+    not warm (a frame drawn before compiled what it showed on the main
+    thread, a stall of the start menu at each step of the load). A
+    canvas's clock runs only while it draws (`stepRootClock`: 0 on its
+    first frame after a rest), and waking it calls its `onWake` (the
+    night's car lands on the picture). R3F's global effects run once a
+    frame around the canvases that drew (the dev probes read pixels
+    there). The pace is every refresh, or at half rate every second one of
+    a display of 118 Hz or more, evenly (`paceDivisor`, `renderThisTick`;
+    240 Hz every fourth), while the page itself, Lenis and the cards, keeps
+    the display's rate. The display's rate is read from the frames in which
+    no canvas drew (`refreshFromIdle`: the 20th percentile of their
+    intervals, 30 at least; a frame that drew measures the GPU, not the
+    display), and read again as they come (another display, a power mode
+    holding the page at 30 frames a second). Each canvas carries
+    `data-quality` and `data-pace`, written on change. A hidden frame
+    (`warmFrame`, `isWarmFrame` while it draws) can compile under a cover
+    without counting as a frame of the picture (the night's ReadyReporter
+    leaves it out). Under reduced motion the hero is not driven: R3F's
+    "demand" draws its still frames.
   - Warm-up (`HeroWarmup.tsx`, `warmup.ts`, tested): behind the start menu
     the hero compiles every material, visible or not, as the composer
     draws it (`compileAsComposed`: a half-float target like the
@@ -680,8 +723,9 @@ also exists as real DOM for keyboard and screen-reader users.
     make the scene ready only once the downloads are done and the canvas is
     warm (`isWarm`; 5 s after the downloads it is marked warm anyway, so a
     slow GPU still gets in), and asks for each of them itself, the canvas
-    drawing only when asked while the scene loads (`heroFrameloop.ts`;
-    under reduced motion it asks for every frame until ready). It only reads the scene, never a material's
+    drawing only when asked while the scene loads (`heroFrameloop.ts`; the
+    frames asked before the warm-up is done wait for it, the frame driver's
+    `holds`; under reduced motion it asks for every frame until ready). It only reads the scene, never a material's
     settings (the night clones the models' materials). Both canvases skip
     three's read-back of every program's logs in production
     (`debug.checkShaderErrors`) and have no depth buffer of their own
@@ -973,7 +1017,7 @@ also exists as real DOM for keyboard and screen-reader users.
     held but the browser delivers only after the lift (a busy phone
     queues it) is dropped by its own time stamp, a finger's whole stroke
     with it, and the key that loaded never repeats into the place. The
-    scenes' quality watches ignore the frames under it
+    frame driver's quality monitor ignores the frames under it
     (`isLoadHolding`): a load's compile never steps a phone down for the
     visit. Back or a fragment while it holds lands there instead
     (PageEntry), the focus with it. At the lift the focus goes to the
@@ -1167,10 +1211,11 @@ also exists as real DOM for keyboard and screen-reader users.
   (`nightCover.ts`, tested: the closed iris at the end, the strip left
   under STATS's card; the opening cover still fully up once every stop is
   warm, `night.warm`; never during a dip; WorkStage writes `night`'s
-  covered flag, NightCanvas reads it, and the loop waking lands the car
-  on the picture as `night.woke` does; woken as the opening cover starts
-  to lift, the canvas still shows the picture it slept on until it draws
-  again, so the cover holds until it has, `night.frames`, then fades to
+  covered flag and NightCanvas's observer `night.onScreen`, the frame
+  driver reads both in the same frame, `hero/scene/frameDriver.ts`,
+  and the loop waking lands the car on the picture as `night.woke` does;
+  woken as the opening cover starts to lift, the canvas still shows the
+  picture it slept on until it draws again, so the cover holds until it has, `night.frames`, then fades to
   where the scroll has it no faster than the chapter card: through the
   lifting cover the car had popped in mid-road). What it clones from the hero's
   glTF cache (the car, the driver, his glasses, Telpark's car) is
@@ -1227,7 +1272,8 @@ also exists as real DOM for keyboard and screen-reader users.
   pace it and the picture shared, the beat's own at most, a chase's lag
   behind the picture (`chaseLag`), so a fling never carries its speed
   into the next shot. A jump (`night.snap`), the frame loop waking (the
-  stage back on screen: `night.woke`, set by NightScene; a long frame
+  stage back on screen or its cover lifting: `night.woke`, set by
+  NightScene's `wakeNight`, which the frame driver calls; a long frame
   mid-drive is no waking, it is integrated, or a hitch snapped the car
   its whole lag, metres, in sight; `carDrive.test.ts`) or a gap of 10
   natural seconds put it on the picture at once; reduced motion keeps it there. Its body never reads that
@@ -1292,8 +1338,8 @@ also exists as real DOM for keyboard and screen-reader users.
   compiled its stop again) and its textures uploaded ahead of its cut
   (`Warmup` in `NightScene.tsx`, its target released with the canvas),
   the next stop first; it keeps looking every 0.4 s of the page's clock
-  while the frame loop runs (R3F's clock restarts at every flip of the
-  loop): a set's art lands after its fonts and adds meshes or a texture
+  while the canvas draws (the scene's own clock stands still while it
+  rests): a set's art lands after its fonts and adds meshes or a texture
   then (`warmKey`), and the set is warmed again. All five warm, nothing
   loading and no board still on its way (`paintsPending` in
   `paintSet.ts`: waiting for its faces, painting, or taken by its set
@@ -2088,6 +2134,12 @@ To add a track to a station:
   (degrade.ts), up or down, with its post's structure even once she has
   entered, and returns the state (with no level it only reads it). A
   development build starts on level 0 and never steps down by itself.
+- `window.__vaPace(divisor?)` (`frameDriver.ts`) draws both canvases on
+  every `divisor`-th refresh whatever the display (`2`: half rate on any
+  screen), `null` gives the pace back to the quality level, and it returns
+  the display's measured rate, `halfRate` and the pace in effect (with no
+  argument it only reads them). A development build never paces by
+  itself.
 - `window.__vaJump(p)` (`HeroStage.tsx`) opens the story up to `p` and jumps
   the picture and the page scroll there; `tools/capture` uses it.
 - `window.__vaProbe = []` (`HeroStage.tsx`) makes every hero frame push its
@@ -2118,11 +2170,15 @@ To add a track to a station:
   over it stuttered): LoadReporter asks at each step of the load and for
   each frame that makes the scene ready, the warm-up once it is done, and
   a part that changes for itself (a board's copy painted, the aviators
-  put on), every one through `useSceneInvalidate` (`scene/invalidate.ts`);
-  then every frame for 3 s once the scene is ready, and no more until she
-  enters (`scene/heroFrameloop.ts`, tested; its QualityWatch only counts
-  once she has entered); and it stops under its opaque night
-  (`heroCover.ts`, the fade at 0.999 or more); the loader's drawing loop writes only what
+  put on), every one through `useSceneInvalidate` (`scene/invalidate.ts`:
+  the frame driver's `requestFrames`, which keeps them until the warm-up
+  is done); then every frame for 3 s once the scene is ready, and no more
+  until she enters (`scene/heroFrameloop.ts`, tested; the frame driver's
+  monitor only counts once she has entered); and it stops under its
+  opaque night (`heroCover.ts`, the fade at 0.999 or more), the frame
+  driver (`scene/frameDriver.ts`) reading every flag in the frame the
+  stage wrote it, so a flip re-renders no canvas; a canvas at rest keeps
+  its clock still, and draws again from where it stopped; the loader's drawing loop writes only what
   changed and stops once the load line is full, and its tip timer and
   resize listener stop once she has entered; the hero's and the city's
   frames return early more than a screen away from their stage with every
@@ -2186,10 +2242,12 @@ To add a track to a station:
   device's step down reaches the root's pixel ratio at most): R3F's Canvas renders whatever it holds again at every render of
   its host, and a cut, the end cover, the loop waking or the city's cover
   lifting reconciled two dozen components (the night's five sets, and its
-  environment captured its cube again). So `HeroCanvas` and `NightCanvas`
+  environment captured its cube again). So the frame loop, the covers and
+  being in view are plain flags the frame driver reads (no canvas or
+  scene subscribes to them), `HeroCanvas` and `NightCanvas`
   are memoised (their props are the server's copy and the stage's
   memoised timeline), each scene's children are one memoised world
-  (`HeroWorld`, `NightWorld`) beside its quality watch and its post, and the
+  (`HeroWorld`, `NightWorld`) beside its `PacedRoot` and its post, and the
   post (`Effects`, `NightEffects`) and both environments
   (`SkyEnvironment`, `NightEnvironment`: drei captures the cube again
   whenever its children change) are memoised too. A part gets constants
