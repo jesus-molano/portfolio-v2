@@ -7,6 +7,7 @@ import { type Bone, Color, Euler, FrontSide, Mesh, type MeshStandardMaterial, Qu
 import { SceneErrorBoundary } from "../SceneErrorBoundary";
 import type { QualityTier } from "../useQualityTier";
 import { BONES, captureBindPose, DRIVER_SCALE, DRIVER_SEAT, poseDriver, type RestBone } from "./driverPose";
+import { DRIVER_URL } from "./modelUrls";
 import { Sunglasses } from "./Sunglasses";
 
 type Props = { animate: boolean; tier: QualityTier };
@@ -18,8 +19,6 @@ type Props = { animate: boolean; tier: QualityTier };
  * fade, the beard and the moustache). His aviators are a separate model
  * (Sunglasses.tsx) on the head bone.
  */
-export const DRIVER_URL = "/models/makehuman-driver/driver.glb";
-
 useGLTF.preload(DRIVER_URL);
 
 /**

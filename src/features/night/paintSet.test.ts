@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { artQueue } from "./artQueue";
-import { paintSet } from "./paintSet";
+import { onPaintsChange, paintSet, paintsPending } from "./paintSet";
 
 /** Lets the faces (none in Node) and every queued painter run. */
 async function settle() {
@@ -57,5 +57,56 @@ describe("paintSet", () => {
     expect(steps).toEqual([1]);
     expect(keep).not.toHaveBeenCalled();
     expect(release).not.toHaveBeenCalled();
+  });
+
+  it("counts a board pending from its call until a frame after its set took it", async () => {
+    const before = paintsPending();
+    let atKeep = -1;
+    const keep = () => {
+      atKeep = paintsPending();
+    };
+    const cleanup = paintSet([], 0, () => () => "poster", keep, vi.fn());
+    expect(paintsPending()).toBe(before + 1);
+    await settle();
+    // Kept, but its set's update has not landed yet: still pending.
+    expect(atKeep).toBe(before + 1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(paintsPending()).toBe(before);
+    cleanup();
+    expect(paintsPending()).toBe(before);
+  });
+
+  it("tells its listeners as a board is asked for and as it lands, until they leave", async () => {
+    const seen: number[] = [];
+    const off = onPaintsChange(() => seen.push(paintsPending()));
+    const before = paintsPending();
+    const cleanup = paintSet([], 0, () => () => "poster", vi.fn(), vi.fn());
+    expect(seen).toEqual([before + 1]);
+    await settle();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(seen).toEqual([before + 1, before]);
+    off();
+    paintSet([], 0, () => () => "poster", vi.fn(), vi.fn())();
+    expect(seen).toEqual([before + 1, before]);
+    cleanup();
+  });
+
+  it("stops counting a board cleaned up before its turn, or whose painter throws", async () => {
+    const before = paintsPending();
+    paintSet([], 3, () => () => "wall", vi.fn(), vi.fn())();
+    expect(paintsPending()).toBe(before);
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    paintSet(
+      [],
+      1,
+      () => () => {
+        throw new Error("no 2D canvas");
+      },
+      vi.fn(),
+      vi.fn(),
+    );
+    await settle();
+    expect(paintsPending()).toBe(before);
+    errors.mockRestore();
   });
 });

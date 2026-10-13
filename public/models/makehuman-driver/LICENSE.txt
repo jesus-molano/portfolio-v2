@@ -13,4 +13,8 @@ Made for this site (tools/blender/build_driver_mpfb.py): face shape, smirk,
 hair with a skin fade, beard and moustache (geometry shells and baked
 textures), striped tee with a burgundy collar and a black earring. Rigged
 with MPFB's built-in game_engine rig (part of the CC0 assets above) and
-exported from Blender as glTF with WebP textures.
+exported from Blender as glTF with WebP textures; the hair, beard and skin
+shadow re-groomed by tools/blender/refine_driver_hair.py. driver.glb here is
+that model (tools/models/source/makehuman-driver/driver.glb) with its
+geometry quantized and meshopt-compressed and its skin texture at 1024 px,
+by tools/models/compress.mjs.

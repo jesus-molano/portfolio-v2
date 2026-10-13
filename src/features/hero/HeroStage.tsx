@@ -4,7 +4,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -16,6 +15,7 @@ import { motion } from "@/design/tokens";
 import { getRadio } from "@/features/music/radio";
 import { REDUCED_MOTION_QUERY, usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { addFrameTick } from "@/lib/frameTicker";
 import { focusInPlace, goTo, registerPassage } from "@/lib/navigate";
 import { isOnScreen, lineBelow, lineRootMargin, ON_SCREEN_THRESHOLDS } from "@/lib/onScreen";
 import { stableScreen } from "@/lib/screen";
@@ -43,6 +43,7 @@ import {
 import { dashLayout, newDashState, stepDash, stepLimiter } from "./scroll/dash";
 import { deepWait, type FeedbackInput, newFeedback, stepFeedback } from "./scroll/feedback";
 import { GATE, gateAction, lenisMissed, type PageReading, pageScroll } from "./scroll/gate";
+import { frameScroll, refreshFrameScroll } from "./scroll/frameScroll";
 import { type PedalVia, pedalRibs, pedalVisibility, teachDip } from "./scroll/pedal";
 import {
   activeWindow,
@@ -87,10 +88,11 @@ import {
   TEASES,
   teaseOffset,
 } from "./scroll/transport";
-import { drive } from "./scene/drive";
+import { drive } from "./scene/driveState";
 import { isCovered, setHeroCovered } from "./heroCover";
 import { type FarRestInput, restsFarAway } from "./scroll/farRest";
-import { CUT_BAND, SHOT_COUNT, type ShotPick, shotIndexAt, stickyShot } from "./scene/shots";
+import { markCut } from "./scene/qualityStore";
+import { CUT_BAND, SHOT_COUNT, type ShotPick, shotIndexAt, stickyShot } from "./scene/shotTiming";
 
 gsap.registerPlugin(useGSAP);
 
@@ -243,6 +245,18 @@ function targetKind(target: EventTarget | null, clicked: Element | null): Target
   return control.tagName === "A" ? "link" : "button";
 }
 
+/**
+ * Shows the shot in the camera readout: its number and its label, each the
+ * one visible cell of a grid of them all (so the readout keeps its widest
+ * box). Written by the frame, and only when the shot changes: a React state
+ * for it re-rendered the whole stage, and the canvas under it, at every cut.
+ */
+function showShot(numbers: readonly Element[], labels: readonly Element[], shot: number) {
+  numbers.forEach((cell, i) => cell.toggleAttribute("data-current", i === shot));
+  const label = shot < labels.length ? shot : 0;
+  labels.forEach((cell, i) => cell.toggleAttribute("data-current", i === label));
+}
+
 type Probe = Record<string, number | string | boolean | null>;
 type DevWindow = Window & { __vaJump?: (p: number) => void; __vaProbe?: Probe[] };
 
@@ -308,7 +322,6 @@ export function HeroStage({
   const resume = useRef<{ p: number; until: number } | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const lenis = useLenis();
-  const [shot, setShot] = useState(0);
 
   const timeline = useMemo(() => heroTimeline(lines), [lines]);
   const walls = useMemo(() => buildWalls(timeline), [timeline]);
@@ -362,6 +375,8 @@ export function HeroStage({
       if (!root) return;
       const sticky = root.querySelector<HTMLElement>("[data-sticky]");
       const cards = Array.from(root.querySelectorAll<HTMLElement>("[data-card]"));
+      const shotNumbers = Array.from(root.querySelectorAll<HTMLElement>("[data-shot-no]"));
+      const shotLabels = Array.from(root.querySelectorAll<HTMLElement>("[data-shot-label]"));
 
       /** The hero's section: what a move past it opens (lib/navigate.ts). */
       const section = root.closest("section") ?? root;
@@ -390,7 +405,7 @@ export function HeroStage({
         ran.current = "still";
         heroProgress.value = heroProgress.target = STATIC_PROGRESS;
         scrollGate.maxScroll = Number.POSITIVE_INFINITY;
-        setShot(shotIndexAt(STATIC_PROGRESS));
+        showShot(shotNumbers, shotLabels, shotIndexAt(STATIC_PROGRESS));
         actions.current = { skip: jumpToEnd, skipPointerDown: () => {}, skipPointerUp: () => {} };
         // Side hints wait for a quiet moment: once she has scrolled the
         // still title away (nothing covers the name) and rests there.
@@ -495,7 +510,16 @@ export function HeroStage({
        * fonts have arrived, never in the frame.
        */
       const cardText = cards.map((card) => card.querySelector<HTMLElement>("[data-card-text]"));
-      const fitLines = () => fitCards(cardText);
+      /**
+       * Each card's height as fitted, read right after the fitting: the hold
+       * note stands above the card on screen. Read in the frame at every card
+       * change, after the frame's own writes, it laid the page out there.
+       */
+      const cardHeights = cards.map(() => 0);
+      const fitLines = () => {
+        fitCards(cardText);
+        for (let i = 0; i < cards.length; i += 1) cardHeights[i] = cards[i].offsetHeight;
+      };
       const measure = () => {
         const rect = root.getBoundingClientRect();
         geom.top = rect.top + window.scrollY;
@@ -516,13 +540,14 @@ export function HeroStage({
       const progressFor = (y: number) => (y - geom.top) / geom.range;
       /**
        * Where the page is (gate.ts): its own offset, read after Lenis wrote
-       * it this tick, drawn from Lenis' sub-pixel value while the two
-       * agree. If Lenis missed a native move of the page, it starts again
-       * from the page, so its next glide sets off from where she is.
+       * it this tick (the frame's one reading, frameScroll.ts; an event
+       * reads the page itself), drawn from Lenis' sub-pixel value while the
+       * two agree. If Lenis missed a native move of the page, it starts
+       * again from the page, so its next glide sets off from where she is.
        */
       const reading: PageReading = { page: 0, lenis: 0, gliding: false };
-      const readScroll = () => {
-        reading.page = window.scrollY;
+      const readScroll = (page = window.scrollY) => {
+        reading.page = page;
         if (!lenis) return reading.page;
         reading.lenis = lenis.scroll;
         reading.gliding = lenis.isScrolling === "smooth";
@@ -700,6 +725,17 @@ export function HeroStage({
       // The pedal (scroll/pedal.ts): her foot, who holds it down, and the line step it waits for.
       // The pedal (scroll/pedal.ts), held by a pointer, W or Space and pushed on the scroll's ticker by
       // the shared driver (scroll/pedalDriver.ts), the same as in the career city.
+      /** What the driver reads of the stage each tick, one object written in place. */
+      const pedalFrame = {
+        maxStep: STORY.maxStep,
+        end: 0,
+        wall: 0,
+        wallIndex: -1,
+        vh: 0,
+        atEnd: false,
+        backAt: Number.NEGATIVE_INFINITY,
+        frozen: false,
+      };
       const driver = createPedalDriver({
         button: () => el.pedal,
         // Below the hero the pedal has gone with it: a click left on it (Space on a focused pedal) does nothing.
@@ -713,16 +749,16 @@ export function HeroStage({
           return stepLine(1, source);
         },
         goOn: (source) => goOn(source),
-        frame: () => ({
-          maxStep: STORY.maxStep,
-          end: scrollFor(1),
-          wall: scrollGate.maxScroll,
-          wallIndex: frontierIndex(story),
-          vh: geom.vh,
-          atEnd: heroProgress.value >= 0.999,
-          backAt,
-          frozen: stillQuery.matches,
-        }),
+        frame: () => {
+          pedalFrame.end = scrollFor(1);
+          pedalFrame.wall = scrollGate.maxScroll;
+          pedalFrame.wallIndex = frontierIndex(story);
+          pedalFrame.vh = geom.vh;
+          pedalFrame.atEnd = heroProgress.value >= 0.999;
+          pedalFrame.backAt = backAt;
+          pedalFrame.frozen = stillQuery.matches;
+          return pedalFrame;
+        },
         readScroll: () => {
           readScroll();
         },
@@ -761,6 +797,7 @@ export function HeroStage({
         lit: Number.NaN,
         kick: Number.NaN,
         lim: Number.NaN,
+        cardH: Number.NaN,
       };
 
       /** Offers Skip ("in a hurry?") for a while. */
@@ -812,6 +849,8 @@ export function HeroStage({
         // be the wall while the page is not (lenisContract.test.ts).
         lenis.animatedScroll = lenis.targetScroll = scroll;
         lenis.scrollTo(max, { immediate: true, force: true });
+        // The ticks after this one in the frame (the select, the city) read the page where it is now.
+        refreshFrameScroll();
       };
 
       /** Lets go of the pedal: its push stops at once, and the plate springs back. */
@@ -836,12 +875,12 @@ export function HeroStage({
         pedalDown: false,
         scrolling: false,
       };
-      const update = (deltaMs: number) => {
+      const update = (deltaMs: number, page = window.scrollY) => {
         // Reduced motion just switched on: the CSS shows the still hero, and
         // the film must not touch the page before React hands over to it.
         if (stillQuery.matches) return;
         const now = performance.now();
-        const scroll = readScroll();
+        const scroll = readScroll(page);
         // Far below with every wall open and nothing in flight, the frame has nothing to do (farRest.ts).
         farIn.wallsOpen = frontierIndex(story) < 0;
         farIn.scroll = scroll;
@@ -1104,6 +1143,9 @@ export function HeroStage({
         if (titleO !== drawn.titleO) {
           drawn.titleO = titleO;
           set(title.current, "opacity", titleO.toFixed(3));
+          // Gone, the title gives its layers back (the halo's, and one per letter of the name), which
+          // stayed allocated for the whole drive; a rewind takes them again in this same frame.
+          attr(title.current, "data-gone", titleO === 0);
         }
         // The title lifts a little into the sky as it fades, and gives under a push.
         const titleY = round2(-8 * titleOut);
@@ -1134,7 +1176,7 @@ export function HeroStage({
         if (nightO !== drawn.night) {
           drawn.night = nightO;
           set(el.fade, "opacity", nightO.toFixed(3));
-          // Under opaque night the canvas stops drawing (HeroCanvas).
+          // Under opaque night the canvas stops drawing, from this very frame (the frame driver reads it next).
           setHeroCovered(isCovered(nightO));
         }
 
@@ -1166,8 +1208,6 @@ export function HeroStage({
           }
           drawn.read = drawn.push = Number.NaN;
           if (active >= 0) {
-            // One layout read per card change: the hold note sits above the card.
-            set(el.holdNote, "--va-card-h", `${el.cards[active].offsetHeight}px`);
             // Keyboard users hear the line they stepped to.
             // His name once per line, as in the script: the cards after a line's first are its words alone.
             if (scrollInput.source === "key" && el.live) {
@@ -1178,6 +1218,12 @@ export function HeroStage({
         }
         if (active >= 0) {
           const card = el.cards[active];
+          // The hold note sits above the card, at its height as last fitted (fitLines): no layout read here.
+          const cardH = cardHeights[active];
+          if (cardH !== drawn.cardH) {
+            drawn.cardH = cardH;
+            set(el.holdNote, "--va-card-h", `${cardH}px`);
+          }
           const read = readStep(fill);
           if (read !== drawn.read) {
             drawn.read = read;
@@ -1252,7 +1298,9 @@ export function HeroStage({
 
         if (pick.shot !== currentShot) {
           currentShot = pick.shot;
-          setShot(pick.shot);
+          showShot(shotNumbers, shotLabels, pick.shot);
+          // A quality level waiting to land (qualityStore.ts) lands under the cut, its new pixels unseen.
+          markCut(now);
         }
 
         // A line she asked for at the title plays once the name has formed, unless she has driven on since.
@@ -1441,9 +1489,9 @@ export function HeroStage({
        */
       const pressGas = (via: PedalVia, at: number): boolean => driver.press(via, at);
 
-      // The frame runs from here on (stepLine above replays a line queued at the title).
-      const tick = (_time: number, deltaMs: number) => update(deltaMs);
-      gsap.ticker.add(tick);
+      // The frame runs from here on (stepLine above replays a line queued at the title): after Lenis, before
+      // the canvases (lib/frameTicker.ts), so the scene draws this frame's picture and cover.
+      const removeTick = addFrameTick("stage", (time, deltaMs) => update(deltaMs, frameScroll(time)));
       update(0);
 
       const onKey = (event: KeyboardEvent) => {
@@ -1778,7 +1826,7 @@ export function HeroStage({
         scrollGate.heroEnd = Number.POSITIVE_INFINITY;
         for (const text of cardText) text?.style.removeProperty("--fit");
         unregisterPassage();
-        gsap.ticker.remove(tick);
+        removeTick();
         setHeroCovered(false);
         driver.dispose();
         window.removeEventListener("keydown", onKey);
@@ -1809,8 +1857,6 @@ export function HeroStage({
     { scope: stage, dependencies: [reducedMotion, timeline, walls, lenis], revertOnUpdate: true },
   );
 
-  const shotLabel = shots[shot] ?? shots[0];
-
   return (
     <div ref={stage} className={styles.stage}>
       <div className={styles.sticky} data-sticky>
@@ -1820,12 +1866,23 @@ export function HeroStage({
 
         {/* Decoration, like the dash: the screen-reader help says what the film is. */}
         <p className={styles.hudCamera} data-hud aria-hidden="true">
-          {camera} {String(shot + 1).padStart(2, "0")}/{String(SHOT_COUNT).padStart(2, "0")}
+          {/* The camera and its number in one flex item, a space between them as in plain text. Every
+              number in one cell too, the first one shown until the frame shows another (showShot). */}
+          <span>
+            {camera}{" "}
+            <span className={styles.hudNo}>
+              {Array.from({ length: SHOT_COUNT }, (_, i) => (
+                <span key={i} className={styles.hudNoCell} data-shot-no data-current={i === 0 ? "" : undefined}>
+                  {String(i + 1).padStart(2, "0")}/{String(SHOT_COUNT).padStart(2, "0")}
+                </span>
+              ))}
+            </span>
+          </span>
           {/* Every label in one cell, the current one shown: the readout keeps the widest's width, so
               anchored right it never moves at a cut (a layout shift at every shot change). */}
           <span className={styles.hudShot}>
-            {shots.map((label) => (
-              <span key={label} className={styles.hudShotLabel} data-current={label === shotLabel ? "" : undefined}>
+            {shots.map((label, i) => (
+              <span key={label} className={styles.hudShotLabel} data-shot-label data-current={i === 0 ? "" : undefined}>
                 {label}
               </span>
             ))}

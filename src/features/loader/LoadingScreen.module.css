@@ -933,7 +933,7 @@ a.lang:focus-visible {
       color-mix(in srgb, var(--va-color-night) 92%, var(--va-color-letterbox))
     ),
     color-mix(in srgb, var(--va-color-night) 35%, transparent);
-  backdrop-filter: blur(14px) saturate(1.1);
+  /* No backdrop-filter, as under the tip card: the picture behind moves, so a blur redrew every frame. */
 }
 
 .panel[open] {

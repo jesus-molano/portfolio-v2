@@ -5,10 +5,13 @@ import { useMemo, useRef } from "react";
 import { BackSide, type Mesh, type ShaderMaterial } from "three";
 import { skyFragmentShader, skyVertexShader } from "../shaders/sky";
 import type { QualityTier } from "../useQualityTier";
-import { cloudDefines, createSkyUniforms } from "./skyUniforms";
+import { cloudDefines, createSkyUniforms, writeCloudDetail } from "./skyUniforms";
 import { world } from "./world";
 
 type Props = { tier: QualityTier; animate: boolean };
+
+/** Last among the opaque parts. */
+const SKY_ORDER = 10;
 
 /**
  * Sky dome centred on the camera: a direction-based afterglow gradient, a
@@ -27,13 +30,21 @@ export function Sky({ tier, animate }: Props) {
   // CameraRig is mounted first, so the camera already holds this frame's pose.
   useFrame(({ camera, clock }) => {
     dome.current?.position.copy(camera.position);
+    const m = material.current;
+    if (!m) return;
     // The clouds drift with time, never with the drive: they are kilometres
     // away. Under reduced motion they hold still.
-    if (animate && material.current) material.current.uniforms.uCloudTime.value = clock.elapsedTime;
+    if (animate) m.uniforms.uCloudTime.value = clock.elapsedTime;
+    // The quality level's cloud detail (degrade.ts), within what this tier's shader is built for.
+    writeCloudDetail(m.uniforms, tier);
   });
 
   return (
-    <mesh ref={dome} renderOrder={-2} frustumCulled={false}>
+    // Drawn after every opaque part (their render orders stop at 3), depth tested and writing none:
+    // the cloud shader, among the scene's dearest, runs only where nothing nearer has drawn, instead of
+    // under the whole city first. The dome stands beyond everything opaque, so the picture is the same;
+    // the sun and the haze are transparent and come after it anyway.
+    <mesh ref={dome} renderOrder={SKY_ORDER} frustumCulled={false}>
       <sphereGeometry args={[world.sky.radius, 48, 24]} />
       <shaderMaterial
         // Defines compile into the program: a new tier needs a new material.

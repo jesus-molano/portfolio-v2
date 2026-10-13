@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { type CSSProperties, type ReactNode, Suspense } from "react";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { AchievementSky } from "./AchievementSky";
 import {
@@ -85,78 +85,81 @@ export function Achievements({ dict }: { dict: Copy }) {
         </p>
       </div>
 
-      <AchievementSky className={styles.sky}>
-        <svg className={styles.drawing} viewBox={`0 0 ${SKY.width} ${SKY.height}`} aria-hidden="true" focusable="false">
-          {/* A faint nebula behind each constellation, in its colour. */}
-          <defs>
-            {NEBULAE.map(({ id }) => (
-              <radialGradient key={id} id={`tree-nebula-${id}`} className={styles[`tint_${id}`]}>
-                <stop offset="0" className={styles.nebulaCore} />
-                <stop offset="1" className={styles.nebulaEdge} />
-              </radialGradient>
+      {/* Hydrated on its own (no fallback: the server's stars are the content), after the page's first pass. */}
+      <Suspense>
+        <AchievementSky className={styles.sky}>
+          <svg className={styles.drawing} viewBox={`0 0 ${SKY.width} ${SKY.height}`} aria-hidden="true" focusable="false">
+            {/* A faint nebula behind each constellation, in its colour. */}
+            <defs>
+              {NEBULAE.map(({ id }) => (
+                <radialGradient key={id} id={`tree-nebula-${id}`} className={styles[`tint_${id}`]}>
+                  <stop offset="0" className={styles.nebulaCore} />
+                  <stop offset="1" className={styles.nebulaEdge} />
+                </radialGradient>
+              ))}
+            </defs>
+            {NEBULAE.map(({ id, cx, cy, rx, ry }) => (
+              <ellipse key={id} className={styles.nebula} cx={cx} cy={cy} rx={rx} ry={ry} fill={`url(#tree-nebula-${id})`} />
             ))}
-          </defs>
-          {NEBULAE.map(({ id, cx, cy, rx, ry }) => (
-            <ellipse key={id} className={styles.nebula} cx={cx} cy={cy} rx={rx} ry={ry} fill={`url(#tree-nebula-${id})`} />
-          ))}
-          <g className={styles.field}>
-            {FIELD.map((star, i) => (
-              <circle key={i} cx={star.x} cy={star.y} r={star.r} opacity={star.o} />
-            ))}
-          </g>
-          {/* A star chart's rings round the player. */}
-          <g className={styles.rings}>
-            {[150, 300, 470].map((r) => (
-              <circle key={r} cx={ROOT[0]} cy={ROOT[1]} r={r} />
-            ))}
-          </g>
-          <path className={styles.ridge} d={RIDGE} />
-          <g className={styles.links}>
-            {links.map((edge) => (
-              <line
-                key={`${edge.from}-${edge.to}`}
-                className={`${styles.link} ${styles[`tint_${edge.tint}`]}`}
-                data-lit={edge.lit || undefined}
-                x1={edge.a[0]}
-                y1={edge.a[1]}
-                x2={edge.b[0]}
-                y2={edge.b[1]}
-              />
-            ))}
-          </g>
-          {/* The glow that travels out along the lit links, wave after wave from the player. */}
-          <g className={styles.flows}>
-            {links
-              .filter((edge) => edge.lit)
-              .map((edge) => (
+            <g className={styles.field}>
+              {FIELD.map((star, i) => (
+                <circle key={i} cx={star.x} cy={star.y} r={star.r} opacity={star.o} />
+              ))}
+            </g>
+            {/* A star chart's rings round the player. */}
+            <g className={styles.rings}>
+              {[150, 300, 470].map((r) => (
+                <circle key={r} cx={ROOT[0]} cy={ROOT[1]} r={r} />
+              ))}
+            </g>
+            <path className={styles.ridge} d={RIDGE} />
+            <g className={styles.links}>
+              {links.map((edge) => (
                 <line
                   key={`${edge.from}-${edge.to}`}
-                  className={`${styles.flow} ${styles[`tint_${edge.tint}`]}`}
-                  style={{ "--d": edge.depth } as CSSProperties}
-                  pathLength={100}
+                  className={`${styles.link} ${styles[`tint_${edge.tint}`]}`}
+                  data-lit={edge.lit || undefined}
                   x1={edge.a[0]}
                   y1={edge.a[1]}
                   x2={edge.b[0]}
                   y2={edge.b[1]}
                 />
               ))}
-          </g>
-          {BRANCHES.map((branch) =>
-            branch.hub ? <circle key={branch.id} className={`${styles.hubDot} ${styles[`tint_${branch.id}`]}`} cx={branch.hub[0]} cy={branch.hub[1]} r={4.5} /> : null,
-          )}
-        </svg>
+            </g>
+            {/* The glow that travels out along the lit links, wave after wave from the player. */}
+            <g className={styles.flows}>
+              {links
+                .filter((edge) => edge.lit)
+                .map((edge) => (
+                  <line
+                    key={`${edge.from}-${edge.to}`}
+                    className={`${styles.flow} ${styles[`tint_${edge.tint}`]}`}
+                    style={{ "--d": edge.depth } as CSSProperties}
+                    pathLength={100}
+                    x1={edge.a[0]}
+                    y1={edge.a[1]}
+                    x2={edge.b[0]}
+                    y2={edge.b[1]}
+                  />
+                ))}
+            </g>
+            {BRANCHES.map((branch) =>
+              branch.hub ? <circle key={branch.id} className={`${styles.hubDot} ${styles[`tint_${branch.id}`]}`} cx={branch.hub[0]} cy={branch.hub[1]} r={4.5} /> : null,
+            )}
+          </svg>
 
-        <span className={styles.player} style={at(ROOT)} aria-hidden="true">
-          <i />
-          <b>{dict.player}</b>
-        </span>
+          <span className={styles.player} style={at(ROOT)} aria-hidden="true">
+            <i />
+            <b>{dict.player}</b>
+          </span>
 
-        <ol className={styles.branches} aria-labelledby="stats-achievements-title">
-          {BRANCHES.map((branch) => (
-            <BranchItem key={branch.id} branch={branch} dict={dict} />
-          ))}
-        </ol>
-      </AchievementSky>
+          <ol className={styles.branches} aria-labelledby="stats-achievements-title">
+            {BRANCHES.map((branch) => (
+              <BranchItem key={branch.id} branch={branch} dict={dict} />
+            ))}
+          </ol>
+        </AchievementSky>
+      </Suspense>
     </div>
   );
 }

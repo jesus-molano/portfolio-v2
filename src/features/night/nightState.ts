@@ -1,5 +1,5 @@
 /**
- * Shared state between the work stage (DOM, GSAP ticker) and the night
+ * Shared state between the work stage (DOM, the page's frame) and the night
  * scene (R3F frame loop). Plain mutable objects: nothing here goes through
  * React state on a frame.
  * - The stage writes the picture (`p`), the beat it plays and how armed
@@ -22,14 +22,16 @@ export const night = {
   car: newCarMotion() as CarMotion,
   /** A jump the camera must not glide through (a capture's or a deep link's): NightRig cuts to its pose once. */
   snap: false,
-  /** The frame loop woke (the stage back on screen, NightScene): the car lands on the picture once (CarDrive). */
+  /** The frame loop woke (the stage back on screen or its cover lifting, NightScene's `wakeNight`): the car lands on the picture once (CarDrive). */
   woke: false,
+  /** The stage is on screen (NightCanvas's observer): with the cover, whether the canvas draws (the frame driver reads it). */
+  onScreen: false,
   /**
    * The scene is wanted: mounted or mounting, near the stage (NightCanvas). The load screen waits for
    * a wanted scene to have drawn (or failed) before it lifts, so its compile never lands in her face.
    */
   wanted: false,
-  /** Every stop warmed up (compiled, uploaded) and nothing loading (Warmup): the opening cover may rest the canvas. */
+  /** The shared parts and every stop warmed up (compiled, uploaded), nothing loading and no board on its way (Warmup): the opening cover may rest the canvas. */
   warm: false,
   /**
    * Frames the canvas has drawn (ReadyReporter counts them): woken under the opening cover, the canvas still
@@ -82,24 +84,17 @@ export function subscribeNightReadiness(listener: () => void): () => void {
 }
 
 let covered = false;
-const coverListeners = new Set<() => void>();
 
 /**
  * The scene is under the stage's opaque night (nightCover.ts): WorkStage
- * writes it, NightCanvas reads it (useSyncExternalStore, so only a flip
- * re-renders) and the frame loop stops until it lifts.
+ * writes it every frame, the frame driver reads it in the same frame
+ * (NightScene's `nightWants`) and the canvas rests until it lifts; a flip
+ * re-renders nothing. The load screen reads it too.
  */
 export function getNightCovered(): boolean {
   return covered;
 }
 
 export function setNightCovered(next: boolean): void {
-  if (covered === next) return;
   covered = next;
-  for (const listener of coverListeners) listener();
-}
-
-export function subscribeNightCovered(listener: () => void): () => void {
-  coverListeners.add(listener);
-  return () => coverListeners.delete(listener);
 }

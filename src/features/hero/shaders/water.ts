@@ -22,7 +22,8 @@ export const waterVertexShader = /* glsl */ `
  * (Water.tsx): it lies on the line from the camera toward that point,
  * over the open water left of the causeway, since the true sun's path runs
  * under the island. The sky reflection still reads the true sun.
- * WATER_FINE adds the finest octave (high tier).
+ * WATER_FINE adds the finest octave (high tier), computed only within the
+ * 140 m it fades out over.
  */
 export const waterFragmentShader = /* glsl */ `
   uniform float uTime;
@@ -86,8 +87,12 @@ export const waterFragmentShader = /* glsl */ `
     // d/dp n(M p) = transpose(M) grad n.
     slope += (n2.yz * turn) * 0.38 * 0.13 * (1.0 - smoothstep(180.0, 520.0, dist) * 0.6);
     #ifdef WATER_FINE
-      vec3 n3 = waveNoise(p * vec2(1.3, 1.1) + vec2(uTime * 0.35, -uTime * 0.25));
-      slope += n3.yz * vec2(1.3, 1.1) * 0.032 * (1.0 - smoothstep(30.0, 140.0, dist));
+      // Past 140 m its fade is exactly 0, so the noise is not even computed there (most of the
+      // sea on screen): a metre further, so even a GPU's approximate division has reached the end.
+      if (dist < 141.0) {
+        vec3 n3 = waveNoise(p * vec2(1.3, 1.1) + vec2(uTime * 0.35, -uTime * 0.25));
+        slope += n3.yz * vec2(1.3, 1.1) * 0.032 * (1.0 - smoothstep(30.0, 140.0, dist));
+      }
     #endif
     // The y component is 1, so this vector is never zero.
     vec3 normal = normalize(vec3(-slope.x, 1.0, -slope.y));

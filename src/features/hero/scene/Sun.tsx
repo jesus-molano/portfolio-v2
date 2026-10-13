@@ -11,7 +11,7 @@ import {
   sunVertexShader,
 } from "../shaders/sun";
 import type { QualityTier } from "../useQualityTier";
-import { cloudDefines, createSkyUniforms } from "./skyUniforms";
+import { cloudDefines, createSkyUniforms, writeCloudDetail } from "./skyUniforms";
 import { world } from "./world";
 
 type Props = { tier: QualityTier; animate: boolean };
@@ -43,6 +43,8 @@ export function Sun({ tier, animate }: Props) {
       // The dome's clouds, to dim the disc where they pass in front of it.
       uSunPosition: sky.uSunPosition,
       uCloudTime: sky.uCloudTime,
+      uCloudOctaves: sky.uCloudOctaves,
+      uCloudShadow: sky.uCloudShadow,
     };
   }, []);
   const defines = useMemo(() => cloudDefines(tier), [tier]);
@@ -56,10 +58,14 @@ export function Sun({ tier, animate }: Props) {
   );
 
   useFrame(({ clock }) => {
-    if (!animate || !material.current) return;
+    const m = material.current;
+    if (!m) return;
+    // The dome's detail (Sky.tsx), so the clouds in front of the disc are the ones drawn around it.
+    writeCloudDetail(m.uniforms, tier);
+    if (!animate) return;
     // Same clock as the dome (Sky.tsx), so the clouds line up.
-    material.current.uniforms.uTime.value = clock.elapsedTime;
-    material.current.uniforms.uCloudTime.value = clock.elapsedTime;
+    m.uniforms.uTime.value = clock.elapsedTime;
+    m.uniforms.uCloudTime.value = clock.elapsedTime;
   });
 
   const { position, size } = world.sun;

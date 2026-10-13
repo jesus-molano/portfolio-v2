@@ -1,4 +1,6 @@
 import { Color, Vector3 } from "three";
+import { TIER_MAX } from "./degrade";
+import { qualityRuntime } from "./qualityStore";
 import { world } from "./world";
 
 /**
@@ -40,6 +42,10 @@ export type SkyUniforms = {
   uSunPosition: { value: Vector3 };
   /** Seconds of cloud drift. Advanced by the visible dome only. */
   uCloudTime: { value: number };
+  /** The fbm octaves drawn, under the shader's CLOUD_OCTAVES (the quality level's, written by Sky and Sun). */
+  uCloudOctaves: { value: number };
+  /** 1 draws the bank's self-shadow sample where the shader has it (CLOUD_SHADOW), 0 leaves it out. */
+  uCloudShadow: { value: number };
   uCloudSun: { value: Color };
   uCloudLit: { value: Color };
   uCloudShade: { value: Color };
@@ -61,6 +67,9 @@ export function createSkyUniforms(sunPosition: Vector3 = world.sun.position): Sk
     uGlow: { value: new Color(SKY_COLORS.glow) },
     uSunPosition: { value: sunPosition.clone() },
     uCloudTime: { value: 0 },
+    // Full detail: the environment map keeps it, and the visible dome writes the level's every frame.
+    uCloudOctaves: { value: CLOUD_DETAIL.high.octaves },
+    uCloudShadow: { value: CLOUD_DETAIL.high.shadow ? 1 : 0 },
     uCloudSun: { value: new Color(SKY_COLORS.cloudSun) },
     uCloudLit: { value: new Color(SKY_COLORS.cloudLit) },
     uCloudShade: { value: new Color(SKY_COLORS.cloudShade) },
@@ -68,10 +77,14 @@ export function createSkyUniforms(sunPosition: Vector3 = world.sun.position): Sk
   };
 }
 
-/** Cloud detail per tier: fbm octaves, and the bank's self-shadow sample. */
+/**
+ * Cloud detail per tier, the most its shaders are built for: fbm octaves,
+ * and the bank's self-shadow sample (degrade.ts `TIER_MAX`; the quality
+ * level draws less within them through the uniforms).
+ */
 export const CLOUD_DETAIL = {
-  high: { octaves: 5, shadow: true },
-  low: { octaves: 3, shadow: false },
+  high: { octaves: TIER_MAX.high.cloudOctaves, shadow: TIER_MAX.high.cloudShadow },
+  low: { octaves: TIER_MAX.low.cloudOctaves, shadow: TIER_MAX.low.cloudShadow },
 } as const;
 
 /**
@@ -83,6 +96,22 @@ export function cloudDefines(tier: "high" | "low"): Record<string, number> {
   return detail.shadow
     ? { CLOUD_OCTAVES: detail.octaves, CLOUD_SHADOW: 1 }
     : { CLOUD_OCTAVES: detail.octaves };
+}
+
+/**
+ * Writes the quality level's cloud detail into a cloud shader's uniforms
+ * (shaders/sky.ts), every frame: its octaves, never more than the tier's
+ * shader is built for, and the bank's self-shadow sample. The dome and the
+ * sun, whose disc hides behind the same clouds, take the same.
+ */
+export function writeCloudDetail(
+  uniforms: Record<string, { value: unknown }>,
+  tier: "high" | "low",
+  level: { cloudOctaves: number; cloudShadow: boolean } = qualityRuntime,
+) {
+  const detail = CLOUD_DETAIL[tier];
+  uniforms.uCloudOctaves.value = Math.min(level.cloudOctaves, detail.octaves);
+  uniforms.uCloudShadow.value = detail.shadow && level.cloudShadow ? 1 : 0;
 }
 
 /**

@@ -249,7 +249,7 @@ async function clsPass() {
         const { context, page } = await newPage(device);
         let release;
         const held = new Promise((resolve) => (release = resolve));
-        await page.route("**/*.glb", async (route) => {
+        await page.route(/\.glb(\?|$)/, async (route) => {
           await held;
           await route.continue().catch(() => {});
         });
@@ -413,7 +413,7 @@ async function framesPass() {
       const { context, page } = await newPage(device);
       let release;
       const held = new Promise((resolve) => (release = resolve));
-      await page.route("**/*.glb", async (route) => {
+      await page.route(/\.glb(\?|$)/, async (route) => {
         await held;
         await route.continue().catch(() => {});
       });

@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
-import gsap from "gsap";
 import type { VirtualScrollData } from "lenis";
 import { ReactLenis, useLenis, type LenisRef } from "lenis/react";
 import { motion } from "@/design/tokens";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { addFrameTick } from "@/lib/frameTicker";
 import { registerScroller, type Scroller } from "@/lib/navigate";
 import { stableScreen } from "@/lib/screen";
 import { getSceneLoading } from "../sceneLoading";
@@ -24,13 +24,16 @@ import {
   steadyFling,
   strokeLift,
   strokeMove,
+  touchCapable,
   touchHeld,
   type PageReading,
 } from "./gate";
+import { takeFrameScroll } from "./frameScroll";
 import { recordInput, scrollDrive, scrollGate, scrollInput } from "./heroProgress";
 
 /**
- * Lenis smooth scroll driven by the GSAP ticker. No ScrollTrigger: nothing
+ * Lenis smooth scroll, the first step of the page's frame
+ * (lib/frameTicker.ts). No ScrollTrigger: nothing
  * on the page made a trigger, and the plugin alone kept a frame loop, a
  * timer and a refresh on every resize running for the whole visit. The tree shape never changes, so a late
  * reduced-motion value does not remount the page: under reduced motion Lenis
@@ -53,7 +56,7 @@ import { recordInput, scrollDrive, scrollGate, scrollInput } from "./heroProgres
  * moves the page there, HeroStage puts it back (gate.ts).
  * Every input is recorded (`recordInput`) for the hero's feedback: the
  * world's pace, the transport and the hints. The hero's pedal drives the
- * same scroll from the ticker (`scrollDrive`, right before `lenis.raf`),
+ * same scroll in the frame (`scrollDrive`, right before `lenis.raf`),
  * and a finger on it is never a scroll stroke.
  */
 export function SmoothScroll({ children }: { children: ReactNode }) {
@@ -374,19 +377,36 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       held = next;
       document.documentElement.toggleAttribute("data-touch-held", next);
     };
+    // Only a device that can touch holds the pan (gate.ts touchCapable), read again when that
+    // changes (a 2-in-1, the browser's touch emulation), and from the first touch of one that
+    // never said it could.
+    const coarse = window.matchMedia("(any-pointer: coarse)");
+    let canTouch = false;
+    const onPointers = () => {
+      canTouch = touchCapable(navigator.maxTouchPoints, coarse.matches);
+    };
+    onPointers();
+    coarse.addEventListener("change", onPointers);
+    const onTouch = () => {
+      canTouch = true;
+    };
+    window.addEventListener("touchstart", onTouch, { capture: true, passive: true });
     // A text selection on the page (iOS leaves strokes near its ends to the browser: gate.ts touchHeld).
     let selecting = false;
     const onSelection = () => {
       selecting = !(document.getSelection()?.isCollapsed ?? true);
     };
     document.addEventListener("selectionchange", onSelection);
-    const update = (time: number, deltaMs: number) => {
+    const update = (time: number, deltaMs: number, stamp: number) => {
       const lenis = lenisRef.current?.lenis;
       if (!lenis) return;
       // A held pedal pushes the scroll first, so this very frame moves with it.
       scrollDrive.step?.(deltaMs, lenis);
       for (const step of scrollDrive.steps) step(deltaMs, lenis);
-      lenis.raf(time * 1000);
+      lenis.raf(stamp);
+      // The page's one reading of the frame, before anything of this frame is written: the stages'
+      // ticks draw from it (frameScroll.ts) instead of each asking the page after the last one's writes.
+      takeFrameScroll(time, window.scrollY);
       // The next stroke is Lenis' (the hero, a closed wall, the career city's film: gate.ts
       // browserStroke): the browser must not pan it. A phone too busy to answer a touch in time
       // gets its moves uncancelable (Chrome stops waiting), so they were never cancelled: the
@@ -395,25 +415,28 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       // ahead of the stroke (the compositor reads it at the touch, not the page) nothing pans,
       // however late the page answers. Pinch zoom stays.
       hold(
-        touchHeld(
-          !browserStroke(
-            lenis.animatedScroll,
-            scrollGate.heroEnd,
-            firstWall(scrollGate.maxScroll, selectGate.maxScroll, stageGate.maxScroll),
-            { from: stageGate.pinFrom, to: stageGate.pinTo },
-            lenis.isScrolling === "native",
+        canTouch &&
+          touchHeld(
+            !browserStroke(
+              lenis.animatedScroll,
+              scrollGate.heroEnd,
+              firstWall(scrollGate.maxScroll, selectGate.maxScroll, stageGate.maxScroll),
+              { from: stageGate.pinFrom, to: stageGate.pinTo },
+              lenis.isScrolling === "native",
+            ),
+            reducedRef.current,
+            selecting && (lenis as unknown as LenisTouch).isIos === true,
           ),
-          reducedRef.current,
-          selecting && (lenis as unknown as LenisTouch).isIos === true,
-        ),
       );
     };
-    // First on the ticker: the hero then draws this frame's scroll, not the last one's.
-    gsap.ticker.add(update, false, true);
-    gsap.ticker.lagSmoothing(0);
+    // First in the frame: the stages and the canvases then draw this frame's scroll, not the last one's.
+    // (GSAP's ticker keeps its defaults: it runs only the tweens now, asleep between them, and its lag
+    // smoothing is what starts a tween made after a sleep from its beginning.)
+    const removeTick = addFrameTick("scroll", update);
     return () => {
-      gsap.ticker.remove(update);
-      gsap.ticker.lagSmoothing(500, 33);
+      removeTick();
+      coarse.removeEventListener("change", onPointers);
+      window.removeEventListener("touchstart", onTouch, true);
       document.removeEventListener("selectionchange", onSelection);
       hold(false);
     };

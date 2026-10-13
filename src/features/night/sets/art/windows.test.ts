@@ -1,6 +1,52 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRandom } from "@/features/hero/scene/world";
-import { ATLAS, ATRIUM, GAIN, LOBBY, PANE, PANE_COUNT, pickPane } from "./windows";
+import { ATLAS, ATRIUM, GAIN, LOBBY, PANE, PANE_COUNT, paintWindows, paintWindowsSteps, pickPane, WINDOW } from "./windows";
+
+/**
+ * Canvases whose 2D context writes down every call and every setting, in
+ * order (Node has no canvas): two canvases painted the same way have the
+ * same log. Objects a context hands out (gradients) are numbered per
+ * canvas, so they compare too.
+ */
+function recordingCanvases() {
+  const logs = new Map<object, string[]>();
+  let latest: string[] = [];
+  const show = (value: unknown): string =>
+    typeof value === "object" && value !== null ? `#${String((value as { id?: number }).id)}` : String(value);
+  vi.stubGlobal("document", {
+    createElement: () => {
+      const log: string[] = [];
+      let ids = 0;
+      const recorder = (): object => {
+        const target = { id: ids++ };
+        return new Proxy(target, {
+          get(own, key) {
+            if (key === "id") return own.id;
+            if (typeof key === "symbol") return undefined;
+            return (...args: unknown[]) => {
+              log.push(`${key}(${args.map(show).join(",")})`);
+              return recorder();
+            };
+          },
+          set(_own, key, value) {
+            log.push(`${String(key)}=${show(value)}`);
+            return true;
+          },
+        });
+      };
+      const canvas = { width: 0, height: 0, getContext: () => recorder() };
+      logs.set(canvas, log);
+      latest = log;
+      return canvas;
+    },
+  });
+  return {
+    /** What was drawn on `canvas`. */
+    log: (canvas: object) => logs.get(canvas) ?? [],
+    /** What is drawn on the canvas made last, as it is drawn. */
+    latest: () => latest,
+  };
+}
 
 const OFFICE = new Set<number>([
   PANE.office,
@@ -75,5 +121,50 @@ describe("window atlas", () => {
 
   it("paints the lobby and the atrium as rooms across neighbouring cells", () => {
     for (const room of [LOBBY, ATRIUM]) room.forEach((cell, i) => i > 0 && expect(cell).toBe(room[i - 1] + 1));
+  });
+});
+
+describe("painting the atlas a room at a time", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("paints the same atlas as in one go, whatever runs between its steps", () => {
+    const canvases = recordingCanvases();
+    const steps = paintWindowsSteps();
+    let step = steps.next();
+    step = steps.next();
+    // Another atlas painted in one go between two steps draws nothing on this one and takes nothing of its seed.
+    const whole = paintWindows();
+    let painted = 2;
+    while (!step.done) {
+      expect(step.value).toBe(painted);
+      step = steps.next();
+      painted += 1;
+    }
+    // The lobby and the atrium are the last rooms painted; no step past the grid.
+    expect(painted).toBeGreaterThan(ATRIUM[ATRIUM.length - 1]);
+    expect(painted).toBeLessThanOrEqual(PANE_COUNT);
+    expect(canvases.log(step.value).length).toBeGreaterThan(0);
+    expect(canvases.log(step.value)).toEqual(canvases.log(whole));
+  });
+
+  it("paints one cell a step, each on its own place in the grid", () => {
+    const canvases = recordingCanvases();
+    const steps = paintWindowsSteps();
+    let step = steps.next();
+    const log = canvases.latest();
+    let cell = 0;
+    let start = 0;
+    for (;;) {
+      const x = (cell % ATLAS.cols) * WINDOW.w;
+      const y = Math.floor(cell / ATLAS.cols) * WINDOW.h;
+      expect(log.slice(start, start + 2), `cell ${cell}`).toEqual(["save()", `translate(${x},${y})`]);
+      if (step.done) break;
+      cell = step.value;
+      start = log.length;
+      step = steps.next();
+    }
+    expect(cell).toBeGreaterThan(ATLAS.cols);
   });
 });

@@ -8,10 +8,10 @@
  * camera never stops dead while she scrolls, and no card can be passed
  * before it has been on screen for its reading time.
  *
- * Pure functions on a small mutable state; HeroStage steps them on the GSAP
- * ticker and SmoothScroll trims the page scroll to the frontier.
+ * Pure functions on a small mutable state; HeroStage steps them in the page's
+ * frame and SmoothScroll trims the page scroll to the frontier.
  */
-import { CUT_BAND, SHOT_COUNT } from "../scene/shots";
+import { CUT_BAND, SHOT_COUNT } from "../scene/shotTiming";
 import { type Beat, buildTimeline, type FilmTimeline, type ShotTiming } from "./film";
 
 export const STORY = {

@@ -3,7 +3,7 @@
  * picture: the transport's mode (the dash shows it, dash.ts), how long the
  * film has waited for her, the world's pace and the "let the man finish"
  * note. Pure, on a small mutable state, so a frame allocates nothing.
- * HeroStage steps it on the GSAP ticker; the scroller model
+ * HeroStage steps it in the page's frame; the scroller model
  * (testing/scrollerModel.ts) steps the same function, so the acceptance
  * tests check what the page does. It runs on real time (HeroStage passes
  * the frame's real length; only the story's reading clocks are capped), so

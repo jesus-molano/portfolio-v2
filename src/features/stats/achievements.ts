@@ -1,4 +1,4 @@
-import { createRandom } from "@/features/hero/scene/world";
+import { createRandom } from "@/lib/random";
 
 /**
  * The ACHIEVEMENTS tab: his favourites and his goals as a game's

@@ -224,6 +224,19 @@
   will-change: transform, opacity;
 }
 
+/*
+ * Gone (faded out with the scroll, HeroStage's data-gone), the title gives
+ * its layers back: the halo's and one per letter, each with the name's
+ * wide shadows, stayed allocated through the whole drive. Not
+ * `visibility: hidden`: the heading stays in the accessibility tree and
+ * can still take the focus (back to top, LOAD GAME's prologue). A rewind
+ * takes the layers again in the frame it shows the title.
+ */
+.title[data-gone],
+.title[data-gone] .letter {
+  will-change: auto;
+}
+
 .role {
   display: inline-flex;
   align-items: center;
@@ -295,6 +308,24 @@
 }
 
 .hudShotLabel[data-current] {
+  visibility: visible;
+}
+
+/*
+ * The shot's number, "01/05": every one in one cell too, swapped by
+ * visibility. The frame shows the current one (data-current), so a cut
+ * renders nothing in React.
+ */
+.hudNo {
+  display: inline-grid;
+}
+
+.hudNoCell {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+
+.hudNoCell[data-current] {
   visibility: visible;
 }
 

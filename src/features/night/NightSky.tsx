@@ -10,6 +10,14 @@ import { nightSkyFragmentShader, nightSkyVertexShader } from "./shaders/nightSky
 const RADIUS = 800;
 
 /**
+ * Last among the opaque parts (theirs are 0), depth tested and writing
+ * none: the sky's stars and glow run only where no building, street or car
+ * has drawn. Every set stands well inside the dome, so the picture is the
+ * same; the glows and beams are transparent and come after it anyway.
+ */
+const SKY_ORDER = 10;
+
+/**
  * The night sky: a dome centred on the camera with a violet gradient, the
  * city's magenta glow on the horizon, stars and a thin moon: the same
  * island sky at every stop, since he never moved.
@@ -34,7 +42,7 @@ export function NightSky() {
   });
 
   return (
-    <mesh ref={mesh} renderOrder={-10} frustumCulled={false}>
+    <mesh ref={mesh} renderOrder={SKY_ORDER} frustumCulled={false}>
       <sphereGeometry args={[RADIUS, 32, 16]} />
       <shaderMaterial
         uniforms={uniforms}

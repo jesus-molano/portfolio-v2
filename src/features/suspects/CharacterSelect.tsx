@@ -5,11 +5,13 @@ import { useLenis } from "lenis/react";
 import type Lenis from "lenis";
 import { motion } from "@/design/tokens";
 import { decay, ELASTIC, rubberBand, touchStretchMax } from "@/features/hero/scroll/elastic";
+import { frameScroll, refreshFrameScroll } from "@/features/hero/scroll/frameScroll";
 import { scrollGate } from "@/features/hero/scroll/heroProgress";
 import { stageGate } from "@/features/work/stageGate";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
+import { addFrameTick } from "@/lib/frameTicker";
 import { registerPassage } from "@/lib/navigate";
 import { stableScreen } from "@/lib/screen";
 import manifest from "../../../public/interlude/manifest.json";
@@ -473,6 +475,8 @@ export function CharacterSelect({ dict, lang }: Props) {
       l?.reset();
       window.scrollTo({ top: w.y, behavior: "instant" });
       if (l) l.animatedScroll = l.targetScroll = window.scrollY;
+      // In the frame, the city's tick after this one reads the page where it is now.
+      refreshFrameScroll();
     };
 
     // Keys that would scroll past the wall glide to it instead, and are felt there.
@@ -516,8 +520,13 @@ export function CharacterSelect({ dict, lang }: Props) {
     let promptOn = false;
     let shift = 0;
     let lastScroll = window.scrollY;
-    let raf = 0;
-    const frame = () => {
+    /**
+     * One step of the page's frame (lib/frameTicker.ts), after Lenis and beside the stages, reading the
+     * frame's one reading of the page (frameScroll.ts): its own requestAnimationFrame loop asked the page
+     * where it was after the stages had written theirs, and laid it out mid-frame to answer.
+     */
+    let removeTick: (() => void) | null = null;
+    const frame = (time: number) => {
       const now = performance.now();
       const dt = Math.min(0.25, (now - lastFrame) / 1000);
       lastFrame = now;
@@ -525,7 +534,7 @@ export function CharacterSelect({ dict, lang }: Props) {
         selectGate.maxScroll = Number.POSITIVE_INFINITY;
       } else {
         selectGate.maxScroll = w.y;
-        const scroll = window.scrollY;
+        const scroll = frameScroll(time);
         // The page still moving from a click on the scrollbar's track: still that click's step.
         if (Math.abs(scroll - lastScroll) > 0.5 && now - barAt < BAR_WINDOW_MS) barAt = now;
         const l = lenisNow();
@@ -562,7 +571,7 @@ export function CharacterSelect({ dict, lang }: Props) {
       }
       lastPressure = scrollGate.pressure;
       lastPushedAt = scrollGate.pushedAt;
-      lastScroll = window.scrollY;
+      lastScroll = frameScroll(time);
 
       // The board gives under her push and springs back, as the hero's card does.
       const touch = scrollGate.touching;
@@ -588,9 +597,12 @@ export function CharacterSelect({ dict, lang }: Props) {
         board.toggleAttribute("data-walled", show);
       }
       // Once the wall is open and the board has settled there is nothing left to do a frame.
-      raf = w.closed || shift > 0 || promptOn ? window.requestAnimationFrame(frame) : 0;
+      if (!(w.closed || shift > 0 || promptOn)) {
+        removeTick?.();
+        removeTick = null;
+      }
     };
-    raf = window.requestAnimationFrame(frame);
+    removeTick = addFrameTick("stage", (time) => frame(time));
 
     window.addEventListener("wheel", onInput, { capture: true, passive: true });
     window.addEventListener("touchstart", onInput, { capture: true, passive: true });
@@ -603,7 +615,8 @@ export function CharacterSelect({ dict, lang }: Props) {
     document.addEventListener("focusin", onFocusIn);
 
     return () => {
-      window.cancelAnimationFrame(raf);
+      removeTick?.();
+      removeTick = null;
       unregister();
       observer?.disconnect();
       window.removeEventListener("resize", measure);

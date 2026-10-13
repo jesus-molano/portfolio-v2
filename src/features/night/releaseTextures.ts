@@ -1,4 +1,5 @@
 import type { Texture } from "three";
+import { uniformTextures } from "@/features/hero/scene/warmup";
 
 type Uniforms = Record<string, { value: unknown } | undefined>;
 
@@ -13,17 +14,8 @@ type Uniforms = Record<string, { value: unknown } | undefined>;
  */
 export function boundTextures(list: Iterable<Uniforms | undefined>): Set<Texture> {
   const found = new Set<Texture>();
-  const take = (value: unknown) => {
-    const texture = value as Texture | null;
-    if (texture && typeof texture === "object" && texture.isTexture) found.add(texture);
-  };
   for (const uniforms of list) {
-    if (!uniforms) continue;
-    for (const uniform of Object.values(uniforms)) {
-      const value = uniform?.value;
-      if (Array.isArray(value)) value.forEach(take);
-      else take(value);
-    }
+    if (uniforms) uniformTextures(uniforms, found);
   }
   return found;
 }

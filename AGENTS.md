@@ -36,8 +36,10 @@ also exists as real DOM for keyboard and screen-reader users.
 - `pnpm test` — Vitest unit tests (`src/**/*.test.ts`): locale negotiation,
   proxy redirects, the deterministic city layout, the chapter cards'
   layout, the shader `pow()` rule, the start menu's tips, keys and
-  picture (`loader/horizon.test.ts`: a whole road, lamps at their size),
-  the content map (`i18n/contentMap.test.ts`), and the
+  picture (`loader/horizon.test.ts`: a whole road, lamps at their size,
+  its motion on HTML layers only, each as big as what it draws),
+  the content map (`i18n/contentMap.test.ts`), the page's glTF models
+  (`hero/scene/modelAssets.test.ts`), and the
   hero's scroll UX acceptance checks (`scroll/acceptance.test.ts`).
   Add a test for every new pure function.
 - `pnpm build` — production build. `next/font/google` downloads fonts at build
@@ -82,7 +84,9 @@ also exists as real DOM for keyboard and screen-reader users.
   her finger's speed flings at 60 fps, and half a screen, and in the
   city's film to at least half of it where the page has room; `--cpu 4|6`
   throttles the CPU once she is in, a loaded phone;
-  `--out` keeps the traces, `--replay <dir>` re-scores them), `shiftless`
+  `--out` keeps the traces, `--replay <dir>` re-scores them; `--gpu` runs
+  a visible Chromium on the machine's own GPU, the city's and the hero's
+  frame timing a visitor's, never a software rasteriser's), `shiftless`
   (the title hint, the dash's unit and the camera readout keep one box in
   every state, and her first input while the name forms, its answer and
   the way on log no layout shift at all), and the
@@ -130,8 +134,8 @@ also exists as real DOM for keyboard and screen-reader users.
   FAIL.
 - `node tools/capture/perf.mjs --url http://localhost:3100/en` (a
   production build running: `pnpm build && pnpm start -p 3100`; `--device
-  phone|desktop`, `--only menu,hero,cover,rest,radio,layers,leak,load`,
-  `--cycles`, `--out`) — the page's heat on a phone (390 x 844 at 3x, an
+  phone|desktop`, `--only boot,menu,hero,cuts,city,cover,rest,radio,layers,leak,load,pace`,
+  `--cycles`, `--out`, `--gpu`) — the page's heat on a phone (390 x 844 at 3x, an
   iPhone's user agent), one line of numbers per stop (frames each WebGL
   canvas drew per animation frame, rAF callbacks, script, task, style
   recalcs and layouts a second, heap) and PASS or FAIL: the hero's canvas
@@ -145,9 +149,25 @@ also exists as real DOM for keyboard and screen-reader users.
   the third pass, after the JIT's own warm-up) and no WebGL context
   outlives its canvas; LOAD GAME save after save (the city, STATS, the
   credits, the prologue, `--cycles` times) keeps the heap and the
-  listeners flat, and the idle load screen animates nothing. Run it after
+  listeners flat, and the idle load screen animates nothing; `boot`,
+  `cuts`, `city` and `pace` count the programs linked inside a frame (a
+  compile she waits for: none once she is in, none at a city stop warmed
+  ahead), the long animation frames and the longest gap between two frames,
+  and read each canvas's `data-quality` and `data-pace`. Run it after
   any change to a canvas, a looping animation, the radio, a frame loop or
-  the load screen.
+  the load screen. It draws on SwiftShader, where a frame takes seconds:
+  its counts hold, its times do not. `--gpu` runs it in a visible Chromium
+  on the machine's own GPU, for times that are a visitor's;
+  `docs/perf-checklist.md` is the owner's check on real devices.
+- `node tools/models/compress.mjs` — the driver's and the traffic cars'
+  GLBs as the page loads them (`public/models`), from their sources in
+  `tools/models/source` (as Blender wrote them, which the Blender scripts
+  read back: Blender cannot read a compressed one): the geometry quantized
+  and meshopt-compressed, the driver's skin texture at 1024 px. Run it
+  after any change to a source; a rerun with nothing changed writes the
+  same bytes. It writes `tools/models/sources.json`, and
+  `modelAssets.test.ts` fails on a model left behind; `modelUrls.test.ts`
+  then names the model's new `?v=` for `scene/modelUrls.ts`.
 
 ## Stack (pinned on purpose)
 
@@ -155,9 +175,26 @@ also exists as real DOM for keyboard and screen-reader users.
   does not support it yet), ESLint 9 (eslint-plugin-react does not support 10).
 - three `~0.186` (postprocessing requires `< 0.187`), `@react-three/fiber` 9,
   `@react-three/drei` 10, `@react-three/postprocessing` 3.
-- GSAP 3 + `@gsap/react` for timelines and the ticker; Lenis for smooth scroll
-  (no ScrollTrigger: nothing makes a trigger, and the plugin alone ran a
-  frame loop, a timer and a refresh on resize).
+- GSAP 3 + `@gsap/react` for timelines (the title's reveal); Lenis for
+  smooth scroll (no ScrollTrigger: nothing makes a trigger, and the plugin
+  alone ran a frame loop, a timer and a refresh on resize). One frame of
+  the page is one requestAnimationFrame of its own (`lib/frameTicker.ts`,
+  tested): Lenis first (SmoothScroll, the `"scroll"` phase), then the
+  stages' ticks (`"stage"`), then both canvases (`"render"`; the
+  canvases' frame driver below): neither canvas runs R3F's own
+  requestAnimationFrame loop beside it, nor the character select its
+  own. It was a tick of GSAP's ticker, which dispatches at most 240 times
+  a second on Date.now's whole milliseconds: on a 300 Hz display it
+  skipped every fifth refresh, near 240 Hz one now and then, and the
+  canvases' monitor took the gaps for a GPU falling behind. GSAP's ticker
+  runs only its tweens, asleep between them, with its own lag smoothing
+  (what starts a tween made after a sleep at its beginning). The page's offset is read once a frame,
+  right after `lenis.raf` and before anything of the frame is written
+  (`scroll/frameScroll.ts`, tested), and the stages' ticks (the hero, the
+  select, the city) draw from that reading; a gate that puts the page
+  back in the frame reads it again. Each stage asked the page itself,
+  after the one before had written its styles, and every such read laid
+  the page out mid-frame. Event handlers still read the page themselves.
 
 ## Structure
 
@@ -240,7 +277,8 @@ also exists as real DOM for keyboard and screen-reader users.
 - `src/features/hero` — the hero: stage, title, canvas, scroll bridge and the
   3D scene (`scene/`), with GLSL in `shaders/`.
   - The car never moves. `scene/drive.ts` holds the shared distance that the
-    road, palms, traffic and wheels read; `DriveClock` advances it.
+    road, palms, traffic and wheels read (the state itself in
+    `scene/driveState.ts`, without three.js); `DriveClock` advances it.
   - The hero is a film the visitor scrubs (`scroll/story.ts`, unit tested
     with a model of real scrollers in `scroll/testing/scrollerModel.ts`).
     The page scroll is the picture: camera, cuts, title, bars, cards and
@@ -285,7 +323,13 @@ also exists as real DOM for keyboard and screen-reader users.
     Xiaomi); pinch zoom stays, and a scroller inside pans as ever; it
     lets go under reduced motion and on iOS while a text selection is up
     (`gate.ts` touchHeld: Lenis leaves a stroke landing near the
-    selection's ends to the browser, which must be free to pan it);
+    selection's ends to the browser, which must be free to pan it), and
+    it is set only on a device that can touch (`gate.ts` touchCapable:
+    a touch screen or any coarse pointer, read again when that changes,
+    and from the first touch of a device that never said so): its
+    touch-action reaches every element, and a mouse-only desktop
+    restyled the whole page at every section boundary for strokes that
+    never come;
     below the hero, every wall open (the career city's too: a closed one
     there is gated like the hero's, and a fling's momentum within 1.5 s
     of the lift is still hers, never navigation), a stroke is the
@@ -364,9 +408,13 @@ also exists as real DOM for keyboard and screen-reader users.
     motion and forced colours it is not shown (its meaning is in text),
     and the camera readout is `aria-hidden` decoration like it (it
     keeps its widest shot label's width, every label in one cell, so
-    anchored right it never shifts at a cut; its status line is one line
-    tall, said or not, so the unit centred beside it never drops as the
-    dash goes; `layoutShift.test.ts`).
+    anchored right it never shifts at a cut; its number, "01/05", is one
+    cell of all five the same way, and the frame shows the current number
+    and label (`showShot`, `data-current`, written only at a cut): a React
+    state for the shot re-rendered the whole stage, and the canvas under
+    it, at every cut; its status line is one line tall, said or not, so
+    the unit centred beside it never drops as the dash goes;
+    `layoutShift.test.ts`).
     The tick only writes attributes and custom properties, and only what
     changed; Skip's patience reads her demand (`pushingHard`), not the
     capped pace, so "In a hurry?" still comes at a line. No gear letter (a
@@ -478,7 +526,10 @@ also exists as real DOM for keyboard and screen-reader users.
     career city's; measured with the viewport, once
     the fonts have arrived and when the subtitle size changes, never in
     the frame, and measured again in its fitted box until it settles:
-    balance re-wraps a narrower box onto other breaks, `settleFits`);
+    balance re-wraps a narrower box onto other breaks, `settleFits`; the
+    hero keeps each card's fitted height then, for the hold note above
+    it, which it read in the frame at every new card, laying the page
+    out there);
     the reading bar and then the marker sit under the block, never in
     the text. Her first
     input is answered in place of the title hint ("You have the wheel",
@@ -544,7 +595,8 @@ also exists as real DOM for keyboard and screen-reader users.
     hang over the next section's chapter card (after the end of the
     drive, Skip or a deep link). `scroll/film.ts` only lays the cards out on the film
     (`buildTimeline`).
-  - Film progress cuts between the shots in `scene/shots.ts`; `CameraRig`
+  - Film progress cuts between the shots in `scene/shots.ts` (where the
+    cuts fall, `scene/shotTiming.ts`, without three.js); `CameraRig`
     evaluates the pose. `HeroStage` draws the title, letterbox, subtitle
     cards, HUD and fade to night from the same film position every tick.
   - Subtitle cards come from `hero.lines` in the dictionaries: one array of
@@ -584,7 +636,10 @@ also exists as real DOM for keyboard and screen-reader users.
     tools/blender/refine_driver_hair.py)^:public/models/makehuman-driver/driver.glb"
     > /tmp/driver.build.glb`, then run `python
     tools/blender/refine_driver_hair.py /tmp/driver.build.glb
-    public/models/makehuman-driver/driver.glb`; it is deterministic. In
+    tools/models/source/makehuman-driver/driver.glb` (the driver's source,
+    which the Blender scripts read) and `node tools/models/compress.mjs`
+    (the page's copy, `public/models/makehuman-driver/driver.glb`); both
+    are deterministic. In
     Cycles check renders raise `cycles.transparent_max_bounces` (twelve
     stacked layers; the default 8 draws black bands). It is posed with
     two-bone IK at load time
@@ -600,10 +655,11 @@ also exists as real DOM for keyboard and screen-reader users.
   - His gold aviators (`Sunglasses.tsx`) are a separate GLB in the frame
     of the head bone, added as that bone's child, so they follow the
     glance. The lenses mirror the environment map through a violet-to-pink
-    reflectance and read as dark glass from behind. If `driver.glb`
-    changes, rebuild them (`tools/blender/build_sunglasses.py`): the script
-    fits them to the new head and stops if any piece comes within 3 mm of
-    the skin, eyes, lashes, brows or hair shells.
+    reflectance and read as dark glass from behind. If the driver's source
+    changes, rebuild them (`tools/blender/build_sunglasses.py` on
+    `tools/models/source/makehuman-driver/driver.glb`): the script fits
+    them to the new head and stops if any piece comes within 3 mm of the
+    skin, eyes, lashes, brows or hair shells.
   - Light: the canvas stays `flat` (linear materials) so bloom sees HDR
     values; `SkyEnvironment.tsx` renders our own sky (uniforms from
     `skyUniforms.ts`, shared with `Sky.tsx`), a ground, a horizon strip and
@@ -617,8 +673,149 @@ also exists as real DOM for keyboard and screen-reader users.
     35 mm film grain (`FilmGrain.tsx`, `shaders/filmGrain.ts`, 24 grain
     frames a second). High tier only: chromatic aberration and depth of
     field (`LensDepthOfField.tsx`), which reads `lens.ts` every frame and
-    does no work while `bokehScale` is 0. In production a slow device steps
-    down (`degrade.ts`): depth of field off, then dpr 1, never back up.
+    does no work while `bokehScale` is 0 or the quality level has none.
+  - Quality (`degrade.ts`, `gpuHint.ts`, `qualityMonitor.ts`,
+    `qualityStore.ts`, all tested): one level for the visit, shared by
+    both canvases (a step down in the hero holds in the city, and the other
+    way round), on a ladder of seven, 0 to 6. A level sets the canvas's
+    pixel budget and its pixel ratio's ceiling and floor (`pixelRatioFor`:
+    the screen's own ratio up to the ceiling, no more than the budget
+    allows, snapped down to 0.05; over the window's width and the stable
+    large screen, `useCanvasDpr`: the host owns the Canvas's `dpr`, which
+    R3F applies again at every host render), the depth of field and the
+    clouds' octaves and self-shadow sample (uniforms in `shaders/sky.ts`,
+    under the tier's compiled maximum, written by `Sky` and `Sun`; the
+    environment map keeps full detail). A slow GPU gives up, in order and
+    only as far as it must: pixels over 2.6 million, then (before she
+    enters only) chromatic aberration and SMAA's high preset, then the
+    clouds' fifth octave and shadow, pixels over 2.07 million, the depth of
+    field, and last of all pixels under the screen's own (a floor of
+    0.85, then 0.7) and another octave. Level 0 is today's look, with no
+    pixel budget: every screen at its own ratio up to 1.5 (a budget there
+    drew a 5K display, a MacBook or a 4K screen at 200 % below its ratio
+    for the whole visit, on a GPU that never dropped a frame; a 4K screen
+    at 150 % sends 8.3 million pixels through every pass until its GPU
+    falls behind). A step skips the levels that would draw her screen the
+    same (`nextLevel`, `drawsAlike`: the pixel ratio there and the detail
+    the tier keeps, and before she enters the post's structure; each
+    canvas hands its screen to the store, `registerScreen` in
+    `useCanvasDpr`): a phone keeps 1.5 under the first budgets and has no
+    depth of field to lose, and each step that changed nothing still
+    waited for its cut and two more bad seconds, its first lines
+    juddering all the while. The grain keeps its size on screen at any
+    ratio (`grainScale`). Where a
+    visit starts comes from the renderer string, read locally (no network,
+    no benchmark): Intel's plain HD and UHD low (level 4), Iris and the
+    integrated Radeon mid (2: "Radeon(TM) Graphics", "Vega 8 Graphics",
+    never a discrete RX Vega or Pro Vega), a software rasteriser at the
+    bottom (6), every other or masked GPU at the top (0). The post's structure
+    (`Structure`: chromatic aberration and SMAA's high preset only for a
+    visit starting on level 0 or 1; NanGuard in the night only on Mesa or a
+    Linux that is not Android) follows the level until she enters and is
+    frozen at `markEntered`: changing it compiles the passes again.
+    Production only, the frame driver (below) counts each canvas's late
+    frames (`qualityMonitor.ts`: a one-second window is bad when over a
+    fifth of its frames take more than 1.25 times the interval expected,
+    the display's refresh times the pace, 60 Hz's until the rate is
+    measured; two bad windows in a row step down, at most once every 2 s;
+    a frame over 250 ms is a hitch, not a level, and quiets it for a
+    second, but only the first of a run: a canvas whose every frame took
+    longer, a masked renderer judged top on a weak GPU, never stepped
+    down), and never one before she
+    has entered or in her first 2 s, under the load screen, in a hidden
+    tab, in the first second after the canvas wakes, a level lands or the
+    pace changes, or drawn on request: drei's PerformanceMonitor averaged
+    the frame rate, so the judder of a vsync missed every few frames never
+    showed, and above 100 Hz it hardly ever stepped down. On a display of
+    118 Hz or more (its rate read by the frame driver, `reportRefresh`)
+    the first step is half rate, the 3D on every second refresh
+    (`halfRate`: a GPU just short of 144 frames a second showed each for
+    one refresh and then two, a judder worse than a steady 72), and a GPU
+    below the top starts there; never at 100 Hz or less. A level lands
+    under the next cut (`markCut`: HeroStage at a shot change, WorkStage
+    at the bottom of a dip or under its cover) or 1.5 s after the step
+    anyway, its reallocated targets unseen, and never goes back up. React
+    applies the new pixel ratio in a microtask after the frame that drew at
+    the old one, and the resize clears the canvas: a canvas that is drawing
+    is drawn again at once, before the page paints (`redrawSoon`, from
+    `PacedRoot`'s size subscription: delta 0, never inside the render
+    phase or from a redraw's own frame, and only for a level landed since
+    the frame began: a window's resize lands in a task of its own, and the
+    next frame draws before the paint), or the cut showed a black frame. A development build stays on level 0 with the full post and
+    never paces (captures stay comparable; `window.__vaQuality` forces a
+    level, `window.__vaPace` a pace).
+  - Frames (`frameDriver.ts`, its pure rules in `framePacing.ts`, both
+    tested; a `PacedRoot` in each Canvas): both canvases run
+    `frameloop="never"` for good and draw in the page's frame, after Lenis
+    and the stages' ticks, in the same animation frame
+    (`lib/frameTicker.ts`): R3F's own loop ran beside the page's in whichever
+    order the browser called the two, every change between drawing and
+    resting went through a React render of the canvas, a frame or more
+    late, and each started R3F's clock again from zero, so the clouds, the
+    water and the palms jumped back. Every frame each canvas says whether
+    it wants to draw (`wants`: the hero's `heroFrameloop`, from its in-view
+    flag and `getHeroCovered()`, `heroCover.ts`; the night on screen,
+    `night.onScreen`, and not covered, `getNightCovered()`; plain flags, so
+    a flip re-renders nothing and counts in the very frame the stage wrote
+    it). One that wants draws at the pace; one at rest only the frames
+    asked of it (`requestFrames`, through `useSceneInvalidate` in the hero:
+    R3F's `invalidate` does nothing under "never"; a resize or a new pixel
+    ratio asks for one), and the hero's wait for its warm-up while it is
+    not warm (a frame drawn before compiled what it showed on the main
+    thread, a stall of the start menu at each step of the load). A
+    canvas's clock runs only while it draws (`stepRootClock`: 0 on its
+    first frame after a rest), and waking it calls its `onWake` (the
+    night's car lands on the picture). R3F's global effects run once a
+    frame around the canvases that drew (the dev probes read pixels
+    there). The pace is every refresh, or at half rate every second one of
+    a display of 118 Hz or more, evenly (`paceDivisor`, `renderThisTick`;
+    240 Hz every fourth, 300 every fifth, 360 every sixth), while the page
+    itself, Lenis and the cards, keeps the display's rate. The display's
+    rate is read from the frames in which no canvas drew
+    (`refreshFromIdle`: the 20th percentile of their intervals, 30 at
+    least, each between 1.5 and 50 ms; a frame that drew measures the GPU,
+    not the display), and read again as they come. At full pace no frame
+    is idle, so a step down is checked first when the rate was not read in
+    the last 10 s (`rateTrusted`; never one that would change nothing,
+    `canStepDown`): the canvases draw on every second frame
+    for a moment, twelve idle intervals read the rate again, and a new one
+    (`rateChanged`: another display, a panel dropped to 60 Hz on battery,
+    a power mode holding the page at 30 frames a second) is taken instead
+    of the step, since the frames were late only against the old one;
+    the same rate, or none read in 60 frames, steps down. A steady
+    cadence alone proves nothing: a GPU that takes 20 ms a frame at 60 Hz
+    shows each for two refreshes as a display at 30 Hz would, but its idle
+    frames still come every refresh. Each canvas carries
+    `data-quality` and `data-pace`, written on change. A hidden frame
+    (`warmFrame`, `isWarmFrame` while it draws) can compile under a cover
+    without counting as a frame of the picture (the night's ReadyReporter
+    leaves it out): the night's Warmup asks for one once every part is
+    warm, before the canvas has ever drawn. Under reduced motion the hero is not driven: R3F's
+    "demand" draws its still frames.
+  - Warm-up (`HeroWarmup.tsx`, `warmup.ts`, tested): behind the start menu
+    the hero compiles every material, visible or not, as the composer
+    draws it (`compileAsComposed`: a half-float target like the
+    composer's bound while three chooses the programs, since it compiles a
+    material for a target, linear and untoned, unlike for the screen),
+    first the procedural world while the models download, then again as
+    each lands, its textures uploaded: the shots after the first compiled
+    their parts (the traffic behind, the city, the crane's view) in the
+    first frame that showed them. It works in the page's idle periods
+    (`lib/idle.ts`, as the night's Warmup does), a texture or one of the
+    scene's parts a step: run whole at every model that landed, every
+    texture and the whole scene in one task, it held the start menu for
+    seconds on a slow machine, her keys and SETTINGS behind it. `LoadReporter` counts the frames that
+    make the scene ready only once the downloads are done and the canvas is
+    warm (`isWarm`; 5 s after the downloads it is marked warm anyway, so a
+    slow GPU still gets in), and asks for each of them itself, the canvas
+    drawing only when asked while the scene loads (`heroFrameloop.ts`; the
+    frames asked before the warm-up is done wait for it, the frame driver's
+    `holds`; under reduced motion it asks for every frame until ready). It only reads the scene, never a material's
+    settings (the night clones the models' materials). Both canvases skip
+    three's read-back of every program's logs in production
+    (`debug.checkShaderErrors`) and have no depth buffer of their own
+    (`depth: false`): the composer draws into its own target, with its own
+    depth, and only full-screen passes reach the screen.
   - Palms are procedural (`palmGeometry.ts`): pinnate fronds, ringed curved
     trunks, rendered as violet silhouettes by `shaders/palm.ts`.
   - The city waterfront (`Waterfront.tsx`, layout in `waterfrontLayout.ts`)
@@ -797,7 +994,29 @@ also exists as real DOM for keyboard and screen-reader users.
     lit) and never follows the load; its motion is CSS on its own clock:
     stars twinkle, clouds drift, the water glitters, palms sway, birds
     cross, the grain steps 24 times a second; under reduced motion all of
-    it rests.
+    it rests. It moves on the compositor: Chrome animates an SVG element on
+    the main thread, and the moving parts repainted the whole drawing every
+    frame through the load (hydration, the models, the shaders). So the
+    picture is a stack in paint order: its still parts are whole `<svg>`s
+    the page places (`.art > svg[data-layout]`), and between them each
+    moving group is HTML (a stage over the picture's box, a size container,
+    its frame the viewBox's rectangle as the `<svg>`s lay it out, the tall
+    one's horizon at the page's `--horizon-y`, under the pages' own media
+    query; `horizon.test.ts` holds both stylesheets to it) whose layers
+    animate only transform and opacity, each over a drawing of its own:
+    the stars in six interleaved phase groups, one layer each
+    (`TWINKLE_GROUPS`, the owner's call), a layer for every glint, swell
+    and ripple on the water (each breathes on its own clock), each palm's
+    crown, the flock and each bird's wings. No SVG element carries a
+    motion (tested). Each layer is as big as what it draws: its box of
+    the picture (`Box` in `horizon.ts`: its strokes and two units past
+    them for the edges, `LAYER_PAD`), placed in the frame's units
+    (`--lx`, `--ly`, `--lw`, `--lh` times `--u`) and its drawing's viewBox,
+    so the drawing keeps the picture's coordinates and turns about the
+    same point (tested from the markup). Each one filled the frame once,
+    and WebKit backs a composited layer by its box, not by what it paints:
+    a phone held about 95 screen-sized stores (some 750 MB) for a few
+    stars, glints and birds.
   - No layout shift, ever: the loader is a size container and every box
     is placed against it with a fixed size (`cqw`, `cqh`: the menu's
     height is its rows', the card's its reserved lines'), every state of
@@ -905,7 +1124,7 @@ also exists as real DOM for keyboard and screen-reader users.
     held but the browser delivers only after the lift (a busy phone
     queues it) is dropped by its own time stamp, a finger's whole stroke
     with it, and the key that loaded never repeats into the place. The
-    scenes' performance monitors ignore the frames under it
+    frame driver's quality monitor ignores the frames under it
     (`isLoadHolding`): a load's compile never steps a phone down for the
     visit. Back or a fragment while it holds lands there instead
     (PageEntry), the focus with it. At the lift the focus goes to the
@@ -958,7 +1177,9 @@ also exists as real DOM for keyboard and screen-reader users.
   the frame with a board, PwC's blade, where a tap plays the next line),
   and the aim's corners follow that quad by transform only (container
   units of the frame, never `left`/`top`: a layout shift per move;
-  `layoutShift.test.ts`).
+  `layoutShift.test.ts`), each a layer of its own while it shows (painted
+  in with the page, every move drew its two shadows again), none while
+  hidden.
   The film opens on the chapter card «Historia principal» / "Main story"
   (the game's main storyline, as STATS's main missions are; ribbon
   «Trayectoria · 2018 — LIVE» / "Career · 2018 — LIVE"), held 1.2 s
@@ -974,7 +1195,8 @@ also exists as real DOM for keyboard and screen-reader users.
   beat's pace with nine tenths of her wheel thrown away (the owner: «se
   ve muy laggeado»). A notch, flick or swipe held at the opening's walls
   (the title or the arrival) carries the page on to the first line at
-  the beats' own pace (the press's carry, WorkStage; a finger on the
+  the beats' own pace (the press's carry, WorkStage, `pushTake.ts`,
+  tested: only a push held there, on the stage; a finger on the
   glass holds it, any input event of hers lets it go, and so does a
   pedal held past a tap, whose letting go stops the picture; the held
   pedal's own frames do not), so one push brings the
@@ -994,13 +1216,15 @@ also exists as real DOM for keyboard and screen-reader users.
   years live on the board. The cues (scroll, swipe, click, pedal, Space,
   Skip) are the hero's own words, `common.cues`, shared by both stages.
   Its subtitle cards are the hero's (one block, balanced, fitted by
-  `hero/fitCards.ts`, the reading bar and the marker under the block) and
+  `hero/fitCards.ts`, the reading bar and the marker under the block; the
+  bar thickens under a push by a transform, as the hero's, never by its
+  height, which laid it out every frame for half a second a push) and
   stand with their cue over the night cover and the dip, so a line
   played as the picture dips reads at full strength. The HUD
   names the section as its ribbon does («Trayectoria» / "Career"). On a
   portrait screen a stop whose art holds the top left of its shots puts
-  the HUD and the super on the right (`phoneCaptions` in
-  `night/direction.ts`, `data-caption-side`; copies on the right fade in as
+  the HUD and the super on the right (`PHONE_CAPTIONS` in
+  `night/captions.ts`, `data-caption-side`; copies on the right fade in as
   the left ones fade out, never moved there: a layout shift): PwC, whose blade's C stands
   over the readerboard, left of the car, in every reading shot.
   The city drives with the hero's pedal (`Pedal.tsx`, the same button,
@@ -1024,7 +1248,19 @@ also exists as real DOM for keyboard and screen-reader users.
   its minimum fade times over a cut (below). The chapter card has a
   layer of its own (`will-change`), since its fade and rise as the drive
   starts repainted the whole sign every frame (100 to 400 ms frames
-  on a slow device at every pass through the top of the city).
+  on a slow device at every pass through the top of the city); the
+  opening's night cover has one only while it lifts (`data-lifting`),
+  where every step of its fade repainted the whole screen's gradient.
+  Its frame rests while the stage is more than a screen below everything
+  on screen, its walls closed or not (`scroll/farRest.ts`): it ran in
+  full through the hero and the select above it from the moment she
+  entered. Its wall stays written for the input gate while it rests, and
+  the frame reads the page before it decides, so a jump onto the stage
+  runs its gate in the frame it lands. Resting, it lets every push held
+  at the hero's walls or the select's go by (`passPush`), as it did when
+  it ran there: kept, the first frame back on the stage took one as a
+  push at the title wall, and after LOAD GAME, Back or a fragment the
+  city drove itself to the first line with no input of hers.
   - Pacing and continuity, as polished as the hero: every drive between
     two stops is held (`workTimeline.ts` BEAT_SECONDS: each stop's
     `open` is its arrival, each `leave` its departure, both `hold` beats;
@@ -1088,21 +1324,29 @@ also exists as real DOM for keyboard and screen-reader users.
     never Madrid), the client is «Retech»; no "remote"; LIVE in English
     in both locales and only for Heuristik, whose stop shows role and
     dates only.
-- `src/features/night` — the night canvas under `#work`: mounted only near
+- `src/features/night` — the night canvas under `#work`: its code fetched
+  ahead in idle time (`prefetch.ts`, tested: once the hero has settled
+  and when LOAD GAME opens in the page (never under the start menu, where
+  running the module, one long task, landed as the dialog closed and the
+  menu's keys came back late), never for a visitor saving data or under
+  reduced motion; one import, `loadNightScene`, feeds NightCanvas's
+  `dynamic()`, so the mount finds it in: fetched as the stage came near,
+  the chunk landed with the mount right as she chose him), mounted only near
   the stage (within 1.5 screens), never while the character select holds
   her (`setSelectHeld` in `selectWall.ts`: the city is out of her reach
   until she chooses, and its mount landed on a phone pushing at that
-  wall), and released only far from it (six
+  wall; the prefetch is the code alone, never the mount), and released only far from it (six
   screens: a pass back up into the hero's end keeps it, or the night came
   back under its cover, compiling, over the first stops), rendering only
   while it is on screen and not under the stage's own opaque night
   (`nightCover.ts`, tested: the closed iris at the end, the strip left
   under STATS's card; the opening cover still fully up once every stop is
   warm, `night.warm`; never during a dip; WorkStage writes `night`'s
-  covered flag, NightCanvas reads it, and the loop waking lands the car
-  on the picture as `night.woke` does; woken as the opening cover starts
-  to lift, the canvas still shows the picture it slept on until it draws
-  again, so the cover holds until it has, `night.frames`, then fades to
+  covered flag and NightCanvas's observer `night.onScreen`, the frame
+  driver reads both in the same frame, `hero/scene/frameDriver.ts`,
+  and the loop waking lands the car on the picture as `night.woke` does;
+  woken as the opening cover starts to lift, the canvas still shows the
+  picture it slept on until it draws again, so the cover holds until it has, `night.frames`, then fades to
   where the scroll has it no faster than the chapter card: through the
   lifting cover the car had popped in mid-road). What it clones from the hero's
   glTF cache (the car, the driver, his glasses, Telpark's car) is
@@ -1121,14 +1365,24 @@ also exists as real DOM for keyboard and screen-reader users.
   frame: the car's stop point is the origin, the street runs along +x,
   the board stands at z < 0 and the camera at z > 0. It is one island at
   night at every stop (stars, a thin moon, one fog, palms along the kerb):
-  he never moved, so no stop may read as another city. Lit windows are
+  he never moved, so no stop may read as another city. The palms' four
+  shapes are built once per night (`NightPalmShapes`, around the whole
+  world) and shared by every set's palms, released with the night: each
+  of the six rows of palms built its own four, 24 builds in the mount.
+  Never a module cache, which a renderer's dispose listener would pin to
+  a dead context. Lit windows are
   painted interiors (`parts/Windows.tsx`, `sets/art/windows.ts`), never
   flat blocks: each pane a room from its building's mix (`pickPane`:
   hotel, home or office; never the same lit room as the pane beside it,
   some left half lit), mirrored, dimmed or flickering like a television,
   and one reader in an armchair is the atlas' only person. A lobby is one
   room painted across its panes (`LOBBY`, the hotel's; `ATRIUM`, the
-  landmark's), never a framed copy per pane.
+  landmark's), never a framed copy per pane. The atlas is painted a room
+  per idle slice once the night's code is in (`paintWindowsSteps`, the
+  same rooms from the same seed as `paintWindows`; `paintWindowsAhead`),
+  and a mount that comes first paints what is left at once: painted in
+  the mount, it was one more long task in the commit that builds the five
+  sets.
   The car moves only with the scroll, but never step for step: `carAt`
   (`carPath.ts`) is its mark on the film, and the car chases that mark
   like a car driven smoothly (`carMotion.ts`, pure and tested; `CarDrive`
@@ -1154,7 +1408,8 @@ also exists as real DOM for keyboard and screen-reader users.
   pace it and the picture shared, the beat's own at most, a chase's lag
   behind the picture (`chaseLag`), so a fling never carries its speed
   into the next shot. A jump (`night.snap`), the frame loop waking (the
-  stage back on screen: `night.woke`, set by NightScene; a long frame
+  stage back on screen or its cover lifting: `night.woke`, set by
+  NightScene's `wakeNight`, which the frame driver calls; a long frame
   mid-drive is no waking, it is integrated, or a hitch snapped the car
   its whole lag, metres, in sight; `carDrive.test.ts`) or a gap of 10
   natural seconds put it on the picture at once; reduced motion keeps it there. Its body never reads that
@@ -1210,18 +1465,52 @@ also exists as real DOM for keyboard and screen-reader users.
   crane's pace, the lit mast stays under the route, and PwC's blade never
   reads WC (P, W and C whole, or W cropped before P leaves: the marquee
   beat rises to the blade and reads it down). The driver sits in the car
-  on every tier. Speed: the hero's dpr (`FULL_DPR`) and its one
-  step down on a slow device (production, `PerformanceMonitor`); every
-  stop's materials are compiled and its textures uploaded ahead of its
-  cut (`Warmup` in `NightScene.tsx`), the next stop first; it keeps
-  looking while the frame loop runs (a set's art lands after its fonts
-  and adds meshes then), and all five warm with nothing loading is
-  `night.warm`. Board art is painted once per stop into canvases in
-  the site's fonts (`sets/art/`), in turns (`artQueue.ts`, tested;
-  `paintSet.ts`): one painter per task with a frame between, the stop
-  she reaches soonest first (`stopRank`: along the film, never round, the
-  stop ahead before the one behind), Logixs' wall a bill at a time
-  (`paintLogixsSteps`). Run
+  on every tier. Speed: the hero's quality level (`qualityStore.ts`, its
+  pixels and its post's structure; a step down in either canvas holds in
+  both, and lands under a dip); every
+  stop's materials are compiled as the composer draws them
+  (`compileAsComposed`, the hero's warm-up, `hero/scene/warmup.ts`:
+  compiled for the screen, they were programs nothing drew, and every cut
+  compiled its stop again) and its textures uploaded before she sees it
+  (`Warmup` in `NightScene.tsx`, its target released with the canvas), in
+  idle periods (`lib/idle.ts`, tested: as many steps as a period has room
+  for, one when it comes by its 0.5 s timeout) from the moment the night
+  mounts, drawing or not: a texture or a part a step, the shared street,
+  car and sky first (one group of their own, the stop lights left out of
+  it: three.js counts the scene's lights and again those under the part it
+  compiles, so warmed with them inside it they compiled a program no frame
+  drew; `compileAsComposed` compiles a part that holds lights as the whole
+  scene), then the stops in the order she reaches them (`stopOrder`, from
+  `stopRank`). It ran in the frame
+  loop, so nothing warmed before the canvas drew, and her first frame of
+  the city compiled the whole of it in one long task as she scrolled in.
+  Every part warm before the canvas ever drew, it asks the frame driver
+  for one hidden frame (`warmFrame`, left out by ReadyReporter,
+  `night.frames` and the monitor), which compiles the post's passes and
+  uploads the stop's buffers, so the first frame she sees compiles
+  nothing. A part's art lands after its fonts and adds meshes or a
+  texture then (`warmKey`), and the part is warmed again: it looks every
+  0.4 s while anything is on its way, and once it has found everything
+  warm twice it rests until a model loads or a board is asked for or
+  lands (`onPaintsChange`). Every part warm, nothing loading and no board
+  still on its way (`paintsPending` in `paintSet.ts`: waiting for its
+  faces, painting, or taken by its set less than a frame ago) is
+  `night.warm`: counted warm before its art landed, the opening cover
+  rested the canvas and the art was uploaded at its cut. Board art is
+  painted once per stop into canvases in the site's fonts (`sets/art/`),
+  in turns (`artQueue.ts`, tested; `paintSet.ts`): one painter step per
+  task, the stop she reaches soonest first (`stopRank`: along the film,
+  never round, the stop ahead before the one behind), Logixs' wall a bill
+  at a time (`paintLogixsSteps`). A step for the stop on screen or a
+  stop beside it (`nearStop`: the next she reaches, whichever way she
+  drives) runs after the next frame; one further off waits for a quiet
+  moment (`mayPaint`, `PAINT_GATE`: an idle period with no scroll of
+  hers, `scrollInput`, and no move of the page in the last 200 ms, a
+  second at most): a step is 50 to 600 ms on a phone, and a frame apart
+  they landed as hitches all through her drive into the city. With only
+  the stop on screen let through, a wheel that never stopped (back up
+  from STATS) left Logixs' wall a step a second, and she reached it bare
+  and watched it paint frame after frame. Run
   as each set's faces came in, all five painted in one task as the
   night mounted, up to twenty seconds without a frame on a slow phone. `palette.onAir` is the LIVE tally's red
   and nothing else's. Armed, Logixs' wall is hunted by a police
@@ -1870,16 +2159,22 @@ also exists as real DOM for keyboard and screen-reader users.
   (asserted on land), town lights, runways and the career route (the
   ferry from Las Palmas to the dock, then up to home base); no hobby and
   no text in the SVG. Each file stays under 40 KB (it refuses more).
-- `tools/blender` — headless Blender scripts that build the GLB files in
-  `public/models` from the original downloads
-  (`blender -b -P <script> -- <input> <output>`; set `XDG_CONFIG_HOME` to a
-  temporary directory in the sandbox). `build_driver_mpfb.py` needs the
+- `tools/blender` — headless Blender scripts that build the GLB files from
+  the original downloads (`blender -b -P <script> -- <input> <output>`;
+  set `XDG_CONFIG_HOME` to a temporary directory in the sandbox): the
+  convertible and the aviators straight into `public/models`, the driver
+  (`refine_driver_hair.py`'s output) and the traffic cars
+  (`convert_cars.py`'s) into `tools/models/source`, which
+  `tools/models/compress.mjs` compresses into `public/models`. The Blender
+  scripts read those sources, never the compressed copies: Blender cannot
+  read them, and only the source has the driver's skin at 2048 px (the
+  STATS portrait and the line-up render it). `build_driver_mpfb.py` needs the
   MPFB 2 extension and the MakeHuman system assets installed in that
   profile; it writes the GLB, its textures and check renders to an output
   folder outside the repo. Its body and face values live in
   `tools/blender/driver.params.json`, which Git ignores: keep personal
-  data out of the published script. `build_sunglasses.py` runs on
-  `driver.glb` and writes `public/models/sunglasses/aviator.glb`, with
+  data out of the published script. `build_sunglasses.py` runs on the
+  driver's source and writes `public/models/sunglasses/aviator.glb`, with
   optional Cycles check renders of the head to a folder outside the repo.
   `render_finale_car.py` renders the hero's car for the finale's dawn
   plates (see `src/features/finale`).
@@ -1906,6 +2201,30 @@ also exists as real DOM for keyboard and screen-reader users.
 
 Each folder in `public/models` keeps its `LICENSE.txt`.
 
+The driver and the five traffic cars ship compressed by
+`tools/models/compress.mjs` from their sources in `tools/models/source`:
+the geometry quantized (`KHR_mesh_quantization`: positions 16 bits in one
+box per model, normals 10, UVs 14, skin weights 16, all well under what
+shows) and meshopt-compressed (`EXT_meshopt_compression`), and the
+driver's skin texture at 1024 px (a mipmap step of the 2048, in linear
+light). drei's `useGLTF` decodes them with the meshopt decoder
+three-stdlib bundles (no CDN), which predates meshoptimizer's version 1
+vertex codec: the streams are version 0 and use no filter newer than it
+(`modelAssets.test.ts` reads their headers). Compressing renames, merges
+or drops nothing (no join, flatten, weld or palette): every bone and
+material the code looks up keeps its name, the brows' and lashes'
+triangles keep their order (blended, drawn as they come), and the
+driver's meshes keep their one skin (the box's scale and offset go into
+its inverse bind matrices; a box per mesh gave each mesh a skin and the
+hero eight skeletons). The convertible and the aviators ship as Blender
+wrote them: `Car.tsx` reads the convertible's raw float arrays
+(`rimUvCircle`), and the aviators are 54 KB. Never edit a compressed GLB:
+change its source and rerun the compressor. Every model's address ends in
+the start of its file's SHA-256 (`?v=`, `scene/modelUrls.ts`): the browser
+keeps `/models` a year without asking, so a rebuilt model (any of them, the
+convertible and the aviators too) needs its new version, which
+`modelUrls.test.ts` prints.
+
 - `poly-convertible` — "Convertible" by Poly by Google, CC BY 3.0. The
   licence requires the visible credit in the end credits; keep it.
   `tools/blender/refine_convertible.py` (runs on the GLB) paints the badges
@@ -1916,7 +2235,8 @@ Each folder in `public/models` keeps its `LICENSE.txt`.
   available as `pip install bpy==4.5.4` in a Python 3.11 venv (no
   download.blender.org needed); never name a script `inspect.py` (it
   shadows the module bpy imports).
-- `quaternius-cars` — Quaternius, CC0.
+- `quaternius-cars` — Quaternius, CC0, converted by
+  `tools/blender/convert_cars.py`.
 - `makehuman-driver` — built from the MakeHuman system assets, CC0. Never
   use the community beards bundled with MPFB (`wdg_scruffy_beard`,
   `grinsegold_beard_sigmund_wip`): they are AGPL. The reference photos of
@@ -1981,6 +2301,14 @@ To add a track to a station:
 - Depth precision: at 300 m the depth buffer resolves a few centimetres.
   Windows, signs and neon on a far facade stand at least 0.1 m off it, or
   they shimmer.
+- The sky draws last among the opaque parts: both domes (`Sky.tsx`,
+  `NightSky.tsx`) have render order 10 (every other opaque part's is 3 at
+  most), test depth and write none, so their shaders run only where
+  nothing nearer has drawn. Nothing opaque may stand beyond a dome (1200 m
+  in the hero, 800 m at night, both inside the far plane): the sky would
+  paint over it. Shaders skip work that has faded to exactly nothing (the
+  water's finest octave past 140 m), and only then: the picture must not
+  change.
 
 ## Development hooks (dev builds only)
 
@@ -1993,6 +2321,16 @@ To add a track to a station:
 - `window.__vaLens = { focusDistance, focusRange, bokehScale }`
   (`lensBlur.ts`) overrides the lens for depth-of-field work, in metres
   from the camera. Delete it after use.
+- `window.__vaQuality(level?)` (`qualityStore.ts`) forces a quality level
+  (degrade.ts), up or down, with its post's structure even once she has
+  entered, and returns the state (with no level it only reads it). A
+  development build starts on level 0 and never steps down by itself.
+- `window.__vaPace(divisor?)` (`frameDriver.ts`) draws both canvases on
+  every `divisor`-th refresh whatever the display (`2`: half rate on any
+  screen), `null` gives the pace back to the quality level, and it returns
+  the display's measured rate, `halfRate` and the pace in effect (with no
+  argument it only reads them). A development build never paces by
+  itself.
 - `window.__vaJump(p)` (`HeroStage.tsx`) opens the story up to `p` and jumps
   the picture and the page scroll there; `tools/capture` uses it.
 - `window.__vaProbe = []` (`HeroStage.tsx`) makes every hero frame push its
@@ -2016,19 +2354,36 @@ To add a track to a station:
   (`animation-name: none` under `[data-offscreen]`), since a paused
   animation still kept a compositor layer per bulb. STATS keeps the pause
   (its states must not restart).
-- Nothing draws or ticks for what nobody sees: the hero's canvas stops
-  behind the start menu 3 s after the scene is ready
-  (`scene/heroFrameloop.ts`, tested; its PerformanceMonitor only watches
-  once she has entered) and under its opaque night (`heroCover.ts`, the
-  fade at 0.999 or more); the loader's drawing loop writes only what
+- Nothing draws or ticks for what nobody sees: behind the start menu
+  the hero's canvas draws only when asked while the scene loads (drawn
+  every frame, the load ran the whole post chain at the display's rate
+  against the models' parsing and the shaders' compiling, and the menu
+  over it stuttered): LoadReporter asks at each step of the load and for
+  each frame that makes the scene ready, the warm-up once it is done, and
+  a part that changes for itself (a board's copy painted, the aviators
+  put on), every one through `useSceneInvalidate` (`scene/invalidate.ts`:
+  the frame driver's `requestFrames`, which keeps them until the warm-up
+  is done); then every frame for 3 s once the scene is ready, and no more
+  until she enters (`scene/heroFrameloop.ts`, tested; the frame driver's
+  monitor only counts once she has entered); and it stops under its
+  opaque night (`heroCover.ts`, the fade at 0.999 or more), the frame
+  driver (`scene/frameDriver.ts`) reading every flag in the frame the
+  stage wrote it, so a flip re-renders no canvas; a canvas at rest keeps
+  its clock still, and draws again from where it stopped; the loader's drawing loop writes only what
   changed and stops once the load line is full, and its tip timer and
   resize listener stop once she has entered; the hero's and the city's
   frames return early more than a screen away from their stage with every
-  wall open and nothing in flight (`scroll/farRest.ts`, tested; a closed
-  wall always keeps the frame running); no ScrollTrigger; the radio's
-  equalizer scales its bars (transform, a drop-shadow on the row) and the
+  wall open and nothing in flight, and a stage more than a screen below
+  everything on screen whatever its walls (`scroll/farRest.ts`, tested:
+  nothing reaches a wall down there but the page, and the frame reads the
+  page before it decides; nearer, a closed wall always keeps the frame
+  running); no ScrollTrigger; the radio's
+  equalizer scales its bars (transform, a box-shadow on each bar) and the
   wheel's rim breathes only while the wheel is open; the title's letters
-  drop their reveal's `filter` once formed. Check with
+  drop their reveal's `filter` once formed, and the title its layers
+  once it has faded out (`data-gone`, `will-change: auto`; not
+  `visibility: hidden`, which took the page's heading out of the
+  accessibility tree and from the focus). Check with
   `tools/capture/perf.mjs`.
 - Where the page starts once she is in is `PageEntry` (in `HomeMain.tsx`),
   once the loading screen has given `<main>` back: a deep link
@@ -2043,7 +2398,9 @@ To add a track to a station:
   `lenis.scrollTo(..., { immediate })` next to a native jump: use `goTo`.
 - The page controls (LOAD GAME, RADIO, EN/ES) are fixed at the top right
   (`components/PageControls.tsx`). Over the hero's picture they float on
-  their own glass; anywhere else they sit on one backing (`data-backdrop`,
+  their own glass, the on-screen display's fill and no frost (no
+  `backdrop-filter`: it blurred the canvas again every frame it drew);
+  anywhere else they sit on one backing (`data-backdrop`,
   the `controlsBackdrop` token, opaque, drawn around them so they never
   move), so the text of STATS and the credits never shows through. An
   IntersectionObserver whose root is the line of pixels at their bottom
@@ -2060,12 +2417,78 @@ To add a track to a station:
   card's rise over their top edge, so a link lands the whole card below
   them.
 - Three.js runs client-side only: `HeroCanvas` loads `HeroScene` with
-  `next/dynamic` and `ssr: false`, inside an error boundary. The page must stay
+  `next/dynamic` and `ssr: false`, inside an error boundary. It asks for
+  the scene's chunk as its own module runs in the browser, before
+  hydration renders the canvas, and hands next/dynamic that same promise,
+  so a failed import still reaches the boundary: left to next/dynamic,
+  the chunk came a round trip after all of the page's code. The models'
+  URLs live in `scene/modelUrls.ts`, which imports nothing, and the home
+  page (`src/app/[lang]/page.tsx`, never the layout: the 404 has no
+  scene) names them in its head (`MODEL_PRELOADS`: React's `preload` as
+  `fetch` with `crossOrigin: "anonymous"`, as three.js fetches, so its
+  request takes the preloaded response), so they download beside the
+  page's code instead of after the chunk (`modelUrls.test.ts`). All at
+  low priority, queued behind the page's own async scripts: at a fetch's
+  own (high), the driver's megabyte went first, and on a slow link
+  hydration, and with it the start menu's keys, slab, SETTINGS and LOAD
+  GAME, waited seconds behind it. `next.config.ts` says how long the
+  browser keeps what `public/` serves the page (`assetCache.test.ts`):
+  the models a year (their addresses carry their content's hash); the
+  cinema's plates and posters, the line-up's renders and STATS's map,
+  whose layout is in the page's code (`plates.json`, the interlude's
+  manifest, `statsLayout.ts`), revalidated on every visit, so a picture
+  never meets another one's layout; the radio's tracks and LOAD GAME's
+  pictures a day. Never stale-while-revalidate: a week of it served the
+  old plate under the new `plates.json` for a whole visit. In
+  development it sets none, and the browser asks again for every file (a
+  rebuilt one shows on the next reload). With no policy, every visit
+  revalidated each file, a round trip before the scene could use it: for
+  the models, before the start menu's ways in. The page must stay
   readable without WebGL: real text in the DOM, CSS sky as fallback.
+- Three.js stays out of the page's first bundle: no module the page's own
+  client code imports statically builds a three.js object as it loads
+  (a shot's camera, the drive's scratch matrices, the night camera), and
+  a stage that needs a number from the scene reads it from a module that
+  imports nothing (`scene/shotTiming.ts` for the cuts,
+  `scene/driveState.ts` for the drive, `lib/random.ts` for
+  `createRandom`, `night/captions.ts` for the city's captions on a phone;
+  each re-exported where it lived). The stages' imports of those numbers
+  put three.js in the first bundle, parsed and run before hydration.
+  `src/app/[lang]/firstBundle.test.ts` walks the static imports from
+  every client component outside the scenes.
+- The islands far down the page that hold no wall and no passage,
+  `AchievementSky`, `ProjectsMarquee` and `BackToTop`, are each wrapped in
+  a `<Suspense>` with no fallback in their server parents: React hydrates
+  them after the page's first pass, in their own tasks (sooner if she
+  touches one), and the server's HTML is the same. Never the ones that
+  must be in place before the load screen lifts: `StatsTabs` (a deep
+  link's tab), `CharacterSelect` and `WorkStage` (their walls and
+  passages, `lib/navigate.ts`).
+- Nothing inside a Canvas re-renders when the frame loop, a cover, the
+  scene's readiness or the load screen changes, nor at a cut (a slow
+  device's step down reaches the root's pixel ratio at most): R3F's Canvas renders whatever it holds again at every render of
+  its host, and a cut, the end cover, the loop waking or the city's cover
+  lifting reconciled two dozen components (the night's five sets, and its
+  environment captured its cube again). So the frame loop, the covers and
+  being in view are plain flags the frame driver reads (no canvas or
+  scene subscribes to them), `HeroCanvas` and `NightCanvas`
+  are memoised (their props are the server's copy and the stage's
+  memoised timeline), each scene's children are one memoised world
+  (`HeroWorld`, `NightWorld`) beside its `PacedRoot` and its post, and the
+  post (`Effects`, `NightEffects`) and both environments
+  (`SkyEnvironment`, `NightEnvironment`: drei captures the cube again
+  whenever its children change) are memoised too. A part gets constants
+  or memoised values, never an object or a list written in the render: a
+  new one at a set's render (its art landing) placed every instance
+  again, and gave the night's windows new attribute buffers, whose old
+  ones three never frees (the windows write theirs in place while
+  their count holds, `parts/instancedAttribute.ts`, tested).
 - Scroll progress flows through `heroProgress` (a mutable object), never
   through React state. `HeroStage` writes `target` from the page scroll
-  (the frame reads the page's offset after Lenis has written it, and no
-  element geometry; the stage is measured when the viewport changes),
+  (the frame reads the page's offset after Lenis has written it, the
+  frame's one reading, `scroll/frameScroll.ts`, and no element geometry;
+  the stage and its cards' heights are measured when the viewport, the
+  fonts or the subtitle size change),
   clamps it to the story frontier into `value`, and `useFrame` reads
   `value`.
 - Nothing in the page flow is sized with `vh`, `svh`, `lvh` or `dvh`:
@@ -2088,8 +2511,13 @@ To add a track to a station:
 - Quality tiers come from `useQualityTier` (viewport + pointer heuristics, no
   network calls). The low tier drops the pier, chromatic aberration,
   depth of field and the clear coat on the driver's lenses, and renders a
-  smaller environment cube.
-- Deterministic layouts use `createRandom(seed)` so screenshots are stable.
+  smaller environment cube. The tier is what the scene holds; what a frame
+  costs is the quality level's (`degrade.ts`, above), the same on both
+  tiers. The Canvas is keyed by its tier, so once the scene is ready on a
+  fine pointer the tier no longer changes (`settleTier`, shared by both
+  canvases): a desktop window narrowed under the phone width mid-film
+  built the whole scene again in front of her.
+- Deterministic layouts use `createRandom(seed)` (`lib/random.ts`) so screenshots are stable.
 
 ## Content map
 

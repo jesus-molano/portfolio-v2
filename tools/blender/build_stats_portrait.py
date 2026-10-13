@@ -4,9 +4,15 @@ Dante, his cream lynx-point kitten, as PLAYER 2 at his shoulder.
 Writes the card image public/stats/portrait.{avif,webp} is encoded from.
 
 Inputs (read only):
-  public/models/makehuman-driver/driver.glb   him: body, striped tee, earring,
+  tools/models/source/makehuman-driver/driver.glb
+                                              him: body, striped tee, earring,
                                               short crop, beard and moustache
-                                              (alpha-tested HairShell layers)
+                                              (alpha-tested HairShell layers);
+                                              the driver's source, since the
+                                              page's copy in public/models is
+                                              meshopt-compressed (Blender
+                                              cannot read it) and its skin is
+                                              1024 px, not 2048
   public/models/sunglasses/aviator.glb        his gold aviators, in the frame
                                               of the rig's "head" bone
   tools/blender/cats                           the cats generator (Dante),
@@ -46,7 +52,7 @@ from mathutils import Matrix, Vector
 
 T0 = time.time()
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-DRIVER = os.path.join(REPO, "public/models/makehuman-driver/driver.glb")
+DRIVER = os.path.join(REPO, "tools/models/source/makehuman-driver/driver.glb")
 GLASSES = os.path.join(REPO, "public/models/sunglasses/aviator.glb")
 CATS = os.path.join(REPO, "tools", "blender")
 

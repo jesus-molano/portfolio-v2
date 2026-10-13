@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { prefetchNightScene } from "@/features/night/prefetch";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import styles from "./LoadMenu.module.css";
@@ -86,6 +87,10 @@ export function LoadMenu({ dict, words, lang, where, open, onClose, radio, onRad
     const element = dialog.current;
     if (!element) return;
     if (open && !element.open) {
+      // A save may jump into the career city: its code is fetched ahead, in idle time (night/prefetch.ts).
+      // Never under the start menu: running the module is one long task, and there it landed as the
+      // dialog closed, before the menu took its keys back (a save there loads under the load screen anyway).
+      if (where !== "start") prefetchNightScene();
       loaded.current = false;
       setActive(initial);
       setLive("");
@@ -96,7 +101,7 @@ export function LoadMenu({ dict, words, lang, where, open, onClose, radio, onRad
     } else if (!open && element.open) {
       element.close();
     }
-  }, [open, initial]);
+  }, [open, initial, where]);
 
   // The city comes in while it is open: said once, in its own live region (the start menu's is behind the modal).
   const wasWaiting = useRef(waiting);

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { ChapterCard, chapterVars } from "@/components/ChapterCard/ChapterCard";
 import { formatFrequency } from "@/features/music/stations";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -314,7 +314,10 @@ export function EndCredits({ dict, newTab, locale }: Props) {
           <span className={styles.speaker}>{dict.speaker}:</span> {dict.last}
         </p>
         <p className={styles.top}>
-          <BackToTop label={dict.top} className={styles.topLink} />
+          {/* Hydrated on its own, after the page's first pass: until then it is the plain link to #main. */}
+          <Suspense>
+            <BackToTop label={dict.top} className={styles.topLink} />
+          </Suspense>
         </p>
         <span className={styles.fadeBottom} aria-hidden="true" />
       </div>

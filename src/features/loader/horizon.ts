@@ -23,6 +23,11 @@
  * between the menu and the tip card) and `tall` (portrait: the sky above
  * the menu, the road running down under it).
  *
+ * What moves is drawn on layers of its own (Horizon.tsx), so the scene also
+ * says how: the twinkling stars share a few phase groups, each one layer,
+ * each bird has the point its wings hinge on, and every layer has its box,
+ * as big as what it draws (`Box`).
+ *
  * Coordinates are rounded to tenths so the markup stays small and the same
  * on every run (horizon.test.ts checks the rules above).
  */
@@ -56,6 +61,27 @@ export type HorizonLayout = {
   stars: number;
   seed: number;
 };
+
+/**
+ * How many phase groups the twinkling stars blink in. Each group is one
+ * layer the compositor fades (Horizon.tsx), a handful in all: each star
+ * twinkling as an SVG element of its own repainted the whole picture every
+ * frame.
+ */
+export const TWINKLE_GROUPS = 6;
+
+/**
+ * A moving layer's box in the viewBox: Horizon.tsx sizes the layer and its
+ * drawing's viewBox to it, so the drawing keeps the picture's coordinates.
+ * As big as what the layer draws, never the whole picture: WebKit gives a
+ * composited layer a backing store as big as its box, whatever it paints,
+ * and with every layer as big as the frame a phone held about 95
+ * screen-sized stores (some 750 MB) for a few stars, glints and birds.
+ */
+export type Box = { x: number; y: number; w: number; h: number };
+
+/** How far a layer's box reaches past what it draws, in viewBox units: room for its edges' anti-aliasing. */
+export const LAYER_PAD = 2;
 
 /** The causeway, in metres: deck surface and parapets over the water. */
 export const CAUSEWAY = {
@@ -175,6 +201,51 @@ export function project(layout: HorizonLayout, x: number, y: number, z: number):
 const pt = (p: Point) => `${r1(p.x)} ${r1(p.y)}`;
 const poly = (points: Point[]) => `M${points.map(pt).join("L")}Z`;
 
+/**
+ * Every point a path names, control points included: a Bézier curve lies
+ * inside its control points' hull, so their box holds the curve. Only the
+ * absolute commands this picture draws its moving parts with (M, L, Q, C,
+ * Z), each followed by plain pairs: anything else would be read wrong.
+ */
+export function pathPoints(d: string): Point[] {
+  if (/[^MLQCZ\d.\s,-]/.test(d)) throw new Error(`pathPoints reads M, L, Q, C and Z only: ${d.slice(0, 40)}`);
+  const values = [...d.matchAll(/-?\d+(?:\.\d+)?/g)].map((match) => Number(match[0]));
+  if (values.length % 2) throw new Error(`pathPoints: an odd count of numbers in ${d.slice(0, 40)}`);
+  const points: Point[] = [];
+  for (let i = 0; i < values.length; i += 2) points.push({ x: values[i], y: values[i + 1] });
+  return points;
+}
+
+/** The box around some points of the picture, `pad` past them on every side, its edges rounded outward to tenths. */
+export function boxAround(points: Iterable<Point>, pad = 0): Box {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const p of points) {
+    x0 = Math.min(x0, p.x);
+    y0 = Math.min(y0, p.y);
+    x1 = Math.max(x1, p.x);
+    y1 = Math.max(y1, p.y);
+  }
+  if (!(x0 <= x1 && y0 <= y1)) throw new Error("boxAround: no points");
+  // Outward, but never a whole tenth for a float's last digit: (2.3 - 2) * 10 is 2.9999999999999982.
+  const left = Math.floor((x0 - pad) * 10 + 1e-6) / 10;
+  const top = Math.floor((y0 - pad) * 10 + 1e-6) / 10;
+  const right = Math.ceil((x1 + pad) * 10 - 1e-6) / 10;
+  const bottom = Math.ceil((y1 + pad) * 10 - 1e-6) / 10;
+  return { x: left, y: top, w: r1(right - left), h: r1(bottom - top) };
+}
+
+/** A circle's or an ellipse's corners, for `boxAround`. */
+const corners = (cx: number, cy: number, rx: number, ry = rx): Point[] => [
+  { x: cx - rx, y: cy - ry },
+  { x: cx + rx, y: cy + ry },
+];
+
+/** A stroke's reach: `by` past each point of its outline, every way, for `boxAround`. */
+const stroked = (points: Point[], by: number): Point[] => points.flatMap((p) => corners(p.x, p.y, by));
+
 export type Lamp = {
   /** Its order from the camera: it lights as the load passes it. */
   index: number;
@@ -206,13 +277,20 @@ export type Palm = {
   top: number;
   left: number;
   right: number;
+  /** The crown's layer: every frond, leaflet and nut, with the leaflets' strokes. */
+  box: Box;
 };
 
 export type HorizonScene = {
   layout: HorizonLayout;
-  stars: { x: number; y: number; r: number; o: number; twinkle: boolean; delay: number; dur: number }[];
+  /** `phase`: the twinkle group a twinkling star blinks with (an index into `twinkles`), null for a steady star. */
+  stars: { x: number; y: number; r: number; o: number; phase: number | null }[];
+  /** Each twinkle group's clock, in seconds (one breath from dim to bright, and where in it the group starts), and its layer: its stars. */
+  twinkles: { dur: number; delay: number; box: Box }[];
   moon: string;
   clouds: { cx: number; cy: number; rx: number; ry: number; o: number; dim: boolean }[];
+  /** The drifting clouds' layer: their band of the sky. */
+  cloudBox: Box;
   /** The windows are one path of small squares, lit once the city is in. */
   city: { skyline: string; windows: string; tops: number[] };
   /** The islet's palms (strokes), in two clumps, and its low bushes. */
@@ -237,7 +315,13 @@ export type HorizonScene = {
   palms: Palm[];
   /** The headland: its land, the lit sand along its waterline, and the grass at the palms' feet. */
   shore: { land: string; sand: string; grass: string };
-  birds: { d: string; width: number; delay: number }[];
+  /**
+   * `pivot`: where its wings hinge as it flaps, 60 % of the way down its
+   * outline from the wings' peaks to their tips; `box`: its wings' layer.
+   */
+  birds: { d: string; width: number; delay: number; pivot: Point; box: Box }[];
+  /** The flock's layer, around every bird's. */
+  flock: Box;
 };
 
 /** The depth at which the road surface meets the bottom of the picture (a little past it). */
@@ -442,6 +526,9 @@ function palmOf(layout: HorizonLayout, spec: HorizonLayout["palms"][number], ran
     { x: crown.x + 0.18 * k, y: crown.y + 0.34 * k },
     { x: crown.x - 0.02 * k, y: crown.y + 0.48 * k },
   ].map((nut) => ({ x: r1(nut.x), y: r1(nut.y), r: r1(Math.max(0.8, 0.17 * k)) }));
+  const width = r1(Math.max(1, 0.1 * k));
+  // The crown's layer: the fronds' midribs, the leaflets' strokes half their width past them, and the nuts.
+  const drawn = [...pathPoints(spines), ...stroked(pathPoints(leaflets), width / 2), ...nuts.flatMap((nut) => corners(nut.x, nut.y, nut.r))];
   return {
     z: spec.z,
     trunk,
@@ -449,12 +536,13 @@ function palmOf(layout: HorizonLayout, spec: HorizonLayout["palms"][number], ran
     crown: { x: r1(crown.x), y: r1(crown.y) },
     spines,
     leaflets,
-    width: r1(Math.max(1, 0.1 * k)),
+    width,
     nuts,
     base: { x: r1(base.x), y: r1(base.y) },
     top: r1(top),
     left: r1(minX),
     right: r1(maxX),
+    box: boxAround(drawn, LAYER_PAD),
   };
 }
 
@@ -496,13 +584,35 @@ export function buildHorizon(layout: HorizonLayout): HorizonScene {
   const { width: W, horizon: hy } = layout;
 
   const stars: HorizonScene["stars"] = [];
+  const twinkling: HorizonScene["stars"] = [];
   for (let i = 0; i < layout.stars; i += 1) {
     const y = Math.pow(random(), 1.8) * hy * 0.5;
     const x = random() * W;
     const r = random() < 0.1 ? 1.4 : 0.8;
     const twinkle = random() < 0.4;
-    stars.push({ x: r1(x), y: r1(y), r, o: r1((1 - y / (hy * 0.5)) * 0.8 * 100) / 100, twinkle, dur: r1(2 + random() * 4), delay: r1(-random() * 4) });
+    // The star's own clock, drawn as before and left unused (its group keeps the time): every later
+    // part of the picture keeps its place in the sequence, so the picture stays the same.
+    random();
+    random();
+    const star: HorizonScene["stars"][number] = { x: r1(x), y: r1(y), r, o: r1((1 - y / (hy * 0.5)) * 0.8 * 100) / 100, phase: null };
+    stars.push(star);
+    if (twinkle) twinkling.push(star);
   }
+  // The twinkling stars dealt out across the sky from left to right, so no two neighbours share a
+  // phase; each group on a clock of its own, every group at a different pace from 2 to 6 s a breath.
+  [...twinkling].sort((a, b) => a.x - b.x).forEach((star, i) => {
+    star.phase = i % TWINKLE_GROUPS;
+  });
+  const beat = seeded(layout.seed + 1);
+  const twinkles = Array.from({ length: TWINKLE_GROUPS }, (_, group) => ({
+    dur: r1(2 + (4 * (group + 0.15 + 0.7 * beat())) / TWINKLE_GROUPS),
+    delay: r1(-beat() * 4),
+    // Its layer: its own stars, spread across the top of the sky, never the whole picture.
+    box: boxAround(
+      twinkling.filter((star) => star.phase === group).flatMap((star) => corners(star.x, star.y, star.r)),
+      LAYER_PAD,
+    ),
+  }));
 
   const { x: mx, y: my, r: mr } = layout.moon;
   // A thin crescent, lit on the side of the sun below it.
@@ -517,6 +627,7 @@ export function buildHorizon(layout: HorizonLayout): HorizonScene {
     { cx: 0.2, cy: 0.78, rx: 0.18, ry: 0.007, o: 0.6, dim: false },
     { cx: 0.48, cy: 0.38, rx: 0.26, ry: 0.007, o: 0.6, dim: true },
   ].map((c) => ({ cx: r1(c.cx * W), cy: r1(c.cy * hy), rx: r1(c.rx * W), ry: r1(Math.max(1.5, c.ry * hy)), o: c.o, dim: c.dim }));
+  const cloudBox = boxAround(clouds.flatMap((cloud) => corners(cloud.cx, cloud.cy, cloud.rx, cloud.ry)), LAYER_PAD);
 
   // The city on the horizon, kilometres away: towers up to `tallest`, highest in the middle.
   const { from, to, tallest } = layout.city;
@@ -631,18 +742,33 @@ export function buildHorizon(layout: HorizonLayout): HorizonScene {
     const s = size * layout.birds.scale;
     const x = layout.birds.x + dx;
     const y = layout.birds.y + dy;
+    const d = `M${r1(x - 8 * s)} ${r1(y)}Q${r1(x - 4 * s)} ${r1(y - 4.5 * s)} ${r1(x)} ${r1(y)}Q${r1(x + 4 * s)} ${r1(y - 4.5 * s)} ${r1(x + 8 * s)} ${r1(y)}`;
+    const width = r1(1.6 * s);
     birds.push({
-      d: `M${r1(x - 8 * s)} ${r1(y)}Q${r1(x - 4 * s)} ${r1(y - 4.5 * s)} ${r1(x)} ${r1(y)}Q${r1(x + 4 * s)} ${r1(y - 4.5 * s)} ${r1(x + 8 * s)} ${r1(y)}`,
-      width: r1(1.6 * s),
+      d,
+      width,
       delay: r1(-random()),
+      // Each wing's curve peaks halfway to its control point, 2.25·s over the tips: 60 % down from
+      // there is 0.9·s over them (the fill box's 50 % 60 %, which the flap turned about in one <svg>).
+      pivot: { x: r1(x), y: r1(y - 0.9 * s) },
+      // Its wings, their round-capped stroke half its width past the outline.
+      box: boxAround(stroked(pathPoints(d), width / 2), LAYER_PAD),
     });
   }
+  const flockBox = boxAround(
+    birds.flatMap((bird) => [
+      { x: bird.box.x, y: bird.box.y },
+      { x: bird.box.x + bird.box.w, y: bird.box.y + bird.box.h },
+    ]),
+  );
 
   return {
     layout,
     stars,
+    twinkles,
     moon,
     clouds,
+    cloudBox,
     city: { skyline, windows, tops },
     islet: { land, palms: isletPalms, bushes, tallest: r1(palmHeight * 1.1) },
     glitter,
@@ -652,5 +778,6 @@ export function buildHorizon(layout: HorizonLayout): HorizonScene {
     palms,
     shore,
     birds,
+    flock: flockBox,
   };
 }

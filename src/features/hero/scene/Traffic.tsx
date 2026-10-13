@@ -14,18 +14,13 @@ import {
   type Object3D,
 } from "three";
 import { drive, streamFade, wrapZ } from "./drive";
+import { TRAFFIC_URLS } from "./modelUrls";
 import { makeTraffic, restingY } from "./trafficLayout";
 
 type Props = { animate: boolean; perLane?: number };
 
 /** Quaternius "Cars Pack" (CC0). Models face +z, are real scale (~4 m). */
-const CAR_MODELS = [
-  "/models/quaternius-cars/SportsCar.glb",
-  "/models/quaternius-cars/SportsCar2.glb",
-  "/models/quaternius-cars/NormalCar1.glb",
-  "/models/quaternius-cars/Taxi.glb",
-  "/models/quaternius-cars/SUV.glb",
-] as const;
+const CAR_MODELS = TRAFFIC_URLS;
 // Preload with the same array the component loads: the loader cache is keyed
 // by the whole input, so per-URL preloads fetched and parsed every car twice.
 useGLTF.preload([...CAR_MODELS]);

@@ -8,6 +8,7 @@ import {
   createEnvironmentLightUniforms,
   createSkyUniforms,
   sunDirection,
+  writeCloudDetail,
 } from "./skyUniforms";
 import { world } from "./world";
 
@@ -36,6 +37,26 @@ describe("createSkyUniforms", () => {
     expect(uniforms.uCloudShade.value.equals(new Color(SKY_COLORS.cloudShade))).toBe(true);
     expect(uniforms.uCloudShadeWarm.value.equals(new Color(SKY_COLORS.cloudShadeWarm))).toBe(true);
     expect(createSkyUniforms().uCloudSun.value).not.toBe(uniforms.uCloudSun.value);
+  });
+
+  it("starts at full cloud detail, which the environment map keeps", () => {
+    const uniforms = createSkyUniforms();
+    expect(uniforms.uCloudOctaves.value).toBe(CLOUD_DETAIL.high.octaves);
+    expect(uniforms.uCloudShadow.value).toBe(1);
+    expect(cloudDefines("high").CLOUD_OCTAVES).toBe(uniforms.uCloudOctaves.value);
+  });
+
+  it("takes the level's cloud detail, never more than the tier's shader is built for", () => {
+    const uniforms = createSkyUniforms();
+    writeCloudDetail(uniforms, "high", { cloudOctaves: 4, cloudShadow: false });
+    expect(uniforms.uCloudOctaves.value).toBe(4);
+    expect(uniforms.uCloudShadow.value).toBe(0);
+    writeCloudDetail(uniforms, "high", { cloudOctaves: 5, cloudShadow: true });
+    expect(uniforms.uCloudOctaves.value).toBe(5);
+    expect(uniforms.uCloudShadow.value).toBe(1);
+    writeCloudDetail(uniforms, "low", { cloudOctaves: 5, cloudShadow: true });
+    expect(uniforms.uCloudOctaves.value).toBe(CLOUD_DETAIL.low.octaves);
+    expect(uniforms.uCloudShadow.value).toBe(0);
   });
 
   it("keeps cloud bellies darker than their lit faces", () => {

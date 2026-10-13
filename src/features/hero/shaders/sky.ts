@@ -78,9 +78,12 @@ export const skyGradientChunk = /* glsl */ `
  *   lattice wraps once around the horizon, so there is no seam;
  * - higher streaky altocumulus on a plane projection.
  *
- * CLOUD_OCTAVES sets the fbm detail (fewer on the low tier); CLOUD_SHADOW
- * adds a second density sample toward the sun for directional
- * self-shadowing of the bank (high tier).
+ * CLOUD_OCTAVES sets the most fbm detail the shader is built for (fewer on
+ * the low tier); CLOUD_SHADOW builds in a second density sample toward the
+ * sun for directional self-shadowing of the bank (high tier). Within them,
+ * the quality level (scene/degrade.ts) draws fewer octaves (uCloudOctaves)
+ * and leaves the shadow sample out (uCloudShadow) as uniforms: a slow
+ * device sheds detail without a program to compile.
  */
 export const skyCloudsChunk = /* glsl */ `
   #ifndef CLOUD_OCTAVES
@@ -88,6 +91,8 @@ export const skyCloudsChunk = /* glsl */ `
   #endif
 
   uniform float uCloudTime;
+  uniform float uCloudOctaves;
+  uniform float uCloudShadow;
   uniform vec3 uCloudSun;
   uniform vec3 uCloudLit;
   uniform vec3 uCloudShade;
@@ -214,6 +219,12 @@ export const skyCloudsChunk = /* glsl */ `
     return exp((dot(dir, toSun) - 1.0) * 420.0) * 0.85;
   }
 
+  // The octaves the level draws, never more than the shader is built for.
+  int cloudOctaves() {
+    int n = int(uCloudOctaves + 0.5);
+    return n < CLOUD_OCTAVES ? n : CLOUD_OCTAVES;
+  }
+
   // Where the altocumulus layer lives: above the bank, below the zenith.
   float altoBand(float y) {
     return smoothstep(0.07, 0.26, y) * (1.0 - smoothstep(0.75, 0.99, y));
@@ -269,7 +280,7 @@ export const skyCloudsChunk = /* glsl */ `
     // High streaky altocumulus, behind the bank.
     float band = altoBand(dir.y);
     if (band > 0.0) {
-      vec2 field = altoField(altoCoords(dir), dir.y, CLOUD_OCTAVES);
+      vec2 field = altoField(altoCoords(dir), dir.y, cloudOctaves());
       float depth = max(0.0, field.x);
       // Thin cloud lit from below by the low sun: bright undersides, a
       // little shade where it thickens.
@@ -283,7 +294,7 @@ export const skyCloudsChunk = /* glsl */ `
     // The cumulus bank on the horizon.
     if (dir.y < BANK_MAX_TOP) {
       vec2 p = bankCoords(dir);
-      vec2 field = bankField(p, clearing, CLOUD_OCTAVES);
+      vec2 field = bankField(p, clearing, cloudOctaves());
       float depth = max(0.0, field.x);
       if (depth > 0.0) {
         // Tops catch the low sun; bellies sit in the shade.
@@ -291,12 +302,14 @@ export const skyCloudsChunk = /* glsl */ `
         #ifdef CLOUD_SHADOW
           // A second sample a little toward the sun: denser there means
           // this point lies in the shadow of its own heap.
-          vec2 sunP = bankCoords(toSun);
-          vec2 toward = vec2(mod(sunP.x - p.x + BANK_CELLS * 0.5, BANK_CELLS) - BANK_CELLS * 0.5, sunP.y - p.y);
-          float len = length(toward);
-          vec2 stepToward = len > 1e-4 ? toward / len * 0.3 : vec2(0.0);
-          vec2 ahead = bankField(p + stepToward, clearing, CLOUD_OCTAVES - 1);
-          lift *= 1.0 - clamp((ahead.x - field.x) * 4.0, 0.0, 1.0) * 0.7;
+          if (uCloudShadow > 0.5) {
+            vec2 sunP = bankCoords(toSun);
+            vec2 toward = vec2(mod(sunP.x - p.x + BANK_CELLS * 0.5, BANK_CELLS) - BANK_CELLS * 0.5, sunP.y - p.y);
+            float len = length(toward);
+            vec2 stepToward = len > 1e-4 ? toward / len * 0.3 : vec2(0.0);
+            vec2 ahead = bankField(p + stepToward, clearing, cloudOctaves() - 1);
+            lift *= 1.0 - clamp((ahead.x - field.x) * 4.0, 0.0, 1.0) * 0.7;
+          }
         #endif
         vec3 c = cloudColor(depth, sunward, lift, cosTheta, sky);
         // Aerial perspective: the bank melts into the horizon haze.
@@ -317,11 +330,11 @@ export const skyCloudsChunk = /* glsl */ `
     float clear = 1.0;
     float band = altoBand(dir.y);
     if (band > 0.0) {
-      float depth = max(0.0, altoField(altoCoords(dir), dir.y, CLOUD_OCTAVES).x);
+      float depth = max(0.0, altoField(altoCoords(dir), dir.y, cloudOctaves()).x);
       clear *= 1.0 - altoAlpha(depth, band, clearing);
     }
     if (dir.y < BANK_MAX_TOP) {
-      float depth = max(0.0, bankField(bankCoords(dir), clearing, CLOUD_OCTAVES).x);
+      float depth = max(0.0, bankField(bankCoords(dir), clearing, cloudOctaves()).x);
       clear *= 1.0 - bankAlpha(depth, dir.y);
     }
     return 1.0 - clear;
