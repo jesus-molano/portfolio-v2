@@ -800,7 +800,11 @@ also exists as real DOM for keyboard and screen-reader users.
     first the procedural world while the models download, then again as
     each lands, its textures uploaded: the shots after the first compiled
     their parts (the traffic behind, the city, the crane's view) in the
-    first frame that showed them. `LoadReporter` counts the frames that
+    first frame that showed them. It works in the page's idle periods
+    (`lib/idle.ts`, as the night's Warmup does), a texture or one of the
+    scene's parts a step: run whole at every model that landed, every
+    texture and the whole scene in one task, it held the start menu for
+    seconds on a slow machine, her keys and SETTINGS behind it. `LoadReporter` counts the frames that
     make the scene ready only once the downloads are done and the canvas is
     warm (`isWarm`; 5 s after the downloads it is marked warm anyway, so a
     slow GPU still gets in), and asks for each of them itself, the canvas
