@@ -7,7 +7,7 @@
  *
  *   node tools/capture/scrollux.mjs [--url http://localhost:3000]
  *     [--lang en|es|both] [--device desktop|mobile|both] [--only a,b,...] [--verbose]
- *     [--webgl] [--out .captures/cityloop] [--replay <dir>]
+ *     [--webgl] [--gpu] [--out .captures/cityloop] [--replay <dir>]
  *
  * Checks: swipe (a thumb resting before a swipe never opens the radio; a
  * still long-press does; a thumb resting for a while, or beside a thumb
@@ -118,6 +118,8 @@ const { values } = parseArgs({
     device: { type: "string", default: "both" },
     only: { type: "string", default: "" },
     webgl: { type: "boolean", default: false },
+    // The scenes on the machine's own GPU, in a visible Chromium (implies --webgl): cityloop's frame timing as a visitor's.
+    gpu: { type: "boolean", default: false },
     out: { type: "string", default: ".captures/cityloop" },
     replay: { type: "string", default: "" },
     // CDP CPU throttling for cityloop (4 or 6: a loaded phone), set once the visitor is in.
@@ -159,9 +161,14 @@ const report = (name, ok, detail) => {
  */
 const launch = () =>
   chromium.launch({
+    headless: !values.gpu,
     args: [
       "--autoplay-policy=no-user-gesture-required",
-      ...(values.webgl ? ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] : ["--disable-3d-apis"]),
+      ...(values.gpu
+        ? ["--ignore-gpu-blocklist"]
+        : values.webgl
+          ? ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
+          : ["--disable-3d-apis"]),
     ],
   });
 let browser = null;

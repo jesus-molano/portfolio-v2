@@ -84,7 +84,9 @@ also exists as real DOM for keyboard and screen-reader users.
   her finger's speed flings at 60 fps, and half a screen, and in the
   city's film to at least half of it where the page has room; `--cpu 4|6`
   throttles the CPU once she is in, a loaded phone;
-  `--out` keeps the traces, `--replay <dir>` re-scores them), `shiftless`
+  `--out` keeps the traces, `--replay <dir>` re-scores them; `--gpu` runs
+  a visible Chromium on the machine's own GPU, the city's and the hero's
+  frame timing a visitor's, never a software rasteriser's), `shiftless`
   (the title hint, the dash's unit and the camera readout keep one box in
   every state, and her first input while the name forms, its answer and
   the way on log no layout shift at all), and the
@@ -132,8 +134,8 @@ also exists as real DOM for keyboard and screen-reader users.
   FAIL.
 - `node tools/capture/perf.mjs --url http://localhost:3100/en` (a
   production build running: `pnpm build && pnpm start -p 3100`; `--device
-  phone|desktop`, `--only menu,hero,cover,rest,radio,layers,leak,load`,
-  `--cycles`, `--out`) — the page's heat on a phone (390 x 844 at 3x, an
+  phone|desktop`, `--only boot,menu,hero,cuts,city,cover,rest,radio,layers,leak,load,pace`,
+  `--cycles`, `--out`, `--gpu`) — the page's heat on a phone (390 x 844 at 3x, an
   iPhone's user agent), one line of numbers per stop (frames each WebGL
   canvas drew per animation frame, rAF callbacks, script, task, style
   recalcs and layouts a second, heap) and PASS or FAIL: the hero's canvas
@@ -147,9 +149,16 @@ also exists as real DOM for keyboard and screen-reader users.
   the third pass, after the JIT's own warm-up) and no WebGL context
   outlives its canvas; LOAD GAME save after save (the city, STATS, the
   credits, the prologue, `--cycles` times) keeps the heap and the
-  listeners flat, and the idle load screen animates nothing. Run it after
+  listeners flat, and the idle load screen animates nothing; `boot`,
+  `cuts`, `city` and `pace` count the programs linked inside a frame (a
+  compile she waits for: none once she is in, none at a city stop warmed
+  ahead), the long animation frames and the longest gap between two frames,
+  and read each canvas's `data-quality` and `data-pace`. Run it after
   any change to a canvas, a looping animation, the radio, a frame loop or
-  the load screen.
+  the load screen. It draws on SwiftShader, where a frame takes seconds:
+  its counts hold, its times do not. `--gpu` runs it in a visible Chromium
+  on the machine's own GPU, for times that are a visitor's;
+  `docs/perf-checklist.md` is the owner's check on real devices.
 - `node tools/models/compress.mjs` — the driver's and the traffic cars'
   GLBs as the page loads them (`public/models`), from their sources in
   `tools/models/source` (as Blender wrote them, which the Blender scripts
