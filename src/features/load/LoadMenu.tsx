@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { prefetchNightScene } from "@/features/night/prefetch";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
 import styles from "./LoadMenu.module.css";
@@ -86,6 +87,8 @@ export function LoadMenu({ dict, words, lang, where, open, onClose, radio, onRad
     const element = dialog.current;
     if (!element) return;
     if (open && !element.open) {
+      // A save may jump into the career city: its code is fetched ahead, in idle time (night/prefetch.ts).
+      prefetchNightScene();
       loaded.current = false;
       setActive(initial);
       setLive("");

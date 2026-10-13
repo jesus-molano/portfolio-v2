@@ -3,6 +3,12 @@ import { artQueue, stopRank, type Painter } from "./artQueue";
 import { night } from "./nightState";
 
 let pending = 0;
+const listeners = new Set<() => void>();
+
+function setPending(next: number) {
+  pending = next;
+  for (const listener of listeners) listener();
+}
 
 /**
  * Boards still on their way into the scene: waiting for their faces,
@@ -14,6 +20,18 @@ let pending = 0;
  */
 export function paintsPending(): number {
   return pending;
+}
+
+/**
+ * Calls `listener` whenever `paintsPending` changes: a set asks for its
+ * boards, or one lands. Warmup rests once every stop is warm and looks
+ * again then.
+ */
+export function onPaintsChange(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 /** Runs after the next frame (a task after it with no frames, as in Node). */
@@ -40,11 +58,11 @@ export function paintSet<T>(
   let made: { value: T } | null = null;
   let job: { cancel: () => void } | null = null;
   let landed = false;
-  pending += 1;
+  setPending(pending + 1);
   const land = () => {
     if (landed) return;
     landed = true;
-    pending -= 1;
+    setPending(pending - 1);
   };
   loadFaces(faces).then(() => {
     if (cancelled) return;

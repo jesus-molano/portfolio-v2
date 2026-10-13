@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { artQueue } from "./artQueue";
-import { paintSet, paintsPending } from "./paintSet";
+import { onPaintsChange, paintSet, paintsPending } from "./paintSet";
 
 /** Lets the faces (none in Node) and every queued painter run. */
 async function settle() {
@@ -74,6 +74,21 @@ describe("paintSet", () => {
     expect(paintsPending()).toBe(before);
     cleanup();
     expect(paintsPending()).toBe(before);
+  });
+
+  it("tells its listeners as a board is asked for and as it lands, until they leave", async () => {
+    const seen: number[] = [];
+    const off = onPaintsChange(() => seen.push(paintsPending()));
+    const before = paintsPending();
+    const cleanup = paintSet([], 0, () => () => "poster", vi.fn(), vi.fn());
+    expect(seen).toEqual([before + 1]);
+    await settle();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(seen).toEqual([before + 1, before]);
+    off();
+    paintSet([], 0, () => () => "poster", vi.fn(), vi.fn())();
+    expect(seen).toEqual([before + 1, before]);
+    cleanup();
   });
 
   it("stops counting a board cleaned up before its turn, or whose painter throws", async () => {

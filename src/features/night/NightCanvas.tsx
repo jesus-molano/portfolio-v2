@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SceneErrorBoundary } from "@/features/hero/SceneErrorBoundary";
+import { getSceneLoading, subscribeSceneLoading } from "@/features/hero/sceneLoading";
 import { useQualityTier } from "@/features/hero/useQualityTier";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -11,14 +12,17 @@ import styles from "./Night.module.css";
 import { getSelectHeld, subscribeSelectHeld } from "@/features/suspects/selectWall";
 import { useContextLoss } from "@/hooks/useContextLoss";
 import { night, setNightReadiness } from "./nightState";
+import { loadNightScene, prefetchNightScene } from "./prefetch";
 
-const NightScene = dynamic(() => import("./NightScene").then((m) => m.NightScene), { ssr: false });
+// The same import as the prefetch's (prefetch.ts): fetched ahead in idle time, the mount finds it in.
+const NightScene = dynamic(() => loadNightScene().then((m) => m.NightScene), { ssr: false });
 
 type Props = { timeline: StageTimeline; work: Dictionary["work"]; locale: Locale };
 
 /**
  * Mounts the night scene on the client only, and only near the work stage:
- * it mounts when the stage is within about a viewport and a half, renders
+ * its code is fetched ahead in idle time (prefetch.ts), and it mounts when
+ * the stage is within about a viewport and a half, renders
  * only while the stage is on screen and not under its own opaque night
  * (nightCover.ts: the closed iris, the opening's full cover; the frame
  * driver reads both from plain flags, `night.onScreen` and the cover, so
@@ -74,6 +78,20 @@ export const NightCanvas = memo(function NightCanvas({ timeline, work, locale }:
       view.disconnect();
       night.onScreen = false;
     };
+  }, []);
+
+  // The city's code, fetched in idle time once the hero has settled (prefetch.ts): the code only, never the mount.
+  useEffect(() => {
+    let off: (() => void) | null = null;
+    const look = () => {
+      if (!getSceneLoading().settled) return;
+      prefetchNightScene();
+      off?.();
+      off = null;
+    };
+    off = subscribeSceneLoading(look);
+    look();
+    return () => off?.();
   }, []);
 
   // Wanted or not, for the load screen (nightState `wanted`).

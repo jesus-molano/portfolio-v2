@@ -1,13 +1,23 @@
+import { scrollInput } from "@/features/hero/scroll/heroProgress";
+import { browserIdle, type IdleScheduler } from "@/lib/idle";
+
 /**
  * The night's board art, painted in turns. Every set paints its boards
  * once its faces are in (artCanvas.ts loadFaces), and with the faces
  * already loaded all five sets' painters ran back to back in one task as
  * the night mounted: up to twenty seconds without a frame or an answer to
  * a touch on a mid-range phone, at the character select's wall. Here a
- * painter runs one step per task, a frame between two steps, the stop she
- * will see first first (`rank`, read as each step is picked). A painter is
- * a function (one step) or a generator that yields between its steps
- * (Logixs' wall, cell by cell).
+ * painter runs one step per task, the stop she will see first first
+ * (`rank`, read as each step is picked). A painter is a function (one
+ * step) or a generator that yields between its steps (Logixs' wall, cell
+ * by cell).
+ *
+ * A step for the stop on screen (rank 0) runs after the next frame: she is
+ * looking at its board. Any other waits for a quiet moment (`mayPaint`): an
+ * idle period with no scroll of hers and no move of the page in the last
+ * 200 ms, a second at most. A step is 50 to 600 ms on a phone (a grain
+ * pass over every pixel of a big board), and run a frame apart they landed
+ * as hitches all through her drive into the city.
  */
 
 export type Painter<T> = (() => T) | Generator<unknown, T, unknown>;
@@ -40,8 +50,72 @@ function afterFrame(run: () => void): void {
   else setTimeout(run, 0);
 }
 
-/** A queue of painters; `defer` schedules its next step (tests pass their own). */
-export function createArtQueue(defer: (run: () => void) => void = afterFrame) {
+/** How long the page must have been still before a step for another stop paints, and the longest such a step waits (ms). */
+export const PAINT_GATE = { quietMs: 200, timeoutMs: 1000 } as const;
+
+/**
+ * Whether a step that has waited since `since` may paint at `now`: at once
+ * for the stop on screen (`urgent`), else once nothing has scrolled for
+ * `quietMs` (`scrolledAt`: her last input or the page's last move), or
+ * once it has waited `timeoutMs` (a visitor who never stops still gets
+ * her boards).
+ */
+export function mayPaint(urgent: boolean, now: number, since: number, scrolledAt: number): boolean {
+  return urgent || now - scrolledAt >= PAINT_GATE.quietMs || now - since >= PAINT_GATE.timeoutMs;
+}
+
+/** Schedules a step that may wait: `run` once `urgent()` holds or the page is quiet (`mayPaint`). */
+export type Wait = (run: () => void, urgent: () => boolean) => void;
+
+/**
+ * Waits in idle periods for a quiet moment (`mayPaint`), looking again at
+ * each one; `scrolledAt` is her last scroll or the page's last move.
+ */
+export function createQuietWait(idle: IdleScheduler, now: () => number, scrolledAt: () => number): Wait {
+  return (run, urgent) => {
+    const since = now();
+    const look = () => {
+      const at = now();
+      if (mayPaint(urgent(), at, since, scrolledAt())) run();
+      else idle.request(look, Math.max(1, since + PAINT_GATE.timeoutMs - at));
+    };
+    idle.request(look, PAINT_GATE.timeoutMs);
+  };
+}
+
+/** When the page last moved under her (a scroll event: her input, Lenis' glide after it, the browser's own fling). */
+let movedAt = Number.NEGATIVE_INFINITY;
+let watching = false;
+
+/** Her last scroll input (heroProgress `scrollInput`, the pedal held too) or the page's last move, whichever is later. */
+function lastScroll(): number {
+  if (!watching && typeof window !== "undefined") {
+    watching = true;
+    window.addEventListener(
+      "scroll",
+      () => {
+        movedAt = performance.now();
+      },
+      { passive: true },
+    );
+  }
+  return Math.max(scrollInput.at, movedAt);
+}
+
+/** The page's own wait: its idle periods, its clock, its scroll. */
+function quietWait(): Wait {
+  let wait: Wait | null = null;
+  return (run, urgent) => {
+    wait ??= createQuietWait(browserIdle(), () => performance.now(), lastScroll);
+    wait(run, urgent);
+  };
+}
+
+/**
+ * A queue of painters; `defer` schedules the next step when it is for the
+ * stop on screen, `wait` when it is for another (tests pass their own).
+ */
+export function createArtQueue(defer: (run: () => void) => void = afterFrame, wait: Wait = quietWait()) {
   const jobs: Job[] = [];
   let order = 0;
   let waiting = false;
@@ -68,10 +142,17 @@ export function createArtQueue(defer: (run: () => void) => void = afterFrame) {
     schedule();
   };
 
+  /** The next step is for the stop on screen. */
+  const urgent = () => {
+    const job = nextJob(jobs);
+    return job !== undefined && job.rank() === 0;
+  };
+
   const schedule = () => {
     if (waiting || jobs.length === 0) return;
     waiting = true;
-    defer(runOne);
+    if (urgent()) defer(runOne);
+    else wait(runOne, urgent);
   };
 
   /** Paints in turn; `cancel` drops a painter that has not finished (its promise never settles). */
@@ -113,4 +194,9 @@ export const artQueue = createArtQueue();
 export function stopRank(index: number, current: number): number {
   const ahead = index - current;
   return ahead >= 0 ? 2 * ahead : 1 - 2 * ahead;
+}
+
+/** The stops in the order she reaches them from `current` (stopRank): the warm-up's order. */
+export function stopOrder(count: number, current: number): number[] {
+  return Array.from({ length: count }, (_, i) => i).sort((a, b) => stopRank(a, current) - stopRank(b, current));
 }

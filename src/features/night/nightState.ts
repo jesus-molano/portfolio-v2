@@ -31,7 +31,7 @@ export const night = {
    * a wanted scene to have drawn (or failed) before it lifts, so its compile never lands in her face.
    */
   wanted: false,
-  /** Every stop warmed up (compiled, uploaded) and nothing loading (Warmup): the opening cover may rest the canvas. */
+  /** The shared parts and every stop warmed up (compiled, uploaded), nothing loading and no board on its way (Warmup): the opening cover may rest the canvas. */
   warm: false,
   /**
    * Frames the canvas has drawn (ReadyReporter counts them): woken under the opening cover, the canvas still

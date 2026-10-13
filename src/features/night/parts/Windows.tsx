@@ -3,9 +3,10 @@
 import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { type CanvasTexture, type InstancedMesh, Matrix4, Quaternion, UniformsLib, UniformsUtils, Vector3 } from "three";
+import { createIdleLoop } from "@/lib/idle";
 import { toTexture } from "../artCanvas";
 import type { Vec3 } from "../frame";
-import { ATLAS, type PaneLook, paintWindows } from "../sets/art/windows";
+import { ATLAS, finishWindows, type PaneLook, paintWindowsSteps } from "../sets/art/windows";
 import { windowFragmentShader, windowVertexShader } from "../shaders/windows";
 import { instancedAttribute } from "./instancedAttribute";
 
@@ -18,11 +19,59 @@ export type Pane = { p: Vec3; s: readonly [number, number] } & PaneLook;
  * it again on its own.
  */
 let atlas: CanvasTexture | null = null;
+/** Its canvas once painted, or the steps painting it ahead (paintWindowsAhead). */
+let painted: HTMLCanvasElement | null = null;
+let painting: Generator<number, HTMLCanvasElement, unknown> | null = null;
+
+/** The longest a room waits for an idle period: the night may mount soon after its code is in. */
+const AHEAD_TIMEOUT_MS = 2000;
+
+/** The atlas's canvas, whatever the idle steps have not painted yet painted now. */
+function atlasCanvas(): HTMLCanvasElement {
+  if (!painted) {
+    // Taken first: steps that throw (no 2D canvas) are never stepped again, the next mount starts afresh.
+    const steps = painting ?? paintWindowsSteps();
+    painting = null;
+    painted = finishWindows(steps);
+  }
+  return painted;
+}
 
 function windowAtlas(): CanvasTexture | null {
   if (typeof document === "undefined") return null;
-  atlas ??= toTexture(paintWindows(), 4);
+  atlas ??= toTexture(atlasCanvas(), 4);
   return atlas;
+}
+
+/**
+ * Paints the atlas ahead of the night's mount, a room per idle slice
+ * (prefetch.ts, once the night's code is in): painted in the mount, its 31
+ * rooms were one more long task in the commit that builds the five sets. A
+ * mount that comes first paints what is left at once (`windowAtlas`).
+ */
+export function paintWindowsAhead(): void {
+  if (painted || painting || typeof document === "undefined") return;
+  painting = paintWindowsSteps();
+  createIdleLoop(
+    () => {
+      // Finished by a mount that came first.
+      const steps = painting;
+      if (!steps) return false;
+      let step: IteratorResult<number, HTMLCanvasElement>;
+      try {
+        step = steps.next();
+      } catch {
+        // No 2D canvas: the mount paints it whole and fails there, where the scene's error boundary hears it.
+        painting = null;
+        return false;
+      }
+      if (!step.done) return true;
+      painted = step.value;
+      painting = null;
+      return false;
+    },
+    { timeoutMs: AHEAD_TIMEOUT_MS },
+  ).wake();
 }
 
 /** Painted windows in one draw: cafés, hotel rooms, homes, offices. */
