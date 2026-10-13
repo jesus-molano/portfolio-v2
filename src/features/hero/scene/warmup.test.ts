@@ -8,13 +8,14 @@ import {
   MeshStandardMaterial,
   type Object3D,
   PerspectiveCamera,
+  PointLight,
   Scene,
   ShaderMaterial,
   Texture,
   type WebGLRenderTarget,
 } from "three";
 import { describe, expect, it, vi } from "vitest";
-import { compileAsComposed, createWarmTarget, downloadsDone, isWarm, markWarm, texturesOf, uploadTextures, warmKey } from "./warmup";
+import { compileAsComposed, createWarmTarget, downloadsDone, holdsLight, isWarm, markWarm, texturesOf, uploadTextures, warmKey } from "./warmup";
 
 /** A texture with an image in it (version 1), as a loader or a painted canvas leaves it. */
 function filled(): Texture {
@@ -151,6 +152,22 @@ describe("compileAsComposed", () => {
     expect(boundDuringCompile).toEqual([warm]);
     expect(bound()).toBe(own);
     expect(gl.setRenderTarget).toHaveBeenLastCalledWith(own, 3, 1);
+  });
+
+  it("compiles a part holding lights as the whole scene, or three.js counts its lights twice", async () => {
+    const { gl } = fakeRenderer();
+    const lit = new Group();
+    lit.add(new PointLight());
+    const dark = new Group();
+    dark.add(new Group());
+    scene.add(lit, dark);
+    await compileAsComposed(gl, lit, camera, scene, warm);
+    await compileAsComposed(gl, dark, camera, scene, warm);
+    await compileAsComposed(gl, scene, camera, scene, warm);
+    expect(gl.compileAsync.mock.calls.map(([root]) => root)).toEqual([scene, dark, scene]);
+    expect(holdsLight(lit)).toBe(true);
+    expect(holdsLight(dark)).toBe(false);
+    scene.remove(lit, dark);
   });
 
   it("restores the target before the programs are linked", () => {

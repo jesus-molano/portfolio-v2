@@ -105,6 +105,15 @@ type Compiler = Pick<
   "getRenderTarget" | "getActiveCubeFace" | "getActiveMipmapLevel" | "setRenderTarget" | "compileAsync"
 >;
 
+/** Whether a light hangs anywhere under `root`. */
+export function holdsLight(root: Object3D): boolean {
+  let lit = false;
+  root.traverse((object) => {
+    if ((object as { isLight?: boolean }).isLight === true) lit = true;
+  });
+  return lit;
+}
+
 /**
  * Compiles every material under `root` (visible or not) as the composer
  * draws it, lit by `scene`'s lights: `target` is bound while three.js
@@ -112,6 +121,13 @@ type Compiler = Pick<
  * `compileAsync`), and the renderer's own target comes back after, also
  * when compiling throws. The promise settles once the programs are linked
  * (in parallel where the GPU allows); it rejects rather than throw.
+ *
+ * A part already in the scene that holds lights is compiled as the whole
+ * scene: three.js counts the lights of the scene it is given and then,
+ * again, those under the part, so the night's shared street, car and sky,
+ * warmed with its stop lights among them, compiled with two of each light
+ * a program no frame drew, and every one of them compiled again in the
+ * first frame on screen.
  */
 export function compileAsComposed(
   gl: Compiler,
@@ -123,9 +139,10 @@ export function compileAsComposed(
   const previous = gl.getRenderTarget();
   const face = gl.getActiveCubeFace();
   const level = gl.getActiveMipmapLevel();
+  const part = root !== scene && holdsLight(root) ? scene : root;
   try {
     gl.setRenderTarget(target);
-    return gl.compileAsync(root, camera, scene);
+    return gl.compileAsync(part, camera, scene);
   } catch (error) {
     return Promise.reject(error);
   } finally {

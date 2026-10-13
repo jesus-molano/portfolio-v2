@@ -1409,8 +1409,12 @@ also exists as real DOM for keyboard and screen-reader users.
   idle periods (`lib/idle.ts`, tested: as many steps as a period has room
   for, one when it comes by its 0.5 s timeout) from the moment the night
   mounts, drawing or not: a texture or a part a step, the shared street,
-  car and sky first (one group of their own), then the stops in the order
-  she reaches them (`stopOrder`, from `stopRank`). It ran in the frame
+  car and sky first (one group of their own, the stop lights left out of
+  it: three.js counts the scene's lights and again those under the part it
+  compiles, so warmed with them inside it they compiled a program no frame
+  drew; `compileAsComposed` compiles a part that holds lights as the whole
+  scene), then the stops in the order she reaches them (`stopOrder`, from
+  `stopRank`). It ran in the frame
   loop, so nothing warmed before the canvas drew, and her first frame of
   the city compiled the whole of it in one long task as she scrolled in.
   Every part warm before the canvas ever drew, it asks the frame driver
