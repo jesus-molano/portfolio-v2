@@ -4,9 +4,8 @@ import { useGLTF } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
 import { type Bone, FrontSide, Group, Mesh, type MeshStandardMaterial, type Object3D } from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { DRIVER_URL } from "@/features/hero/scene/Driver";
 import { captureBindPose, DRIVER_SCALE, DRIVER_SEAT, poseDriver, type RestBone } from "@/features/hero/scene/driverPose";
-import { SUNGLASSES_URL } from "@/features/hero/scene/Sunglasses";
+import { DRIVER_URL, SUNGLASSES_URL } from "@/features/hero/scene/modelUrls";
 import { adopt, cloneOwned } from "./cloneBare";
 
 /** The bind pose stored on the cached scene, shared with the hero's Driver. */

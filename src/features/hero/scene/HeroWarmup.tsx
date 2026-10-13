@@ -4,6 +4,7 @@ import { useProgress } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useEffect } from "react";
 import type { Texture } from "three";
+import { useSceneInvalidate } from "./invalidate";
 import { compileAsComposed, createWarmTarget, downloadsDone, isWarm, markWarm, uploadTextures, warmKey } from "./warmup";
 
 /** Milliseconds between two looks at the scene while its models come in. */
@@ -38,7 +39,7 @@ export function HeroWarmup() {
   const gl = useThree((state) => state.gl);
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
-  const invalidate = useThree((state) => state.invalidate);
+  const invalidate = useSceneInvalidate();
 
   useEffect(() => {
     if (isWarm(gl)) return;
@@ -55,7 +56,7 @@ export function HeroWarmup() {
       over = true;
       target.dispose();
       markWarm(gl);
-      // On demand (reduced motion, out of view) a frame must come to see it.
+      // On demand (the load, reduced motion, out of view) a frame must come to see it: LoadReporter counts from there.
       invalidate();
     };
 

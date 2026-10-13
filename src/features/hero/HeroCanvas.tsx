@@ -11,7 +11,21 @@ import { SceneErrorBoundary } from "./SceneErrorBoundary";
 import { markSceneReady } from "./sceneLoading";
 import { useQualityTier } from "./useQualityTier";
 
-const HeroScene = dynamic(() => import("./scene/HeroScene").then((m) => m.HeroScene), {
+/**
+ * The scene's code, asked for as this module runs in the browser, before
+ * hydration renders the canvas: left to next/dynamic, the chunk (three.js,
+ * the renderer, the post and the scene) was fetched only once hydration
+ * reached HeroCanvas, a round trip after all of the page's own code, and
+ * the models it loads waited on it. next/dynamic is handed the same promise,
+ * so a failed import still reaches the error boundary below (through
+ * React.lazy); the handler here only keeps it from being reported as
+ * unhandled before the canvas renders. On the server there is nothing to
+ * fetch (`ssr: false`).
+ */
+const heroSceneModule = typeof window === "undefined" ? null : import("./scene/HeroScene");
+heroSceneModule?.catch(() => undefined);
+
+const HeroScene = dynamic(() => (heroSceneModule ?? import("./scene/HeroScene")).then((m) => m.HeroScene), {
   ssr: false,
 });
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useGLTF } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
 import { useLayoutEffect } from "react";
 import {
   type Bone,
@@ -14,14 +13,14 @@ import {
   MeshStandardMaterial,
 } from "three";
 import type { QualityTier } from "../useQualityTier";
+import { useSceneInvalidate } from "./invalidate";
+import { SUNGLASSES_URL } from "./modelUrls";
 
 /**
  * Gold aviators with pink-violet mirrored lenses: an original model, built
  * and fitted to his head by tools/blender/build_sunglasses.py. The GLB is
  * in the frame of the rig's "head" bone, so it is simply that bone's child.
  */
-export const SUNGLASSES_URL = "/models/sunglasses/aviator.glb";
-
 useGLTF.preload(SUNGLASSES_URL);
 
 /**
@@ -130,7 +129,7 @@ type Props = {
 /** Puts the aviators on his head. Renders nothing of its own. */
 export function Sunglasses({ head, tier }: Props) {
   const { scene } = useGLTF(SUNGLASSES_URL);
-  const invalidate = useThree((state) => state.invalidate);
+  const invalidate = useSceneInvalidate();
 
   // Layout effect: on before the first frame, also with frameloop="demand".
   useLayoutEffect(() => {

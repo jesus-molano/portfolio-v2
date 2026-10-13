@@ -4,19 +4,25 @@
  * on `frameloop="always"` drew the whole scene, post-processing and all,
  * for as long as she read the tips: the phone heated before the film began.
  *
- * It runs while the scene loads (the loading screen waits for its first
- * frames), for a short grace once it is ready (late uploads, a texture
- * painted once the fonts are in, land before the menu goes, not in her
- * first frame), and from the moment she enters. Otherwise it renders on
- * demand: nothing, until she enters. Out of view (or under opaque night,
- * `active` false) and under reduced motion it is on demand as before.
+ * While the scene loads it draws only when asked: LoadReporter asks at each
+ * step of the load and for the frames that make the scene ready, the
+ * warm-up when it is done, and a part that changes asks for itself (a
+ * board's copy painted once its font is in, the aviators put on). Drawn
+ * every frame, the load ran the whole post chain at the display's rate,
+ * 144 or 165 times a second on a fast monitor, against the models' parsing
+ * and the shaders' compiling, and the start menu over it stuttered. Once
+ * the scene is ready it draws every frame for a short grace (late uploads
+ * land before the menu goes, not in her first frame), and from the moment
+ * she enters. Otherwise it renders on demand: nothing, until she enters.
+ * Out of view (or under opaque night, `active` false) and under reduced
+ * motion it is on demand as before.
  */
 export type HeroFrameloopInput = {
   /** Motion allowed (not reduced motion). */
   animate: boolean;
   /** The hero is in view and not under opaque night. */
   active: boolean;
-  /** Every asset loaded and the first frames rendered. */
+  /** Every asset loaded, the scene warm and the first frames rendered. */
   ready: boolean;
   /** She has left the start menu. */
   entered: boolean;
@@ -29,6 +35,6 @@ export const READY_GRACE_MS = 3000;
 
 export function heroFrameloop({ animate, active, ready, entered, sinceReadyMs }: HeroFrameloopInput): "always" | "demand" {
   if (!animate || !active) return "demand";
-  if (!ready || entered) return "always";
-  return sinceReadyMs < READY_GRACE_MS ? "always" : "demand";
+  if (entered) return "always";
+  return ready && sinceReadyMs < READY_GRACE_MS ? "always" : "demand";
 }
