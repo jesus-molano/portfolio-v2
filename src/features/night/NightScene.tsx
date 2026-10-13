@@ -3,7 +3,7 @@
 import { Environment, Lightformer, useProgress } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { memo, Suspense, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
-import type { Group, Material, Mesh, Texture, WebGLRenderer, WebGLRenderTarget } from "three";
+import type { Group, Material, Mesh, Texture, WebGLRenderer } from "three";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "@/features/hero/SceneErrorBoundary";
 import { isWarmFrame, warmFrame } from "@/features/hero/scene/frameDriver";

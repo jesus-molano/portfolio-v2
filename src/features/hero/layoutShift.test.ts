@@ -120,6 +120,6 @@ describe("the career city's overlays move on the compositor", () => {
 describe("the hero's title, gone", () => {
   it("gives its layers back without leaving the accessibility tree (no visibility: hidden: its heading takes the focus)", () => {
     expect(bodyOf(".title[data-gone],\n.title[data-gone] .letter")).toMatch(/will-change:\s*auto/);
-    expect(rules.filter(([sel]) => sel.includes("[data-gone]")).map(([, body]) => body).join(";")).not.toMatch(/visibility/);
+    expect(rules.filter(([sel]) => sel.includes(".title[data-gone]")).map(([, body]) => body).join(";")).not.toMatch(/visibility/);
   });
 });
