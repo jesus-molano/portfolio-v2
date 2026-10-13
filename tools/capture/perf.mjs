@@ -387,30 +387,55 @@ if (run("cuts")) {
 }
 
 if (run("city")) {
-  const s = await session();
+  // As a visitor comes to it: Jesús chosen (no wall), the page scrolled to a screen above the city,
+  // where the night mounts and warms up in idle time while nothing of it shows; then each stop.
+  const context = await browser.newContext({ ...DEVICES[values.device], reducedMotion: "no-preference" });
+  await context.addInitScript(PROBE);
+  await context.addInitScript(() => {
+    try {
+      window.sessionStorage.setItem("va-player-one", "jesus");
+    } catch {
+      // No storage: the wall stays and the landings below open it as navigation.
+    }
+  });
+  const page = await context.newPage();
+  await page.goto(values.url, { waitUntil: "load" });
+  await page.waitForSelector('[data-loader][data-phase="ready"]', { timeout: 300_000 });
+  await page.locator('[data-loader] [data-enter="silent"]').click();
+  await page.waitForSelector("[data-loader]", { state: "detached", timeout: 30_000 });
   await sleep(1500);
-  await land(s.page, "#work", 10_000);
-  const warmAt = await s.page.evaluate(() => window.__perfSnap());
+  await land(page, "#suspects", 3000);
+  // Down to a screen above the city's top: within the night's mount margin, off screen.
+  for (let i = 0; i < 40; i += 1) {
+    const gap = await page.evaluate(() => document.querySelector("#work").getBoundingClientRect().top / window.innerHeight);
+    if (gap < 1.25) break;
+    await page.mouse.move(195, 400);
+    await page.mouse.wheel(0, Math.min(600, (gap - 1.15) * (await page.evaluate(() => window.innerHeight))));
+    await sleep(700);
+  }
+  const mounted = await page.evaluate(() => window.__perfSnap().contexts.filter((c) => c.host === "work" && c.connected).length);
+  await sleep(20_000);
+  const warmAt = await page.evaluate(() => window.__perfSnap());
   const rows = [];
   let prev = warmAt;
-  for (const stop of ["#work-pwc", "#work-cloud", "#work-logixs", "#work-heuristik", "#work-army"]) {
-    const from = await s.page.evaluate(() => (window.__perfGap(), performance.now()));
-    await land(s.page, stop, 6000);
-    const snap = await s.page.evaluate(() => window.__perfSnap());
-    const loaf = await s.page.evaluate((t) => window.__perfLoaf(t), from);
-    const gapMs = await s.page.evaluate(() => window.__perfGap());
+  for (const stop of ["#work-army", "#work-pwc", "#work-cloud", "#work-logixs", "#work-heuristik"]) {
+    const from = await page.evaluate(() => (window.__perfGap(), performance.now()));
+    await land(page, stop, 6000);
+    const snap = await page.evaluate(() => window.__perfSnap());
+    const loaf = await page.evaluate((t) => window.__perfLoaf(t), from);
+    const gapMs = await page.evaluate(() => window.__perfGap());
     const linked = linksOf(snap, "work") - linksOf(prev, "work");
     const inFrame = linksOf(snap, "work", true) - linksOf(prev, "work", true);
     rows.push({ stop, linked, inFrame, gapMs, ...loaf });
     prev = snap;
   }
-  const row = { name: "city (each stop after #work)", warmLinks: linksOf(warmAt, "work"), warmInFrame: linksOf(warmAt, "work", true), rows };
+  const row = { name: "city (each stop, the night warmed a screen above it)", mounted, warmLinks: linksOf(warmAt, "work"), warmInFrame: linksOf(warmAt, "work", true), rows };
   results.push(row);
   console.log(JSON.stringify(row));
   // Only a compile inside a frame stalls the picture: the warm-up links in idle time, on screen or not.
   const inFrame = rows.reduce((sum, r) => sum + r.inFrame, 0);
   report("city: no stop compiles in a frame at its landing", inFrame === 0, { inFrame, perStop: rows.map((r) => r.inFrame), linkedInIdle: rows.map((r) => r.linked - r.inFrame) });
-  await s.close();
+  await context.close();
 }
 
 if (run("pace")) {
