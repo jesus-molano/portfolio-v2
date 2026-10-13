@@ -37,7 +37,7 @@ also exists as real DOM for keyboard and screen-reader users.
   proxy redirects, the deterministic city layout, the chapter cards'
   layout, the shader `pow()` rule, the start menu's tips, keys and
   picture (`loader/horizon.test.ts`: a whole road, lamps at their size,
-  its motion on HTML layers only),
+  its motion on HTML layers only, each as big as what it draws),
   the content map (`i18n/contentMap.test.ts`), the page's glTF models
   (`hero/scene/modelAssets.test.ts`), and the
   hero's scroll UX acceptance checks (`scroll/acceptance.test.ts`).
@@ -157,7 +157,8 @@ also exists as real DOM for keyboard and screen-reader users.
   and meshopt-compressed, the driver's skin texture at 1024 px. Run it
   after any change to a source; a rerun with nothing changed writes the
   same bytes. It writes `tools/models/sources.json`, and
-  `modelAssets.test.ts` fails on a model left behind.
+  `modelAssets.test.ts` fails on a model left behind; `modelUrls.test.ts`
+  then names the model's new `?v=` for `scene/modelUrls.ts`.
 
 ## Stack (pinned on purpose)
 
@@ -956,7 +957,15 @@ also exists as real DOM for keyboard and screen-reader users.
     (`TWINKLE_GROUPS`, the owner's call), a layer for every glint, swell
     and ripple on the water (each breathes on its own clock), each palm's
     crown, the flock and each bird's wings. No SVG element carries a
-    motion (tested).
+    motion (tested). Each layer is as big as what it draws: its box of
+    the picture (`Box` in `horizon.ts`: its strokes and two units past
+    them for the edges, `LAYER_PAD`), placed in the frame's units
+    (`--lx`, `--ly`, `--lw`, `--lh` times `--u`) and its drawing's viewBox,
+    so the drawing keeps the picture's coordinates and turns about the
+    same point (tested from the markup). Each one filled the frame once,
+    and WebKit backs a composited layer by its box, not by what it paints:
+    a phone held about 95 screen-sized stores (some 750 MB) for a few
+    stars, glints and birds.
   - No layout shift, ever: the loader is a size container and every box
     is placed against it with a fixed size (`cqw`, `cqh`: the menu's
     height is its rows', the card's its reserved lines'), every state of
@@ -2148,7 +2157,11 @@ its inverse bind matrices; a box per mesh gave each mesh a skin and the
 hero eight skeletons). The convertible and the aviators ship as Blender
 wrote them: `Car.tsx` reads the convertible's raw float arrays
 (`rimUvCircle`), and the aviators are 54 KB. Never edit a compressed GLB:
-change its source and rerun the compressor.
+change its source and rerun the compressor. Every model's address ends in
+the start of its file's SHA-256 (`?v=`, `scene/modelUrls.ts`): the browser
+keeps `/models` a year without asking, so a rebuilt model (any of them, the
+convertible and the aviators too) needs its new version, which
+`modelUrls.test.ts` prints.
 
 - `poly-convertible` — "Convertible" by Poly by Google, CC BY 3.0. The
   licence requires the visible credit in the end credits; keep it.
@@ -2351,14 +2364,25 @@ To add a track to a station:
   page (`src/app/[lang]/page.tsx`, never the layout: the 404 has no
   scene) names them in its head (`MODEL_PRELOADS`: React's `preload` as
   `fetch` with `crossOrigin: "anonymous"`, as three.js fetches, so its
-  request takes the preloaded response; the traffic at low priority), so
-  they download beside the page's code instead of after the chunk
-  (`modelUrls.test.ts`). `next.config.ts` gives what `public/` serves the
-  page (`models`, `music`, `interlude`, `finale`, `load`, `stats`) a day
-  fresh and a week stale while the browser revalidates: with no policy,
-  every visit revalidated each file, a round trip before the scene could
-  use it. The page must stay readable without WebGL: real text in the
-  DOM, CSS sky as fallback.
+  request takes the preloaded response), so they download beside the
+  page's code instead of after the chunk (`modelUrls.test.ts`). All at
+  low priority, queued behind the page's own async scripts: at a fetch's
+  own (high), the driver's megabyte went first, and on a slow link
+  hydration, and with it the start menu's keys, slab, SETTINGS and LOAD
+  GAME, waited seconds behind it. `next.config.ts` says how long the
+  browser keeps what `public/` serves the page (`assetCache.test.ts`):
+  the models a year (their addresses carry their content's hash); the
+  cinema's plates and posters, the line-up's renders and STATS's map,
+  whose layout is in the page's code (`plates.json`, the interlude's
+  manifest, `statsLayout.ts`), revalidated on every visit, so a picture
+  never meets another one's layout; the radio's tracks and LOAD GAME's
+  pictures a day. Never stale-while-revalidate: a week of it served the
+  old plate under the new `plates.json` for a whole visit. In
+  development it sets none, and the browser asks again for every file (a
+  rebuilt one shows on the next reload). With no policy, every visit
+  revalidated each file, a round trip before the scene could use it: for
+  the models, before the start menu's ways in. The page must stay
+  readable without WebGL: real text in the DOM, CSS sky as fallback.
 - Three.js stays out of the page's first bundle: no module the page's own
   client code imports statically builds a three.js object as it loads
   (a shot's camera, the drive's scratch matrices, the night camera), and
