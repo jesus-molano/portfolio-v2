@@ -28,6 +28,10 @@ Blender, which glTF stores as t from top (0) to bottom (1).
 Usage (Blender 4.5, or `pip install bpy==4.5.4` in a Python 3.11 venv):
     blender -b -P build_sunglasses.py -- <driver.glb> <aviator.glb> [renders_dir]
     python build_sunglasses.py -- <driver.glb> <aviator.glb> [renders_dir]
+<driver.glb> is the driver's source, tools/models/source/makehuman-driver/
+driver.glb: the page's copy in public/models is meshopt-compressed, which
+Blender cannot read. <aviator.glb> is public/models/sunglasses/aviator.glb
+(the aviators ship as written, uncompressed).
 
 With renders_dir (keep it outside the repository): small Cycles check
 renders of the head wearing the glasses: front, three-quarter, profile and
