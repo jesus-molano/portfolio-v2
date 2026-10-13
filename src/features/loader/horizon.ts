@@ -23,6 +23,10 @@
  * between the menu and the tip card) and `tall` (portrait: the sky above
  * the menu, the road running down under it).
  *
+ * What moves is drawn on layers of its own (Horizon.tsx), so the scene also
+ * says how: the twinkling stars share a few phase groups, each one layer,
+ * and each bird has the point its wings hinge on.
+ *
  * Coordinates are rounded to tenths so the markup stays small and the same
  * on every run (horizon.test.ts checks the rules above).
  */
@@ -56,6 +60,14 @@ export type HorizonLayout = {
   stars: number;
   seed: number;
 };
+
+/**
+ * How many phase groups the twinkling stars blink in. Each group is one
+ * layer the compositor fades (Horizon.tsx), a handful in all: each star
+ * twinkling as an SVG element of its own repainted the whole picture every
+ * frame.
+ */
+export const TWINKLE_GROUPS = 6;
 
 /** The causeway, in metres: deck surface and parapets over the water. */
 export const CAUSEWAY = {
@@ -210,7 +222,10 @@ export type Palm = {
 
 export type HorizonScene = {
   layout: HorizonLayout;
-  stars: { x: number; y: number; r: number; o: number; twinkle: boolean; delay: number; dur: number }[];
+  /** `phase`: the twinkle group a twinkling star blinks with (an index into `twinkles`), null for a steady star. */
+  stars: { x: number; y: number; r: number; o: number; phase: number | null }[];
+  /** Each twinkle group's clock, in seconds: one breath from dim to bright, and where in it the group starts. */
+  twinkles: { dur: number; delay: number }[];
   moon: string;
   clouds: { cx: number; cy: number; rx: number; ry: number; o: number; dim: boolean }[];
   /** The windows are one path of small squares, lit once the city is in. */
@@ -237,7 +252,8 @@ export type HorizonScene = {
   palms: Palm[];
   /** The headland: its land, the lit sand along its waterline, and the grass at the palms' feet. */
   shore: { land: string; sand: string; grass: string };
-  birds: { d: string; width: number; delay: number }[];
+  /** `pivot`: where its wings hinge as it flaps, 60 % of the way down its outline from the wings' peaks to their tips. */
+  birds: { d: string; width: number; delay: number; pivot: Point }[];
 };
 
 /** The depth at which the road surface meets the bottom of the picture (a little past it). */
@@ -496,13 +512,30 @@ export function buildHorizon(layout: HorizonLayout): HorizonScene {
   const { width: W, horizon: hy } = layout;
 
   const stars: HorizonScene["stars"] = [];
+  const twinkling: HorizonScene["stars"] = [];
   for (let i = 0; i < layout.stars; i += 1) {
     const y = Math.pow(random(), 1.8) * hy * 0.5;
     const x = random() * W;
     const r = random() < 0.1 ? 1.4 : 0.8;
     const twinkle = random() < 0.4;
-    stars.push({ x: r1(x), y: r1(y), r, o: r1((1 - y / (hy * 0.5)) * 0.8 * 100) / 100, twinkle, dur: r1(2 + random() * 4), delay: r1(-random() * 4) });
+    // The star's own clock, drawn as before and left unused (its group keeps the time): every later
+    // part of the picture keeps its place in the sequence, so the picture stays the same.
+    random();
+    random();
+    const star: HorizonScene["stars"][number] = { x: r1(x), y: r1(y), r, o: r1((1 - y / (hy * 0.5)) * 0.8 * 100) / 100, phase: null };
+    stars.push(star);
+    if (twinkle) twinkling.push(star);
   }
+  // The twinkling stars dealt out across the sky from left to right, so no two neighbours share a
+  // phase; each group on a clock of its own, every group at a different pace from 2 to 6 s a breath.
+  [...twinkling].sort((a, b) => a.x - b.x).forEach((star, i) => {
+    star.phase = i % TWINKLE_GROUPS;
+  });
+  const beat = seeded(layout.seed + 1);
+  const twinkles = Array.from({ length: TWINKLE_GROUPS }, (_, group) => ({
+    dur: r1(2 + (4 * (group + 0.15 + 0.7 * beat())) / TWINKLE_GROUPS),
+    delay: r1(-beat() * 4),
+  }));
 
   const { x: mx, y: my, r: mr } = layout.moon;
   // A thin crescent, lit on the side of the sun below it.
@@ -635,12 +668,16 @@ export function buildHorizon(layout: HorizonLayout): HorizonScene {
       d: `M${r1(x - 8 * s)} ${r1(y)}Q${r1(x - 4 * s)} ${r1(y - 4.5 * s)} ${r1(x)} ${r1(y)}Q${r1(x + 4 * s)} ${r1(y - 4.5 * s)} ${r1(x + 8 * s)} ${r1(y)}`,
       width: r1(1.6 * s),
       delay: r1(-random()),
+      // Each wing's curve peaks halfway to its control point, 2.25·s over the tips: 60 % down from
+      // there is 0.9·s over them (the fill box's 50 % 60 %, which the flap turned about in one <svg>).
+      pivot: { x: r1(x), y: r1(y - 0.9 * s) },
     });
   }
 
   return {
     layout,
     stars,
+    twinkles,
     moon,
     clouds,
     city: { skyline, windows, tops },
