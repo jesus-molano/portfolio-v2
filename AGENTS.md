@@ -621,8 +621,53 @@ also exists as real DOM for keyboard and screen-reader users.
     35 mm film grain (`FilmGrain.tsx`, `shaders/filmGrain.ts`, 24 grain
     frames a second). High tier only: chromatic aberration and depth of
     field (`LensDepthOfField.tsx`), which reads `lens.ts` every frame and
-    does no work while `bokehScale` is 0. In production a slow device steps
-    down (`degrade.ts`): depth of field off, then dpr 1, never back up.
+    does no work while `bokehScale` is 0 or the quality level has none.
+  - Quality (`degrade.ts`, `gpuHint.ts`, `qualityMonitor.ts`,
+    `qualityStore.ts`, all tested): one level for the visit, shared by
+    both canvases (a step down in the hero holds in the city, and the other
+    way round), on a ladder of seven, 0 to 6. A level sets the canvas's
+    pixel budget and its pixel ratio's ceiling and floor (`pixelRatioFor`:
+    the screen's own ratio up to the ceiling, no more than the budget
+    allows, snapped down to 0.05; over the window's width and the stable
+    large screen, `useCanvasDpr`: the host owns the Canvas's `dpr`, which
+    R3F applies again at every host render), the depth of field and the
+    clouds' octaves and self-shadow sample (uniforms in `shaders/sky.ts`,
+    under the tier's compiled maximum, written by `Sky` and `Sun`; the
+    environment map keeps full detail). A slow GPU gives up, in order and
+    only as far as it must: pixels over 2.6 million, then (before she
+    enters only) chromatic aberration and SMAA's high preset, then the
+    clouds' fifth octave and shadow, pixels over 2.07 million, the depth of
+    field, and last of all pixels under the screen's own (a floor of
+    0.85, then 0.7) and another octave. Level 0 is today's look; it only
+    caps a 4K screen at 150 % at 3.7 million pixels, which sent 8.3
+    million through every pass. The grain keeps its size on screen at any
+    ratio (`grainScale`). Where a
+    visit starts comes from the renderer string, read locally (no network,
+    no benchmark): Intel's plain HD and UHD low (level 4), Iris and the
+    integrated Radeon mid (2), a software rasteriser at the bottom (6),
+    every other or masked GPU at the top (0). The post's structure
+    (`Structure`: chromatic aberration and SMAA's high preset only for a
+    visit starting on level 0 or 1; NanGuard in the night only on Mesa or a
+    Linux that is not Android) follows the level until she enters and is
+    frozen at `markEntered`: changing it compiles the passes again.
+    Production only, `QualityWatch` (one per canvas) counts late frames
+    (`qualityMonitor.ts`: a one-second window is bad when over a fifth of
+    its frames take more than 1.25 times the interval expected, the
+    display's or 60 Hz's until it is measured; two bad windows in a row
+    step down, at most once every 2 s; a frame over 250 ms is a hitch, not
+    a level), and never one before she has entered or in her first 2 s,
+    under the load screen, in a hidden tab, in the first second after the
+    loop wakes or a level lands, or drawn on request: drei's
+    PerformanceMonitor averaged the frame rate, so the judder of a vsync
+    missed every few frames never showed, and above 100 Hz it hardly ever
+    stepped down. On a display of 118 Hz or more (`reportRefresh`, once
+    measured) the first step is half rate, the 3D on every second refresh
+    (`halfRate`), and a GPU below the top starts there; never at 100 Hz or
+    less. A level lands under the next cut (`markCut`: HeroStage at a shot
+    change, WorkStage at the bottom of a dip or under its cover) or 1.5 s
+    after the step anyway, its reallocated targets unseen, and never goes
+    back up. A development build stays on level 0 with the full post
+    (captures stay comparable; `window.__vaQuality` forces a level).
   - Warm-up (`HeroWarmup.tsx`, `warmup.ts`, tested): behind the start menu
     the hero compiles every material, visible or not, as the composer
     draws it (`compileAsComposed`: a half-float target like the
@@ -926,7 +971,7 @@ also exists as real DOM for keyboard and screen-reader users.
     held but the browser delivers only after the lift (a busy phone
     queues it) is dropped by its own time stamp, a finger's whole stroke
     with it, and the key that loaded never repeats into the place. The
-    scenes' performance monitors ignore the frames under it
+    scenes' quality watches ignore the frames under it
     (`isLoadHolding`): a load's compile never steps a phone down for the
     visit. Back or a fragment while it holds lands there instead
     (PageEntry), the focus with it. At the lift the focus goes to the
@@ -1236,8 +1281,9 @@ also exists as real DOM for keyboard and screen-reader users.
   crane's pace, the lit mast stays under the route, and PwC's blade never
   reads WC (P, W and C whole, or W cropped before P leaves: the marquee
   beat rises to the blade and reads it down). The driver sits in the car
-  on every tier. Speed: the hero's dpr (`FULL_DPR`) and its one
-  step down on a slow device (production, `PerformanceMonitor`); every
+  on every tier. Speed: the hero's quality level (`qualityStore.ts`, its
+  pixels and its post's structure; a step down in either canvas holds in
+  both, and lands under a dip); every
   stop's materials are compiled as the composer draws them
   (`compileAsComposed`, the hero's warm-up, `hero/scene/warmup.ts`:
   compiled for the screen, they were programs nothing drew, and every cut
@@ -2036,6 +2082,10 @@ To add a track to a station:
 - `window.__vaLens = { focusDistance, focusRange, bokehScale }`
   (`lensBlur.ts`) overrides the lens for depth-of-field work, in metres
   from the camera. Delete it after use.
+- `window.__vaQuality(level?)` (`qualityStore.ts`) forces a quality level
+  (degrade.ts), up or down, with its post's structure even once she has
+  entered, and returns the state (with no level it only reads it). A
+  development build starts on level 0 and never steps down by itself.
 - `window.__vaJump(p)` (`HeroStage.tsx`) opens the story up to `p` and jumps
   the picture and the page scroll there; `tools/capture` uses it.
 - `window.__vaProbe = []` (`HeroStage.tsx`) makes every hero frame push its
@@ -2061,8 +2111,8 @@ To add a track to a station:
   (its states must not restart).
 - Nothing draws or ticks for what nobody sees: the hero's canvas stops
   behind the start menu 3 s after the scene is ready
-  (`scene/heroFrameloop.ts`, tested; its PerformanceMonitor only watches
-  once she has entered) and under its opaque night (`heroCover.ts`, the
+  (`scene/heroFrameloop.ts`, tested; its QualityWatch only counts once
+  she has entered) and under its opaque night (`heroCover.ts`, the
   fade at 0.999 or more); the loader's drawing loop writes only what
   changed and stops once the load line is full, and its tip timer and
   resize listener stop once she has entered; the hero's and the city's
@@ -2109,13 +2159,13 @@ To add a track to a station:
   readable without WebGL: real text in the DOM, CSS sky as fallback.
 - Nothing inside a Canvas re-renders when the frame loop, a cover, the
   scene's readiness or the load screen changes, nor at a cut (a slow
-  device's step down reaches the post at most): R3F's Canvas renders whatever it holds again at every render of
+  device's step down reaches the root's pixel ratio at most): R3F's Canvas renders whatever it holds again at every render of
   its host, and a cut, the end cover, the loop waking or the city's cover
   lifting reconciled two dozen components (the night's five sets, and its
   environment captured its cube again). So `HeroCanvas` and `NightCanvas`
   are memoised (their props are the server's copy and the stage's
   memoised timeline), each scene's children are one memoised world
-  (`HeroWorld`, `NightWorld`) beside its monitor and its post, and the
+  (`HeroWorld`, `NightWorld`) beside its quality watch and its post, and the
   post (`Effects`, `NightEffects`) and both environments
   (`SkyEnvironment`, `NightEnvironment`: drei captures the cube again
   whenever its children change) are memoised too. A part gets constants
@@ -2150,7 +2200,12 @@ To add a track to a station:
 - Quality tiers come from `useQualityTier` (viewport + pointer heuristics, no
   network calls). The low tier drops the pier, chromatic aberration,
   depth of field and the clear coat on the driver's lenses, and renders a
-  smaller environment cube.
+  smaller environment cube. The tier is what the scene holds; what a frame
+  costs is the quality level's (`degrade.ts`, above), the same on both
+  tiers. The Canvas is keyed by its tier, so once the scene is ready on a
+  fine pointer the tier no longer changes (`settleTier`, shared by both
+  canvases): a desktop window narrowed under the phone width mid-film
+  built the whole scene again in front of her.
 - Deterministic layouts use `createRandom(seed)` so screenshots are stable.
 
 ## Content map

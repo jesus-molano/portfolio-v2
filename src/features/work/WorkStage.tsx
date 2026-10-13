@@ -28,6 +28,7 @@ import { Pedal } from "@/features/hero/Pedal";
 import { dashLayout, newDashState, stepDash, stepLimiter } from "@/features/hero/scroll/dash";
 import { type FeedbackInput, newFeedback, stepFeedback } from "@/features/hero/scroll/feedback";
 import { meterRate } from "@/features/hero/scroll/throttle";
+import { markCut } from "@/features/hero/scene/qualityStore";
 import { getSceneLoading } from "@/features/hero/sceneLoading";
 import { getRadio } from "@/features/music/radio";
 import { DIRECTION } from "@/features/night/direction";
@@ -530,6 +531,8 @@ export function WorkStage({ work, cues, pedal: pedalCopy, osd, locale, children 
         coverIn.warm = night.warm;
         const covered = nightCovered(coverIn);
         setNightCovered(covered);
+        // At the bottom of a dip, or under the cover, nobody sees the frame a quality level waiting to land costs.
+        if (covered || dip > 0.98) markCut(now);
         // Woken as the cover starts to lift, the canvas shows the picture it slept on (the car out of shot at the
         // stage's top) until its loop draws again, and the car popped in through the lifting cover. The cover
         // holds until the canvas has drawn, then fades to where the scroll has it, never faster than the title.

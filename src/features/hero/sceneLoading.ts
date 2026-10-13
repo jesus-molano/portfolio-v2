@@ -1,3 +1,5 @@
+import { lockStructure } from "./scene/qualityStore";
+
 /**
  * Loading state shared by the 3D scene and the DOM loading screen, without
  * importing three.js into the page bundle. The scene reports progress and
@@ -102,10 +104,13 @@ export function markSceneReady() {
 /**
  * The visitor left the loading screen, by key or by pointer. The hero uses
  * the time to ignore the key press that entered and the way in to pick the
- * first hint (scroll, swipe or Space).
+ * first hint (scroll, swipe or Space). The post's structure holds from here
+ * on (qualityStore.ts): changing it compiles its passes again, a hitch.
  */
 export function markEntered(via: EnteredVia = "pointer", now: number = performance.now()) {
-  if (!state.entered) update({ entered: true, enteredAt: now, enteredVia: via });
+  if (state.entered) return;
+  lockStructure();
+  update({ entered: true, enteredAt: now, enteredVia: via });
 }
 
 /** The hero reached a quiet moment after its first line (see `settled`). Once. */

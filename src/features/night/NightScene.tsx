@@ -1,14 +1,15 @@
 "use client";
 
-import { Environment, Lightformer, PerformanceMonitor, useProgress } from "@react-three/drei";
+import { Environment, Lightformer, useProgress } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { memo, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { memo, Suspense, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import type { Group, Material, Mesh, Texture, WebGLRenderer, WebGLRenderTarget } from "three";
 import { palette } from "@/design/tokens";
 import { SceneErrorBoundary } from "@/features/hero/SceneErrorBoundary";
-import { FULL_DPR } from "@/features/hero/scene/degrade";
+import { QualityWatch } from "@/features/hero/scene/QualityWatch";
+import { getQuality, getServerQuality, seedFromRenderer, subscribeQuality } from "@/features/hero/scene/qualityStore";
+import { useCanvasDpr } from "@/features/hero/scene/useCanvasDpr";
 import { compileAsComposed, createWarmTarget, uploadTextures, warmKey } from "@/features/hero/scene/warmup";
-import { getServerLoadHolding, isLoadHolding, subscribeLoadHold } from "@/features/load/loadHold";
 import type { QualityTier } from "@/features/hero/useQualityTier";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -38,6 +39,9 @@ type Props = {
 
 /** Production only, as in the hero: a dev build's frame rate says nothing about the device. */
 const WATCH_FRAME_RATE = process.env.NODE_ENV === "production";
+
+const getStructure = () => getQuality().structure;
+const getServerStructure = () => getServerQuality().structure;
 
 /** One fog for every stop: it is the same island all night. */
 const FOG = { near: 30, far: 260 } as const;
@@ -229,7 +233,7 @@ type WorldProps = { tier: QualityTier; timeline: StageTimeline; work: Dictionary
 /**
  * Everything the night's canvas draws, the post aside. Memoised, and fed
  * only what changes the city (the tier, the timeline, the copy): the frame
- * loop waking and resting, the load screen and the performance monitor
+ * loop waking and resting, the quality level and the window's size
  * re-render NightScene, and with it the Canvas, which re-renders whatever
  * it holds; here they stop at the root, and none of them reconciles the
  * five sets.
@@ -281,10 +285,9 @@ const NightWorld = memo(function NightWorld({ tier, timeline, work, locale }: Wo
  * shared and take the stop's look at each cut.
  */
 export function NightScene({ tier, active, timeline, work, locale, onCreated }: Props) {
-  // The hero's pixels (degrade.ts), and its one step down on a slow device: dpr 1, never back up.
-  const [slow, setSlow] = useState(false);
-  // A save loading under the load screen: its compile frames are no measure of the device (never a step down for them).
-  const holding = useSyncExternalStore(subscribeLoadHold, isLoadHolding, getServerLoadHolding);
+  // The visit's quality level, the hero's (qualityStore.ts): a step down in either canvas holds in both.
+  const dpr = useCanvasDpr(tier);
+  const structure = useSyncExternalStore(subscribeQuality, getStructure, getServerStructure);
   // The frame loop wakes as the stage comes back on screen: the car lands on the picture (CarDrive).
   useEffect(() => {
     if (active) night.woke = true;
@@ -294,7 +297,7 @@ export function NightScene({ tier, active, timeline, work, locale, onCreated }: 
     <Canvas
       key={tier}
       flat
-      dpr={slow ? 1 : FULL_DPR}
+      dpr={dpr}
       // Measured on resize only: by default R3F re-measures its box on every scroll (a layout read) and,
       // as the box moves with the page, re-renders the whole scene tree about twenty times a second.
       resize={{ scroll: false }}
@@ -306,14 +309,16 @@ export function NightScene({ tier, active, timeline, work, locale, onCreated }: 
       onCreated={(state) => {
         // Production skips reading each program's logs back on its first use (a wait on the driver each).
         state.gl.debug.checkShaderErrors = process.env.NODE_ENV !== "production";
+        // The hero's renderer has usually seeded the visit's level already; if it had none, this one does.
+        seedFromRenderer(state.gl);
         onCreated?.(state);
       }}
       aria-hidden
     >
       <DisposeOnUnmount />
-      {WATCH_FRAME_RATE && active && !slow && !holding ? <PerformanceMonitor onDecline={() => setSlow(true)} /> : null}
+      {WATCH_FRAME_RATE ? <QualityWatch /> : null}
       <NightWorld tier={tier} timeline={timeline} work={work} locale={locale} />
-      <NightEffects tier={tier} />
+      <NightEffects tier={tier} structure={structure} />
     </Canvas>
   );
 }
