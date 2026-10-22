@@ -103,6 +103,8 @@ class FakeAudio {
   duration = Number.NaN;
   /** Makes play() fail, like a missing file. */
   broken = false;
+  /** Makes play() refused, as Safari refuses a deck that never played in a gesture. */
+  blocked = false;
   private attributes = new Map<string, string>();
   private listeners = new Map<string, (() => void)[]>();
 
@@ -135,6 +137,7 @@ class FakeAudio {
       this.emit("error");
       return Promise.reject(new Error("broken"));
     }
+    if (this.blocked) return Promise.reject(Object.assign(new Error("blocked"), { name: "NotAllowedError" }));
     this.paused = false;
     this.emit("playing");
     return Promise.resolve();
@@ -240,6 +243,35 @@ describe("createPlayer", () => {
     expect(playing().map((candidate) => candidate.src)).toEqual(["/music/b.mp3"]);
     expect(playing()[0].volume).toBeCloseTo(0.65, 5);
     expect(onTrack).toHaveBeenLastCalledWith("bobsled", 1);
+  });
+
+  it("plays the next track on the deck on air when the browser refuses the preloaded one", async () => {
+    const fetchSpy = vi.fn(() => Promise.resolve());
+    vi.stubGlobal("fetch", fetchSpy);
+    const onTrack = vi.fn();
+    const player = createPlayer({ onTrack })!;
+    await player.tune(STATION, { crackle: false, fromTop: true });
+    finishFades();
+    const [deck] = FakeAudio.all;
+    deck.duration = 100;
+    deck.currentTime = 95;
+    deck.emit("timeupdate");
+    const preloaded = FakeAudio.all.find((candidate) => candidate.src === "/music/b.mp3")!;
+    // Created outside her gesture: Safari and iOS never let it start on its own.
+    preloaded.blocked = true;
+    deck.emit("ended");
+    await vi.waitFor(() => expect(deck.src).toBe("/music/b.mp3"));
+    expect(playing()).toEqual([deck]);
+    expect(deck.volume).toBeCloseTo(0.65, 5);
+    expect(onTrack).toHaveBeenLastCalledWith("bobsled", 1);
+    // From then on the next track only goes into the cache, and plays on the same deck.
+    deck.duration = 50;
+    deck.currentTime = 45;
+    deck.emit("timeupdate");
+    expect(fetchSpy).toHaveBeenCalledWith("/music/c.mp3");
+    deck.emit("ended");
+    expect(deck.src).toBe("/music/c.mp3");
+    expect(playing()).toEqual([deck]);
   });
 
   it("loops the playlist after the last track", async () => {
