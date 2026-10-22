@@ -154,6 +154,10 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
   let queued: { deck: HTMLAudioElement; url: string } | null = null;
   /** When each station's broadcast started, in seconds since the epoch (0 unless restarted). */
   const epochs = new Map<Program["id"], number>();
+  /** The browser refused a preloaded deck (Safari, iOS): the next track loads on the deck on air. */
+  let swapBlocked = false;
+  /** The next track's file, asked into the HTTP cache while swapBlocked. */
+  let warmed: string | null = null;
   /** Tracks in a row that failed to play on the live station. */
   let failures = 0;
   let hidden = false;
@@ -256,7 +260,8 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
     const { station } = live;
     const index = nextTrack(live.index, station.tracks.length);
     const track = station.tracks[index];
-    let media = live.deck;
+    const previous = live.deck;
+    let media = previous;
     if (queued && queued.url === track.url && queued.deck !== media) {
       const next = queued.deck;
       queued = null;
@@ -271,8 +276,20 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
     live = { station, deck: media, index };
     events.onTrack?.(station.id, index);
     if (hidden) return;
-    media.play().catch(() => {
-      // Blocked or broken: the error handler moves on, or reports it.
+    media.play().catch((error: unknown) => {
+      // Broken: the error handler moves on, or reports it.
+      if (media === previous || (error as { name?: string } | null)?.name !== "NotAllowedError") return;
+      // Blocked: the preloaded deck never played in a gesture of hers, and
+      // Safari (and iOS) let only such a deck start on its own; the track
+      // plays on the deck that was on air, which did.
+      if (live?.deck !== media || live.index !== index) return;
+      swapBlocked = true;
+      media.pause();
+      stopFade(previous);
+      previous.volume = media.volume;
+      load(previous, track, 0);
+      live = { station, deck: previous, index };
+      previous.play().catch(() => {});
     });
   };
 
@@ -287,6 +304,12 @@ export function createPlayer(events: PlayerEvents = {}, { volume = 1 } = {}): Pl
     const url = station.tracks[nextTrack(index, station.tracks.length)].url;
     // A one-track playlist starts its own file again.
     if (url === live.deck.getAttribute("src")) return;
+    if (swapBlocked) {
+      // Into the HTTP cache only: the deck on air loads it from there when its turn comes.
+      if (warmed !== url) fetch(url).catch(() => {});
+      warmed = url;
+      return;
+    }
     const next = freeDeck();
     next.volume = 0;
     next.src = url;
