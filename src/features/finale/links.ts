@@ -13,7 +13,7 @@ export const PROFILE_LABELS = {
 } as const;
 
 /** Dictionary key of a feature on the bill (`projects.posters.<id>`). */
-export type FeatureId = "dotfiles" | "trazada" | "project-atlas" | "expenses-log-app";
+export type FeatureId = "dotfiles" | "trazada" | "overlap" | "expenses-log-app";
 
 export type Feature = {
   id: FeatureId;
@@ -33,13 +33,12 @@ const feature = (id: FeatureId, repo: string, anchor: string): Feature => ({
 
 /**
  * The side projects on The Afterglow's bill, left to right, as their cases
- * hang on the plate (tools/art/finale/cinema.mjs, BILL). `atlas-habits` is
- * left out on purpose: project-atlas is a different repository.
+ * hang on the plate (tools/art/finale/cinema.mjs, BILL).
  */
 export const FEATURES: readonly Feature[] = [
   feature("dotfiles", "dotfiles", "project-dotfiles"),
   feature("trazada", "trazada", "project-trazada"),
-  feature("project-atlas", "project-atlas", "project-atlas"),
+  feature("overlap", "OverLap", "project-overlap"),
   feature("expenses-log-app", "Expenses-Log-App", "project-expenses-log-app"),
 ];
 

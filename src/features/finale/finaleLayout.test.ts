@@ -53,7 +53,7 @@ describe("marqueeTiles", () => {
 
   it("hangs a letter the same way whenever it is in the same slot of the same row", () => {
     const a = marqueeTiles("NOW SHOWING: DOTFILES", 1);
-    const b = marqueeTiles("NOW SHOWING: PROJECT ATLAS", 1);
+    const b = marqueeTiles("NOW SHOWING: OVERLAP", 1);
     for (let slot = 0; slot < 13; slot++) expect(b[slot]).toEqual(a[slot]);
     expect(marqueeTiles("NOW", 2)[0].tilt).not.toBe(a[0].tilt);
   });

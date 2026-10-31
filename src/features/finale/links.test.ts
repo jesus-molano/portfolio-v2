@@ -61,17 +61,15 @@ describe("the finale's links", () => {
     expect(FEATURES.map((feature) => feature.href)).toEqual([
       "https://github.com/jesus-molano/dotfiles",
       "https://github.com/jesus-molano/trazada",
-      "https://github.com/jesus-molano/project-atlas",
+      "https://github.com/jesus-molano/OverLap",
       "https://github.com/jesus-molano/Expenses-Log-App",
     ]);
     expect(FEATURES.map((feature) => feature.anchor)).toEqual([
       "project-dotfiles",
       "project-trazada",
-      "project-atlas",
+      "project-overlap",
       "project-expenses-log-app",
     ]);
-    // atlas-habits is a different project, left out on purpose.
-    expect(FEATURES.some((feature) => feature.repo === "atlas-habits")).toBe(false);
   });
 
   it("points at the posters the art tool writes, in both sizes", () => {

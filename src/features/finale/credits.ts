@@ -93,8 +93,7 @@ export const TYPEFACES = {
   /**
    * Mr Dafoe and Big Shoulders Display: the chapter cards' words and their
    * banners' capitals; Special Elite: the army's service record, typed (Big
-   * Shoulders and Special Elite are poster faces too; each face is
-   * credited once).
+   * Shoulders is a poster face too; each face is credited once).
    */
   site: ["Unbounded", "Space Grotesk", "JetBrains Mono", "Mr Dafoe", "Big Shoulders Display", "Special Elite"],
   radio: ["Shrikhand", "Kanit", "Playfair Display", "Yellowtail", "Bowlby One", "Limelight", "Bebas Neue"],

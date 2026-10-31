@@ -928,15 +928,15 @@
         "sub": "Se apagan los semáforos. Otra vez.",
         "oneLiner": "Una app no oficial para revivir en 3D sesiones de Fórmula 1 en tu PC: todos los coches a la vez, con la torre de tiempos, la telemetría, las radios de equipo y la dirección de carrera."
       },
-      "project-atlas": {
-        "title": "PROJECT ATLAS",
-        "genre": "Policíaco",
+      "overlap": {
+        "title": "OVERLAP",
+        "genre": "Terror",
         "tagline": [
-          "NADIE SE MUEVE",
-          "HASTA COMPLETAR EL TABLERO."
+          "NO PUEDES VERLO.",
+          "PERO ESTÁ JUSTO A TU LADO."
         ],
-        "sub": "Lea el expediente, agente.",
-        "oneLiner": "Un mapa de un proyecto frontend que el agente de código lee antes de tocar nada: sus componentes, su diseño, las decisiones ya tomadas y los riesgos."
+        "sub": "Coche a la izquierda. Sigue ahí.",
+        "oneLiner": "Un overlay para iRacing en Windows: once widgets sobre el simulador (relativo, posiciones, radar, spotter, delta, combustible y más) leídos de su telemetría, cada uno colocado y personalizado a tu gusto."
       },
       "expenses-log-app": {
         "title": "EXPENSES LOG",

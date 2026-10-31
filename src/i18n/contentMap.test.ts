@@ -25,7 +25,7 @@ const RULES: Rule[] = [
     // "Trazada" is also plain Spanish (a racing line, a traced route): a
     // section that needs the word as such widens this rule with a comment.
     subject: "a side project's repository",
-    pattern: /dotfiles|\btrazada\b|project[\s_-]*atlas|expenses[\s_-]*log/i,
+    pattern: /dotfiles|\btrazada\b|\boverlap\b|expenses[\s_-]*log/i,
     owners: [/^projects\./],
   },
   {
@@ -158,7 +158,7 @@ describe("the content map", () => {
           .map(([, value]) => value)
           .join("\n");
       const cinema = text(/^projects\.posters\./);
-      for (const repo of [/dotfiles/i, /trazada/i, /project[\s_-]*atlas/i, /expenses[\s_-]*log/i]) {
+      for (const repo of [/dotfiles/i, /trazada/i, /\boverlap\b/i, /expenses[\s_-]*log/i]) {
         expect(cinema, String(repo)).toMatch(repo);
       }
       const missions = text(/^stats\.missions\.items\./);

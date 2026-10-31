@@ -24,7 +24,7 @@ Telpark) as a rotating trivision billboard; Logixs (2025-2026;
 Bytetravel, Retech) as torn wheat-paste posters on a wall,
 like the Rolling Stones "Angry" video; Heuristik (2026-now).
 Content may break out of the board's frame. Then the personal projects,
-faster: dotfiles, trazada, project-atlas, Expenses-Log-App. Every
+faster: dotfiles, trazada, OverLap, Expenses-Log-App. Every
 billboard, sign and poster is a link with a hover state, and its text
 also exists as real DOM for keyboard and screen-reader users.
 
@@ -2614,6 +2614,5 @@ Each subject, who tells it in full, and what the rest may do:
 - No Rockstar assets, logos or the GTA typeface. Inspiration only.
 - Heuristik is the current employer: show the role and dates only (no
   city), nothing from its clinical projects; its work mode («En remoto»)
-  only on STATS's main missions, where the owner asked for it. Skip `atlas-habits` on purpose
-  (`project-atlas` is a different repo and belongs in the projects).
+  only on STATS's main missions, where the owner asked for it.
 - The site never calls the Claude API. Generated data lives as JSON in the repo.
