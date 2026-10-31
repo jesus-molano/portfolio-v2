@@ -15,7 +15,7 @@ import { C, rng, f, clamp, lerp, mix, esc, poly, palmCrown } from "./lib.mjs";
 import { posterSymbol } from "./posters.mjs";
 
 /** The repositories on the bill, left to right (the cases' order). */
-export const BILL = ["dotfiles", "trazada", "project-atlas", "Expenses-Log-App"];
+export const BILL = ["dotfiles", "trazada", "OverLap", "Expenses-Log-App"];
 
 /** World metres: facade plane z 0, ground y 0, x centred on the entrance. */
 export const CIN = {

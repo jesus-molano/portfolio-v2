@@ -1,7 +1,7 @@
 /**
  * The four one-sheets of The Afterglow (src/features/finale): one original
  * poster per side project, each in its own genre (a fifties sci-fi
- * B-movie, a sports drama, a procedural's evidence board, a neo-noir). 27 x
+ * B-movie, a sports drama, an eighties horror, a neo-noir). 27 x
  * 40 ratio, 270 x 400 units, one per repository and locale; title, tagline
  * and billing are baked in. Our own drawings and type, no borrowed art or
  * logos.
@@ -47,12 +47,12 @@ export const POSTERS = [
     },
   },
   {
-    key: "atl", repo: "project-atlas",
-    tag: copy("project-atlas", "tagline"),
-    sub: copy("project-atlas", "sub"),
+    key: "ovl", repo: "OverLap",
+    tag: copy("overlap", "tagline"),
+    sub: copy("overlap", "sub"),
     bill: {
-      en: ["THE AFTERGLOW PRESENTS · STARRING TYPESCRIPT · NODE 24 · NUXT 4", "WITH ADAPTERS FOR REACT · VUE · ASTRO · AND ITS OWN CLI"],
-      es: ["THE AFTERGLOW PRESENTA · CON TYPESCRIPT · NODE 24 · NUXT 4", "ADAPTADORES PARA REACT · VUE · ASTRO · Y SU PROPIA CLI"],
+      en: ["THE AFTERGLOW PRESENTS · STARRING ELECTRON · VUE 3 · TYPESCRIPT", "WITH THE IRACING SDK · KOFFI · VITE · AND ELEVEN WIDGETS ON TOP"],
+      es: ["THE AFTERGLOW PRESENTA · CON ELECTRON · VUE 3 · TYPESCRIPT", "EL SDK DE IRACING · KOFFI · VITE · Y ONCE WIDGETS ENCIMA"],
     },
   },
   {
@@ -484,112 +484,100 @@ function trazada(p, lang, id, hot = false) {
 </symbol>`;
 }
 
-/* ------------------------------------------------------ 3 project-atlas */
-function atlas(p, lang, id, hot = false) {
-  const r = rng(37);
-  const L = lang === "es"
-    ? { comp: "COMPONENTES", design: "DISEÑO", dec: "DECISIONES", risk: "RIESGOS", note: ["¿QUIÉN", "TOCÓ LOS", "TOKENS?"], card: ["DECISIÓN 014", "Los tokens", "no se tocan."], stamp: "EVIDENCIAS", sheet: "ATLAS · HOJA 1", tokens: "TOKENS", button: "BOTÓN ×14", modal: "¿RIESGO?" }
-    : { comp: "COMPONENTS", design: "DESIGN", dec: "DECISIONS", risk: "RISKS", note: ["WHO", "MOVED THE", "TOKENS?"], card: ["DECISION 014", "The tokens", "stay put."], stamp: "EVIDENCE", sheet: "ATLAS · SHEET 1", tokens: "TOKENS", button: "BUTTON ×14", modal: "RISK?" };
-  // The stamp's box fits its word; a long one (EVIDENCIAS) moves left so it stays on the sheet.
-  const stampW = L.stamp.length * 8.2 + 14;
-  const stampX = Math.min(176, W - 12 - stampW);
-  // cork speckle
-  let cork = "";
-  for (let i = 0; i < 520; i++) {
-    const x = r() * W, y = r() * 300;
-    cork += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(0.4 + r() * 1.3)}" fill="${r() < 0.5 ? "#3a1a2c" : "#c58a7a"}" opacity="${f(0.15 + r() * 0.3)}"/>`;
+/* ------------------------------------------------------------ 3 OverLap */
+/**
+ * An eighties horror one-sheet: in the dark, the overlay's own radar (the
+ * player's car in the middle, the lanes, the 10 and 20 m rings) floats like
+ * a found screen, and a red car sits half alongside, its glow bleeding off
+ * the radar's edge, two headlights in the fog beyond it like eyes. The
+ * spotter's bar on that side burns red. No sim's logo or screen, only the
+ * app's own drawing; lit, the glow, the eyes and the bar flare.
+ */
+function overlap(p, lang, id, hot = false) {
+  const r = rng(71);
+  const L = { near: "10 m", far: "20 m" };
+  // fog: soft violet clouds drifting across the dark
+  let fog = "";
+  for (let i = 0; i < 22; i++) {
+    const x = r() * W, y = 40 + r() * 280, rx = 30 + r() * 60, ry = 8 + r() * 16;
+    fog += `<ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(rx)}" ry="${f(ry)}" fill="${r() < 0.3 ? "#5a1838" : "#3a2a5c"}" opacity="${f(0.12 + r() * 0.2)}"/>`;
   }
-  // the map: blocks, an avenue, the river, four districts
-  let map = "";
-  const mx = 54, my = 94, mw = 166, mh = 122;
-  map += `<rect x="${mx}" y="${my}" width="${mw}" height="${mh}" fill="#f4e6d4"/>`;
-  for (let gx = 0; gx < 13; gx++) for (let gy = 0; gy < 9; gy++) {
-    if (r() < 0.12) continue;
-    map += `<rect x="${f(mx + 6 + gx * 12.6)}" y="${f(my + 8 + gy * 13)}" width="${f(8.4 + r() * 2)}" height="${f(8.6 + r() * 2)}" fill="${r() < 0.15 ? "#e8b8c4" : "#ddc9cf"}"/>`;
+  let dust = "";
+  for (let i = 0; i < 70; i++) {
+    const x = r() * W, y = 30 + r() * 300;
+    dust += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(0.3 + r() * 0.6)}" fill="${r() < 0.4 ? "#ff6a7a" : C.cream}" opacity="${f(0.08 + r() * 0.3)}"/>`;
   }
-  map += `<path d="M${mx},${my + 96} C${mx + 40},${my + 84} ${mx + 70},${my + 112} ${mx + 112},${my + 96} S${mx + 150},${my + 70} ${mx + mw},${my + 78}" fill="none" stroke="#9fd6e2" stroke-width="7"/>`;
-  map += `<path d="M${mx + 8},${my + mh} L${mx + mw - 18},${my}" stroke="#f4e6d4" stroke-width="4"/><path d="M${mx + 8},${my + mh} L${mx + mw - 18},${my}" stroke="#c9a2a8" stroke-width=".6"/>`;
-  map += `<path d="M${mx + mw / 3},${my} V${my + mh} M${mx + (2 * mw) / 3},${my} V${my + mh} M${mx},${my + mh / 2} H${mx + mw}" stroke="#b89a8e" stroke-opacity=".5" stroke-width=".7"/>`;
-  const dist = [
-    [mx + 6, my + 6, 70, 52, L.comp], [mx + 92, my + 6, 72, 46, L.design],
-    [mx + 6, my + 66, 66, 56, L.dec], [mx + 96, my + 62, 68, 60, L.risk],
-  ];
-  dist.forEach(([x, y, w, h, lab], i) => {
-    map += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${i === 3 ? "#ff2d6f" : "#6a4bc4"}" fill-opacity=".08" stroke="${i === 3 ? "#d8205a" : "#4a2a7a"}" stroke-width=".9" stroke-dasharray="3 2"/>`;
-    const lx = i === 0 ? x + 16 : x + 3;
-    map += `<rect x="${lx}" y="${y + 3}" width="${lab.length * 4.6 + 6}" height="9" fill="#f4e6d4"/>`;
-    map += `<text x="${lx + 3}" y="${y + 10}" font-family="'Special Elite'" font-size="7" fill="${i === 3 ? "#c41850" : "#2b1848"}">${lab}</text>`;
-  });
-  map += `<path d="M${mx + 128},${my + 92} l10,10 M${mx + 138},${my + 92} l-10,10" stroke="#d8205a" stroke-width="2.2"/>`;
-  map += `<text x="${mx + mw - 4}" y="${my + mh - 4}" text-anchor="end" font-family="JetBrains Mono" font-size="4.6" fill="#6a4a5a">${L.sheet}</text>`;
-  // compass rose
-  map += `<g transform="translate(${mx + 150} ${my + 26})"><circle r="7" fill="none" stroke="#6a4a5a" stroke-width=".5"/><path d="M0,-10 L2,0 0,10 -2,0 Z" fill="#2b1848"/><text y="-11.5" text-anchor="middle" font-family="JetBrains Mono" font-size="4" fill="#2b1848">N</text></g>`;
-  const pin = (x, y, c = C.magenta) => `<circle cx="${x + 1}" cy="${y + 2.4}" r="3.6" fill="#1a0b14" opacity=".45"/><circle cx="${x}" cy="${y}" r="3.6" fill="${c}"/><circle cx="${x - 1.1}" cy="${y - 1.2}" r="1.1" fill="#fff" opacity=".75"/>`;
-  const pins = { comp: [96, 126], design: [180, 124], dec: [84, 184], risk: [184, 186] };
-  // items around the map
-  const polaroid = `<g transform="rotate(-9 38 84)">
-    <rect x="8" y="48" width="60" height="70" fill="#fbf6ee"/><rect x="13" y="53" width="50" height="46" fill="#1d0f33"/>
-    <rect x="21" y="70" width="34" height="12" rx="6" fill="${C.magenta}"/><text x="38" y="78" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="5.4" fill="#fff">OK</text>
-    <text x="38" y="111" text-anchor="middle" font-family="'Special Elite'" font-size="6.4" fill="#2b1848">${L.button}</text></g>`;
-  const swatch = `<g transform="rotate(8 230 80)">
-    <rect x="202" y="54" width="58" height="58" fill="#fbf6ee"/>
-    <rect x="207" y="59" width="15" height="34" fill="${C.magenta}"/><rect x="223.5" y="59" width="15" height="34" fill="${C.sodium}"/><rect x="240" y="59" width="15" height="34" fill="${C.cyan}"/>
-    <text x="231" y="105" text-anchor="middle" font-family="'Special Elite'" font-size="6.4" fill="#2b1848">${L.tokens}</text></g>`;
-  let lines = "";
-  for (let i = 0; i < 4; i++) lines += `<path d="M18,${222 + i * 8} h76" stroke="#a8c4e0" stroke-width=".5"/>`;
-  const card = `<g transform="rotate(4 56 228)">
-    <rect x="14" y="204" width="84" height="50" fill="#fdfaf2"/><path d="M14,214 h84" stroke="#e86a8a" stroke-width=".6"/>${lines}
-    <text x="20" y="211.5" font-family="'Special Elite'" font-size="6.2" fill="#c41850">${L.card[0]}</text>
-    <text x="20" y="227" font-family="'Special Elite'" font-size="7.6" fill="#2b1848">${L.card[1]}</text>
-    <text x="20" y="237" font-family="'Special Elite'" font-size="7.6" fill="#2b1848">${L.card[2]}</text></g>`;
-  const photo = `<g transform="rotate(-7 222 222)">
-    <rect x="192" y="190" width="62" height="64" fill="#fbf6ee"/><rect x="197" y="195" width="52" height="42" fill="#2a1442"/>
-    <rect x="206" y="202" width="34" height="27" rx="2" fill="#efe2f0"/><rect x="206" y="202" width="34" height="6" fill="#8c62b8"/>
-    <rect x="210" y="212" width="20" height="2.4" fill="#b9a0c8"/><rect x="210" y="217" width="14" height="2.4" fill="#b9a0c8"/>
-    <ellipse cx="223" cy="216" rx="24" ry="17" fill="none" stroke="#ff2d6f" stroke-width="1.6" transform="rotate(-8 223 216)"/>
-    <text x="223" y="248" text-anchor="middle" font-family="'Special Elite'" font-size="6.6" fill="#c41850">${L.modal}</text></g>`;
-  const sticky = `<g transform="rotate(4 148 232)">
-    <rect x="121" y="206" width="56" height="52" fill="#2a1408" opacity=".35" transform="translate(2 3)"/>
-    <rect x="121" y="206" width="56" height="52" fill="${C.sodium}"/><rect x="121" y="206" width="56" height="9" fill="#f5c45a"/>
-    ${L.note.map((l, i) => `<text x="128" y="${226 + i * 10}" font-family="'Special Elite'" font-size="8" fill="#2b1848">${l}</text>`).join("")}</g>`;
-  // red string: from the items to the districts
-  const ends = [[34, 58, ...pins.comp], [228, 62, ...pins.design], [88, 210, ...pins.dec], [224, 196, ...pins.risk], [150, 212, ...pins.comp], [150, 212, ...pins.risk]];
-  let strings = "";
-  for (const [a, b, c, d] of ends) {
-    const mxp = (a + c) / 2, myp = (b + d) / 2 + 6;
-    strings += `<path d="M${a},${b} Q${mxp},${myp} ${c},${d}" fill="none" stroke="#1a0b14" stroke-opacity=".35" stroke-width="1.4" transform="translate(1 2)"/>`;
-    if (hot) strings += `<path d="M${a},${b} Q${mxp},${myp} ${c},${d}" fill="none" stroke="#ff2d95" stroke-width="5" opacity=".6" filter="url(#${id}sh)"/>`;
-    strings += `<path d="M${a},${b} Q${mxp},${myp} ${c},${d}" fill="none" stroke="${hot ? "#ff9ad0" : "#ff2d6f"}" stroke-width="${hot ? 1.4 : 1.1}"/>`;
-  }
+  // the radar, a dark rounded screen, tilted a little
+  const rx0 = 62, ry0 = 76, rw = 160, rh = 168, cx = rx0 + rw / 2, cy = ry0 + rh / 2;
+  const car = (x, y, body, { glow = 0, light = "#ffd27a", stroke = "#1a0b14" } = {}) =>
+    (glow ? `<rect x="${f(x - 11)}" y="${f(y - 21)}" width="22" height="42" rx="9" fill="${body}" opacity="${f(glow)}" filter="url(#${id}b4)"/>` : "") +
+    `<rect x="${f(x - 8)}" y="${f(y - 17)}" width="16" height="34" rx="5.5" fill="${body}" stroke="${stroke}" stroke-width="1.2"/>` +
+    `<rect x="${f(x - 4.6)}" y="${f(y - 11)}" width="9.2" height="4.4" rx="1.6" fill="${light}"/>` +
+    `<rect x="${f(x - 6)}" y="${f(y - 15.5)}" width="2" height="31" rx="1" fill="#fff" opacity=".12"/>`;
+  let ticks = "";
+  for (let k = -3; k <= 3; k++) if (k) ticks += `<path d="M${cx - 3},${f(cy + k * 22)} h6" stroke="#a89cb8" stroke-opacity=".5" stroke-width=".7"/>`;
+  const radar = `<g transform="rotate(-4 ${cx} ${cy})">
+    <rect x="${rx0 - 2}" y="${ry0 - 2}" width="${rw + 4}" height="${rh + 4}" rx="11" fill="#ff2d4a" opacity="${hot ? 0.5 : 0.22}" filter="url(#${id}b4)"/>
+    <rect x="${rx0}" y="${ry0}" width="${rw}" height="${rh}" rx="9" fill="url(#${id}scr)" stroke="#6a5a7a" stroke-opacity=".7" stroke-width="1"/>
+    <g clip-path="url(#${id}clip)">
+      <ellipse cx="${rx0 + 4}" cy="${cy + 6}" rx="${hot ? 70 : 56}" ry="${hot ? 70 : 58}" fill="url(#${id}bleed)"/>
+      <rect x="${rx0 + 3}" y="${cy - 38}" width="${hot ? 6 : 4.4}" height="88" rx="2.5" fill="#ff3b4a" opacity="${hot ? 1 : 0.85}" filter="url(#${id}b2)"/>
+      <path d="M${rx0},${cy} H${rx0 + rw} M${cx},${ry0} V${ry0 + rh}" stroke="#a89cb8" stroke-opacity=".45" stroke-width=".6"/>
+      <path d="M${rx0},${cy - 52} H${rx0 + rw} M${rx0},${cy + 52} H${rx0 + rw}" stroke="#a89cb8" stroke-opacity=".4" stroke-width=".6" stroke-dasharray="3 2.4"/>
+      ${ticks}
+      ${car(cx, cy - 66, "#b07a86", { light: "#ffd27a" })}
+      ${car(cx, cy + 62, "#d4636e", { light: "#ffd27a" })}
+      ${car(cx - 26, cy + 8, "#ff3b3b", { glow: hot ? 0.95 : 0.7 })}
+      ${car(cx, cy, "#ffc21a", { light: "#7a5a12", stroke: "#3a2a10" })}
+      <path d="M${rx0},${ry0 + rh * 0.55} L${rx0 + rw},${ry0 + rh * 0.42}" stroke="#fff" stroke-opacity=".04" stroke-width="60"/>
+    </g>
+    <text x="${rx0 + rw - 9}" y="${ry0 + 15}" text-anchor="end" font-family="Space Grotesk" font-weight="700" font-size="8" fill="#c8bed6" fill-opacity=".8">${L.far}</text>
+    <text x="${rx0 + rw - 9}" y="${cy - 56}" text-anchor="end" font-family="Space Grotesk" font-weight="700" font-size="8" fill="#c8bed6" fill-opacity=".8">${L.near}</text>
+    <rect x="${rx0 - 20}" y="${ry0 + 2}" width="9" height="${rh - 4}" rx="4.5" fill="#2a1a2e" stroke="#4a3a5a" stroke-width=".8"/>
+    ${hot ? `<rect x="${rx0 - 22}" y="${ry0 + 2}" width="13" height="${rh - 4}" rx="6" fill="#ff2d4a" opacity=".7" filter="url(#${id}b4)"/>` : ""}
+    <rect x="${rx0 - 19}" y="${ry0 + 3}" width="7" height="${rh - 6}" rx="3.5" fill="url(#${id}bar)"/>
+    <rect x="${rx0 + rw + 11}" y="${ry0 + 2}" width="9" height="${rh - 4}" rx="4.5" fill="#2a1a2e" stroke="#4a3a5a" stroke-width=".8"/>
+    <rect x="${rx0 + rw + 12}" y="${ry0 + rh - 40}" width="7" height="37" rx="3.5" fill="#ff8a3c" opacity=".55"/>
+  </g>`;
+  // the eyes: two headlights in the fog, just off the radar's left edge
+  const eyes = [[13, 214], [29, 211]].map(([x, y]) =>
+    `<ellipse cx="${x}" cy="${y}" rx="${hot ? 14 : 10}" ry="${hot ? 7 : 5}" fill="#ff5a5a" opacity="${hot ? 0.85 : 0.6}" filter="url(#${id}b4)"/>` +
+    `<ellipse cx="${x}" cy="${y}" rx="4.2" ry="1.8" fill="#fff0e8" opacity="${hot ? 1 : 0.85}"/>`).join("");
   const [t1, t2] = p.tag[lang];
+  const title = (attrs) => `<text x="${W / 2}" y="330" text-anchor="middle" font-family="Anton" font-size="62" letter-spacing="1" textLength="222" lengthAdjust="spacingAndGlyphs" ${attrs}>OVERLAP</text>`;
   return `<symbol id="${id}" viewBox="0 0 ${W} ${H}">
   <defs>
-    <linearGradient id="${id}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a4652"/><stop offset=".6" stop-color="#5e3348"/><stop offset="1" stop-color="#241034"/></linearGradient>
-    <radialGradient id="${id}lamp" cx=".5" cy=".36" r=".6"><stop offset="0" stop-color="#ffd8a8" stop-opacity=".55"/><stop offset=".6" stop-color="#ff8a5c" stop-opacity=".12"/><stop offset="1" stop-color="#ff8a5c" stop-opacity="0"/></radialGradient>
-    <linearGradient id="${id}top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#241034" stop-opacity=".85"/><stop offset="1" stop-color="#241034" stop-opacity="0"/></linearGradient>
-    <linearGradient id="${id}fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a0d38" stop-opacity="0"/><stop offset=".35" stop-color="#1a0d38" stop-opacity=".88"/><stop offset="1" stop-color="#120828"/></linearGradient>
-    <filter id="${id}sh" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3"/></filter>
-    ${paperGrain(id + "g", 0.75)}
+    <linearGradient id="${id}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#07030f"/><stop offset=".45" stop-color="#140822"/><stop offset=".78" stop-color="#2a0a22"/><stop offset="1" stop-color="#0b0410"/></linearGradient>
+    <radialGradient id="${id}red" cx=".18" cy=".46" r=".6"><stop offset="0" stop-color="#ff2d4a" stop-opacity="${hot ? 0.42 : 0.26}"/><stop offset=".5" stop-color="#8a1030" stop-opacity=".12"/><stop offset="1" stop-color="#8a1030" stop-opacity="0"/></radialGradient>
+    <linearGradient id="${id}scr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3644"/><stop offset=".6" stop-color="#2a2534"/><stop offset="1" stop-color="#1c1824"/></linearGradient>
+    <radialGradient id="${id}bleed" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff2d3a" stop-opacity=".55"/><stop offset=".55" stop-color="#ff2d3a" stop-opacity=".16"/><stop offset="1" stop-color="#ff2d3a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="${id}bar" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff8a3c"/><stop offset=".5" stop-color="#ff3b3b"/><stop offset="1" stop-color="#ff2d4a"/></linearGradient>
+    <linearGradient id="${id}title" gradientUnits="userSpaceOnUse" x1="0" y1="282" x2="0" y2="330"><stop offset="0" stop-color="#ffe6dc"/><stop offset=".45" stop-color="#ff5a5a"/><stop offset="1" stop-color="#b3102e"/></linearGradient>
+    <linearGradient id="${id}scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b0410" stop-opacity="0"/><stop offset=".3" stop-color="#0b0410" stop-opacity=".85"/><stop offset="1" stop-color="#07030a"/></linearGradient>
+    <linearGradient id="${id}top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#07030f" stop-opacity=".9"/><stop offset="1" stop-color="#07030f" stop-opacity="0"/></linearGradient>
+    <clipPath id="${id}clip"><rect x="${rx0}" y="${ry0}" width="${rw}" height="${rh}" rx="9"/></clipPath>
+    <filter id="${id}b2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="${id}b4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="${id}b8" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8"/></filter>
+    ${paperGrain(id + "g", 0.85)}
   </defs>
   <rect width="${W}" height="${H}" fill="url(#${id}bg)"/>
-  ${cork}
-  <rect width="${W}" height="${H}" fill="url(#${id}lamp)"/>${hot ? `<rect width="${W}" height="${H}" fill="url(#${id}lamp)"/>` : ""}
-  <g transform="rotate(-3 137 155)"><rect x="58" y="100" width="166" height="122" fill="#1a0b14" opacity=".4" filter="url(#${id}sh)"/>${map}</g>
-  ${polaroid}${swatch}${card}${photo}${sticky}
-  ${strings}
-  ${pin(...pins.comp)}${pin(...pins.design)}${pin(...pins.dec)}${pin(...pins.risk, "#ffd27a")}${pin(34, 56)}${pin(228, 60)}${pin(88, 208)}${pin(224, 194)}${pin(150, 210, "#19e6ff")}
-  <g transform="rotate(-14 210 150)" opacity=".8"><rect x="${stampX}" y="138" width="${stampW}" height="22" rx="2" fill="none" stroke="#e0185a" stroke-width="1.8"/><text x="${stampX + 7}" y="154" font-family="'Big Shoulders Display'" font-weight="900" font-size="15" letter-spacing="2" fill="#e0185a">${L.stamp}</text></g>
-  <rect y="250" width="${W}" height="150" fill="url(#${id}fade)"/>
-  <rect width="${W}" height="46" fill="url(#${id}top)"/>
-  ${txt(W / 2, 22, 9, t1, { fam: "Oswald", w: 700, ls: 3.4 })}
-  ${txt(W / 2, 34, 9, t2, { fam: "Oswald", w: 700, ls: 3.4, fill: "#ffd8a8" })}
-  ${txt(W / 2 + 6, 286, 12, "PROJECT", { fam: "Oswald", w: 500, ls: 12, fill: "#ff8fd0" })}
-  <text x="${W / 2 + 2}" y="345" text-anchor="middle" font-family="Anton" font-size="58" fill="#ff2d6f" opacity=".85" textLength="196" lengthAdjust="spacingAndGlyphs">ATLAS</text>
-  <text x="${W / 2}" y="342" text-anchor="middle" font-family="Anton" font-size="58" fill="${C.cream}" textLength="196" lengthAdjust="spacingAndGlyphs">ATLAS</text>
-  ${txt(W / 2, 355, 8.2, p.sub[lang], { w: 500, fill: "#ffd8a8", ls: 0.3, extra: subFit(p.sub[lang], 8.2) })}
-  ${billing(368, p.bill[lang], { width: 234, size: 10.5, op: 0.74 })}
-  ${footer(lang, p, { y: 389 })}
-  ${grainRect(id + "g", 0.2)}
+  <rect width="${W}" height="${H}" fill="url(#${id}red)"/>${hot ? `<rect width="${W}" height="${H}" fill="url(#${id}red)" opacity=".6"/>` : ""}
+  <g filter="url(#${id}b8)">${fog}</g>
+  ${eyes}
+  ${radar}
+  <g>${dust}</g>
+  <rect y="262" width="${W}" height="138" fill="url(#${id}scrim)"/>
+  <rect width="${W}" height="56" fill="url(#${id}top)"/>
+  ${txt(W / 2, 28, 10, t1, { fam: "Oswald", w: 500, ls: 3.6, fill: "#e8dcef" })}
+  ${txt(W / 2, 42, 10, t2, { fam: "Oswald", w: 700, ls: 3.6, fill: "#ff5a64" })}
+  ${title(`fill="#ff2d4a" opacity="${hot ? 0.95 : 0.7}" filter="url(#${id}b4)"`)}
+  ${title(`fill="#3a0612" transform="translate(1.6 2.4)"`)}
+  ${title(`fill="url(#${id}title)"`)}
+  ${txt(W / 2, 345, 8.2, p.sub[lang], { w: 500, fill: "#ffc8c0", ls: 0.4, extra: subFit(p.sub[lang], 8.2) })}
+  ${billing(360, p.bill[lang], { width: 234, size: 12, op: 0.74 })}
+  ${footer(lang, p, { y: 387 })}
+  ${grainRect(id + "g", 0.18)}
 </symbol>`;
 }
 
@@ -686,7 +674,7 @@ function expenses(p, lang, id, hot = false) {
 </symbol>`;
 }
 
-const ART = { dot: dotfiles, trz: trazada, atl: atlas, exp: expenses };
+const ART = { dot: dotfiles, trz: trazada, ovl: overlap, exp: expenses };
 const posterId = (p, lang, hot) => `ps-${p.key}-${lang}${hot ? "-hot" : ""}`;
 
 /** One poster as an SVG <symbol> (viewBox 270 x 400) and its id, for drawing it inside a larger frame. */
@@ -701,7 +689,7 @@ export function posterSymbol(repo, lang, hot = false) {
  * One poster as a standalone SVG document, `width` x `height` pixels.
  * `hot`: the lit state, with the poster's prop in action and every word in
  * place (the beam on, the racing line burning and the trails lit, the
- * string glowing, the stamp down).
+ * red car's glow and its eyes flaring, the stamp down).
  */
 export function posterSvg(repo, lang, { width = W, height = H, hot = false } = {}) {
   const { id, svg } = posterSymbol(repo, lang, hot);
@@ -717,6 +705,5 @@ export const POSTER_FONTS = [
   "Oswald:wght@500;700",
   "Anton",
   "Six Caps",
-  "Special Elite",
   "Playfair Display:ital,wght@1,700;1,900",
 ];

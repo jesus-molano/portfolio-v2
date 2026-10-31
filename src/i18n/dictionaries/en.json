@@ -928,15 +928,15 @@
         "sub": "Lights out. Again.",
         "oneLiner": "An unofficial app for reliving Formula 1 sessions in 3D on your own PC: every car in sync, with the leaderboard, telemetry, team radio and race control."
       },
-      "project-atlas": {
-        "title": "PROJECT ATLAS",
-        "genre": "Procedural",
+      "overlap": {
+        "title": "OVERLAP",
+        "genre": "Horror",
         "tagline": [
-          "NOBODY MOVES",
-          "UNTIL THE BOARD IS DONE."
+          "YOU CAN'T SEE IT.",
+          "BUT IT'S RIGHT BESIDE YOU."
         ],
-        "sub": "Read the file, Agent.",
-        "oneLiner": "A map of a frontend project that a coding agent reads before it touches anything: its components, its design, the decisions already made and the risks."
+        "sub": "Car left. Still there.",
+        "oneLiner": "An iRacing overlay for Windows: eleven widgets over the sim (relative, standings, radar, spotter, delta, fuel and more) read from its telemetry, each one placed and styled your way."
       },
       "expenses-log-app": {
         "title": "EXPENSES LOG",
